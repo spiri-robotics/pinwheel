@@ -6,6 +6,7 @@
  * LICENSE-AGPL for a copy of the license.
  */
 
+use const_format::concatcp;
 use itertools::Itertools;
 use sqlx::{Pool, Postgres, Transaction};
 use std::{borrow::Borrow, collections::HashMap, io, panic, process::Stdio, time::Duration};
@@ -35,7 +36,7 @@ use tokio::{
 
 use futures::{
     future::{self, ready, FutureExt},
-    stream::{self, StreamExt},
+    stream, StreamExt,
 };
 
 use async_recursion::async_recursion;
@@ -46,6 +47,8 @@ use crate::{
         handle_flow, update_flow_status_after_job_completion, update_flow_status_in_progress,
     },
 };
+
+
 
 #[tracing::instrument(level = "trace", skip_all)]
 pub async fn create_token_for_owner<'c>(
@@ -110,10 +113,12 @@ pub async fn create_token_for_owner<'c>(
 
 const TMP_DIR: &str = "/tmp/windmill";
 const PIP_SUPERCACHE_DIR: &str = "/tmp/windmill/cache/pip_permanent";
-const PIP_CACHE_DIR: &str = "/tmp/windmill/cache/pip";
-const DENO_CACHE_DIR: &str = "/tmp/windmill/cache/deno";
-const GO_CACHE_DIR: &str = "/tmp/windmill/cache/go";
+const ROOT_CACHE_DIR: &str = "/tmp/windmill/cache/";
+const PIP_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "pip");
+const DENO_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "deno");
+const GO_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "go");
 const NUM_SECS_ENV_CHECK: u64 = 15;
+const NUM_SECS_SYNC: u64 = 60 * 10;
 const DEFAULT_HEAVY_DEPS: [&str; 18] = [
     "numpy",
     "pandas",
@@ -192,6 +197,7 @@ pub async fn run_worker(
     ip: &str,
     sleep_queue: u64,
     worker_config: WorkerConfig,
+    sync_bucket: Option<String>,
     mut rx: tokio::sync::broadcast::Receiver<()>,
 ) {
     let start_time = Instant::now();
@@ -220,7 +226,8 @@ pub async fn run_worker(
     )
     .await;
 
-    let mut last_ping = Instant::now() - Duration::from_secs(NUM_SECS_ENV_CHECK + 1);
+
+    let mut last_ping = Instant::now() - Duration::from_secs(NUM_SECS_SYNC + 1);
 
     insert_initial_ping(worker_instance, &worker_name, ip, db).await;
 
@@ -287,6 +294,7 @@ pub async fn run_worker(
     };
     WORKER_STARTED.inc();
 
+
     let (same_worker_tx, mut same_worker_rx) = mpsc::channel::<Uuid>(5);
 
     loop {
@@ -308,6 +316,7 @@ pub async fn run_worker(
 
                 last_ping = Instant::now();
             }
+
 
             let (do_break, next_job) = async {
                 tokio::select! {
