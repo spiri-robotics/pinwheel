@@ -199,7 +199,6 @@ pub async fn run_worker(
     )
     .await;
 
-
     let mut last_ping = Instant::now() - Duration::from_secs(NUM_SECS_SYNC + 1);
 
     insert_initial_ping(worker_instance, &worker_name, ip, db).await;
@@ -262,6 +261,7 @@ pub async fn run_worker(
         pip_trusted_host,
     };
     WORKER_STARTED.inc();
+
 
 
     let (same_worker_tx, mut same_worker_rx) = mpsc::channel::<Uuid>(5);
