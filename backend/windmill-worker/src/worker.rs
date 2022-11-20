@@ -7,6 +7,7 @@
  */
 
 use const_format::concatcp;
+use git_version::git_version;
 use itertools::Itertools;
 use sqlx::{Pool, Postgres, Transaction};
 use std::{borrow::Borrow, collections::HashMap, io, panic, process::Stdio, time::Duration};
@@ -128,6 +129,7 @@ const NSJAIL_CONFIG_RUN_BASH_CONTENT: &str = include_str!("../nsjail/run.bash.co
 const NSJAIL_CONFIG_RUN_DENO_CONTENT: &str = include_str!("../nsjail/run.deno.config.proto");
 const MAX_LOG_SIZE: u32 = 200000;
 const GO_REQ_SPLITTER: &str = "//go.sum";
+const GIT_VERSION: &str = git_version!(args = ["--tag", "--always"], fallback = "unknown-version");
 
 #[derive(Clone)]
 pub struct Metrics {
@@ -179,6 +181,7 @@ pub async fn run_worker(
     sync_bucket: Option<String>,
     mut rx: tokio::sync::broadcast::Receiver<()>,
 ) {
+    tracing::info!("Starting worker {worker_instance} {worker_name}, version: {GIT_VERSION}");
     let start_time = Instant::now();
 
     let worker_dir = format!("{TMP_DIR}/{worker_name}");
