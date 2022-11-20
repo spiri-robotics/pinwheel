@@ -13,6 +13,7 @@ use sqlx::{Pool, Postgres, Transaction};
 use std::{borrow::Borrow, collections::HashMap, io, panic, process::Stdio, time::Duration};
 use tracing::{trace_span, Instrument};
 use uuid::Uuid;
+
 use windmill_common::{
     error::{self, to_anyhow, Error},
     flows::{FlowModuleValue, FlowValue},
@@ -48,6 +49,10 @@ use crate::{
         handle_flow, update_flow_status_after_job_completion, update_flow_status_in_progress,
     },
 };
+
+
+
+
 
 
 
@@ -252,6 +257,8 @@ pub async fn run_worker(
     let pip_index_url = std::env::var("PIP_INDEX_URL").ok();
     let pip_extra_index_url = std::env::var("PIP_EXTRA_INDEX_URL").ok();
     let pip_trusted_host = std::env::var("PIP_TRUSTED_HOST").ok();
+
+
     let envs = Envs {
         deno_path,
         go_path,
