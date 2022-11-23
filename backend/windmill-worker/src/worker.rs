@@ -1823,9 +1823,7 @@ async fn capture_dependency_job(
         ScriptLang::Deno => {
             generate_deno_lock(job_id, job_raw_code, logs, job_dir, db, timeout, &envs).await
         }
-        _ => Err(error::Error::InternalErr(
-            "Language incompatible with dep job".to_string(),
-        )),
+        ScriptLang::Bash => Ok("".to_owned()),
     }
 }
 
