@@ -1317,6 +1317,7 @@ run();
                 .env("DENO_DIR", DENO_CACHE_DIR)
                 .env("DENO_AUTH_TOKENS", deno_auth_tokens)
                 .env("BASE_INTERNAL_URL", base_internal_url)
+                .env("NO_COLOR", "true")
                 .args(args)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
