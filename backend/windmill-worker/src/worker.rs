@@ -824,7 +824,7 @@ async fn handle_code_execution_job(
             r#"
 mount {{
     src: "{worker_dir}/{}/shared"
-    dst: "/shared"
+    dst: "/tmp/shared"
     is_bind: true
     rw: true
 }}
@@ -836,7 +836,7 @@ mount {{
     } else {
         r#"
 mount {
-    dst: "/shared"
+    dst: "/tmp/shared"
     fstype: "tmpfs"
     rw: true
     options: "size=500000000"
