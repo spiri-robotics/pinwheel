@@ -43,6 +43,7 @@ sqlx.workspace = true
 tokio-metrics.workspace = true
 rand.workspace = true
 chrono.workspace = true
+git-version.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true

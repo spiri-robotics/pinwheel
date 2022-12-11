@@ -43,6 +43,7 @@ lazy_static::lazy_static! {
 
 }
 
+const MAX_FREE_EXECS: i32 = 1000;
 
 pub async fn cancel_job<'c>(
     username: &str,
@@ -258,6 +259,7 @@ pub async fn push<'c>(
     let args_json = serde_json::Value::Object(args);
     let job_id: Uuid = Ulid::new().into();
 
+    {}
 
     let (script_hash, script_path, raw_code_tuple, job_kind, mut raw_flow, language) =
         match job_payload {
