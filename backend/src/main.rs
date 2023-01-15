@@ -15,6 +15,8 @@ use windmill_worker::WorkerConfig;
 
 const GIT_VERSION: &str = git_version!(args = ["--tag", "--always"], fallback = "unknown-version");
 
+mod ee;
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().ok();
@@ -185,7 +187,6 @@ pub async fn run_workers(
     if license_key.is_some() {
         panic!("License key is required ONLY for the enterprise edition");
     }
-
     if !worker_config.disable_nsjail {
         tracing::warn!(
             "NSJAIL to sandbox process in untrusted environments is an enterprise feature but allowed to be used for testing purposes"
