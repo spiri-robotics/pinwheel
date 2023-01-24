@@ -8,6 +8,7 @@
 
 use std::{collections::HashMap, str::FromStr};
 
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres, Transaction};
 use tracing::{instrument, Instrument};
@@ -287,7 +288,9 @@ pub async fn push<'c>(
                 )
             }
             JobPayload::ScriptHub { path } => {
-                let script = get_hub_script(path.clone(), email).await?;
+                let script = get_hub_script(path.clone(), email)
+                    .await
+                    .context("error fetching hub script")?;
                 (
                     None,
                     Some(path),
