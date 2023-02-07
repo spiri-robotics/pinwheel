@@ -26,7 +26,7 @@ use windmill_common::{
     utils::rd_string,
     variables,
 };
-use windmill_queue::{canceled_job_to_result, get_queued_job, pull, JobKind, QueuedJob};
+use windmill_queue::{canceled_job_to_result, get_queued_job, pull, JobKind, QueuedJob, CLOUD_HOSTED};
 
 use serde_json::{json, Value};
 
@@ -150,6 +150,11 @@ lazy_static::lazy_static! {
     );
 }
 
+//only matter if CLOUD_HOSTED
+const MAX_RESULT_SIZE: usize = 1024 * 1024 * 2; // 2MB
+
+
+
 #[tracing::instrument(level = "trace")]
 pub async fn run_worker(
     db: &Pool<Postgres>,
@@ -260,10 +265,10 @@ pub async fn run_worker(
         .ok()
         .map(|x| format!(";{x}"))
         .unwrap_or_else(|| String::new());
-    let max_log_size = std::env::var("MAX_LOG_SIZE")
-        .ok()
-        .and_then(|x| x.parse::<i64>().ok())
-        .unwrap_or(500000);
+
+    
+
+
     let deno_flags = std::env::var("DENO_FLAGS")
         .ok()
         .map(|x| x.split(' ').map(|x| x.to_string()).collect());
@@ -298,7 +303,6 @@ pub async fn run_worker(
         pip_index_url,
         pip_extra_index_url,
         pip_trusted_host,
-        max_log_size,
         deno_flags,
         deno_auth_tokens,
         pip_local_dependencies,
@@ -596,7 +600,6 @@ struct Envs {
     pip_trusted_host: Option<String>,
     deno_auth_tokens: String,
     deno_flags: Option<Vec<String>>,
-    max_log_size: i64,
     pip_local_dependencies: Option<Vec<String>>,
     additional_python_paths: Option<Vec<String>>,
 }
@@ -992,7 +995,7 @@ mount {{
 #[tracing::instrument(level = "trace", skip_all)]
 async fn handle_go_job(
     WorkerConfig { base_internal_url, disable_nuser, disable_nsjail, base_url, .. }: &WorkerConfig,
-    Envs { nsjail_path, go_path, path_env, home_env, max_log_size, .. }: &Envs,
+    Envs { nsjail_path, go_path, path_env, home_env, .. }: &Envs,
     logs: &mut String,
     job: &QueuedJob,
     db: &sqlx::Pool<sqlx::Postgres>,
@@ -1030,7 +1033,6 @@ async fn handle_go_job(
         job_dir,
         db,
         timeout,
-        *max_log_size,
         go_path,
         true,
         skip_go_mod,
@@ -1151,7 +1153,7 @@ func Run(req Req) (interface{{}}, error){{
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
-        handle_child(&job.id, db, logs, timeout, *max_log_size, build_go, false).await?;
+        handle_child(&job.id, db, logs, timeout,  build_go, false).await?;
 
         Command::new(nsjail_path)
             .current_dir(job_dir)
@@ -1177,14 +1179,14 @@ func Run(req Req) (interface{{}}, error){{
             .stderr(Stdio::piped())
             .spawn()?
     };
-    handle_child(&job.id, db, logs, timeout, *max_log_size, child, !disable_nsjail).await?;
+    handle_child(&job.id, db, logs, timeout, child, !disable_nsjail).await?;
     read_result(job_dir).await
 }
 
 #[tracing::instrument(level = "trace", skip_all)]
 async fn handle_bash_job(
     WorkerConfig { base_internal_url, disable_nuser, disable_nsjail, base_url, .. }: &WorkerConfig,
-    Envs { nsjail_path, path_env, home_env, max_log_size, .. }: &Envs,
+    Envs { nsjail_path, path_env, home_env,  .. }: &Envs,
     logs: &mut String,
     job: &QueuedJob,
     db: &sqlx::Pool<sqlx::Postgres>,
@@ -1256,7 +1258,7 @@ async fn handle_bash_job(
             .stderr(Stdio::piped())
             .spawn()?
     };
-    handle_child(&job.id, db, logs, timeout, *max_log_size, child, !disable_nsjail).await?;
+    handle_child(&job.id, db, logs, timeout, child, !disable_nsjail).await?;
     //for now bash jobs have an empty result object
     Ok(serde_json::json!(logs
         .lines()
@@ -1276,7 +1278,7 @@ fn capitalize(s: &str) -> String {
 #[tracing::instrument(level = "trace", skip_all)]
 async fn handle_deno_job(
     WorkerConfig { base_internal_url, base_url, disable_nuser, disable_nsjail, .. }: &WorkerConfig,
-    Envs { nsjail_path, deno_path, path_env, max_log_size, deno_auth_tokens, deno_flags, .. }: &Envs,
+    Envs { nsjail_path, deno_path, path_env,  deno_auth_tokens, deno_flags, .. }: &Envs,
     logs: &mut String,
     job: &QueuedJob,
     db: &sqlx::Pool<sqlx::Postgres>,
@@ -1420,7 +1422,7 @@ run().catch(async (e) => {{
     }
     .instrument(trace_span!("create_deno_jail"))
     .await?;
-    handle_child(&job.id, db, logs, timeout, *max_log_size, child, !disable_nsjail).await?;
+    handle_child(&job.id, db, logs, timeout,  child, !disable_nsjail).await?;
     read_result(job_dir).await
 }
 
@@ -1449,7 +1451,7 @@ lazy_static! {
 async fn handle_python_job(
     WorkerConfig { base_internal_url, base_url, disable_nuser, disable_nsjail, .. }: &WorkerConfig,
     envs @ Envs {
-        nsjail_path, python_path, path_env, max_log_size, additional_python_paths, ..
+        nsjail_path, python_path, path_env,  additional_python_paths, ..
     }: &Envs,
     requirements_o: Option<String>,
     job_dir: &str,
@@ -1694,7 +1696,7 @@ mount {{
             .spawn()?
     };
 
-    handle_child(&job.id, db, logs, timeout, *max_log_size, child, !disable_nsjail).await?;
+    handle_child(&job.id, db, logs, timeout, child, !disable_nsjail).await?;
     read_result(job_dir).await
 }
 
@@ -1710,6 +1712,10 @@ async fn read_result(job_dir: &str) -> error::Result<serde_json::Value> {
     let mut file = File::open(format!("{job_dir}/result.json")).await?;
     let mut content = "".to_string();
     file.read_to_string(&mut content).await?;
+    if *CLOUD_HOSTED && content.len() > MAX_RESULT_SIZE {
+        return Err(Error::ExecutionErr("Result is too large for the cloud app (limit 2MB). 
+        If using this script as part of the flow, use the shared folder to pass heavy data between steps.".to_owned()));
+    }
     serde_json::from_str(&content)
         .map_err(|e| Error::ExecutionErr(format!("Error parsing result: {e}")))
 }
@@ -1890,7 +1896,7 @@ async fn generate_deno_lock(
     job_dir: &str,
     db: &sqlx::Pool<sqlx::Postgres>,
     timeout: i32,
-    Envs { deno_path, max_log_size, .. }: &Envs,
+    Envs { deno_path,  .. }: &Envs,
 ) -> error::Result<String> {
     let _ = write_file(job_dir, "main.ts", code).await?;
 
@@ -1908,7 +1914,7 @@ async fn generate_deno_lock(
         .stderr(Stdio::piped())
         .spawn()?;
 
-    handle_child(job_id, db, logs, timeout, *max_log_size, child).await?;
+    handle_child(job_id, db, logs, timeout, * child).await?;
 
     let path_lock = format!("{job_dir}/lock.json");
     let mut file = File::open(path_lock).await?;
@@ -1939,7 +1945,6 @@ async fn capture_dependency_job(
                 job_dir,
                 db,
                 timeout,
-                envs.max_log_size,
                 &envs.go_path,
                 false,
                 false,
@@ -1962,7 +1967,7 @@ async fn pip_compile(
         pip_extra_index_url,
         pip_index_url,
         pip_trusted_host,
-        max_log_size,
+        
         pip_local_dependencies,
         ..
     }: &Envs,
@@ -2000,7 +2005,7 @@ async fn pip_compile(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
-    handle_child(job_id, db, logs, timeout, *max_log_size, child, false)
+    handle_child(job_id, db, logs, timeout, child, false)
         .await
         .map_err(|e| Error::ExecutionErr(format!("Lock file generation failed: {e:?}")))?;
     let path_lock = format!("{job_dir}/requirements.txt");
@@ -2022,7 +2027,6 @@ async fn install_go_dependencies(
     job_dir: &str,
     db: &sqlx::Pool<sqlx::Postgres>,
     timeout: i32,
-    max_log_size: i64,
     go_path: &str,
     preview: bool,
     skip_go_mod: bool,
@@ -2036,7 +2040,7 @@ async fn install_go_dependencies(
             .stderr(Stdio::piped())
             .spawn()?;
 
-        handle_child(job_id, db, logs, timeout, max_log_size, child, false).await?;
+        handle_child(job_id, db, logs, timeout,  child, false).await?;
     }
     let child = Command::new(go_path)
         .current_dir(job_dir)
@@ -2044,7 +2048,7 @@ async fn install_go_dependencies(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
-    handle_child(job_id, db, logs, timeout, max_log_size, child, false)
+    handle_child(job_id, db, logs, timeout,  child, false)
         .await
         .map_err(|e| Error::ExecutionErr(format!("Lock file generation failed: {e:?}")))?;
 
@@ -2150,7 +2154,6 @@ async fn handle_child(
     db: &Pool<Postgres>,
     logs: &mut String,
     timeout: i32,
-    max_log_size: i64,
     mut child: Child,
     nsjail: bool,
 ) -> error::Result<()> {
@@ -2252,8 +2255,13 @@ async fn handle_child(
 
     /* a future that reads output from the child and appends to the database */
     let lines = async move {
+        let max_log_size = if *CLOUD_HOSTED {
+            MAX_RESULT_SIZE
+        } else {
+            usize::MAX
+        };
         /* log_remaining is zero when output limit was reached */
-        let mut log_remaining = (max_log_size as usize).saturating_sub(logs.chars().count());
+        let mut log_remaining = max_log_size.saturating_sub(logs.chars().count());
         let mut result = io::Result::Ok(());
         let mut output = output;
         /* `do_write` resolves the task, but does not contain the Result.
@@ -2284,7 +2292,7 @@ async fn handle_child(
                             tracing::info!(%job_id, "Too many logs lines for job {job_id}");
                             let _ = set_too_many_logs.send(true);
                             joined.push_str(&format!(
-                                "Job logs or result reached character limit of {max_log_size}; killing job."
+                                "Job logs or result reached character limit of {MAX_RESULT_SIZE}; killing job."
                             ));
                             /* stop reading and drop our streams fairly quickly */
                             break;
@@ -2346,7 +2354,7 @@ async fn handle_child(
 
     match wait_result {
         _ if *too_many_logs.borrow() => Err(Error::ExecutionErr(format!(
-            "logs or result reached limit. Set MAX_LOG_SIZE higher (current: {max_log_size})"
+            "logs or result reached limit. (current max size: {MAX_RESULT_SIZE} characters)"
         ))),
         Ok(Ok(status)) => {
             if status.success() {
@@ -2559,7 +2567,7 @@ async fn handle_python_reqs(
         pip_extra_index_url,
         pip_trusted_host,
         nsjail_path,
-        max_log_size,
+        
         ..
     }: &Envs,
     job: &QueuedJob,
@@ -2654,7 +2662,7 @@ async fn handle_python_reqs(
                 .spawn()?
         };
 
-        let child = handle_child(&job.id, db, logs, timeout, *max_log_size, child, false).await;
+        let child = handle_child(&job.id, db, logs, timeout, child, false).await;
         tracing::info!(
             worker_name = %worker_name,
             job_id = %job.id,
