@@ -374,10 +374,10 @@ pub async fn push<'c>(
             }
             JobPayload::Flow(flow) => {
                 let value_json = sqlx::query_scalar!(
-                "SELECT value FROM flow WHERE path = $1 AND workspace_id = $2",
-                flow,
-                workspace_id
-            )
+                    "SELECT value FROM flow WHERE path = $1 AND workspace_id = $2",
+                    flow,
+                    workspace_id
+                )
                 .fetch_optional(&mut tx)
                 .await?
                 .ok_or_else(|| Error::InternalErr(format!("not found flow at path {:?}", flow)))?;
