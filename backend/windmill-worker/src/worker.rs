@@ -651,7 +651,7 @@ async fn handle_queued_job(
     job_dir: &str,
     metrics: Metrics,
     same_worker_tx: Sender<Uuid>,
-    base_internal_url: &str
+    base_internal_url: &str,
 ) -> windmill_common::error::Result<()> {
     if job.canceled {
         return Err(Error::JsonErr(canceled_job_to_result(&job)))?;
@@ -699,10 +699,10 @@ async fn handle_queued_job(
             logs.push_str(&format!("job {} on worker {}\n", &job.id, &worker_name));
             let result = match job.job_kind {
                 JobKind::Dependencies => {
-                    handle_dependency_job(&job, &mut logs, job_dir, db).await
+                    handle_dependency_job(&job, &mut logs, job_dir, db, worker_name).await
                 }
                 JobKind::FlowDependencies => {
-                    handle_flow_dependency_job(&job, &mut logs, job_dir, db)
+                    handle_flow_dependency_job(&job, &mut logs, job_dir, db, worker_name)
                         .await
                         .map(|()| Value::Null)
                 }
@@ -723,7 +723,8 @@ async fn handle_queued_job(
                         job_dir,
                         worker_dir,
                         &mut logs,
-                        base_internal_url
+                        base_internal_url,
+                        worker_name
                     )
                     .await
                 }
@@ -875,7 +876,9 @@ async fn handle_code_execution_job(
     job_dir: &str,
     worker_dir: &str,
     logs: &mut String,
-    base_internal_url: &str
+    base_internal_url: &str,
+    worker_name: &str
+
 ) -> error::Result<serde_json::Value> {
     let (inner_content, requirements_o, language) = match job.job_kind {
         JobKind::Preview | JobKind::Script_Hub => (
@@ -897,7 +900,6 @@ async fn handle_code_execution_job(
             "handle_code_execution_job should never be reachable with a non-code execution job"
         ),
     };
-    let worker_name = worker_dir.split("/").last().unwrap_or("unknown");
     let lang_str = job
         .language
         .as_ref()
@@ -947,7 +949,7 @@ mount {{
                 token,
                 &inner_content,
                 &shared_mount,
-                base_internal_url
+                base_internal_url,
             )
             .await
         }
@@ -962,7 +964,8 @@ mount {{
                 &inner_content,
                 &shared_mount,
                 requirements_o,
-                base_internal_url
+                base_internal_url,
+                worker_name
             )
             .await
         }
@@ -977,7 +980,8 @@ mount {{
                 job_dir,
                 requirements_o,
                 &shared_mount,
-                base_internal_url
+                base_internal_url,
+                worker_name
             )
             .await
         }
@@ -990,7 +994,8 @@ mount {{
                 &inner_content,
                 job_dir,
                 &shared_mount,
-                base_internal_url
+                base_internal_url,
+                worker_name
             )
             .await
         }
@@ -1019,6 +1024,7 @@ async fn handle_go_job(
     requirements_o: Option<String>,
     shared_mount: &str,
     base_internal_url: &str,
+    worker_name: &str,
 ) -> Result<serde_json::Value, Error> {
     //go does not like executing modules at temp root
     let job_dir = &format!("{job_dir}/go");
@@ -1047,6 +1053,7 @@ async fn handle_go_job(
         db,
         true,
         skip_go_mod,
+        worker_name
     )
     .await?;
 
@@ -1164,7 +1171,7 @@ func Run(req Req) (interface{{}}, error){{
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
-        handle_child(&job.id, db, logs,  build_go, false).await?;
+        handle_child(&job.id, db, logs,  build_go, false, worker_name).await?;
 
         Command::new(NSJAIL_PATH.as_str())
             .current_dir(job_dir)
@@ -1190,7 +1197,7 @@ func Run(req Req) (interface{{}}, error){{
             .stderr(Stdio::piped())
             .spawn()?
     };
-    handle_child(&job.id, db, logs, child, !*DISABLE_NSJAIL).await?;
+    handle_child(&job.id, db, logs, child, !*DISABLE_NSJAIL, worker_name).await?;
     read_result(job_dir).await
 }
 
@@ -1204,6 +1211,7 @@ async fn handle_bash_job(
     job_dir: &str,
     shared_mount: &str,
     base_internal_url: &str,
+    worker_name: &str,
 ) -> Result<serde_json::Value, Error> {
     logs.push_str("\n\n--- BASH CODE EXECUTION ---\n");
     set_logs(logs, &job.id, db).await;
@@ -1267,7 +1275,7 @@ async fn handle_bash_job(
             .stderr(Stdio::piped())
             .spawn()?
     };
-    handle_child(&job.id, db, logs,  child, !*DISABLE_NSJAIL).await?;
+    handle_child(&job.id, db, logs,  child, !*DISABLE_NSJAIL, worker_name).await?;
     //for now bash jobs have an empty result object
     Ok(serde_json::json!(logs
         .lines()
@@ -1295,7 +1303,8 @@ async fn handle_deno_job(
     inner_content: &String,
     shared_mount: &str,
     lockfile: Option<String>,
-    base_internal_url: &str
+    base_internal_url: &str,
+    worker_name: &str
 ) -> error::Result<serde_json::Value> {
     logs.push_str("\n\n--- DENO CODE EXECUTION ---\n");
     set_logs(logs, &job.id, db).await;
@@ -1430,7 +1439,7 @@ run().catch(async (e) => {{
     }
     .instrument(trace_span!("create_deno_jail"))
     .await?;
-    handle_child(&job.id, db, logs, child, !*DISABLE_NSJAIL).await?;
+    handle_child(&job.id, db, logs, child, !*DISABLE_NSJAIL, worker_name).await?;
     read_result(job_dir).await
 }
 
@@ -1468,7 +1477,7 @@ async fn handle_python_job(
     token: String,
     inner_content: &String,
     shared_mount: &str,
-    base_internal_url: &str
+    base_internal_url: &str,
 ) -> error::Result<serde_json::Value> {
     create_dependencies_dir(job_dir).await;
 
@@ -1482,7 +1491,7 @@ async fn handle_python_job(
             if requirements.is_empty() {
                 "".to_string()
             } else {
-                pip_compile(&job.id, &requirements, logs, job_dir, db)
+                pip_compile(&job.id, &requirements, logs, job_dir, db, worker_name)
                     .await
                     .map_err(|e| {
                         Error::ExecutionErr(format!("pip compile failed: {}", e.to_string()))
@@ -1699,7 +1708,7 @@ mount {{
             .spawn()?
     };
 
-    handle_child(&job.id, db, logs, child, !*DISABLE_NSJAIL).await?;
+    handle_child(&job.id, db, logs, child, !*DISABLE_NSJAIL, worker_name).await?;
     read_result(job_dir).await
 }
 
@@ -1729,6 +1738,7 @@ async fn handle_dependency_job(
     logs: &mut String,
     job_dir: &str,
     db: &sqlx::Pool<sqlx::Postgres>,
+    worker_name: &str,
 ) -> error::Result<serde_json::Value> {
     let content = capture_dependency_job(
         &job.id,
@@ -1743,7 +1753,8 @@ async fn handle_dependency_job(
             .unwrap_or_else(|| "no raw code"),
         logs,
         job_dir,
-        db
+        db,
+        worker_name
     )
     .await;
     match content {
@@ -1778,6 +1789,7 @@ async fn handle_flow_dependency_job(
     logs: &mut String,
     job_dir: &str,
     db: &sqlx::Pool<sqlx::Postgres>,
+    worker_name: &str,
 ) -> error::Result<()> {
     let path = job.script_path.clone().ok_or_else(|| {
         error::Error::InternalErr(
@@ -1808,6 +1820,7 @@ async fn handle_flow_dependency_job(
             logs,
             job_dir,
             db,
+            worker_name
         )
         .await;
         match new_lock {
@@ -1922,12 +1935,13 @@ async fn capture_dependency_job(
     job_raw_code: &str,
     logs: &mut String,
     job_dir: &str,
-    db: &sqlx::Pool<sqlx::Postgres>
+    db: &sqlx::Pool<sqlx::Postgres>,
+    worker_name: &str
 ) -> error::Result<String> {
     match job_language {
         ScriptLang::Python3 => {
             create_dependencies_dir(job_dir).await;
-            pip_compile(job_id, job_raw_code, logs, job_dir, db ).await
+            pip_compile(job_id, job_raw_code, logs, job_dir, db, worker_name).await
         }
         ScriptLang::Go => {
             install_go_dependencies(
@@ -1938,6 +1952,7 @@ async fn capture_dependency_job(
                 db,
                 false,
                 false,
+                worker_name
             )
             .await
         }
@@ -1955,6 +1970,7 @@ async fn pip_compile(
     logs: &mut String,
     job_dir: &str,
     db: &Pool<Postgres>,
+    worker_name: &str
 ) -> error::Result<String> {
     logs.push_str(&format!("\nresolving dependencies..."));
     set_logs(logs, job_id, db).await;
@@ -1987,7 +2003,7 @@ async fn pip_compile(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
-    handle_child(job_id, db, logs,  child, false)
+    handle_child(job_id, db, logs,  child, false, worker_name)
         .await
         .map_err(|e| Error::ExecutionErr(format!("Lock file generation failed: {e:?}")))?;
     let path_lock = format!("{job_dir}/requirements.txt");
@@ -2010,6 +2026,7 @@ async fn install_go_dependencies(
     db: &sqlx::Pool<sqlx::Postgres>,
     preview: bool,
     skip_go_mod: bool,
+    worker_name: &str
 ) -> error::Result<String> {
     if !skip_go_mod {
         gen_go_mymod(code, job_dir).await?;
@@ -2020,7 +2037,7 @@ async fn install_go_dependencies(
             .stderr(Stdio::piped())
             .spawn()?;
 
-        handle_child(job_id, db, logs,   child, false).await?;
+        handle_child(job_id, db, logs,   child, false, worker_name).await?;
     }
     let child = Command::new(GO_PATH.as_str())
         .current_dir(job_dir)
@@ -2028,7 +2045,7 @@ async fn install_go_dependencies(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
-    handle_child(job_id, db, logs,  child, false)
+    handle_child(job_id, db, logs,  child, false, worker_name)
         .await
         .map_err(|e| Error::ExecutionErr(format!("Lock file generation failed: {e:?}")))?;
 
@@ -2134,6 +2151,7 @@ async fn handle_child(
     logs: &mut String,
     mut child: Child,
     nsjail: bool,
+    worker_name: &str,
 ) -> error::Result<()> {
     let update_job_interval = Duration::from_millis(500);
     let write_logs_delay = Duration::from_millis(500);
@@ -2161,10 +2179,22 @@ async fn handle_child(
         let mut interval = interval(update_job_interval);
         interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
+        let mut i = 1;
         loop {
             tokio::select!(
                 _ = rx.recv() => break,
                 _ = interval.tick() => {
+                    // update the last_ping column every 5 seconds
+                    i+=1;
+                    if i % 10 == 0 {
+                        sqlx::query!(
+                            "UPDATE worker_ping SET ping_at = now() WHERE worker = $1",
+                            &worker_name
+                        )
+                        .execute(&db)
+                        .await
+                        .expect("update worker ping");
+                    }
                     let mem_peak = get_mem_peak(pid, nsjail).await;
                     tracing::info!("{job_id} still running. mem peak: {}kB", mem_peak);
                     let mem_peak = if mem_peak > 0 { Some(mem_peak) } else { None };
@@ -2624,7 +2654,7 @@ async fn handle_python_reqs(
                 .spawn()?
         };
 
-        let child = handle_child(&job.id, db, logs, child, false).await;
+        let child = handle_child(&job.id, db, logs, child, false, worker_name).await;
         tracing::info!(
             worker_name = %worker_name,
             job_id = %job.id,
