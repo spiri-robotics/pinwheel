@@ -2212,7 +2212,7 @@ async fn handle_child(
     mut child: Child,
     nsjail: bool,
     worker_name: &str,
-    w_id: &str,
+    _w_id: &str,
 ) -> error::Result<()> {
     let update_job_interval = Duration::from_millis(500);
     let write_logs_delay = Duration::from_millis(500);
