@@ -6,6 +6,7 @@
  * LICENSE-AGPL for a copy of the license.
  */
 
+use anyhow::Result;
 use const_format::concatcp;
 use itertools::Itertools;
 use lazy_static::lazy_static;
@@ -61,6 +62,14 @@ use crate::{
 
 
 
+async fn move_tmp_cache_to_cache() -> Result<()> {
+    tokio::fs::remove_dir_all(ROOT_CACHE_DIR).await?;
+    tokio::fs::rename(ROOT_TMP_CACHE_DIR, ROOT_CACHE_DIR).await?;
+    tokio::fs::create_dir(ROOT_TMP_CACHE_DIR).await?;
+    tracing::info!("Finished moving tmp cache to cache");
+    Ok(())
+}
+
 #[tracing::instrument(level = "trace", skip_all)]
 pub async fn create_token_for_owner<'c>(
     mut tx: Transaction<'c, Postgres>,
@@ -96,6 +105,7 @@ pub async fn create_token_for_owner<'c>(
 
 const TMP_DIR: &str = "/tmp/windmill";
 const ROOT_CACHE_DIR: &str = "/tmp/windmill/cache/";
+const ROOT_TMP_CACHE_DIR: &str = "/tmp/windmill/tmpcache/";
 const PIP_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "pip");
 const DENO_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "deno");
 const GO_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "go");
@@ -283,7 +293,7 @@ pub async fn run_worker(
     let worker_dir = format!("{TMP_DIR}/{worker_name}");
     tracing::debug!(worker_dir = %worker_dir, worker_name = %worker_name, "Creating worker dir");
 
-    for x in [&worker_dir, PIP_CACHE_DIR, DENO_CACHE_DIR, GO_CACHE_DIR] {
+    for x in [&worker_dir, ROOT_TMP_CACHE_DIR, PIP_CACHE_DIR, DENO_CACHE_DIR, GO_CACHE_DIR] {
         DirBuilder::new()
             .recursive(true)
             .create(x)
@@ -382,6 +392,10 @@ pub async fn run_worker(
 
     WORKER_STARTED.inc();
 
+    let (_copy_bucket_tx, mut _copy_bucket_rx) = mpsc::channel::<()>(2);
+
+
+    tracing::info!(worker = %worker_name, "starting worker");
 
 
     let (same_worker_tx, mut same_worker_rx) = mpsc::channel::<Uuid>(5);
@@ -419,6 +433,12 @@ pub async fn run_worker(
                     _ = rx.recv() => {
                         println!("received killpill for worker {}", i_worker);
                         (true, Ok(None))
+                    },
+                    _ = _copy_bucket_rx.recv() => {
+                        if let Err(e) = move_tmp_cache_to_cache().await {
+                            tracing::error!(worker = %worker_name, "failed to sync tmp cache to cache: {}", e);
+                        }
+                        (false, Ok(None))
                     },
                     Some(job_id) = same_worker_rx.recv() => {
                         (false, sqlx::query_as::<_, QueuedJob>("SELECT * FROM queue WHERE id = $1")
