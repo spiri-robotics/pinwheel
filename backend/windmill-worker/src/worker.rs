@@ -396,6 +396,8 @@ pub async fn run_worker(
 
     let (_copy_bucket_tx, mut _copy_bucket_rx) = mpsc::channel::<()>(2);
 
+    let mut copy_cache_from_bucket_handle: Option<tokio::task::JoinHandle<()>> = None;
+
 
     tracing::info!(worker = %worker_name, "starting worker");
 
@@ -434,6 +436,9 @@ pub async fn run_worker(
                 tokio::select! {
                     biased;
                     _ = rx.recv() => {
+                        if let Some(copy_cache_from_bucket_handle) = copy_cache_from_bucket_handle.as_ref() {
+                            copy_cache_from_bucket_handle.abort();
+                        }
                         println!("received killpill for worker {}", i_worker);
                         (true, Ok(None))
                     },
@@ -441,6 +446,7 @@ pub async fn run_worker(
                         if let Err(e) = move_tmp_cache_to_cache().await {
                             tracing::error!(worker = %worker_name, "failed to sync tmp cache to cache: {}", e);
                         }
+                        copy_cache_from_bucket_handle = None;
                         initialized_cache = true;
                         (false, Ok(None))
                     },
