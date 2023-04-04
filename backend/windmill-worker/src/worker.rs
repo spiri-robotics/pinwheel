@@ -307,7 +307,7 @@ pub async fn run_worker(
     )
     .await;
 
-    let mut last_ping = Instant::now() - Duration::from_secs(NUM_SECS_SYNC + 1);
+    let mut last_ping = Instant::now() - Duration::from_secs(NUM_SECS_PING + 1);
 
     insert_initial_ping(worker_instance, &worker_name, ip, db).await;
 
