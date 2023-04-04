@@ -398,10 +398,11 @@ pub async fn run_worker(
 
     let mut copy_cache_from_bucket_handle: Option<tokio::task::JoinHandle<()>> = None;
 
+    let mut initialized_cache = false;
+
 
     tracing::info!(worker = %worker_name, "starting worker");
 
-    let mut initialized_cache = false;
 
     let (same_worker_tx, mut same_worker_rx) = mpsc::channel::<Uuid>(5);
 
