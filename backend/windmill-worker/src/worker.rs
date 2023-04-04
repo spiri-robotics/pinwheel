@@ -399,6 +399,7 @@ pub async fn run_worker(
 
     tracing::info!(worker = %worker_name, "starting worker");
 
+    let mut initialized_cache = false;
 
     let (same_worker_tx, mut same_worker_rx) = mpsc::channel::<Uuid>(5);
 
@@ -440,6 +441,7 @@ pub async fn run_worker(
                         if let Err(e) = move_tmp_cache_to_cache().await {
                             tracing::error!(worker = %worker_name, "failed to sync tmp cache to cache: {}", e);
                         }
+                        initialized_cache = true;
                         (false, Ok(None))
                     },
                     Some(job_id) = same_worker_rx.recv() => {
