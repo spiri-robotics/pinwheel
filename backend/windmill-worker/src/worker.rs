@@ -16,7 +16,7 @@ use sqlx::{Pool, Postgres, Transaction};
 use windmill_api_client::Client;
 use std::{
     borrow::Borrow, collections::HashMap, io, os::unix::process::ExitStatusExt, panic,
-    process::Stdio, time::Duration,
+    process::Stdio, time::Duration, sync::atomic::Ordering,
 };
 use tracing::{trace_span, Instrument};
 use uuid::Uuid;
@@ -26,7 +26,7 @@ use windmill_common::{
     flows::{FlowModuleValue, FlowValue},
     scripts::{ScriptHash, ScriptLang},
     utils::rd_string,
-    variables, BASE_URL, users::SUPERADMIN_SECRET_EMAIL,
+    variables, BASE_URL, users::SUPERADMIN_SECRET_EMAIL, IS_READY,
 };
 use windmill_queue::{canceled_job_to_result, get_queued_job, pull, JobKind, QueuedJob, CLOUD_HOSTED};
 
@@ -401,6 +401,8 @@ pub async fn run_worker(
     let mut initialized_cache = false;
 
 
+    IS_READY.store(true, Ordering::Relaxed);
+
     tracing::info!(worker = %worker_name, "starting worker");
 
 
@@ -408,6 +410,7 @@ pub async fn run_worker(
 
     tracing::info!(worker = %worker_name, "listening for jobs");
 
+    
     loop {
         worker_busy.set(0);
 
