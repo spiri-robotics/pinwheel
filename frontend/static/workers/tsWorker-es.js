@@ -21,6 +21,7 @@ class t8 {
   onUnexpectedError(n) {
     this.unexpectedErrorHandler(n), this.emit(n);
   }
+  // For external errors, we don't want the listeners to be called
   onUnexpectedExternalError(n) {
     this.unexpectedErrorHandler(n);
   }
@@ -224,12 +225,23 @@ class Tg {
   constructor() {
     this._toDispose = /* @__PURE__ */ new Set(), this._isDisposed = !1;
   }
+  /**
+   * Dispose of all registered disposables and mark this object as disposed.
+   *
+   * Any future disposables added to this object will be disposed of on `add`.
+   */
   dispose() {
     this._isDisposed || (this._isDisposed = !0, this.clear());
   }
+  /**
+   * Returns `true` if this object has been disposed
+   */
   get isDisposed() {
     return this._isDisposed;
   }
+  /**
+   * Dispose of all registered disposables but do not mark this object as disposed.
+   */
   clear() {
     try {
       _I(this._toDispose.values());
@@ -355,7 +367,7 @@ function d8(e, n) {
     const p = a[0], N = n[p];
     let H = d;
     return typeof N == "string" ? H = N : (typeof N == "number" || typeof N == "boolean" || N === void 0 || N === null) && (H = String(N)), H;
-  }), f8 && (f = "\uFF3B" + f.replace(/[aouei]/g, "$&$&") + "\uFF3D"), f;
+  }), f8 && (f = "［" + f.replace(/[aouei]/g, "$&$&") + "］"), f;
 }
 function p8(e, n, ...f) {
   return d8(n, f);
@@ -368,9 +380,13 @@ let xu;
 typeof Iu.vscode < "u" && typeof Iu.vscode.process < "u" ? xu = Iu.vscode.process : typeof process < "u" && (xu = process);
 const m8 = typeof ((iT = xu == null ? void 0 : xu.versions) === null || iT === void 0 ? void 0 : iT.electron) == "string", g8 = m8 && (xu == null ? void 0 : xu.type) === "renderer";
 if (typeof navigator == "object" && !g8)
-  Sm = navigator.userAgent, fT = Sm.indexOf("Windows") >= 0, dT = Sm.indexOf("Macintosh") >= 0, (Sm.indexOf("Macintosh") >= 0 || Sm.indexOf("iPad") >= 0 || Sm.indexOf("iPhone") >= 0) && !!navigator.maxTouchPoints && navigator.maxTouchPoints > 0, oT = Sm.indexOf("Linux") >= 0, mI = !0, p8({ key: "ensureLoaderPluginIsLoaded", comment: ["{Locked}"] }, "_"), Fb = Uh, sT = Fb;
+  Sm = navigator.userAgent, fT = Sm.indexOf("Windows") >= 0, dT = Sm.indexOf("Macintosh") >= 0, (Sm.indexOf("Macintosh") >= 0 || Sm.indexOf("iPad") >= 0 || Sm.indexOf("iPhone") >= 0) && navigator.maxTouchPoints && navigator.maxTouchPoints > 0, oT = Sm.indexOf("Linux") >= 0, mI = !0, // This call _must_ be done in the file that calls `nls.getConfiguredDefaultLocale`
+  // to ensure that the NLS AMD Loader plugin has been loaded and configured.
+  // This is because the loader plugin decides what the default locale is based on
+  // how it's able to resolve the strings.
+  p8({ key: "ensureLoaderPluginIsLoaded", comment: ["{Locked}"] }, "_"), Fb = Uh, sT = Fb;
 else if (typeof xu == "object") {
-  fT = xu.platform === "win32", dT = xu.platform === "darwin", oT = xu.platform === "linux", oT && !!xu.env.SNAP && xu.env.SNAP_REVISION, xu.env.CI || xu.env.BUILD_ARTIFACTSTAGINGDIRECTORY, Fb = Uh, sT = Uh;
+  fT = xu.platform === "win32", dT = xu.platform === "darwin", oT = xu.platform === "linux", oT && xu.env.SNAP && xu.env.SNAP_REVISION, xu.env.CI || xu.env.BUILD_ARTIFACTSTAGINGDIRECTORY, Fb = Uh, sT = Uh;
   const e = xu.env.VSCODE_NLS_CONFIG;
   if (e)
     try {
@@ -676,22 +692,30 @@ class D_ {
     var n, f, d, a;
     this._disposed || (this._disposed = !0, this._listeners && this._listeners.clear(), (n = this._deliveryQueue) === null || n === void 0 || n.clear(this), (d = (f = this._options) === null || f === void 0 ? void 0 : f.onLastListenerRemove) === null || d === void 0 || d.call(f), (a = this._leakageMon) === null || a === void 0 || a.dispose());
   }
+  /**
+   * For the public to allow to subscribe
+   * to events from this Emitter
+   */
   get event() {
     return this._event || (this._event = (n, f, d) => {
       var a, p, N;
       this._listeners || (this._listeners = new jb());
       const H = this._listeners.isEmpty();
-      H && ((a = this._options) === null || a === void 0 ? void 0 : a.onFirstListenerAdd) && this._options.onFirstListenerAdd(this);
+      H && (!((a = this._options) === null || a === void 0) && a.onFirstListenerAdd) && this._options.onFirstListenerAdd(this);
       let h, v;
       this._leakageMon && this._listeners.size >= 30 && (v = OT.create(), h = this._leakageMon.check(v, this._listeners.size + 1));
       const A = new E8(n, f, v), q = this._listeners.push(A);
-      H && ((p = this._options) === null || p === void 0 ? void 0 : p.onFirstListenerDidAdd) && this._options.onFirstListenerDidAdd(this), !((N = this._options) === null || N === void 0) && N.onListenerDidAdd && this._options.onListenerDidAdd(this, n, f);
+      H && (!((p = this._options) === null || p === void 0) && p.onFirstListenerDidAdd) && this._options.onFirstListenerDidAdd(this), !((N = this._options) === null || N === void 0) && N.onListenerDidAdd && this._options.onListenerDidAdd(this, n, f);
       const ie = A.subscription.set(() => {
         h == null || h(), this._disposed || (q(), this._options && this._options.onLastListenerRemove && (this._listeners && !this._listeners.isEmpty() || this._options.onLastListenerRemove(this)));
       });
       return d instanceof Tg ? d.add(ie) : Array.isArray(d) && d.push(ie), ie;
     }), this._event;
   }
+  /**
+   * To be kept private to fire an event to
+   * subscribers
+   */
   fire(n) {
     var f, d;
     if (this._listeners) {
@@ -776,9 +800,18 @@ class gI {
   constructor(n) {
     this.executor = n, this._didRun = !1;
   }
+  /**
+   * True if the lazy value has been resolved.
+   */
   hasValue() {
     return this._didRun;
   }
+  /**
+   * Get the wrapped value.
+   *
+   * This will force evaluation of the lazy value if it has not been resolved yet. Lazy values are only
+   * resolved once. `getValue` will re-throw exceptions that are hit while resolving the value
+   */
   getValue() {
     if (!this._didRun)
       try {
@@ -792,6 +825,9 @@ class gI {
       throw this._error;
     return this._value;
   }
+  /**
+   * Get the wrapped value without forcing evaluation.
+   */
   get rawValue() {
     return this._value;
   }
@@ -857,6 +893,10 @@ class vp {
   isAmbiguous(n) {
     return this.confusableDictionary.has(n);
   }
+  /**
+   * Returns the non basic ASCII code point that the given code point can be confused,
+   * or undefined if such code point does note exist.
+   */
   getPrimaryConfusable(n) {
     return this.confusableDictionary.get(n);
   }
@@ -1119,12 +1159,22 @@ class J8 {
   }
 }
 class Dm {
+  /**
+   * Constructs a new DiffChange with the given sequence information
+   * and content.
+   */
   constructor(n, f, d, a) {
     this.originalStart = n, this.originalLength = f, this.modifiedStart = d, this.modifiedLength = a;
   }
+  /**
+   * The end point (exclusive) of the change in the original sequence.
+   */
   getOriginalEnd() {
     return this.originalStart + this.originalLength;
   }
+  /**
+   * The end point (exclusive) of the change in the modified sequence.
+   */
   getModifiedEnd() {
     return this.modifiedStart + this.modifiedLength;
   }
@@ -1159,6 +1209,21 @@ class bv {
   }
 }
 class Ev {
+  /**
+   * Copies a range of elements from an Array starting at the specified source index and pastes
+   * them to another Array starting at the specified destination index. The length and the indexes
+   * are specified as 64-bit integers.
+   * sourceArray:
+   *		The Array that contains the data to copy.
+   * sourceIndex:
+   *		A 64-bit integer that represents the index in the sourceArray at which copying begins.
+   * destinationArray:
+   *		The Array that receives the data.
+   * destinationIndex:
+   *		A 64-bit integer that represents the index in the destinationArray at which storing begins.
+   * length:
+   *		A 64-bit integer that represents the number of elements to copy.
+   */
   static Copy(n, f, d, a, p) {
     for (let N = 0; N < p; N++)
       d[a + N] = n[f + N];
@@ -1169,26 +1234,55 @@ class Ev {
   }
 }
 class fx {
+  /**
+   * Constructs a new DiffChangeHelper for the given DiffSequences.
+   */
   constructor() {
     this.m_changes = [], this.m_originalStart = 1073741824, this.m_modifiedStart = 1073741824, this.m_originalCount = 0, this.m_modifiedCount = 0;
   }
+  /**
+   * Marks the beginning of the next change in the set of differences.
+   */
   MarkNextChange() {
     (this.m_originalCount > 0 || this.m_modifiedCount > 0) && this.m_changes.push(new Dm(this.m_originalStart, this.m_originalCount, this.m_modifiedStart, this.m_modifiedCount)), this.m_originalCount = 0, this.m_modifiedCount = 0, this.m_originalStart = 1073741824, this.m_modifiedStart = 1073741824;
   }
+  /**
+   * Adds the original element at the given position to the elements
+   * affected by the current change. The modified index gives context
+   * to the change position with respect to the original sequence.
+   * @param originalIndex The index of the original element to add.
+   * @param modifiedIndex The index of the modified element that provides corresponding position in the modified sequence.
+   */
   AddOriginalElement(n, f) {
     this.m_originalStart = Math.min(this.m_originalStart, n), this.m_modifiedStart = Math.min(this.m_modifiedStart, f), this.m_originalCount++;
   }
+  /**
+   * Adds the modified element at the given position to the elements
+   * affected by the current change. The original index gives context
+   * to the change position with respect to the modified sequence.
+   * @param originalIndex The index of the original element that provides corresponding position in the original sequence.
+   * @param modifiedIndex The index of the modified element to add.
+   */
   AddModifiedElement(n, f) {
     this.m_originalStart = Math.min(this.m_originalStart, n), this.m_modifiedStart = Math.min(this.m_modifiedStart, f), this.m_modifiedCount++;
   }
+  /**
+   * Retrieves all of the changes marked by the class.
+   */
   getChanges() {
     return (this.m_originalCount > 0 || this.m_modifiedCount > 0) && this.MarkNextChange(), this.m_changes;
   }
+  /**
+   * Retrieves all of the changes marked by the class in the reverse order
+   */
   getReverseChanges() {
     return (this.m_originalCount > 0 || this.m_modifiedCount > 0) && this.MarkNextChange(), this.m_changes.reverse(), this.m_changes;
   }
 }
 class Lm {
+  /**
+   * Constructs the DiffFinder
+   */
   constructor(n, f, d = null) {
     this.ContinueProcessingPredicate = d, this._originalSequence = n, this._modifiedSequence = f;
     const [a, p, N] = Lm._getElements(n), [H, h, v] = Lm._getElements(f);
@@ -1228,6 +1322,11 @@ class Lm {
   ComputeDiff(n) {
     return this._ComputeDiff(0, this._originalElementsOrHash.length - 1, 0, this._modifiedElementsOrHash.length - 1, n);
   }
+  /**
+   * Computes the differences between the original and modified input
+   * sequences on the bounded range.
+   * @returns An array of the differences between the two input sequences.
+   */
   _ComputeDiff(n, f, d, a, p) {
     const N = [!1];
     let H = this.ComputeDiffRecursive(n, f, d, a, N);
@@ -1236,6 +1335,11 @@ class Lm {
       changes: H
     };
   }
+  /**
+   * Private helper method which computes the differences on the bounded range
+   * recursively.
+   * @returns An array of the differences between the two input sequences.
+   */
   ComputeDiffRecursive(n, f, d, a, p) {
     for (p[0] = !1; n <= f && d <= a && this.ElementsAreEqual(n, d); )
       n++, d++;
@@ -1288,6 +1392,22 @@ class Lm {
     }
     return this.ConcatenateChanges(P, x);
   }
+  /**
+   * Given the range to compute the diff on, this method finds the point:
+   * (midOriginal, midModified)
+   * that exists in the middle of the LCS of the two sequences and
+   * is the point at which the LCS problem may be broken down recursively.
+   * This method will try to keep the LCS trace in memory. If the LCS recursion
+   * point is calculated and the full trace is available in memory, then this method
+   * will return the change list.
+   * @param originalStart The start bound of the original sequence range
+   * @param originalEnd The end bound of the original sequence range
+   * @param modifiedStart The start bound of the modified sequence range
+   * @param modifiedEnd The end bound of the modified sequence range
+   * @param midOriginal The middle point of the original sequence range
+   * @param midModified The middle point of the modified sequence range
+   * @returns The diff changes, if available, otherwise null
+   */
   ComputeRecursionPoint(n, f, d, a, p, N, H) {
     let h = 0, v = 0, A = 0, q = 0, ie = 0, b = 0;
     n--, d--, p[0] = 0, N[0] = 0, this.m_forwardHistory = [], this.m_reverseHistory = [];
@@ -1325,6 +1445,14 @@ class Lm {
     }
     return this.WALKTRACE(k, A, q, x, P, ie, b, w, B, J, h, f, p, v, a, N, Z, H);
   }
+  /**
+   * Shifts the given changes to provide a more intuitive diff.
+   * While the first element in a diff matches the first element after the diff,
+   * we shift the diff down.
+   *
+   * @param changes The list of changes to shift
+   * @returns The shifted changes
+   */
   PrettifyChanges(n) {
     for (let f = 0; f < n.length; f++) {
       const d = n[f], a = f < n.length - 1 ? n[f + 1].originalStart : this._originalElementsOrHash.length, p = f < n.length - 1 ? n[f + 1].modifiedStart : this._modifiedElementsOrHash.length, N = d.originalLength > 0, H = d.modifiedLength > 0;
@@ -1427,6 +1555,13 @@ class Lm {
     const p = this._OriginalRegionIsBoundary(n, f) ? 1 : 0, N = this._ModifiedRegionIsBoundary(d, a) ? 1 : 0;
     return p + N;
   }
+  /**
+   * Concatenates the two input DiffChange lists and returns the resulting
+   * list.
+   * @param The left changes
+   * @param The right changes
+   * @returns The concatenated list
+   */
   ConcatenateChanges(n, f) {
     const d = [];
     if (n.length === 0 || f.length === 0)
@@ -1439,6 +1574,14 @@ class Lm {
       return Ev.Copy(n, 0, a, 0, n.length), Ev.Copy(f, 0, a, n.length, f.length), a;
     }
   }
+  /**
+   * Returns true if the two changes overlap and can be merged into a single
+   * change
+   * @param left The left change
+   * @param right The right change
+   * @param mergedChange The merged change if the two overlap, null otherwise
+   * @returns True if the two changes overlap
+   */
   ChangesOverlap(n, f, d) {
     if (bv.Assert(n.originalStart <= f.originalStart, "Left change is not less than or equal to right change"), bv.Assert(n.modifiedStart <= f.modifiedStart, "Left change is not less than or equal to right change"), n.originalStart + n.originalLength >= f.originalStart || n.modifiedStart + n.modifiedLength >= f.modifiedStart) {
       const a = n.originalStart;
@@ -1449,6 +1592,18 @@ class Lm {
     } else
       return d[0] = null, !1;
   }
+  /**
+   * Helper method used to clip a diagonal index to the range of valid
+   * diagonals. This also decides whether or not the diagonal index,
+   * if it exceeds the boundary, should be clipped to the boundary or clipped
+   * one inside the boundary depending on the Even/Odd status of the boundary
+   * and numDifferences.
+   * @param diagonal The index of the diagonal to clip.
+   * @param numDifferences The current number of differences being iterated upon.
+   * @param diagonalBaseIndex The base reference diagonal.
+   * @param numDiagonals The total number of diagonals.
+   * @returns The clipped diagonal index.
+   */
   ClipDiagonalBound(n, f, d, a) {
     if (n >= 0 && n < a)
       return n;
@@ -1494,11 +1649,13 @@ if (typeof Iu.vscode < "u" && typeof Iu.vscode.process < "u") {
       return process.env.VSCODE_CWD || process.cwd();
     }
   } : Av = {
+    // Supported
     get platform() {
       return Wh ? "win32" : v8 ? "darwin" : "linux";
     },
     get arch() {
     },
+    // Unsupported
     get env() {
       return {};
     },
@@ -1568,6 +1725,7 @@ function TI(e, n) {
   return f ? f === n.root ? `${f}${d}` : `${f}${e}${d}` : d;
 }
 const df = {
+  // path.resolve([from ...], to)
   resolve(...e) {
     let n = "", f = "", d = !1;
     for (let a = e.length - 1; a >= -1; a--) {
@@ -1654,7 +1812,8 @@ const df = {
     if (n === 0)
       return !1;
     const f = e.charCodeAt(0);
-    return $o(f) || n > 2 && Tm(f) && e.charCodeAt(1) === Em && $o(e.charCodeAt(2));
+    return $o(f) || // Possible device root
+    n > 2 && Tm(f) && e.charCodeAt(1) === Em && $o(e.charCodeAt(2));
   },
   join(...e) {
     if (e.length === 0)
@@ -1679,6 +1838,10 @@ const df = {
     }
     return df.normalize(n);
   },
+  // It will solve the relative path from `from` to `to`, for instance:
+  //  from = 'C:\\orandea\\test\\aaa'
+  //  to = 'C:\\orandea\\impl\\bbb'
+  // The output of the function should be: '..\\..\\impl\\bbb'
   relative(e, n) {
     if (Yl(e, "from"), Yl(n, "to"), e === n)
       return "";
@@ -1829,7 +1992,9 @@ const df = {
       }
       a === -1 && (p = !1, a = H + 1), h === Cm ? f === -1 ? f = H : N !== 1 && (N = 1) : f !== -1 && (N = -1);
     }
-    return f === -1 || a === -1 || N === 0 || N === 1 && f === a - 1 && f === d + 1 ? "" : e.slice(f, a);
+    return f === -1 || a === -1 || // We saw a non-dot character immediately before the dot
+    N === 0 || // The (right-most) trimmed path component is exactly '..'
+    N === 1 && f === a - 1 && f === d + 1 ? "" : e.slice(f, a);
   },
   format: TI.bind(null, "\\"),
   parse(e) {
@@ -1877,13 +2042,16 @@ const df = {
       }
       H === -1 && (h = !1, H = v + 1), a === Cm ? p === -1 ? p = v : A !== 1 && (A = 1) : p !== -1 && (A = -1);
     }
-    return H !== -1 && (p === -1 || A === 0 || A === 1 && p === H - 1 && p === N + 1 ? n.base = n.name = e.slice(N, H) : (n.name = e.slice(N, p), n.base = e.slice(N, H), n.ext = e.slice(p, H))), N > 0 && N !== d ? n.dir = e.slice(0, N - 1) : n.dir = n.root, n;
+    return H !== -1 && (p === -1 || // We saw a non-dot character immediately before the dot
+    A === 0 || // The (right-most) trimmed path component is exactly '..'
+    A === 1 && p === H - 1 && p === N + 1 ? n.base = n.name = e.slice(N, H) : (n.name = e.slice(N, p), n.base = e.slice(N, H), n.ext = e.slice(p, H))), N > 0 && N !== d ? n.dir = e.slice(0, N - 1) : n.dir = n.root, n;
   },
   sep: "\\",
   delimiter: ";",
   win32: null,
   posix: null
 }, Yf = {
+  // path.resolve([from ...], to)
   resolve(...e) {
     let n = "", f = !1;
     for (let d = e.length - 1; d >= -1 && !f; d--) {
@@ -1996,7 +2164,9 @@ const df = {
       }
       d === -1 && (a = !1, d = N + 1), H === Cm ? n === -1 ? n = N : p !== 1 && (p = 1) : n !== -1 && (p = -1);
     }
-    return n === -1 || d === -1 || p === 0 || p === 1 && n === d - 1 && n === f + 1 ? "" : e.slice(n, d);
+    return n === -1 || d === -1 || // We saw a non-dot character immediately before the dot
+    p === 0 || // The (right-most) trimmed path component is exactly '..'
+    p === 1 && n === d - 1 && n === f + 1 ? "" : e.slice(n, d);
   },
   format: TI.bind(null, "/"),
   parse(e) {
@@ -2021,7 +2191,9 @@ const df = {
     }
     if (N !== -1) {
       const A = p === 0 && f ? 1 : p;
-      a === -1 || v === 0 || v === 1 && a === N - 1 && a === p + 1 ? n.base = n.name = e.slice(A, N) : (n.name = e.slice(A, a), n.base = e.slice(A, N), n.ext = e.slice(a, N));
+      a === -1 || // We saw a non-dot character immediately before the dot
+      v === 0 || // The (right-most) trimmed path component is exactly '..'
+      v === 1 && a === N - 1 && a === p + 1 ? n.base = n.name = e.slice(A, N) : (n.name = e.slice(A, a), n.base = e.slice(A, N), n.ext = e.slice(a, N));
     }
     return p > 0 ? n.dir = e.slice(0, p - 1) : f && (n.dir = "/"), n;
   },
@@ -2068,25 +2240,82 @@ function aF(e, n) {
 }
 const fl = "", Jp = "/", iF = /^(([^:/?#]+?):)?(\/\/([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/;
 class bg {
+  /**
+   * @internal
+   */
   constructor(n, f, d, a, p, N = !1) {
     typeof n == "object" ? (this.scheme = n.scheme || fl, this.authority = n.authority || fl, this.path = n.path || fl, this.query = n.query || fl, this.fragment = n.fragment || fl) : (this.scheme = nF(n, N), this.authority = f || fl, this.path = aF(this.scheme, d || fl), this.query = a || fl, this.fragment = p || fl, dx(this, N));
   }
   static isUri(n) {
     return n instanceof bg ? !0 : n ? typeof n.authority == "string" && typeof n.fragment == "string" && typeof n.path == "string" && typeof n.query == "string" && typeof n.scheme == "string" && typeof n.fsPath == "string" && typeof n.with == "function" && typeof n.toString == "function" : !1;
   }
+  // ---- filesystem path -----------------------
+  /**
+   * Returns a string representing the corresponding file system path of this URI.
+   * Will handle UNC paths, normalizes windows drive letters to lower-case, and uses the
+   * platform specific path separator.
+   *
+   * * Will *not* validate the path for invalid characters and semantics.
+   * * Will *not* look at the scheme of this URI.
+   * * The result shall *not* be used for display purposes but for accessing a file on disk.
+   *
+   *
+   * The *difference* to `URI#path` is the use of the platform specific separator and the handling
+   * of UNC paths. See the below sample of a file-uri with an authority (UNC path).
+   *
+   * ```ts
+      const u = URI.parse('file://server/c$/folder/file.txt')
+      u.authority === 'server'
+      u.path === '/shares/c$/file.txt'
+      u.fsPath === '\\server\c$\folder\file.txt'
+  ```
+   *
+   * Using `URI#path` to read a file (using fs-apis) would not be enough because parts of the path,
+   * namely the server name, would be missing. Therefore `URI#fsPath` exists - it's sugar to ease working
+   * with URIs that represent files on disk (`file` scheme).
+   */
   get fsPath() {
     return hT(this, !1);
   }
+  // ---- modify to new -------------------------
   with(n) {
     if (!n)
       return this;
     let { scheme: f, authority: d, path: a, query: p, fragment: N } = n;
     return f === void 0 ? f = this.scheme : f === null && (f = fl), d === void 0 ? d = this.authority : d === null && (d = fl), a === void 0 ? a = this.path : a === null && (a = fl), p === void 0 ? p = this.query : p === null && (p = fl), N === void 0 ? N = this.fragment : N === null && (N = fl), f === this.scheme && d === this.authority && a === this.path && p === this.query && N === this.fragment ? this : new Tv(f, d, a, p, N);
   }
+  // ---- parse & validate ------------------------
+  /**
+   * Creates a new URI from a string, e.g. `http://www.example.com/some/path`,
+   * `file:///usr/home`, or `scheme:with/path`.
+   *
+   * @param value A string which represents an URI (see `URI#toString`).
+   */
   static parse(n, f = !1) {
     const d = iF.exec(n);
     return d ? new Tv(d[2] || fl, Gb(d[4] || fl), Gb(d[5] || fl), Gb(d[7] || fl), Gb(d[9] || fl), f) : new Tv(fl, fl, fl, fl, fl);
   }
+  /**
+   * Creates a new URI from a file system path, e.g. `c:\my\files`,
+   * `/usr/home`, or `\\server\share\some\path`.
+   *
+   * The *difference* between `URI#parse` and `URI#file` is that the latter treats the argument
+   * as path, not as stringified-uri. E.g. `URI.file(path)` is **not the same as**
+   * `URI.parse('file://' + path)` because the path might contain characters that are
+   * interpreted (# and ?). See the following sample:
+   * ```ts
+  const good = URI.file('/coding/c#/project1');
+  good.scheme === 'file';
+  good.path === '/coding/c#/project1';
+  good.fragment === '';
+  const bad = URI.parse('file://' + '/coding/c#/project1');
+  bad.scheme === 'file';
+  bad.path === '/coding/c'; // path is now broken
+  bad.fragment === '/project1';
+  ```
+   *
+   * @param path A file system path (see `URI#fsPath`)
+   */
   static file(n) {
     let f = fl;
     if (Wh && (n = n.replace(/\\/g, Jp)), n[0] === Jp && n[1] === Jp) {
@@ -2099,12 +2328,31 @@ class bg {
     const f = new Tv(n.scheme, n.authority, n.path, n.query, n.fragment);
     return dx(f, !0), f;
   }
+  /**
+   * Join a URI path with path fragments and normalizes the resulting path.
+   *
+   * @param uri The input URI.
+   * @param pathFragment The path fragment to add to the URI path.
+   * @returns The resulting URI.
+   */
   static joinPath(n, ...f) {
     if (!n.path)
       throw new Error("[UriError]: cannot call joinPath on URI without path");
     let d;
     return Wh && n.scheme === "file" ? d = bg.file(df.join(hT(n, !0), ...f)).path : d = Yf.join(n.path, ...f), n.with({ path: d });
   }
+  // ---- printing/externalize ---------------------------
+  /**
+   * Creates a string representation for this URI. It's guaranteed that calling
+   * `URI.parse` with the result of this function creates an URI which is equal
+   * to this URI.
+   *
+   * * The result shall *not* be used for display purposes but for externalization or transport.
+   * * The result will be encoded using the percentage encoding and encoding happens mostly
+   * ignore the scheme-specific encoding rules.
+   *
+   * @param skipEncoding Do not encode the result, default is `false`
+   */
   toString(n = !1) {
     return yT(this, n);
   }
@@ -2137,30 +2385,88 @@ class Tv extends bg {
   toJSON() {
     const n = {
       $mid: 1
+      /* MarshalledId.Uri */
     };
     return this._fsPath && (n.fsPath = this._fsPath, n._sep = SI), this._formatted && (n.external = this._formatted), this.path && (n.path = this.path), this.scheme && (n.scheme = this.scheme), this.authority && (n.authority = this.authority), this.query && (n.query = this.query), this.fragment && (n.fragment = this.fragment), n;
   }
 }
 const DI = {
-  [58]: "%3A",
-  [47]: "%2F",
-  [63]: "%3F",
-  [35]: "%23",
-  [91]: "%5B",
-  [93]: "%5D",
-  [64]: "%40",
-  [33]: "%21",
-  [36]: "%24",
-  [38]: "%26",
-  [39]: "%27",
-  [40]: "%28",
-  [41]: "%29",
-  [42]: "%2A",
-  [43]: "%2B",
-  [44]: "%2C",
-  [59]: "%3B",
-  [61]: "%3D",
-  [32]: "%20"
+  [
+    58
+    /* CharCode.Colon */
+  ]: "%3A",
+  [
+    47
+    /* CharCode.Slash */
+  ]: "%2F",
+  [
+    63
+    /* CharCode.QuestionMark */
+  ]: "%3F",
+  [
+    35
+    /* CharCode.Hash */
+  ]: "%23",
+  [
+    91
+    /* CharCode.OpenSquareBracket */
+  ]: "%5B",
+  [
+    93
+    /* CharCode.CloseSquareBracket */
+  ]: "%5D",
+  [
+    64
+    /* CharCode.AtSign */
+  ]: "%40",
+  [
+    33
+    /* CharCode.ExclamationMark */
+  ]: "%21",
+  [
+    36
+    /* CharCode.DollarSign */
+  ]: "%24",
+  [
+    38
+    /* CharCode.Ampersand */
+  ]: "%26",
+  [
+    39
+    /* CharCode.SingleQuote */
+  ]: "%27",
+  [
+    40
+    /* CharCode.OpenParen */
+  ]: "%28",
+  [
+    41
+    /* CharCode.CloseParen */
+  ]: "%29",
+  [
+    42
+    /* CharCode.Asterisk */
+  ]: "%2A",
+  [
+    43
+    /* CharCode.Plus */
+  ]: "%2B",
+  [
+    44
+    /* CharCode.Comma */
+  ]: "%2C",
+  [
+    59
+    /* CharCode.Semicolon */
+  ]: "%3B",
+  [
+    61
+    /* CharCode.Equals */
+  ]: "%3D",
+  [
+    32
+    /* CharCode.Space */
+  ]: "%20"
 };
 function px(e, n) {
   let f, d = -1;
@@ -2226,30 +2532,67 @@ class Xf {
   constructor(n, f) {
     this.lineNumber = n, this.column = f;
   }
+  /**
+   * Create a new position from this position.
+   *
+   * @param newLineNumber new line number
+   * @param newColumn new column
+   */
   with(n = this.lineNumber, f = this.column) {
     return n === this.lineNumber && f === this.column ? this : new Xf(n, f);
   }
+  /**
+   * Derive a new position from this position.
+   *
+   * @param deltaLineNumber line number delta
+   * @param deltaColumn column delta
+   */
   delta(n = 0, f = 0) {
     return this.with(this.lineNumber + n, this.column + f);
   }
+  /**
+   * Test if this position equals other position
+   */
   equals(n) {
     return Xf.equals(this, n);
   }
+  /**
+   * Test if position `a` equals position `b`
+   */
   static equals(n, f) {
     return !n && !f ? !0 : !!n && !!f && n.lineNumber === f.lineNumber && n.column === f.column;
   }
+  /**
+   * Test if this position is before other position.
+   * If the two positions are equal, the result will be false.
+   */
   isBefore(n) {
     return Xf.isBefore(this, n);
   }
+  /**
+   * Test if position `a` is before position `b`.
+   * If the two positions are equal, the result will be false.
+   */
   static isBefore(n, f) {
     return n.lineNumber < f.lineNumber ? !0 : f.lineNumber < n.lineNumber ? !1 : n.column < f.column;
   }
+  /**
+   * Test if this position is before other position.
+   * If the two positions are equal, the result will be true.
+   */
   isBeforeOrEqual(n) {
     return Xf.isBeforeOrEqual(this, n);
   }
+  /**
+   * Test if position `a` is before position `b`.
+   * If the two positions are equal, the result will be true.
+   */
   static isBeforeOrEqual(n, f) {
     return n.lineNumber < f.lineNumber ? !0 : f.lineNumber < n.lineNumber ? !1 : n.column <= f.column;
   }
+  /**
+   * A function that compares positions, useful for sorting
+   */
   static compare(n, f) {
     const d = n.lineNumber | 0, a = f.lineNumber | 0;
     if (d === a) {
@@ -2258,15 +2601,28 @@ class Xf {
     }
     return d - a;
   }
+  /**
+   * Clone this position.
+   */
   clone() {
     return new Xf(this.lineNumber, this.column);
   }
+  /**
+   * Convert to a human-readable representation.
+   */
   toString() {
     return "(" + this.lineNumber + "," + this.column + ")";
   }
+  // ---
+  /**
+   * Create a `Position` from an `IPosition`.
+   */
   static lift(n) {
     return new Xf(n.lineNumber, n.column);
   }
+  /**
+   * Test if `obj` is an `IPosition`.
+   */
   static isIPosition(n) {
     return n && typeof n.lineNumber == "number" && typeof n.column == "number";
   }
@@ -2275,96 +2631,185 @@ class Tl {
   constructor(n, f, d, a) {
     n > d || n === d && f > a ? (this.startLineNumber = d, this.startColumn = a, this.endLineNumber = n, this.endColumn = f) : (this.startLineNumber = n, this.startColumn = f, this.endLineNumber = d, this.endColumn = a);
   }
+  /**
+   * Test if this range is empty.
+   */
   isEmpty() {
     return Tl.isEmpty(this);
   }
+  /**
+   * Test if `range` is empty.
+   */
   static isEmpty(n) {
     return n.startLineNumber === n.endLineNumber && n.startColumn === n.endColumn;
   }
+  /**
+   * Test if position is in this range. If the position is at the edges, will return true.
+   */
   containsPosition(n) {
     return Tl.containsPosition(this, n);
   }
+  /**
+   * Test if `position` is in `range`. If the position is at the edges, will return true.
+   */
   static containsPosition(n, f) {
     return !(f.lineNumber < n.startLineNumber || f.lineNumber > n.endLineNumber || f.lineNumber === n.startLineNumber && f.column < n.startColumn || f.lineNumber === n.endLineNumber && f.column > n.endColumn);
   }
+  /**
+   * Test if `position` is in `range`. If the position is at the edges, will return false.
+   * @internal
+   */
   static strictContainsPosition(n, f) {
     return !(f.lineNumber < n.startLineNumber || f.lineNumber > n.endLineNumber || f.lineNumber === n.startLineNumber && f.column <= n.startColumn || f.lineNumber === n.endLineNumber && f.column >= n.endColumn);
   }
+  /**
+   * Test if range is in this range. If the range is equal to this range, will return true.
+   */
   containsRange(n) {
     return Tl.containsRange(this, n);
   }
+  /**
+   * Test if `otherRange` is in `range`. If the ranges are equal, will return true.
+   */
   static containsRange(n, f) {
     return !(f.startLineNumber < n.startLineNumber || f.endLineNumber < n.startLineNumber || f.startLineNumber > n.endLineNumber || f.endLineNumber > n.endLineNumber || f.startLineNumber === n.startLineNumber && f.startColumn < n.startColumn || f.endLineNumber === n.endLineNumber && f.endColumn > n.endColumn);
   }
+  /**
+   * Test if `range` is strictly in this range. `range` must start after and end before this range for the result to be true.
+   */
   strictContainsRange(n) {
     return Tl.strictContainsRange(this, n);
   }
+  /**
+   * Test if `otherRange` is strictly in `range` (must start after, and end before). If the ranges are equal, will return false.
+   */
   static strictContainsRange(n, f) {
     return !(f.startLineNumber < n.startLineNumber || f.endLineNumber < n.startLineNumber || f.startLineNumber > n.endLineNumber || f.endLineNumber > n.endLineNumber || f.startLineNumber === n.startLineNumber && f.startColumn <= n.startColumn || f.endLineNumber === n.endLineNumber && f.endColumn >= n.endColumn);
   }
+  /**
+   * A reunion of the two ranges.
+   * The smallest position will be used as the start point, and the largest one as the end point.
+   */
   plusRange(n) {
     return Tl.plusRange(this, n);
   }
+  /**
+   * A reunion of the two ranges.
+   * The smallest position will be used as the start point, and the largest one as the end point.
+   */
   static plusRange(n, f) {
     let d, a, p, N;
     return f.startLineNumber < n.startLineNumber ? (d = f.startLineNumber, a = f.startColumn) : f.startLineNumber === n.startLineNumber ? (d = f.startLineNumber, a = Math.min(f.startColumn, n.startColumn)) : (d = n.startLineNumber, a = n.startColumn), f.endLineNumber > n.endLineNumber ? (p = f.endLineNumber, N = f.endColumn) : f.endLineNumber === n.endLineNumber ? (p = f.endLineNumber, N = Math.max(f.endColumn, n.endColumn)) : (p = n.endLineNumber, N = n.endColumn), new Tl(d, a, p, N);
   }
+  /**
+   * A intersection of the two ranges.
+   */
   intersectRanges(n) {
     return Tl.intersectRanges(this, n);
   }
+  /**
+   * A intersection of the two ranges.
+   */
   static intersectRanges(n, f) {
     let d = n.startLineNumber, a = n.startColumn, p = n.endLineNumber, N = n.endColumn;
     const H = f.startLineNumber, h = f.startColumn, v = f.endLineNumber, A = f.endColumn;
     return d < H ? (d = H, a = h) : d === H && (a = Math.max(a, h)), p > v ? (p = v, N = A) : p === v && (N = Math.min(N, A)), d > p || d === p && a > N ? null : new Tl(d, a, p, N);
   }
+  /**
+   * Test if this range equals other.
+   */
   equalsRange(n) {
     return Tl.equalsRange(this, n);
   }
+  /**
+   * Test if range `a` equals `b`.
+   */
   static equalsRange(n, f) {
     return !!n && !!f && n.startLineNumber === f.startLineNumber && n.startColumn === f.startColumn && n.endLineNumber === f.endLineNumber && n.endColumn === f.endColumn;
   }
+  /**
+   * Return the end position (which will be after or equal to the start position)
+   */
   getEndPosition() {
     return Tl.getEndPosition(this);
   }
+  /**
+   * Return the end position (which will be after or equal to the start position)
+   */
   static getEndPosition(n) {
     return new Xf(n.endLineNumber, n.endColumn);
   }
+  /**
+   * Return the start position (which will be before or equal to the end position)
+   */
   getStartPosition() {
     return Tl.getStartPosition(this);
   }
+  /**
+   * Return the start position (which will be before or equal to the end position)
+   */
   static getStartPosition(n) {
     return new Xf(n.startLineNumber, n.startColumn);
   }
+  /**
+   * Transform to a user presentable string representation.
+   */
   toString() {
     return "[" + this.startLineNumber + "," + this.startColumn + " -> " + this.endLineNumber + "," + this.endColumn + "]";
   }
+  /**
+   * Create a new range using this range's start position, and using endLineNumber and endColumn as the end position.
+   */
   setEndPosition(n, f) {
     return new Tl(this.startLineNumber, this.startColumn, n, f);
   }
+  /**
+   * Create a new range using this range's end position, and using startLineNumber and startColumn as the start position.
+   */
   setStartPosition(n, f) {
     return new Tl(n, f, this.endLineNumber, this.endColumn);
   }
+  /**
+   * Create a new empty range using this range's start position.
+   */
   collapseToStart() {
     return Tl.collapseToStart(this);
   }
+  /**
+   * Create a new empty range using this range's start position.
+   */
   static collapseToStart(n) {
     return new Tl(n.startLineNumber, n.startColumn, n.startLineNumber, n.startColumn);
   }
+  // ---
   static fromPositions(n, f = n) {
     return new Tl(n.lineNumber, n.column, f.lineNumber, f.column);
   }
   static lift(n) {
     return n ? new Tl(n.startLineNumber, n.startColumn, n.endLineNumber, n.endColumn) : null;
   }
+  /**
+   * Test if `obj` is an `IRange`.
+   */
   static isIRange(n) {
     return n && typeof n.startLineNumber == "number" && typeof n.startColumn == "number" && typeof n.endLineNumber == "number" && typeof n.endColumn == "number";
   }
+  /**
+   * Test if the two ranges are touching in any way.
+   */
   static areIntersectingOrTouching(n, f) {
     return !(n.endLineNumber < f.startLineNumber || n.endLineNumber === f.startLineNumber && n.endColumn < f.startColumn || f.endLineNumber < n.startLineNumber || f.endLineNumber === n.startLineNumber && f.endColumn < n.startColumn);
   }
+  /**
+   * Test if the two ranges are intersecting. If the ranges are touching it returns true.
+   */
   static areIntersecting(n, f) {
     return !(n.endLineNumber < f.startLineNumber || n.endLineNumber === f.startLineNumber && n.endColumn <= f.startColumn || f.endLineNumber < n.startLineNumber || f.endLineNumber === n.startLineNumber && f.endColumn <= n.startColumn);
   }
+  /**
+   * A function that compares ranges, useful for sorting ranges
+   * It will first compare ranges on the startPosition and then on the endPosition
+   */
   static compareRangesUsingStarts(n, f) {
     if (n && f) {
       const p = n.startLineNumber | 0, N = f.startLineNumber | 0;
@@ -2384,9 +2829,16 @@ class Tl {
     }
     return (n ? 1 : 0) - (f ? 1 : 0);
   }
+  /**
+   * A function that compares ranges, useful for sorting ranges
+   * It will first compare ranges on the endPosition and then on the startPosition
+   */
   static compareRangesUsingEnds(n, f) {
     return n.endLineNumber === f.endLineNumber ? n.endColumn === f.endColumn ? n.startLineNumber === f.startLineNumber ? n.startColumn - f.startColumn : n.startLineNumber - f.startLineNumber : n.endColumn - f.endColumn : n.endLineNumber - f.endLineNumber;
   }
+  /**
+   * Test if the range spans multiple lines.
+   */
   static spansMultipleLines(n) {
     return n.endLineNumber > n.startLineNumber;
   }
@@ -2665,6 +3117,10 @@ class fF {
   getTotalSum() {
     return this.values.length === 0 ? 0 : this._getPrefixSum(this.values.length - 1);
   }
+  /**
+   * Returns the sum of the first `index + 1` many items.
+   * @returns `SUM(0 <= j <= index, values[j])`.
+   */
   getPrefixSum(n) {
     return n < 0 ? 0 : (n = Sv(n), this._getPrefixSum(n));
   }
@@ -2723,6 +3179,9 @@ class pF {
       this._lineStarts = new fF(d);
     }
   }
+  /**
+   * All changes to a line's text go through this method
+   */
   _setLineText(n, f) {
     this._lines[n] = f, this._lineStarts && this._lineStarts.setValue(n, this._lines[n].length + this._eol.length);
   }
@@ -2852,7 +3311,12 @@ class yF {
       h > f && (f = h), H > d && (d = H), v > d && (d = v);
     }
     f++, d++;
-    const a = new hF(d, f, 0);
+    const a = new hF(
+      d,
+      f,
+      0
+      /* State.Invalid */
+    );
     for (let p = 0, N = n.length; p < N; p++) {
       const [H, h, v] = n[p];
       a.set(H, h, v);
@@ -2866,40 +3330,161 @@ class yF {
 let lT = null;
 function bF() {
   return lT === null && (lT = new yF([
-    [1, 104, 2],
-    [1, 72, 2],
-    [1, 102, 6],
-    [1, 70, 6],
-    [2, 116, 3],
-    [2, 84, 3],
-    [3, 116, 4],
-    [3, 84, 4],
-    [4, 112, 5],
-    [4, 80, 5],
-    [5, 115, 9],
-    [5, 83, 9],
-    [5, 58, 10],
-    [6, 105, 7],
-    [6, 73, 7],
-    [7, 108, 8],
-    [7, 76, 8],
-    [8, 101, 9],
-    [8, 69, 9],
-    [9, 58, 10],
-    [10, 47, 11],
-    [11, 47, 12]
+    [
+      1,
+      104,
+      2
+      /* State.H */
+    ],
+    [
+      1,
+      72,
+      2
+      /* State.H */
+    ],
+    [
+      1,
+      102,
+      6
+      /* State.F */
+    ],
+    [
+      1,
+      70,
+      6
+      /* State.F */
+    ],
+    [
+      2,
+      116,
+      3
+      /* State.HT */
+    ],
+    [
+      2,
+      84,
+      3
+      /* State.HT */
+    ],
+    [
+      3,
+      116,
+      4
+      /* State.HTT */
+    ],
+    [
+      3,
+      84,
+      4
+      /* State.HTT */
+    ],
+    [
+      4,
+      112,
+      5
+      /* State.HTTP */
+    ],
+    [
+      4,
+      80,
+      5
+      /* State.HTTP */
+    ],
+    [
+      5,
+      115,
+      9
+      /* State.BeforeColon */
+    ],
+    [
+      5,
+      83,
+      9
+      /* State.BeforeColon */
+    ],
+    [
+      5,
+      58,
+      10
+      /* State.AfterColon */
+    ],
+    [
+      6,
+      105,
+      7
+      /* State.FI */
+    ],
+    [
+      6,
+      73,
+      7
+      /* State.FI */
+    ],
+    [
+      7,
+      108,
+      8
+      /* State.FIL */
+    ],
+    [
+      7,
+      76,
+      8
+      /* State.FIL */
+    ],
+    [
+      8,
+      101,
+      9
+      /* State.BeforeColon */
+    ],
+    [
+      8,
+      69,
+      9
+      /* State.BeforeColon */
+    ],
+    [
+      9,
+      58,
+      10
+      /* State.AfterColon */
+    ],
+    [
+      10,
+      47,
+      11
+      /* State.AlmostThere */
+    ],
+    [
+      11,
+      47,
+      12
+      /* State.End */
+    ]
   ])), lT;
 }
 let Bh = null;
 function EF() {
   if (Bh === null) {
-    Bh = new wT(0);
-    const e = ` 	<>'"\u3001\u3002\uFF61\uFF64\uFF0C\uFF0E\uFF1A\uFF1B\u2018\u3008\u300C\u300E\u3014\uFF08\uFF3B\uFF5B\uFF62\uFF63\uFF5D\uFF3D\uFF09\u3015\u300F\u300D\u3009\u2019\uFF40\uFF5E\u2026`;
+    Bh = new wT(
+      0
+      /* CharacterClass.None */
+    );
+    const e = ` 	<>'"、。｡､，．：；‘〈「『〔（［｛｢｣｝］）〕』」〉’｀～…`;
     for (let f = 0; f < e.length; f++)
-      Bh.set(e.charCodeAt(f), 1);
+      Bh.set(
+        e.charCodeAt(f),
+        1
+        /* CharacterClass.ForceTermination */
+      );
     const n = ".,;:";
     for (let f = 0; f < n.length; f++)
-      Bh.set(n.charCodeAt(f), 2);
+      Bh.set(
+        n.charCodeAt(f),
+        2
+        /* CharacterClass.CannotEndIn */
+      );
   }
   return Bh;
 }
@@ -3112,6 +3697,7 @@ class MT {
 const Ub = new MT(), ST = new MT(), DT = new MT(), DF = new Array(230), LF = /* @__PURE__ */ Object.create(null), AF = /* @__PURE__ */ Object.create(null);
 (function() {
   const e = "", n = [
+    // keyCodeOrd, immutable, scanCode, scanCodeStr, keyCode, keyCodeStr, eventKeyCode, vkey, usUserSettingsLabel, generalUserSettingsLabel
     [0, 1, 0, "None", 0, "unknown", 0, "VK_UNKNOWN", e, e],
     [0, 1, 1, "Hyper", 0, e, 0, e, e, e],
     [0, 1, 2, "Super", 0, e, 0, e, e, e],
@@ -3309,6 +3895,8 @@ const Ub = new MT(), ST = new MT(), DT = new MT(), DF = new Array(230), LF = /* 
     [0, 1, 190, "MailReply", 0, e, 0, e, e, e],
     [0, 1, 191, "MailForward", 0, e, 0, e, e, e],
     [0, 1, 192, "MailSend", 0, e, 0, e, e, e],
+    // See https://lists.w3.org/Archives/Public/www-dom/2010JulSep/att-0182/keyCode-spec.html
+    // If an Input Method Editor is processing key input and the event is keydown, return 229.
     [109, 1, 0, e, 109, "KeyInComposition", 229, e, e, e],
     [111, 1, 0, e, 111, "ABNT_C2", 194, "VK_ABNT_C2", e, e],
     [91, 1, 0, e, 91, "OEM_8", 223, "VK_OEM_8", e, e],
@@ -3399,39 +3987,76 @@ class xd extends Tl {
   constructor(n, f, d, a) {
     super(n, f, d, a), this.selectionStartLineNumber = n, this.selectionStartColumn = f, this.positionLineNumber = d, this.positionColumn = a;
   }
+  /**
+   * Transform to a human-readable representation.
+   */
   toString() {
     return "[" + this.selectionStartLineNumber + "," + this.selectionStartColumn + " -> " + this.positionLineNumber + "," + this.positionColumn + "]";
   }
+  /**
+   * Test if equals other selection.
+   */
   equalsSelection(n) {
     return xd.selectionsEqual(this, n);
   }
+  /**
+   * Test if the two selections are equal.
+   */
   static selectionsEqual(n, f) {
     return n.selectionStartLineNumber === f.selectionStartLineNumber && n.selectionStartColumn === f.selectionStartColumn && n.positionLineNumber === f.positionLineNumber && n.positionColumn === f.positionColumn;
   }
+  /**
+   * Get directions (LTR or RTL).
+   */
   getDirection() {
     return this.selectionStartLineNumber === this.startLineNumber && this.selectionStartColumn === this.startColumn ? 0 : 1;
   }
+  /**
+   * Create a new selection with a different `positionLineNumber` and `positionColumn`.
+   */
   setEndPosition(n, f) {
     return this.getDirection() === 0 ? new xd(this.startLineNumber, this.startColumn, n, f) : new xd(n, f, this.startLineNumber, this.startColumn);
   }
+  /**
+   * Get the position at `positionLineNumber` and `positionColumn`.
+   */
   getPosition() {
     return new Xf(this.positionLineNumber, this.positionColumn);
   }
+  /**
+   * Get the position at the start of the selection.
+  */
   getSelectionStart() {
     return new Xf(this.selectionStartLineNumber, this.selectionStartColumn);
   }
+  /**
+   * Create a new selection with a different `selectionStartLineNumber` and `selectionStartColumn`.
+   */
   setStartPosition(n, f) {
     return this.getDirection() === 0 ? new xd(n, f, this.endLineNumber, this.endColumn) : new xd(this.endLineNumber, this.endColumn, n, f);
   }
+  // ----
+  /**
+   * Create a `Selection` from one or two positions
+   */
   static fromPositions(n, f = n) {
     return new xd(n.lineNumber, n.column, f.lineNumber, f.column);
   }
+  /**
+   * Creates a `Selection` from a range, given a direction.
+   */
   static fromRange(n, f) {
     return f === 0 ? new xd(n.startLineNumber, n.startColumn, n.endLineNumber, n.endColumn) : new xd(n.endLineNumber, n.endColumn, n.startLineNumber, n.startColumn);
   }
+  /**
+   * Create a `Selection` from an `ISelection`.
+   */
   static liftSelection(n) {
     return new xd(n.selectionStartLineNumber, n.selectionStartColumn, n.positionLineNumber, n.positionColumn);
   }
+  /**
+   * `a` equals `b`.
+   */
   static selectionsArrEqual(n, f) {
     if (n && !f || !n && f)
       return !1;
@@ -3444,9 +4069,15 @@ class xd extends Tl {
         return !1;
     return !0;
   }
+  /**
+   * Test if `obj` is an `ISelection`.
+   */
   static isISelection(n) {
     return n && typeof n.selectionStartLineNumber == "number" && typeof n.selectionStartColumn == "number" && typeof n.positionLineNumber == "number" && typeof n.positionColumn == "number";
   }
+  /**
+   * Create with a direction.
+   */
   static createWithDirection(n, f, d, a, p) {
     return p === 0 ? new xd(n, f, d, a) : new xd(d, a, n, f);
   }
@@ -3458,12 +4089,16 @@ class ae {
   get classNames() {
     return "codicon codicon-" + this.id;
   }
+  // classNamesArray is useful for migrating to ES6 classlist
   get classNamesArray() {
     return ["codicon", "codicon-" + this.id];
   }
   get cssSelector() {
     return ".codicon.codicon-" + this.id;
   }
+  /**
+   * @returns Returns all default icons covered by the codicon font. Only to be used by the icon registry in platform.
+   */
   static getAll() {
     return ae._allCodicons;
   }
@@ -4102,7 +4737,10 @@ class xF {
     return this._colorMap;
   }
   getDefaultBackground() {
-    return this._colorMap && this._colorMap.length > 2 ? this._colorMap[2] : null;
+    return this._colorMap && this._colorMap.length > 2 ? this._colorMap[
+      2
+      /* ColorId.DefaultBackground */
+    ] : null;
   }
 }
 class IF extends kT {
@@ -4145,7 +4783,127 @@ var Ex;
   }
   e.toIcon = f;
   const d = /* @__PURE__ */ new Map();
-  d.set("method", 0), d.set("function", 1), d.set("constructor", 2), d.set("field", 3), d.set("variable", 4), d.set("class", 5), d.set("struct", 6), d.set("interface", 7), d.set("module", 8), d.set("property", 9), d.set("event", 10), d.set("operator", 11), d.set("unit", 12), d.set("value", 13), d.set("constant", 14), d.set("enum", 15), d.set("enum-member", 16), d.set("enumMember", 16), d.set("keyword", 17), d.set("snippet", 27), d.set("text", 18), d.set("color", 19), d.set("file", 20), d.set("reference", 21), d.set("customcolor", 22), d.set("folder", 23), d.set("type-parameter", 24), d.set("typeParameter", 24), d.set("account", 25), d.set("issue", 26);
+  d.set(
+    "method",
+    0
+    /* CompletionItemKind.Method */
+  ), d.set(
+    "function",
+    1
+    /* CompletionItemKind.Function */
+  ), d.set(
+    "constructor",
+    2
+    /* CompletionItemKind.Constructor */
+  ), d.set(
+    "field",
+    3
+    /* CompletionItemKind.Field */
+  ), d.set(
+    "variable",
+    4
+    /* CompletionItemKind.Variable */
+  ), d.set(
+    "class",
+    5
+    /* CompletionItemKind.Class */
+  ), d.set(
+    "struct",
+    6
+    /* CompletionItemKind.Struct */
+  ), d.set(
+    "interface",
+    7
+    /* CompletionItemKind.Interface */
+  ), d.set(
+    "module",
+    8
+    /* CompletionItemKind.Module */
+  ), d.set(
+    "property",
+    9
+    /* CompletionItemKind.Property */
+  ), d.set(
+    "event",
+    10
+    /* CompletionItemKind.Event */
+  ), d.set(
+    "operator",
+    11
+    /* CompletionItemKind.Operator */
+  ), d.set(
+    "unit",
+    12
+    /* CompletionItemKind.Unit */
+  ), d.set(
+    "value",
+    13
+    /* CompletionItemKind.Value */
+  ), d.set(
+    "constant",
+    14
+    /* CompletionItemKind.Constant */
+  ), d.set(
+    "enum",
+    15
+    /* CompletionItemKind.Enum */
+  ), d.set(
+    "enum-member",
+    16
+    /* CompletionItemKind.EnumMember */
+  ), d.set(
+    "enumMember",
+    16
+    /* CompletionItemKind.EnumMember */
+  ), d.set(
+    "keyword",
+    17
+    /* CompletionItemKind.Keyword */
+  ), d.set(
+    "snippet",
+    27
+    /* CompletionItemKind.Snippet */
+  ), d.set(
+    "text",
+    18
+    /* CompletionItemKind.Text */
+  ), d.set(
+    "color",
+    19
+    /* CompletionItemKind.Color */
+  ), d.set(
+    "file",
+    20
+    /* CompletionItemKind.File */
+  ), d.set(
+    "reference",
+    21
+    /* CompletionItemKind.Reference */
+  ), d.set(
+    "customcolor",
+    22
+    /* CompletionItemKind.Customcolor */
+  ), d.set(
+    "folder",
+    23
+    /* CompletionItemKind.Folder */
+  ), d.set(
+    "type-parameter",
+    24
+    /* CompletionItemKind.TypeParameter */
+  ), d.set(
+    "typeParameter",
+    24
+    /* CompletionItemKind.TypeParameter */
+  ), d.set(
+    "account",
+    25
+    /* CompletionItemKind.User */
+  ), d.set(
+    "issue",
+    26
+    /* CompletionItemKind.Issue */
+  );
   function a(p, N) {
     let H = d.get(p);
     return typeof H > "u" && !N && (H = 9), H;
@@ -4482,13 +5240,19 @@ class PF {
       case 0:
         return null;
       case 2:
-        return { kind: 1 };
+        return {
+          kind: 1
+          /* UnicodeHighlighterReasonKind.Invisible */
+        };
       case 3: {
         const p = n.codePointAt(0), N = d.ambiguousCharacters.getPrimaryConfusable(p), H = vp.getLocales().filter((h) => !vp.getInstance(/* @__PURE__ */ new Set([...f.allowedLocales, h])).isAmbiguous(p));
         return { kind: 0, confusableWith: String.fromCodePoint(N), notAmbiguousInLocales: H };
       }
       case 1:
-        return { kind: 2 };
+        return {
+          kind: 2
+          /* UnicodeHighlighterReasonKind.NonBasicAscii */
+        };
     }
   }
 }
@@ -4525,7 +5289,11 @@ class fI {
         const H = N.codePointAt(0), h = F8(N);
         a = a || h, !h && !this.ambiguousCharacters.isAmbiguous(H) && !Am.isInvisibleCharacter(H) && (p = !0);
       }
-    return !a && p ? 0 : this.options.invisibleCharacters && !dI(n) && Am.isInvisibleCharacter(d) ? 2 : this.options.ambiguousCharacters && this.ambiguousCharacters.isAmbiguous(d) ? 3 : 0;
+    return (
+      /* Don't allow mixing weird looking characters with ASCII */
+      !a && /* Is there an obviously weird looking character? */
+      p ? 0 : this.options.invisibleCharacters && !dI(n) && Am.isInvisibleCharacter(d) ? 2 : this.options.ambiguousCharacters && this.ambiguousCharacters.isAmbiguous(d) ? 3 : 0
+    );
   }
 }
 function dI(e) {
@@ -4682,7 +5450,7 @@ class Eg {
     this._models[n].onEvents(f);
   }
   acceptRemovedModel(n) {
-    !this._models[n] || delete this._models[n];
+    this._models[n] && delete this._models[n];
   }
   computeUnicodeHighlights(n, f, d) {
     return vg(this, void 0, void 0, function* () {
@@ -4690,6 +5458,7 @@ class Eg {
       return a ? PF.computeUnicodeHighlights(a, f, d) : { ranges: [], hasMore: !1, ambiguousCharacterCount: 0, invisibleCharacterCount: 0, nonBasicAsciiCharacterCount: 0 };
     });
   }
+  // ---- BEGIN diff --------------------------------------------------------------------------
   computeDiff(n, f, d, a) {
     return vg(this, void 0, void 0, function* () {
       const p = this._getModel(n), N = this._getModel(f);
@@ -4756,6 +5525,7 @@ class Eg {
       return typeof p == "number" && a.push({ eol: p, text: "", range: { startLineNumber: 0, startColumn: 0, endLineNumber: 0, endColumn: 0 } }), a;
     });
   }
+  // ---- END minimal edits ---------------------------------------------------------------
   computeLinks(n) {
     return vg(this, void 0, void 0, function* () {
       const f = this._getModel(n);
@@ -4768,7 +5538,7 @@ class Eg {
       e:
         for (const h of n) {
           const v = this._getModel(h);
-          if (!!v) {
+          if (v) {
             for (const A of v.words(N))
               if (!(A === f || !isNaN(Number(A))) && (H.add(A), H.size > Eg._suggestionsLimit))
                 break e;
@@ -4777,6 +5547,8 @@ class Eg {
       return { words: Array.from(H), duration: p.elapsed() };
     });
   }
+  // ---- END suggest --------------------------------------------------------------------------
+  //#region -- word ranges --
   computeWordRanges(n, f, d, a) {
     return vg(this, void 0, void 0, function* () {
       const p = this._getModel(n);
@@ -4800,6 +5572,7 @@ class Eg {
       return H;
     });
   }
+  //#endregion
   navigateValueSet(n, f, d, a, p) {
     return vg(this, void 0, void 0, function* () {
       const N = this._getModel(n);
@@ -4819,6 +5592,7 @@ class Eg {
       return TT.INSTANCE.navigateValueSet(f, h, v, A, d);
     });
   }
+  // ---- BEGIN foreign module support --------------------------------------------------------------------------
   loadForeignModule(n, f, d) {
     const N = {
       host: A8(d, (H, h) => this._host.fhr(H, h)),
@@ -4826,6 +5600,7 @@ class Eg {
     };
     return this._foreignModuleFactory ? (this._foreignModule = this._foreignModuleFactory(N, f), Promise.resolve(_T(this._foreignModule))) : Promise.reject(new Error("Unexpected usage"));
   }
+  // foreign method request
   fmr(n, f) {
     if (!this._foreignModule || typeof this._foreignModule[n] != "function")
       return Promise.reject(new Error("Missing requestHandler or method: " + n));
@@ -4856,7 +5631,7 @@ self.onmessage = (e) => {
 };
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.34.0(9d278685b078158491964f8fd7ac9628fffa0f30)
+ * Version: 0.34.1(547870b6881302c5b4ff32173c16d06009e3588f)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
@@ -5531,7 +6306,7 @@ var gr;
   }
   e.mapDefinedIterator = F;
   function te(se, Be) {
-    if (!!se) {
+    if (se) {
       var er = new e.Map();
       return se.forEach(function(hr, qr) {
         var Dt = Be(qr, hr);
@@ -5600,7 +6375,7 @@ var gr;
   }
   e.spanMap = Ce;
   function O(se, Be) {
-    if (!!se) {
+    if (se) {
       var er = new e.Map();
       return se.forEach(function(hr, qr) {
         var Dt = Be(qr, hr), Jt = Dt[0], Sn = Dt[1];
@@ -6495,7 +7270,7 @@ var gr;
     var d, a = 0;
     f.currentLogLevel = n.Warning, f.isDebugging = !1;
     function p() {
-      return d != null ? d : d = new e.Version(e.version);
+      return d ?? (d = new e.Version(e.version));
     }
     f.getTypeScriptVersion = p;
     function N(lr) {
@@ -6936,7 +7711,7 @@ var gr;
     }
     return Y.tryParse = function(U) {
       var $ = N(U);
-      if (!!$) {
+      if ($) {
         var T = $.major, I = $.minor, y = $.patch, D = $.prerelease, C = $.build;
         return new Y(T, I, y, D, C);
       }
@@ -6961,7 +7736,7 @@ var gr;
   e.Version = p;
   function N(Y) {
     var U = n.exec(Y);
-    if (!!U) {
+    if (U) {
       var $ = U[1], T = U[2], I = T === void 0 ? "0" : T, y = U[3], D = y === void 0 ? "0" : y, C = U[4], m = C === void 0 ? "" : C, u = U[5], g = u === void 0 ? "" : u;
       if (!(m && !f.test(m)) && !(g && !d.test(g)))
         return {
@@ -7020,7 +7795,7 @@ var gr;
   function M(Y) {
     for (var U = [], $ = 0, T = e.trimString(Y).split(v); $ < T.length; $++) {
       var I = T[$];
-      if (!!I) {
+      if (I) {
         var y = [];
         I = e.trimString(I);
         var D = ie.exec(I);
@@ -7040,7 +7815,7 @@ var gr;
   }
   function S(Y) {
     var U = q.exec(Y);
-    if (!!U) {
+    if (U) {
       var $ = U[1], T = U[2], I = T === void 0 ? "*" : T, y = U[3], D = y === void 0 ? "*" : y, C = U[4], m = U[5], u = new p(k($) ? 0 : parseInt($, 10), k($) || k(I) ? 0 : parseInt(I, 10), k($) || k(I) || k(D) ? 0 : parseInt(D, 10), C, m);
       return { version: u, major: $, minor: I, patch: D };
     }
@@ -7226,7 +8001,7 @@ var gr;
     n.isEnabled = B;
     function J(P) {
       var x;
-      return P === void 0 && (P = e.sys), N || (N = !0, f || (f = e.tryGetNativePerformanceHooks()), f && (H = f.performance.timeOrigin, (f.shouldWriteNativeEvents || ((x = P == null ? void 0 : P.cpuProfilingEnabled) === null || x === void 0 ? void 0 : x.call(P)) || (P == null ? void 0 : P.debugMode)) && (d = f.performance))), !0;
+      return P === void 0 && (P = e.sys), N || (N = !0, f || (f = e.tryGetNativePerformanceHooks()), f && (H = f.performance.timeOrigin, (f.shouldWriteNativeEvents || !((x = P == null ? void 0 : P.cpuProfilingEnabled) === null || x === void 0) && x.call(P) || P != null && P.debugMode) && (d = f.performance))), !0;
     }
     n.enable = J;
     function k() {
@@ -7432,7 +8207,7 @@ var gr;
 `), d.closeSync(Te), e.performance.mark("endDumpTypes"), e.performance.measure("Dump types", "beginDumpTypes", "endDumpTypes");
     }
     function Z() {
-      !h || d.writeFileSync(h, JSON.stringify(v));
+      h && d.writeFileSync(h, JSON.stringify(v));
     }
     f.dumpLegend = Z;
   })(n || (n = {})), e.startTracing = n.startTracing, e.dumpTracingLegend = n.dumpLegend;
@@ -7804,7 +8579,7 @@ var gr;
       return [];
     for (var Ve = [ve[0]], _e = 1; _e < ve.length; _e++) {
       var Le = ve[_e];
-      if (!!Le && Le !== ".") {
+      if (Le && Le !== ".") {
         if (Le === "..") {
           if (Ve.length > 1) {
             if (Ve[Ve.length - 1] !== "..") {
@@ -7826,7 +8601,7 @@ var gr;
     ve && (ve = Y(ve));
     for (var Le = 0, qe = Ve; Le < qe.length; Le++) {
       var Xe = qe[Le];
-      !Xe || (Xe = Y(Xe), !ve || J(Xe) !== 0 ? ve = Xe : ve = te(ve) + Xe);
+      Xe && (Xe = Y(Xe), !ve || J(Xe) !== 0 ? ve = Xe : ve = te(ve) + Xe);
     }
     return ve;
   }
@@ -8157,7 +8932,7 @@ var gr;
     }
     function C(m, u, g) {
       var F = U(m, 1, function(te, ue) {
-        if (!!e.isString(ue)) {
+        if (e.isString(ue)) {
           var X = e.getNormalizedAbsolutePath(ue, m), j = X && T.get(y(X));
           if (j)
             for (var Se = 0, Ce = j; Se < Ce.length; Se++) {
@@ -8298,7 +9073,7 @@ var gr;
       e.sysLog("sysLog:: Elapsed:: ".concat(De, "ms:: onTimerToUpdateChildWatches:: ").concat(te.size, " ").concat(ue));
     }
     function z(Pe) {
-      if (!!Pe) {
+      if (Pe) {
         var Ie = Pe.childWatches;
         Pe.childWatches = e.emptyArray;
         for (var Ge = 0, he = Ie; Ge < he.length; Ge++) {
@@ -8485,7 +9260,7 @@ var gr;
   function R() {
     if (!(typeof process > "u")) {
       var U = process.version;
-      if (!!U) {
+      if (U) {
         var $ = U.indexOf(".");
         if ($ !== -1)
           return parseInt(U.substring(1, $));
@@ -10767,7 +11542,7 @@ var gr;
     return e.Debug.isDebugging && Object.defineProperty(He, "__debugShowCurrentPositionInText", {
       get: function() {
         var St = He.getText();
-        return St.slice(0, He.getStartPos()) + "\u2551" + St.slice(He.getStartPos());
+        return St.slice(0, He.getStartPos()) + "║" + St.slice(He.getStartPos());
       }
     }), He;
     function pr(St, Ut, qt) {
@@ -10811,7 +11586,7 @@ var gr;
       return Ar(St), { type: Mt, value: Fe };
     }
     function Ar(St, Ut) {
-      if (!!Ge(_e(Ke, Me), Ae)) {
+      if (Ge(_e(Ke, Me), Ae)) {
         var qt = Me, Mn = ye().length;
         Mn === 1 && Ke[qt] === "n" ? pr(Ut ? e.Diagnostics.A_bigint_literal_cannot_use_exponential_notation : e.Diagnostics.A_bigint_literal_must_be_an_integer, St, qt - St + 1) : (pr(e.Diagnostics.An_identifier_or_keyword_cannot_immediately_follow_a_numeric_literal, qt, Mn), Me = qt);
       }
@@ -11293,7 +12068,7 @@ var gr;
     }
     function fr(St, Ut) {
       var qt = Ut.exec(St);
-      if (!!qt)
+      if (qt)
         switch (qt[1]) {
           case "ts-expect-error":
             return 0;
@@ -11750,7 +12525,7 @@ var gr;
   e.symbolName = ue;
   function X(Re) {
     var Qr = Re.parent.parent;
-    if (!!Qr) {
+    if (Qr) {
       if (Dt(Qr))
         return j(Qr);
       switch (Qr.kind) {
@@ -12764,7 +13539,7 @@ var gr;
   function wr(Re) {
     for (var Qr = pe, vn = 0, Xn = Re; vn < Xn.length; vn++) {
       var gi = Xn[vn];
-      if (!!gi.length) {
+      if (gi.length) {
         for (var Ia = 0; Ia < gi.length && Ia < Qr && e.isWhiteSpaceLike(gi.charCodeAt(Ia)); Ia++)
           ;
         if (Ia < Qr && (Qr = Ia), Qr === 0)
@@ -14745,9 +15520,9 @@ var gr;
   function pn(l) {
     if (l.symbol)
       return l.symbol;
-    if (!!e.isIdentifier(l.name)) {
+    if (e.isIdentifier(l.name)) {
       var re = l.name.escapedText, cr = kn(l);
-      if (!!cr) {
+      if (cr) {
         var Vr = e.find(cr.parameters, function(Nt) {
           return Nt.name.kind === 79 && Nt.name.escapedText === re;
         });
@@ -14778,7 +15553,7 @@ var gr;
   e.getEffectiveJSDocHost = Kn;
   function Fa(l) {
     var re = ua(l);
-    if (!!re) {
+    if (re) {
       var cr = re.parent;
       if (cr && cr.jsDoc && re === e.lastOrUndefined(cr.jsDoc))
         return cr;
@@ -15485,7 +16260,7 @@ var gr;
     "`": "\\`",
     "\u2028": "\\u2028",
     "\u2029": "\\u2029",
-    "\x85": "\\u0085",
+    "": "\\u0085",
     "\r\n": "\\r\\n"
   }));
   function ed(l) {
@@ -15732,7 +16507,7 @@ var gr;
   e.outFile = us;
   function ii(l, re) {
     var cr, Vr;
-    if (!!l.paths)
+    if (l.paths)
       return (cr = l.baseUrl) !== null && cr !== void 0 ? cr : e.Debug.checkDefined(l.pathsBasePath || ((Vr = re.getCurrentDirectory) === null || Vr === void 0 ? void 0 : Vr.call(re)), "Encountered 'paths' without a 'baseUrl', config file, or host 'getCurrentDirectory'.");
   }
   e.getPathsBasePath = ii;
@@ -16026,7 +16801,7 @@ var gr;
   e.getSyntacticModifierFlags = Jd;
   function nc(l) {
     var re = 0;
-    return !!l.parent && !e.isParameter(l) && (Be(l) && (e.getJSDocPublicTagNoCache(l) && (re |= 4), e.getJSDocPrivateTagNoCache(l) && (re |= 8), e.getJSDocProtectedTagNoCache(l) && (re |= 16), e.getJSDocReadonlyTagNoCache(l) && (re |= 64), e.getJSDocOverrideTagNoCache(l) && (re |= 16384)), e.getJSDocDeprecatedTagNoCache(l) && (re |= 8192)), re;
+    return l.parent && !e.isParameter(l) && (Be(l) && (e.getJSDocPublicTagNoCache(l) && (re |= 4), e.getJSDocPrivateTagNoCache(l) && (re |= 8), e.getJSDocProtectedTagNoCache(l) && (re |= 16), e.getJSDocReadonlyTagNoCache(l) && (re |= 64), e.getJSDocOverrideTagNoCache(l) && (re |= 16384)), e.getJSDocDeprecatedTagNoCache(l) && (re |= 8192)), re;
   }
   function Cf(l) {
     return Bu(l) | nc(l);
@@ -16350,7 +17125,7 @@ var gr;
   e.getStartPositionOfRange = is;
   function Vl(l, re, cr, Vr) {
     var Nt = e.skipTrivia(cr.text, l, !1, Vr), xn = Zc(Nt, re, cr);
-    return e.getLinesBetweenPositions(cr, xn != null ? xn : re, Nt);
+    return e.getLinesBetweenPositions(cr, xn ?? re, Nt);
   }
   e.getLinesBetweenPositionAndPrecedingNonWhitespaceCharacter = Vl;
   function Qc(l, re, cr, Vr) {
@@ -17586,7 +18361,7 @@ var gr;
   }
   e.containsIgnoredPath = oy;
   function Vv(l) {
-    if (!!l.parent) {
+    if (l.parent) {
       switch (l.kind) {
         case 162:
           var re = l.parent;
@@ -19338,7 +20113,7 @@ var gr;
     }
     function Gi(_, W, be, nr, Ur, Ht) {
       var an = ke(213, void 0, _, void 0, W, be, nr, I().parenthesizeConciseBodyOfArrowFunction(Ht));
-      return an.equalsGreaterThanToken = Ur != null ? Ur : de(38), an.transformFlags |= q(an.equalsGreaterThanToken) | 512, e.modifiersToFlags(an.modifiers) & 256 && (an.transformFlags |= 8320), an;
+      return an.equalsGreaterThanToken = Ur ?? de(38), an.transformFlags |= q(an.equalsGreaterThanToken) | 512, e.modifiersToFlags(an.modifiers) & 256 && (an.transformFlags |= 8320), an;
     }
     function Ro(_, W, be, nr, Ur, Ht, an) {
       return _.modifiers !== W || _.typeParameters !== be || _.parameters !== nr || _.type !== Ur || _.equalsGreaterThanToken !== Ht || _.body !== an ? Pe(Gi(W, be, nr, Ur, Ht, an), _) : _;
@@ -19412,7 +20187,7 @@ var gr;
     }
     function Nr(_, W, be, nr, Ur) {
       var Ht = Oe(221);
-      return Ht.condition = I().parenthesizeConditionOfConditionalExpression(_), Ht.questionToken = W != null ? W : de(57), Ht.whenTrue = I().parenthesizeBranchOfConditionalExpression(be), Ht.colonToken = nr != null ? nr : de(58), Ht.whenFalse = I().parenthesizeBranchOfConditionalExpression(Ur), Ht.transformFlags |= q(Ht.condition) | q(Ht.questionToken) | q(Ht.whenTrue) | q(Ht.colonToken) | q(Ht.whenFalse), Ht;
+      return Ht.condition = I().parenthesizeConditionOfConditionalExpression(_), Ht.questionToken = W ?? de(57), Ht.whenTrue = I().parenthesizeBranchOfConditionalExpression(be), Ht.colonToken = nr ?? de(58), Ht.whenFalse = I().parenthesizeBranchOfConditionalExpression(Ur), Ht.transformFlags |= q(Ht.condition) | q(Ht.questionToken) | q(Ht.whenTrue) | q(Ht.colonToken) | q(Ht.whenFalse), Ht;
     }
     function Us(_, W, be, nr, Ur, Ht) {
       return _.condition !== W || _.questionToken !== be || _.whenTrue !== nr || _.colonToken !== Ur || _.whenFalse !== Ht ? T(Nr(W, be, nr, Ur, Ht), _) : _;
@@ -19888,53 +20663,53 @@ var gr;
       return nr.tagName = W, nr.comment = be, nr;
     }
     function ms(_, W, be, nr) {
-      var Ur = wo(342, _ != null ? _ : lr("template"), nr);
+      var Ur = wo(342, _ ?? lr("template"), nr);
       return Ur.constraint = W, Ur.typeParameters = Ce(be), Ur;
     }
     function Zp(_, W, be, nr, Ur) {
       return W === void 0 && (W = Dl(_)), _.tagName !== W || _.constraint !== be || _.typeParameters !== nr || _.comment !== Ur ? T(ms(W, be, nr, Ur), _) : _;
     }
     function Xl(_, W, be, nr) {
-      var Ur = wo(343, _ != null ? _ : lr("typedef"), nr);
+      var Ur = wo(343, _ ?? lr("typedef"), nr);
       return Ur.typeExpression = W, Ur.fullName = be, Ur.name = e.getJSDocTypeAliasName(be), Ur;
     }
     function id(_, W, be, nr, Ur) {
       return W === void 0 && (W = Dl(_)), _.tagName !== W || _.typeExpression !== be || _.fullName !== nr || _.comment !== Ur ? T(Xl(W, be, nr, Ur), _) : _;
     }
     function Ln(_, W, be, nr, Ur, Ht) {
-      var an = wo(338, _ != null ? _ : lr("param"), Ht);
+      var an = wo(338, _ ?? lr("param"), Ht);
       return an.typeExpression = nr, an.name = W, an.isNameFirst = !!Ur, an.isBracketed = be, an;
     }
     function us(_, W, be, nr, Ur, Ht, an) {
       return W === void 0 && (W = Dl(_)), _.tagName !== W || _.name !== be || _.isBracketed !== nr || _.typeExpression !== Ur || _.isNameFirst !== Ht || _.comment !== an ? T(Ln(W, be, nr, Ur, Ht, an), _) : _;
     }
     function ii(_, W, be, nr, Ur, Ht) {
-      var an = wo(345, _ != null ? _ : lr("prop"), Ht);
+      var an = wo(345, _ ?? lr("prop"), Ht);
       return an.typeExpression = nr, an.name = W, an.isNameFirst = !!Ur, an.isBracketed = be, an;
     }
     function Rc(_, W, be, nr, Ur, Ht, an) {
       return W === void 0 && (W = Dl(_)), _.tagName !== W || _.name !== be || _.isBracketed !== nr || _.typeExpression !== Ur || _.isNameFirst !== Ht || _.comment !== an ? T(ii(W, be, nr, Ur, Ht, an), _) : _;
     }
     function od(_, W, be, nr) {
-      var Ur = wo(336, _ != null ? _ : lr("callback"), nr);
+      var Ur = wo(336, _ ?? lr("callback"), nr);
       return Ur.typeExpression = W, Ur.fullName = be, Ur.name = e.getJSDocTypeAliasName(be), Ur;
     }
     function ol(_, W, be, nr, Ur) {
       return W === void 0 && (W = Dl(_)), _.tagName !== W || _.typeExpression !== be || _.fullName !== nr || _.comment !== Ur ? T(od(W, be, nr, Ur), _) : _;
     }
     function Dn(_, W, be) {
-      var nr = wo(326, _ != null ? _ : lr("augments"), be);
+      var nr = wo(326, _ ?? lr("augments"), be);
       return nr.class = W, nr;
     }
     function I_(_, W, be, nr) {
       return W === void 0 && (W = Dl(_)), _.tagName !== W || _.class !== be || _.comment !== nr ? T(Dn(W, be, nr), _) : _;
     }
     function rs(_, W, be) {
-      var nr = wo(327, _ != null ? _ : lr("implements"), be);
+      var nr = wo(327, _ ?? lr("implements"), be);
       return nr.class = W, nr;
     }
     function fs(_, W, be) {
-      var nr = wo(344, _ != null ? _ : lr("see"), be);
+      var nr = wo(344, _ ?? lr("see"), be);
       return nr.name = W, nr;
     }
     function wc(_, W, be, nr) {
@@ -19979,14 +20754,14 @@ var gr;
       return W === void 0 && (W = Dl(_)), _.tagName !== W || _.class !== be || _.comment !== nr ? T(rs(W, be, nr), _) : _;
     }
     function Sf(_, W, be) {
-      var nr = wo(_, W != null ? W : lr(p(_)), be);
+      var nr = wo(_, W ?? lr(p(_)), be);
       return nr;
     }
     function sd(_, W, be, nr) {
       return be === void 0 && (be = Dl(W)), W.tagName !== be || W.comment !== nr ? T(Sf(_, be, nr), W) : W;
     }
     function ld(_, W, be, nr) {
-      var Ur = wo(_, W != null ? W : lr(p(_)), nr);
+      var Ur = wo(_, W ?? lr(p(_)), nr);
       return Ur.typeExpression = be, Ur;
     }
     function Df(_, W, be, nr, Ur) {
@@ -20712,7 +21487,7 @@ var gr;
       return F().length;
     }, U.buildInfo && U.buildInfo.bundle && (e.Debug.assert(T === void 0 || typeof T == "boolean"), I = T, y = $ === "js" ? U.buildInfo.bundle.js : U.buildInfo.bundle.dts, ue = U.oldFileOfCurrentEmit));
     var X = ue ? x(e.Debug.assertDefined(y)) : P(y, I, m);
-    return X.fileName = D, X.sourceMapPath = u, X.oldFileOfCurrentEmit = ue, F && te ? (Object.defineProperty(X, "text", { get: F }), Object.defineProperty(X, "sourceMapText", { get: te })) : (e.Debug.assert(!ue), X.text = C != null ? C : "", X.sourceMapText = g), X;
+    return X.fileName = D, X.sourceMapPath = u, X.oldFileOfCurrentEmit = ue, F && te ? (Object.defineProperty(X, "text", { get: F }), Object.defineProperty(X, "sourceMapText", { get: te })) : (e.Debug.assert(!ue), X.text = C ?? "", X.sourceMapText = g), X;
   }
   e.createUnparsedSourceFile = k;
   function P(U, $, T) {
@@ -20742,7 +21517,7 @@ var gr;
             var O = Ce[Se];
             (!$ || O.kind !== "internal") && (j = e.append(j, e.setTextRange(e.factory.createUnparsedTextLike(O.data, O.kind === "internal"), O)));
           }
-          u = e.addRange(u, j), g = e.append(g, e.factory.createUnparsedPrepend(X.data, j != null ? j : e.emptyArray));
+          u = e.addRange(u, j), g = e.append(g, e.factory.createUnparsedPrepend(X.data, j ?? e.emptyArray));
           break;
         case "internal":
           if ($) {
@@ -20760,7 +21535,7 @@ var gr;
       var Q = e.factory.createUnparsedTextLike(void 0, !1);
       e.setTextRangePosWidth(Q, 0, typeof T == "function" ? T() : T), g = [Q];
     }
-    var V = e.parseNodeFactory.createUnparsedSource(I != null ? I : e.emptyArray, void 0, g);
+    var V = e.parseNodeFactory.createUnparsedSource(I ?? e.emptyArray, void 0, g);
     return e.setEachParent(I, V), e.setEachParent(g, V), e.setEachParent(u, V), V.hasNoDefaultLib = F, V.helpers = y, V.referencedFiles = D || e.emptyArray, V.typeReferenceDirectives = C, V.libReferenceDirectives = m || e.emptyArray, V;
   }
   function x(U) {
@@ -20785,7 +21560,7 @@ var gr;
           e.Debug.assertNever(D);
       }
     }
-    var C = e.factory.createUnparsedSource(e.emptyArray, T, $ != null ? $ : e.emptyArray);
+    var C = e.factory.createUnparsedSource(e.emptyArray, T, $ ?? e.emptyArray);
     return e.setEachParent(T, C), e.setEachParent($, C), C.helpers = e.map(U.sources && U.sources.helpers, function(m) {
       return e.getAllUnscopedEmitHelpers().get(m);
     }), C;
@@ -21009,7 +21784,7 @@ var gr;
   e.getEmitHelpers = Y;
   function U(y, D, C) {
     var m = y.emitNode, u = m && m.helpers;
-    if (!!e.some(u)) {
+    if (e.some(u)) {
       for (var g = n(D), F = 0, te = 0; te < u.length; te++) {
         var ue = u[te];
         C(ue) ? (F++, g.helpers = e.appendIfUnique(g.helpers, ue)) : F > 0 && (u[te - F] = ue);
@@ -22733,7 +23508,7 @@ var gr;
     return Fe ? ur.createStringLiteral(Fe) : void 0;
   }
   function ue(ur, vr, de, Fe) {
-    if (!!vr) {
+    if (vr) {
       if (vr.moduleName)
         return ur.createStringLiteral(vr.moduleName);
       if (!vr.isDeclarationFile && e.outFile(Fe))
@@ -23878,10 +24653,10 @@ var gr;
     }
     function It(xe, Tr, Gr, at) {
       var Ct = O.createNodeArray(xe, at);
-      return e.setTextRangePosEnd(Ct, Tr, Gr != null ? Gr : u.getStartPos()), Ct;
+      return e.setTextRangePosEnd(Ct, Tr, Gr ?? u.getStartPos()), Ct;
     }
     function rt(xe, Tr, Gr) {
-      return e.setTextRangePosEnd(xe, Tr, Gr != null ? Gr : u.getStartPos()), De && (xe.flags |= De), Ye && (Ye = !1, xe.flags |= 65536), xe;
+      return e.setTextRangePosEnd(xe, Tr, Gr ?? u.getStartPos()), De && (xe.flags |= De), Ye && (Ye = !1, xe.flags |= 65536), xe;
     }
     function Cn(xe, Tr, Gr, at) {
       Tr ? fe(u.getStartPos(), 0, Gr, at) : Gr && or(Gr, at);
@@ -24151,7 +24926,7 @@ var gr;
         var Tr = Ge.currentNode(u.getStartPos());
         if (!(e.nodeIsMissing(Tr) || Tr.intersectsChange || e.containsParseError(Tr))) {
           var Gr = Tr.flags & 25358336;
-          if (Gr === De && !!Be(Tr, xe))
+          if (Gr === De && Be(Tr, xe))
             return Tr.jsDocCache && (Tr.jsDocCache = void 0), Tr;
         }
       }
@@ -25415,7 +26190,7 @@ var gr;
       var Tr = ee();
       if (mt(29), me() === 31)
         return gt(), rt(O.createJsxOpeningFragment(), Tr);
-      var Gr = wu(), at = (De & 131072) === 0 ? gn() : void 0, Ct = rd(), Xt;
+      var Gr = wu(), at = De & 131072 ? void 0 : gn(), Ct = rd(), Xt;
       return me() === 31 ? (gt(), Xt = O.createJsxOpeningElement(Gr, at, Ct)) : (mt(43), mt(31, void 0, !1) && (xe ? fr() : gt()), Xt = O.createJsxSelfClosingElement(Gr, at, Ct)), rt(Xt, Tr);
     }
     function wu() {
@@ -25427,7 +26202,7 @@ var gr;
     }
     function Mu(xe) {
       var Tr = ee();
-      if (!!mt(18)) {
+      if (mt(18)) {
         var Gr, at;
         return me() !== 19 && (Gr = St(25), at = Rs()), xe ? mt(19) : mt(19, void 0, !1) && gt(), rt(O.createJsxExpression(Gr, at), Tr);
       }
@@ -25532,7 +26307,7 @@ var gr;
       for (; ; ) {
         Tr = Fl(xe, Tr, !0);
         var Gr = St(28);
-        if ((De & 131072) === 0 && (me() === 29 || me() === 47)) {
+        if (!(De & 131072) && (me() === 29 || me() === 47)) {
           var at = xt(ad);
           if (at) {
             if (pl()) {
@@ -25562,10 +26337,10 @@ var gr;
       return mt(21), xe;
     }
     function ad() {
-      if ((De & 131072) === 0 && Ir() === 29) {
+      if (!(De & 131072) && Ir() === 29) {
         fr();
         var xe = $a(20, _s);
-        if (!!mt(31))
+        if (mt(31))
           return xe && mo() ? xe : void 0;
       }
     }
@@ -26311,7 +27086,7 @@ var gr;
     }
     function qd() {
       var xe = ee();
-      if (!!en(59)) {
+      if (en(59)) {
         var Tr = tt(Uu);
         return rt(O.createDecorator(Tr), xe);
       }
@@ -26742,7 +27517,7 @@ var gr;
                   un = 2;
                   var Bo = u.getStartPos(), Zs = u.getTextPos() - 1, gl = Ur(Zs);
                   if (gl) {
-                    xs || cl(yl), ju.push(rt(O.createJSDocText(yl.join("")), xs != null ? xs : Ea, Bo)), ju.push(gl), yl = [], xs = u.getTextPos();
+                    xs || cl(yl), ju.push(rt(O.createJSDocText(yl.join("")), xs ?? Ea, Bo)), ju.push(gl), yl = [], xs = u.getTextPos();
                     break;
                   }
                 default:
@@ -26751,7 +27526,7 @@ var gr;
               }
               dr();
             }
-          Ms(yl), ju.length && yl.length && ju.push(rt(O.createJSDocText(yl.join("")), xs != null ? xs : Ea, Cl)), ju.length && Ho && e.Debug.assertIsDefined(Cl, "having parsed tags implies that the end of the comment span should be set");
+          Ms(yl), ju.length && yl.length && ju.push(rt(O.createJSDocText(yl.join("")), xs ?? Ea, Cl)), ju.length && Ho && e.Debug.assertIsDefined(Cl, "having parsed tags implies that the end of the comment span should be set");
           var jl = Ho && It(Ho, gs, _l);
           return rt(O.createJSDocComment(ju.length ? It(ju, Ea, Cl) : yl.length ? yl.join("") : void 0, jl), Ea, $i);
         });
@@ -26892,7 +27667,7 @@ var gr;
                 case 18:
                   Bo = 2;
                   var po = u.getStartPos(), o_ = u.getTextPos() - 1, tp = Ur(o_);
-                  tp ? (Za.push(rt(O.createJSDocText(Sa.join("")), zi != null ? zi : Hn, po)), Za.push(tp), Sa = [], zi = u.getTextPos()) : jl(u.getTokenText());
+                  tp ? (Za.push(rt(O.createJSDocText(Sa.join("")), zi ?? Hn, po)), Za.push(tp), Sa = [], zi = u.getTextPos()) : jl(u.getTokenText());
                   break;
                 case 61:
                   Bo === 3 ? Bo = 2 : Bo = 3, jl(u.getTokenText());
@@ -26909,7 +27684,7 @@ var gr;
               Zs = me() === 5, vl = dr();
             }
           if (cl(Sa), Ms(Sa), Za.length)
-            return Sa.length && Za.push(rt(O.createJSDocText(Sa.join("")), zi != null ? zi : Hn)), It(Za, Hn, u.getTextPos());
+            return Sa.length && Za.push(rt(O.createJSDocText(Sa.join("")), zi ?? Hn)), It(Za, Hn, u.getTextPos());
           if (Sa.length)
             return Sa.join("");
         }
@@ -26919,7 +27694,7 @@ var gr;
         }
         function Ur(un) {
           var pa = xt(Ht);
-          if (!!pa) {
+          if (pa) {
             dr(), du();
             var Hn = ee(), Sa = e.tokenIsIdentifierOrKeyword(me()) ? Pn(!0) : void 0;
             if (Sa)
@@ -26942,7 +27717,7 @@ var gr;
           return rt(O.createJSDocUnknownTag(pa, W(un, ee(), Hn, Sa)), un);
         }
         function si(un) {
-          !un || (Ho ? Ho.push(un) : (Ho = [un], gs = un.pos), _l = un.end);
+          un && (Ho ? Ho.push(un) : (Ho = [un], gs = un.pos), _l = un.end);
         }
         function Io() {
           return ml(), me() === 18 ? Gr() : void 0;
@@ -27078,13 +27853,13 @@ var gr;
               zi = vl && vl.typeExpression && !ep(vl.typeExpression.type) ? vl.typeExpression : rt(X_, un), gl = zi.end;
             }
           }
-          gl = gl || Zs !== void 0 ? ee() : ((Za = Bo != null ? Bo : zi) !== null && Za !== void 0 ? Za : pa).end, Zs || (Zs = W(un, gl, Hn, Sa));
+          gl = gl || Zs !== void 0 ? ee() : ((Za = Bo ?? zi) !== null && Za !== void 0 ? Za : pa).end, Zs || (Zs = W(un, gl, Hn, Sa));
           var Y_ = O.createJSDocTypedefTag(pa, zi, Bo, Zs);
           return rt(Y_, un, gl);
         }
         function a_(un) {
           var pa = u.getTokenPos();
-          if (!!e.tokenIsIdentifierOrKeyword(me())) {
+          if (e.tokenIsIdentifierOrKeyword(me())) {
             var Hn = Ku();
             if (en(24)) {
               var Sa = a_(!0), Za = O.createModuleDeclaration(void 0, void 0, Hn, Sa, un ? 4 : void 0);
@@ -27529,7 +28304,7 @@ var gr;
         y(m, u, 4, ke);
   }
   function y(m, u, g, F) {
-    if (!!F) {
+    if (F) {
       var te = F[1].toLowerCase(), ue = e.commentPragmas[te];
       if (!(!ue || !(ue.kind & g))) {
         var X = F[2], j = D(ue, X);
@@ -29300,7 +30075,7 @@ var gr;
     }, {}));
   }
   function Pe(tr) {
-    if (!!e.length(tr)) {
+    if (e.length(tr)) {
       if (e.length(tr) !== 1)
         return tr;
       if (tr[0] !== "**/*")
@@ -29362,7 +30137,7 @@ var gr;
     function gt() {
       var vt = [], ut = zr(2);
       return d.forEach(function(ht) {
-        if (!!kr.has(ht.name)) {
+        if (kr.has(ht.name)) {
           var xt = kr.get(ht.name), wt = Wr(ht);
           xt !== wt ? vt.push("".concat(ut).concat(ht.name, ": ").concat(xt)) : e.hasProperty(e.defaultInitCompilerOptions, ht.name) && vt.push("".concat(ut).concat(ht.name, ": ").concat(wt));
         }
@@ -29706,7 +30481,7 @@ var gr;
     return cn(ue(), tr, Ir, void 0, u, kr);
   }
   function cn(tr, Ir, kr, zr, gt, vt) {
-    if (!!Ir) {
+    if (Ir) {
       for (var ut in Ir) {
         var ht = tr.get(ut);
         ht ? (zr || (zr = {}))[ht.name] = bn(ht, Ir[ut], kr, vt) : vt.push(M(ut, gt, e.createCompilerDiagnostic));
@@ -29923,7 +30698,7 @@ var gr;
     var gt = e.forEach(kr, function(xt) {
       return e.fileExtensionIsOneOf(tr, xt) ? xt : void 0;
     });
-    if (!!gt)
+    if (gt)
       for (var vt = gt.length - 1; vt >= 0; vt--) {
         var ut = gt[vt];
         if (e.fileExtensionIs(tr, ut))
@@ -30016,7 +30791,7 @@ var gr;
     sr[sr.TypeScript = 0] = "TypeScript", sr[sr.JavaScript = 1] = "JavaScript", sr[sr.Json = 2] = "Json", sr[sr.TSConfig = 3] = "TSConfig", sr[sr.DtsOnly = 4] = "DtsOnly";
   })(N || (N = {}));
   function H(sr) {
-    if (!!sr)
+    if (sr)
       return e.Debug.assert(e.extensionIsTS(sr.extension)), { fileName: sr.path, packageId: sr.packageId };
   }
   function h(sr, ye, or, fe) {
@@ -30086,7 +30861,7 @@ var gr;
   function J(sr) {
     B || (B = new e.Version(e.version));
     for (var ye in sr)
-      if (!!e.hasProperty(sr, ye)) {
+      if (e.hasProperty(sr, ye)) {
         var or = e.VersionRange.tryParse(ye);
         if (or !== void 0 && or.test(B))
           return { version: ye, paths: sr[ye] };
@@ -30241,7 +31016,7 @@ var gr;
     return Ee || (Ee = fe(), je.set(or, Ee)), Ee;
   }
   function U(sr, ye, or) {
-    if (!!sr.configFile) {
+    if (sr.configFile) {
       if (ye.redirectsMap.size === 0)
         e.Debug.assert(!or || or.redirectsMap.size === 0), e.Debug.assert(ye.getOwnMap().size === 0), e.Debug.assert(!or || or.getOwnMap().size === 0), ye.redirectsMap.set(sr.configFile.path, ye.getOwnMap()), or == null || or.redirectsMap.set(sr.configFile.path, or.getOwnMap());
       else {
@@ -30371,7 +31146,7 @@ var gr;
   e.createTypeReferenceDirectiveResolutionCache = D;
   function C(sr, ye, or, fe) {
     var je = e.getDirectoryPath(ye), Ee = or && or.getOrCreateCacheForDirectory(je);
-    if (!!Ee)
+    if (Ee)
       return Ee.get(sr, fe);
   }
   e.resolveModuleNameFromCache = C;
@@ -30435,7 +31210,7 @@ var gr;
     }
   }
   function F(sr, ye, or, fe, je) {
-    if (!!je.compilerOptions.rootDirs) {
+    if (je.compilerOptions.rootDirs) {
       je.traceEnabled && n(je.host, e.Diagnostics.rootDirs_option_is_set_using_it_to_resolve_relative_module_name_0, ye);
       for (var Ee = e.normalizePath(e.combinePaths(or, ye)), We, ee, Ne = 0, me = je.compilerOptions.rootDirs; Ne < me.length; Ne++) {
         var Ze = me[Ne], xr = e.normalizePath(Ze);
@@ -30467,7 +31242,7 @@ var gr;
   }
   function te(sr, ye, or, fe) {
     var je = fe.compilerOptions.baseUrl;
-    if (!!je) {
+    if (je) {
       fe.traceEnabled && n(fe.host, e.Diagnostics.baseUrl_option_is_set_to_0_using_this_value_to_resolve_non_relative_module_name_1, je, ye);
       var Ee = e.normalizePath(e.combinePaths(je, ye));
       return fe.traceEnabled && n(fe.host, e.Diagnostics.Resolving_module_name_0_relative_to_base_url_1_2, ye, je, Ee), or(sr, Ee, !e.directoryProbablyExists(e.getDirectoryPath(Ee), fe.host), fe);
@@ -30807,7 +31582,7 @@ var gr;
     var We, ee, Ne = typeof fe.host.useCaseSensitiveFileNames == "function" ? fe.host.useCaseSensitiveFileNames() : fe.host.useCaseSensitiveFileNames, me = e.toPath(e.combinePaths(or, "dummy"), (ee = (We = fe.host).getCurrentDirectory) === null || ee === void 0 ? void 0 : ee.call(We), e.createGetCanonicalFileName(Ne === void 0 ? !0 : Ne)), Ze = Lr(me, fe.packageJsonInfoCache, fe.host, fe.compilerOptions);
     if (!(!Ze || !Ze.packageJsonContent.exports) && typeof Ze.packageJsonContent.name == "string") {
       var xr = e.getPathComponents(ye), fr = e.getPathComponents(Ze.packageJsonContent.name);
-      if (!!e.every(fr, function(et, yt) {
+      if (e.every(fr, function(et, yt) {
         return xr[yt] === et;
       })) {
         var dr = xr.slice(fr.length);
@@ -30816,7 +31591,7 @@ var gr;
     }
   }
   function vr(sr, ye, or, fe, je, Ee) {
-    if (!!sr.packageJsonContent.exports) {
+    if (sr.packageJsonContent.exports) {
       if (or === ".") {
         var We = void 0;
         if (typeof sr.packageJsonContent.exports == "string" || Array.isArray(sr.packageJsonContent.exports) || typeof sr.packageJsonContent.exports == "object" && Hr(sr.packageJsonContent.exports) ? We = sr.packageJsonContent.exports : e.hasProperty(sr.packageJsonContent.exports, ".") && (We = sr.packageJsonContent.exports["."]), We) {
@@ -31296,7 +32071,7 @@ var gr;
     function Ge(pe) {
       if (pe.parent && e.isModuleDeclaration(pe) && (pe = pe.parent), !e.isJSDocTypeAlias(pe))
         return !1;
-      if (!e.isJSDocEnumTag(pe) && !!pe.fullName)
+      if (!e.isJSDocEnumTag(pe) && pe.fullName)
         return !0;
       var wr = e.getNameOfDeclaration(pe);
       return wr ? !!(e.isPropertyAccessEntityNameExpression(wr.parent) && $a(wr.parent) || e.isDeclaration(wr.parent) && e.getCombinedModifierFlags(wr.parent) & 1) : !1;
@@ -32028,7 +32803,7 @@ var gr;
       }
     }
     function pt() {
-      if (!!Z) {
+      if (Z) {
         for (var pe = P, wr = K, ft = w, Zt = k, Re = R, Qr = 0, vn = Z; Qr < vn.length; Qr++) {
           var Xn = vn[Qr], gi = Xn.parent.parent;
           P = e.findAncestor(gi.parent, function(Nr) {
@@ -32145,7 +32920,7 @@ var gr;
       pe ? S.bindDiagnostics.push(Zt) : S.bindSuggestionDiagnostics = e.append(S.bindSuggestionDiagnostics, wn(wn({}, Zt), { category: e.DiagnosticCategory.Suggestion }));
     }
     function Ha(pe) {
-      if (!!pe) {
+      if (pe) {
         e.setParent(pe, k);
         var wr = g;
         if (hi(pe), pe.kind > 159) {
@@ -32421,7 +33196,7 @@ var gr;
       return S.externalModuleIndicator ? !1 : (S.commonJsModuleIndicator || (S.commonJsModuleIndicator = pe, Fo()), !0);
     }
     function tn(pe) {
-      if (!!dt(pe)) {
+      if (dt(pe)) {
         var wr = Pn(pe.arguments[0], void 0, function(Zt, Re) {
           return Re && Te(Re, Zt, 67110400), Re;
         });
@@ -32432,7 +33207,7 @@ var gr;
       }
     }
     function Un(pe) {
-      if (!!dt(pe)) {
+      if (dt(pe)) {
         var wr = Pn(pe.left.expression, void 0, function(Re, Qr) {
           return Qr && Te(Qr, Re, 67110400), Qr;
         });
@@ -32443,7 +33218,7 @@ var gr;
       }
     }
     function Oe(pe) {
-      if (!!dt(pe)) {
+      if (dt(pe)) {
         var wr = e.getRightMostAssignedExpression(pe.right);
         if (!(e.isEmptyObjectLiteral(wr) || P === S && b(S, wr))) {
           if (e.isObjectLiteralExpression(wr) && e.every(wr.properties, e.isShorthandPropertyAssignment)) {
@@ -32705,7 +33480,7 @@ var gr;
         return !0;
       if (e.isIdentifier(B)) {
         var P = M(S, B.escapedText);
-        if (!!P && !!P.valueDeclaration && e.isVariableDeclaration(P.valueDeclaration) && !!P.valueDeclaration.initializer) {
+        if (P && P.valueDeclaration && e.isVariableDeclaration(P.valueDeclaration) && P.valueDeclaration.initializer) {
           var x = P.valueDeclaration.initializer;
           k.push(x), e.isAssignmentExpression(x, !0) && (k.push(x.left), k.push(x.right));
         }
@@ -32745,7 +33520,7 @@ var gr;
         }
       };
       function B(U) {
-        if (!!U && !M[U.id]) {
+        if (U && !M[U.id]) {
           M[U.id] = U;
           var $ = Y(U.symbol);
           if (!$) {
@@ -32941,7 +33716,7 @@ var gr;
     var Ce = e.memoize(function() {
       var r = new e.Map();
       return j.getSourceFiles().forEach(function(t) {
-        !t.resolvedModules || t.resolvedModules.forEach(function(i) {
+        t.resolvedModules && t.resolvedModules.forEach(function(i) {
           i && i.packageId && r.set(i.packageId.name, i.extension === ".d.ts" || !!r.get(i.packageId.name));
         });
       }), r;
@@ -33002,7 +33777,7 @@ var gr;
       },
       getPrivateIdentifierPropertyOfType: function(r, t, i) {
         var o = e.getParseTreeNode(i);
-        if (!!o) {
+        if (o) {
           var s = e.escapeLeadingUnderscores(t), c = rb(s, o);
           return c ? e1(r, c) : void 0;
         }
@@ -33109,7 +33884,7 @@ var gr;
       getSymbolOfExpando: ub,
       getContextualType: function(r, t) {
         var i = e.getParseTreeNode(r, e.isExpression);
-        if (!!i) {
+        if (i) {
           var o = e.findAncestor(i, e.isCallLikeExpression), s = o && Zn(o).resolvedSignature;
           if (t & 4 && o) {
             var c = i;
@@ -33596,7 +34371,7 @@ var gr;
             var G = _s(s.symbol, L, !0);
             tn || (tn = new e.Map()), tn.set(r.text, G);
           } else {
-            if (((i = L.exports) === null || i === void 0 ? void 0 : i.get("__export")) && ((o = s.symbol.exports) === null || o === void 0 ? void 0 : o.size))
+            if (!((i = L.exports) === null || i === void 0) && i.get("__export") && (!((o = s.symbol.exports) === null || o === void 0) && o.size))
               for (var ce = Q_(L, "resolvedExports"), we = 0, Ue = e.arrayFrom(s.symbol.exports.entries()); we < Ue.length; we++) {
                 var Je = Ue[we], ar = Je[0], _r = Je[1];
                 ce.has(ar) && !L.exports.has(ar) && _s(ce.get(ar), _r);
@@ -33675,7 +34450,7 @@ var gr;
         }
         return !0;
       }
-      if (t.parent.kind === 274 || t.parent.kind === 270 && t.parent.isExportEquals || t.kind === 270 && t.isExportEquals || !!(t.flags & 4194304) || eg(t) || G())
+      if (t.parent.kind === 274 || t.parent.kind === 270 && t.parent.isExportEquals || t.kind === 270 && t.isExportEquals || t.flags & 4194304 || eg(t) || G())
         return !0;
       if (we(t, r))
         return e.getEmitScriptTarget(Xe) === 99 && Ye && e.getContainingClass(r) && (e.isPropertyDeclaration(r) || e.isParameterPropertyDeclaration(r, r.parent)) ? !Ue(r, t, !0) : !0;
@@ -34249,7 +35024,7 @@ var gr;
         if (L) {
           var G = (s = L.declarations) === null || s === void 0 ? void 0 : s.find(function(ce) {
             var we, Ue;
-            return !!(e.isExportDeclaration(ce) && ce.moduleSpecifier && ((Ue = (we = ws(ce, ce.moduleSpecifier)) === null || we === void 0 ? void 0 : we.exports) === null || Ue === void 0 ? void 0 : Ue.has("default")));
+            return !!(e.isExportDeclaration(ce) && ce.moduleSpecifier && (!((Ue = (we = ws(ce, ce.moduleSpecifier)) === null || we === void 0 ? void 0 : we.exports) === null || Ue === void 0) && Ue.has("default")));
           });
           G && e.addRelatedInfo(c, e.createDiagnosticForNode(G, e.Diagnostics.export_Asterisk_does_not_re_export_a_default));
         }
@@ -34288,7 +35063,7 @@ var gr;
       var o, s;
       i === void 0 && (i = !1);
       var c = e.getExternalModuleRequireArgument(r) || r.moduleSpecifier, L = ws(r, c), G = !e.isPropertyAccessExpression(t) && t.propertyName || t.name;
-      if (!!e.isIdentifier(G)) {
+      if (e.isIdentifier(G)) {
         var ce = G.escapedText === "default" && !!(Xe.allowSyntheticDefaultImports || e.getESModuleInterop(Xe)), we = Fu(L, c, !1, ce);
         if (we && G.escapedText) {
           if (e.isShorthandAmbientModuleSymbol(L))
@@ -34375,7 +35150,7 @@ var gr;
       return yf(i, t);
     }
     function ad(r, t) {
-      if (!!(e.isBinaryExpression(r.parent) && r.parent.left === r && r.parent.operatorToken.kind === 63))
+      if (e.isBinaryExpression(r.parent) && r.parent.left === r && r.parent.operatorToken.kind === 63)
         return yf(r.parent.right, t);
     }
     function mo(r, t) {
@@ -34451,12 +35226,12 @@ var gr;
       var o, s, c;
       if (t && (r.typeOnlyDeclaration === void 0 || i && r.typeOnlyDeclaration === !1)) {
         var L = (s = (o = t.exports) === null || o === void 0 ? void 0 : o.get("export=")) !== null && s !== void 0 ? s : t, G = L.declarations && e.find(L.declarations, e.isTypeOnlyImportOrExportDeclaration);
-        r.typeOnlyDeclaration = (c = G != null ? G : Ja(L).typeOnlyDeclaration) !== null && c !== void 0 ? c : !1;
+        r.typeOnlyDeclaration = (c = G ?? Ja(L).typeOnlyDeclaration) !== null && c !== void 0 ? c : !1;
       }
       return !!r.typeOnlyDeclaration;
     }
     function Ln(r) {
-      if (!!(r.flags & 2097152)) {
+      if (r.flags & 2097152) {
         var t = Ja(r);
         return t.typeOnlyDeclaration || void 0;
       }
@@ -34498,7 +35273,7 @@ var gr;
     }
     function I_(r) {
       var t = e.getFirstIdentifier(r), i = Uo(t, t.escapedText, 111551, void 0, t, !0);
-      if (!!i) {
+      if (i) {
         for (; e.isQualifiedName(t.parent); ) {
           var o = An(i);
           if (i = Ii(o, t.parent.right.escapedText), !i)
@@ -34588,7 +35363,7 @@ var gr;
     }
     function Hs(r) {
       var t = r.parent.valueDeclaration;
-      if (!!t) {
+      if (t) {
         var i = e.isAssignmentDeclaration(t) ? e.getAssignedExpandoInitializer(t) : e.hasOnlyExpressionInitializer(t) ? e.getDeclaredExpandoInitializer(t) : void 0;
         return i || t;
       }
@@ -34786,7 +35561,7 @@ var gr;
       return t.resolvedExports || (t.resolvedExports = ud(r));
     }
     function Jc(r, t, i, o) {
-      !t || t.forEach(function(s, c) {
+      t && t.forEach(function(s, c) {
         if (c !== "default") {
           var L = r.get(c);
           if (!L)
@@ -34804,7 +35579,7 @@ var gr;
       var t = [];
       return r = sl(r), i(r) || Le;
       function i(o) {
-        if (!!(o && o.exports && e.pushIfUnique(t, o))) {
+        if (o && o.exports && e.pushIfUnique(t, o)) {
           var s = new e.Map(o.exports), c = o.exports.get("__export");
           if (c) {
             var L = e.createSymbolTable(), G = new e.Map();
@@ -34845,9 +35620,9 @@ var gr;
           var ce = G[L];
           if (!e.nodeIsSynthesized(ce)) {
             var we = ws(t, ce, !0);
-            if (!!we) {
+            if (we) {
               var Ue = jd(we, r);
-              !Ue || (c = e.append(c, we));
+              Ue && (c = e.append(c, we));
             }
           }
         }
@@ -34858,9 +35633,9 @@ var gr;
         return s.extendedContainers;
       for (var Je = j.getSourceFiles(), ar = 0, _r = Je; ar < _r.length; ar++) {
         var Br = _r[ar];
-        if (!!e.isExternalModule(Br)) {
+        if (e.isExternalModule(Br)) {
           var Zr = Rn(Br), Ue = jd(Zr, r);
-          !Ue || (c = e.append(c, Zr));
+          Ue && (c = e.append(c, Zr));
         }
       }
       return s.extendedContainers = c || e.emptyArray;
@@ -34920,7 +35695,7 @@ var gr;
         return r;
     }
     function tc(r) {
-      return Ga(r && (r.flags & 1048576) !== 0 ? r.exportSymbol : r);
+      return Ga(r && r.flags & 1048576 ? r.exportSymbol : r);
     }
     function Af(r) {
       return !!(r.flags & 111551 || r.flags & 2097152 && ms(r).flags & 111551 && !Ln(r));
@@ -35037,7 +35812,7 @@ var gr;
       var Je = zd(t, ar);
       return L.set(ce, Je), Je;
       function ar(Tt, At, Vt) {
-        if (!!e.pushIfUnique(Ue, Tt)) {
+        if (e.pushIfUnique(Ue, Tt)) {
           var Nn = Zr(Tt, At, Vt);
           return Ue.pop(), Nn;
         }
@@ -35052,7 +35827,7 @@ var gr;
         if (Br(Tt.get(r.escapedName), void 0, At))
           return [r];
         var Nn = e.forEachEntry(Tt, function(on) {
-          if (on.flags & 2097152 && on.escapedName !== "export=" && on.escapedName !== "default" && !(e.isUMDExportSymbol(on) && t && e.isExternalModule(e.getSourceFileOfNode(t))) && (!o || e.some(on.declarations, e.isExternalModuleImportEqualsDeclaration)) && (Vt ? !e.some(on.declarations, e.isNamespaceReexportDeclaration) : !0) && (At || !e.getDeclarationOfKind(on, 274))) {
+          if (on.flags & 2097152 && on.escapedName !== "export=" && on.escapedName !== "default" && !(e.isUMDExportSymbol(on) && t && e.isExternalModule(e.getSourceFileOfNode(t))) && (!o || e.some(on.declarations, e.isExternalModuleImportEqualsDeclaration)) && (!Vt || !e.some(on.declarations, e.isNamespaceReexportDeclaration)) && (At || !e.getDeclarationOfKind(on, 274))) {
             var ca = ms(on), la = Et(on, ca, At);
             if (la)
               return la;
@@ -35108,7 +35883,7 @@ var gr;
       return o.accessibility === 0;
     }
     function zc(r, t, i, o, s, c) {
-      if (!!e.length(r)) {
+      if (e.length(r)) {
         for (var L, G = !1, ce = 0, we = r; ce < we.length; ce++) {
           var Ue = we[ce], Je = xf(Ue, t, o, !1);
           if (Je) {
@@ -35189,7 +35964,7 @@ var gr;
         var L, G;
         if (!Yc(c)) {
           var ce = _c(c);
-          return ce && !e.hasSyntacticModifier(ce, 1) && Yc(ce.parent) ? s(c, ce) : e.isVariableDeclaration(c) && e.isVariableStatement(c.parent.parent) && !e.hasSyntacticModifier(c.parent.parent, 1) && Yc(c.parent.parent.parent) ? s(c, c.parent.parent) : e.isLateVisibilityPaintedStatement(c) && !e.hasSyntacticModifier(c, 1) && Yc(c.parent) ? s(c, c) : r.flags & 2097152 && e.isBindingElement(c) && e.isInJSFile(c) && ((L = c.parent) === null || L === void 0 ? void 0 : L.parent) && e.isVariableDeclaration(c.parent.parent) && ((G = c.parent.parent.parent) === null || G === void 0 ? void 0 : G.parent) && e.isVariableStatement(c.parent.parent.parent.parent) && !e.hasSyntacticModifier(c.parent.parent.parent.parent, 1) && c.parent.parent.parent.parent.parent && Yc(c.parent.parent.parent.parent.parent) ? s(c, c.parent.parent.parent.parent) : !1;
+          return ce && !e.hasSyntacticModifier(ce, 1) && Yc(ce.parent) ? s(c, ce) : e.isVariableDeclaration(c) && e.isVariableStatement(c.parent.parent) && !e.hasSyntacticModifier(c.parent.parent, 1) && Yc(c.parent.parent.parent) ? s(c, c.parent.parent) : e.isLateVisibilityPaintedStatement(c) && !e.hasSyntacticModifier(c, 1) && Yc(c.parent) ? s(c, c) : r.flags & 2097152 && e.isBindingElement(c) && e.isInJSFile(c) && (!((L = c.parent) === null || L === void 0) && L.parent) && e.isVariableDeclaration(c.parent.parent) && (!((G = c.parent.parent.parent) === null || G === void 0) && G.parent) && e.isVariableStatement(c.parent.parent.parent.parent) && !e.hasSyntacticModifier(c.parent.parent.parent.parent, 1) && c.parent.parent.parent.parent.parent && Yc(c.parent.parent.parent.parent.parent) ? s(c, c.parent.parent.parent.parent) : !1;
         }
         return !0;
       }
@@ -35839,7 +36614,7 @@ var gr;
           var Ds = e.modifiersToFlags(ao);
           ao = e.factory.createModifiersFromModifierFlags(Ds | 128);
         }
-        var ss = Sr === 173 ? e.factory.createCallSignature(Pt, mn, _a) : Sr === 174 ? e.factory.createConstructSignature(Pt, mn, _a) : Sr === 167 ? e.factory.createMethodSignature(ao, (Vn = nn == null ? void 0 : nn.name) !== null && Vn !== void 0 ? Vn : e.factory.createIdentifier(""), nn == null ? void 0 : nn.questionToken, Pt, mn, _a) : Sr === 168 ? e.factory.createMethodDeclaration(void 0, ao, void 0, (En = nn == null ? void 0 : nn.name) !== null && En !== void 0 ? En : e.factory.createIdentifier(""), void 0, Pt, mn, _a, void 0) : Sr === 170 ? e.factory.createConstructorDeclaration(void 0, ao, mn, void 0) : Sr === 171 ? e.factory.createGetAccessorDeclaration(void 0, ao, (Fn = nn == null ? void 0 : nn.name) !== null && Fn !== void 0 ? Fn : e.factory.createIdentifier(""), mn, _a, void 0) : Sr === 172 ? e.factory.createSetAccessorDeclaration(void 0, ao, (Xr = nn == null ? void 0 : nn.name) !== null && Xr !== void 0 ? Xr : e.factory.createIdentifier(""), mn, void 0) : Sr === 175 ? e.factory.createIndexSignature(void 0, ao, mn, _a) : Sr === 315 ? e.factory.createJSDocFunctionType(mn, _a) : Sr === 178 ? e.factory.createFunctionTypeNode(Pt, mn, _a != null ? _a : e.factory.createTypeReferenceNode(e.factory.createIdentifier(""))) : Sr === 179 ? e.factory.createConstructorTypeNode(ao, Pt, mn, _a != null ? _a : e.factory.createTypeReferenceNode(e.factory.createIdentifier(""))) : Sr === 255 ? e.factory.createFunctionDeclaration(void 0, ao, void 0, nn != null && nn.name ? e.cast(nn.name, e.isIdentifier) : e.factory.createIdentifier(""), Pt, mn, _a, void 0) : Sr === 212 ? e.factory.createFunctionExpression(ao, void 0, nn != null && nn.name ? e.cast(nn.name, e.isIdentifier) : e.factory.createIdentifier(""), Pt, mn, _a, e.factory.createBlock([])) : Sr === 213 ? e.factory.createArrowFunction(ao, Pt, mn, _a, void 0, e.factory.createBlock([])) : e.Debug.assertNever(Sr);
+        var ss = Sr === 173 ? e.factory.createCallSignature(Pt, mn, _a) : Sr === 174 ? e.factory.createConstructSignature(Pt, mn, _a) : Sr === 167 ? e.factory.createMethodSignature(ao, (Vn = nn == null ? void 0 : nn.name) !== null && Vn !== void 0 ? Vn : e.factory.createIdentifier(""), nn == null ? void 0 : nn.questionToken, Pt, mn, _a) : Sr === 168 ? e.factory.createMethodDeclaration(void 0, ao, void 0, (En = nn == null ? void 0 : nn.name) !== null && En !== void 0 ? En : e.factory.createIdentifier(""), void 0, Pt, mn, _a, void 0) : Sr === 170 ? e.factory.createConstructorDeclaration(void 0, ao, mn, void 0) : Sr === 171 ? e.factory.createGetAccessorDeclaration(void 0, ao, (Fn = nn == null ? void 0 : nn.name) !== null && Fn !== void 0 ? Fn : e.factory.createIdentifier(""), mn, _a, void 0) : Sr === 172 ? e.factory.createSetAccessorDeclaration(void 0, ao, (Xr = nn == null ? void 0 : nn.name) !== null && Xr !== void 0 ? Xr : e.factory.createIdentifier(""), mn, void 0) : Sr === 175 ? e.factory.createIndexSignature(void 0, ao, mn, _a) : Sr === 315 ? e.factory.createJSDocFunctionType(mn, _a) : Sr === 178 ? e.factory.createFunctionTypeNode(Pt, mn, _a ?? e.factory.createTypeReferenceNode(e.factory.createIdentifier(""))) : Sr === 179 ? e.factory.createConstructorTypeNode(ao, Pt, mn, _a ?? e.factory.createTypeReferenceNode(e.factory.createIdentifier(""))) : Sr === 255 ? e.factory.createFunctionDeclaration(void 0, ao, void 0, nn != null && nn.name ? e.cast(nn.name, e.isIdentifier) : e.factory.createIdentifier(""), Pt, mn, _a, void 0) : Sr === 212 ? e.factory.createFunctionExpression(ao, void 0, nn != null && nn.name ? e.cast(nn.name, e.isIdentifier) : e.factory.createIdentifier(""), Pt, mn, _a, e.factory.createBlock([])) : Sr === 213 ? e.factory.createArrowFunction(ao, Pt, mn, _a, void 0, e.factory.createBlock([])) : e.Debug.assertNever(Sr);
         return Bt && (ss.typeArguments = e.factory.createNodeArray(Bt)), ss;
       }
       function Je(jr, Sr, hn) {
@@ -35870,7 +36645,7 @@ var gr;
         }
       }
       function Br(jr, Sr, hn) {
-        if (!!hn.tracker.trackSymbol) {
+        if (hn.tracker.trackSymbol) {
           var nn = e.getFirstIdentifier(jr), Vn = Uo(nn, nn.escapedText, 1160127, void 0, void 0, !0);
           Vn && hn.tracker.trackSymbol(Vn, Sr, 111551);
         }
@@ -35911,7 +36686,7 @@ var gr;
           if (Bt)
             return Bt;
           if (Pt || !(Xr.flags & 6144))
-            return !Pt && !nn && !!e.forEach(Xr.declarations, bc) ? void 0 : [Xr];
+            return !Pt && !nn && e.forEach(Xr.declarations, bc) ? void 0 : [Xr];
           function Vo(ao, Ds) {
             var ss = Yt[ao], Xs = Yt[Ds];
             if (ss && Xs) {
@@ -36048,7 +36823,7 @@ var gr;
         if (!(En.kind & 79))
           return e.factory.createIdentifier("(Missing type parameter)");
         if (Sr.flags & 4) {
-          for (var Fn = En.escapedText, Xr = ((hn = Sr.typeParameterNamesByTextNextNameCount) === null || hn === void 0 ? void 0 : hn.get(Fn)) || 0, it = Fn; ((nn = Sr.typeParameterNamesByText) === null || nn === void 0 ? void 0 : nn.has(it)) || la(it, Sr, jr); )
+          for (var Fn = En.escapedText, Xr = ((hn = Sr.typeParameterNamesByTextNextNameCount) === null || hn === void 0 ? void 0 : hn.get(Fn)) || 0, it = Fn; !((nn = Sr.typeParameterNamesByText) === null || nn === void 0) && nn.has(it) || la(it, Sr, jr); )
             Xr++, it = "".concat(Fn, "_").concat(Xr);
           it !== Fn && (En = e.factory.createIdentifier(it, En.typeArguments)), (Sr.typeParameterNamesByTextNextNameCount || (Sr.typeParameterNamesByTextNextNameCount = new e.Map())).set(Fn, Xr), (Sr.typeParameterNames || (Sr.typeParameterNames = new e.Map())).set(Bc(jr), En), (Sr.typeParameterNamesByText || (Sr.typeParameterNamesByText = new e.Set())).add(Fn);
         }
@@ -36155,7 +36930,7 @@ var gr;
       function Ti(jr, Sr, hn, nn, Vn) {
         if (!Ua(Sr) && jr.enclosingDeclaration) {
           var En = hn.declaration && e.getEffectiveReturnTypeNode(hn.declaration);
-          if (!!e.findAncestor(En, function(Pt) {
+          if (e.findAncestor(En, function(Pt) {
             return Pt === jr.enclosingDeclaration;
           }) && En) {
             var Fn = Da(En), Xr = Fn.flags & 262144 && Fn.isThisType ? oi(Fn, hn.mapper) : Fn;
@@ -36397,7 +37172,7 @@ var gr;
           if (!Xr.has(y(qn))) {
             Xr.add(y(qn));
             var ra = !ln;
-            if (ra || !!e.length(ot.declarations) && e.some(ot.declarations, function(pi) {
+            if (ra || e.length(ot.declarations) && e.some(ot.declarations, function(pi) {
               return !!e.findAncestor(pi, function(Va) {
                 return Va === En;
               });
@@ -36432,7 +37207,7 @@ var gr;
                 });
                 As && e.isVariableDeclarationList(As.parent) && As.parent.declarations.length === 1 && (As = As.parent.parent);
                 var Ac = (qn = ot.declarations) === null || qn === void 0 ? void 0 : qn.find(e.isPropertyAccessExpression);
-                if (Ac && e.isBinaryExpression(Ac.parent) && e.isIdentifier(Ac.parent.right) && ((ra = Oo.symbol) === null || ra === void 0 ? void 0 : ra.valueDeclaration) && e.isSourceFile(Oo.symbol.valueDeclaration)) {
+                if (Ac && e.isBinaryExpression(Ac.parent) && e.isIdentifier(Ac.parent.right) && (!((ra = Oo.symbol) === null || ra === void 0) && ra.valueDeclaration) && e.isSourceFile(Oo.symbol.valueDeclaration)) {
                   var K_ = Ao === Ac.parent.right.escapedText ? void 0 : Ac.parent.right;
                   Ls(e.factory.createExportDeclaration(void 0, void 0, !1, e.factory.createNamedExports([e.factory.createExportSpecifier(!1, K_, Ao)])), 0), Sr.tracker.trackSymbol(Oo.symbol, Sr.enclosingDeclaration, 111551);
                 } else {
@@ -36446,7 +37221,7 @@ var gr;
           if (ot.flags & 384 && qo(ot, Xa, Ma), ot.flags & 32 && (ot.flags & 4 && ot.valueDeclaration && e.isBinaryExpression(ot.valueDeclaration.parent) && e.isClassExpression(ot.valueDeclaration.parent.right) ? Gn(ot, Zo(ot, Xa), Ma) : $t(ot, Zo(ot, Xa), Ma)), (ot.flags & 1536 && (!qi || Pa(ot)) || yo) && Oi(ot, Xa, Ma), ot.flags & 64 && !(ot.flags & 32) && gv(ot, Xa, Ma), ot.flags & 2097152 && Gn(ot, Zo(ot, Xa), Ma), ot.flags & 4 && ot.escapedName === "export=" && zt(ot), ot.flags & 8388608 && ot.declarations)
             for (var Ad = 0, jp = ot.declarations; Ad < jp.length; Ad++) {
               var Hp = jp[Ad], Cd = ws(Hp, Hp.moduleSpecifier);
-              !Cd || Ls(e.factory.createExportDeclaration(void 0, void 0, !1, void 0, e.factory.createStringLiteral(Nn(Cd, Sr))), 0);
+              Cd && Ls(e.factory.createExportDeclaration(void 0, void 0, !1, void 0, e.factory.createStringLiteral(Nn(Cd, Sr))), 0);
             }
           pi ? Ls(e.factory.createExportAssignment(void 0, void 0, !1, e.factory.createIdentifier(Zo(ot, Xa))), 0) : Va && Ls(e.factory.createExportDeclaration(void 0, void 0, !1, e.factory.createNamedExports([e.factory.createExportSpecifier(!1, Zo(ot, Xa), Xa)])), 0);
         }
@@ -36540,7 +37315,7 @@ var gr;
             var pi = ja[Xa], Va = Ue(pi, 255, Sr, { name: e.factory.createIdentifier(aa), privateSymbolVisitor: bs, bundledImports: hn });
             Ls(e.setTextRange(Va, Bs(pi)), qn);
           }
-          if (!(ln.flags & 1536 && !!ln.exports && !!ln.exports.size)) {
+          if (!(ln.flags & 1536 && ln.exports && ln.exports.size)) {
             var Ma = e.filter(Yi(ot), st);
             Kr(Ma, aa, qn, !0);
           }
@@ -36648,7 +37423,7 @@ var gr;
           if (!Va)
             return e.Debug.fail();
           var Ma = Ga(mo(Va, !0));
-          if (!!Ma) {
+          if (Ma) {
             var qi = e.isShorthandAmbientModuleSymbol(Ma) && ea(ot.declarations) || e.unescapeLeadingUnderscores(Ma.escapedName);
             qi === "export=" && (e.getESModuleInterop(Xe) || Xe.allowSyntheticDefaultImports) && (qi = "default");
             var yo = Zo(Ma, qi);
@@ -37303,7 +38078,7 @@ var gr;
         if (Br)
           return Wl(Br, !1, c);
       }
-      if (e.hasOnlyExpressionInitializer(r) && !!r.initializer) {
+      if (e.hasOnlyExpressionInitializer(r) && r.initializer) {
         if (e.isInJSFile(r) && !e.isParameter(r)) {
           var Zr = $n(r, Rn(r), e.getDeclaredExpandoInitializer(r));
           if (Zr)
@@ -37339,7 +38114,7 @@ var gr;
       return t && e.isPropertyDeclaration(t) && !e.getEffectiveTypeAnnotationNode(t) && !t.initializer && (Ke || e.isInJSFile(t));
     }
     function Tr(r) {
-      if (!!r.declarations)
+      if (r.declarations)
         for (var t = 0, i = r.declarations; t < i.length; t++) {
           var o = i[t], s = e.getThisContainer(o, !1);
           if (s && (s.kind === 170 || iu(s)))
@@ -37386,7 +38161,7 @@ var gr;
         if (r.declarations) {
           for (var we = void 0, Ue = 0, Je = r.declarations; Ue < Je.length; Ue++) {
             var ar = Je[Ue], _r = e.isBinaryExpression(ar) || e.isCallExpression(ar) ? ar : e.isAccessExpression(ar) ? e.isBinaryExpression(ar.parent) ? ar.parent : ar : void 0;
-            if (!!_r) {
+            if (_r) {
               var Br = e.isAccessExpression(_r) ? e.getAssignmentDeclarationPropertyAccessKind(_r) : e.getAssignmentDeclarationKind(_r);
               (Br === 4 || e.isBinaryExpression(_r) && qy(_r, Br)) && (Qo(_r) ? L = !0 : G = !0), e.isCallExpression(_r) || (we = wa(we, _r, r, ar)), we || (ce || (ce = [])).push(e.isBinaryExpression(_r) || e.isCallExpression(_r) ? Ea(r, t, _r, Br) : en);
             }
@@ -37750,7 +38525,7 @@ var gr;
         var i = ms(r), o = r.declarations && mo(ec(r), !0), s = e.firstDefined(o == null ? void 0 : o.declarations, function(c) {
           return e.isExportAssignment(c) ? Ms(c) : void 0;
         });
-        t.type = (o == null ? void 0 : o.declarations) && xb(o.declarations) && r.declarations.length ? Gr(o) : xb(r.declarations) ? xr : s || (i.flags & 111551 ? An(i) : dr);
+        t.type = o != null && o.declarations && xb(o.declarations) && r.declarations.length ? Gr(o) : xb(r.declarations) ? xr : s || (i.flags & 111551 ? An(i) : dr);
       }
       return t.type;
     }
@@ -37871,7 +38646,7 @@ var gr;
       return e.Debug.assert(!!t, "Class was missing valueDeclaration -OR- non-class had no interface declarations"), Hu(t);
     }
     function pu(r) {
-      if (!!r.declarations) {
+      if (r.declarations) {
         for (var t, i = 0, o = r.declarations; i < o.length; i++) {
           var s = o[i];
           if (s.kind === 257 || s.kind === 256 || s.kind === 225 || iu(s) || e.isTypeAlias(s)) {
@@ -37951,7 +38726,7 @@ var gr;
       if (r.symbol.declarations)
         for (var i = 0, o = r.symbol.declarations; i < o.length; i++) {
           var s = o[i], c = e.getEffectiveImplementsTypeNodes(s);
-          if (!!c)
+          if (c)
             for (var L = 0, G = c; L < G.length; L++) {
               var ce = G[L], we = Da(ce);
               Ua(we) || (t === e.emptyArray ? t = [we] : t.push(we));
@@ -38490,7 +39265,7 @@ var gr;
         for (var ar = r[i !== void 0 ? i : 0], _r = ar.slice(), Br = function(Vt) {
           if (Vt !== ar) {
             var Nn = Vt[0];
-            if (e.Debug.assert(!!Nn, "getUnionSignatures bails early on empty signature lists and should not have empty lists on second pass"), _r = !!Nn.typeParameters && e.some(_r, function(on) {
+            if (e.Debug.assert(!!Nn, "getUnionSignatures bails early on empty signature lists and should not have empty lists on second pass"), _r = Nn.typeParameters && e.some(_r, function(on) {
               return !!on.typeParameters && !Zh(Nn.typeParameters, on.typeParameters);
             }) ? void 0 : e.map(_r, function(on) {
               return $h(on, Nn);
@@ -39089,7 +39864,7 @@ var gr;
       }
     }
     function hs(r, t, i) {
-      var o, s, c = ((o = r.propertyCacheWithoutObjectFunctionPropertyAugment) === null || o === void 0 ? void 0 : o.get(t)) || !i ? (s = r.propertyCache) === null || s === void 0 ? void 0 : s.get(t) : void 0;
+      var o, s, c = !((o = r.propertyCacheWithoutObjectFunctionPropertyAugment) === null || o === void 0) && o.get(t) || !i ? (s = r.propertyCache) === null || s === void 0 ? void 0 : s.get(t) : void 0;
       if (!c && (c = Ks(r, t, i), c)) {
         var L = i ? r.propertyCacheWithoutObjectFunctionPropertyAugment || (r.propertyCacheWithoutObjectFunctionPropertyAugment = e.createSymbolTable()) : r.propertyCache || (r.propertyCache = e.createSymbolTable());
         L.set(t, c);
@@ -39282,7 +40057,7 @@ var gr;
         we && (o |= 32);
         for (var Ue = ce ? 1 : 0; Ue < r.parameters.length; Ue++) {
           var Je = r.parameters[Ue], ar = Je.symbol, _r = e.isJSDocParameterTag(Je) ? Je.typeExpression && Je.typeExpression.type : Je.type;
-          if (ar && !!(ar.flags & 4) && !e.isBindingPattern(Je.name)) {
+          if (ar && ar.flags & 4 && !e.isBindingPattern(Je.name)) {
             var Br = Uo(Je, ar.escapedName, 111551, void 0, void 0, !1);
             ar = Br;
           }
@@ -39308,7 +40083,7 @@ var gr;
       return c.type = s ? zs(Da(s.type)) : Sn, s && t.pop(), t.push(c), !0;
     }
     function _E(r) {
-      if (!!(e.isInJSFile(r) && e.isFunctionLikeDeclaration(r))) {
+      if (e.isInJSFile(r) && e.isFunctionLikeDeclaration(r)) {
         var t = e.getJSDocTypeTag(r);
         return (t == null ? void 0 : t.typeExpression) && W_(Da(t.typeExpression));
       }
@@ -39344,7 +40119,7 @@ var gr;
         return e.emptyArray;
       for (var t = [], i = 0; i < r.declarations.length; i++) {
         var o = r.declarations[i];
-        if (!!e.isFunctionLike(o)) {
+        if (e.isFunctionLike(o)) {
           if (i > 0 && o.body) {
             var s = r.declarations[i - 1];
             if (o.parent === s.parent && o.kind === s.kind && o.pos === s.end)
@@ -40354,7 +41129,7 @@ var gr;
           i = G;
         o.push(G.type);
       }
-      if (!!i) {
+      if (i) {
         var ce = FT(o, t);
         return qv(i.kind, i.parameterName, i.parameterIndex, ce);
       }
@@ -40413,7 +41188,7 @@ var gr;
       }); t > 0; ) {
         t--;
         var o = r[t];
-        if (!!(o.flags & 134217728))
+        if (o.flags & 134217728)
           for (var s = 0, c = i; s < c.length; s++) {
             var L = c[s];
             if (bd(L, o)) {
@@ -41937,7 +42712,7 @@ var gr;
           return Je;
         var ar = c || {};
         if (nu(we, Ue, o, ce, void 0, s, ar), ar.errors)
-          return i.symbol && e.length(i.symbol.declarations) && e.addRelatedInfo(ar.errors[ar.errors.length - 1], e.createDiagnosticForNode(i.symbol.declarations[0], e.Diagnostics.The_expected_type_comes_from_the_return_type_of_this_signature)), (e.getFunctionFlags(r) & 2) === 0 && !ia(we, "then") && nu(Sh(we), Ue, o, void 0) && e.addRelatedInfo(ar.errors[ar.errors.length - 1], e.createDiagnosticForNode(r, e.Diagnostics.Did_you_mean_to_mark_this_function_as_async)), !0;
+          return i.symbol && e.length(i.symbol.declarations) && e.addRelatedInfo(ar.errors[ar.errors.length - 1], e.createDiagnosticForNode(i.symbol.declarations[0], e.Diagnostics.The_expected_type_comes_from_the_return_type_of_this_signature)), !(e.getFunctionFlags(r) & 2) && !ia(we, "then") && nu(Sh(we), Ue, o, void 0) && e.addRelatedInfo(ar.errors[ar.errors.length - 1], e.createDiagnosticForNode(r, e.Diagnostics.Did_you_mean_to_mark_this_function_as_async)), !0;
       }
       return !1;
     }
@@ -41964,7 +42739,7 @@ var gr;
         var ce = G.value, we = ce.errorNode, Ue = ce.innerExpression, Je = ce.nameType, ar = ce.errorMessage, _r = Dk(t, i, Je);
         if (!(!_r || _r.flags & 8388608)) {
           var Br = lp(t, Je);
-          if (!!Br) {
+          if (Br) {
             var Zr = kE(Je, void 0);
             if (!nu(Br, _r, o, void 0)) {
               var Et = Ue && th(Ue, Br, _r, o, void 0, s, c);
@@ -42510,7 +43285,7 @@ var gr;
         }
       }
       function Fi(Kr, st) {
-        if (!!e.tracing && Kr.flags & 3145728 && st.flags & 3145728) {
+        if (e.tracing && Kr.flags & 3145728 && st.flags & 3145728) {
           var kt = Kr, $t = st;
           if (kt.objectFlags & $t.objectFlags & 65536)
             return;
@@ -43109,7 +43884,7 @@ var gr;
                 return kt && _n(e.Diagnostics.Variadic_element_at_position_0_in_source_does_not_match_element_at_position_1_in_target, Zo, Ko), 0;
               if (ln & 1 && !(ot & 1))
                 return kt && _n(e.Diagnostics.Source_provides_no_match_for_required_element_at_position_0_in_target, Ko), 0;
-              if (!(eo && ((ot & 12 || ln & 12) && (eo = !1), eo && ($t == null ? void 0 : $t.has("" + Ko))))) {
+              if (!(eo && ((ot & 12 || ln & 12) && (eo = !1), eo && ($t != null && $t.has("" + Ko))))) {
                 var aa = ki(Kr) ? Ko < ls || Ko >= zt - Xo ? lm(Ui[Zo], !!(ot & ln & 2)) : Cy(Kr, ls, Xo) || en : Ui[0], qn = ps[Ko], ra = ot & 8 && ln & 4 ? zs(qn) : lm(qn, !!(ln & 2)), Xa = jn(aa, ra, 3, kt, void 0, ea);
                 if (!Xa)
                   return kt && (zt > 1 || Tn > 1) && (Ko < ls || Ko >= zt - Xo || Tn - ls - Xo === 1 ? Wt(e.Diagnostics.Type_at_position_0_in_source_is_not_compatible_with_type_at_position_1_in_target, Zo, Ko) : Wt(e.Diagnostics.Type_at_positions_0_through_1_in_source_is_not_compatible_with_type_at_position_2_in_target, ls, Tn - Xo - 1, Ko)), 0;
@@ -43497,7 +44272,7 @@ var gr;
     }
     function oh(r) {
       if (r.flags & 524288 && !D0(r)) {
-        if (e.getObjectFlags(r) && 4 && r.node)
+        if (e.getObjectFlags(r) && r.node)
           return r.node;
         if (r.symbol && !(e.getObjectFlags(r) & 16 && r.symbol.flags & 32))
           return r.symbol;
@@ -43793,7 +44568,7 @@ var gr;
       return (r.flags & 524) !== 0 && (t.flags & 28) !== 0;
     }
     function ky(r) {
-      return r.flags & 2097152 ? e.every(r.types, ky) : !!(r.symbol && (r.symbol.flags & 7040) !== 0 && !z1(r)) || !!(e.getObjectFlags(r) & 1024 && ky(r.source));
+      return r.flags & 2097152 ? e.every(r.types, ky) : !!(r.symbol && r.symbol.flags & 7040 && !z1(r)) || !!(e.getObjectFlags(r) & 1024 && ky(r.source));
     }
     function U_(r, t) {
       var i = fo(r.flags, r.escapedName, e.getCheckFlags(r) & 8);
@@ -44079,7 +44854,7 @@ var gr;
     function _O(r) {
       var t = e.createSymbolTable();
       g_(r, function(o) {
-        if (!!(o.flags & 128)) {
+        if (o.flags & 128) {
           var s = e.escapeLeadingUnderscores(o.value), c = fo(4, s);
           c.type = Ze, o.symbol && (c.declarations = o.symbol.declarations, c.valueDeclaration = o.symbol.valueDeclaration), t.set(s, c);
         }
@@ -44103,7 +44878,7 @@ var gr;
       }) || ki(r) && e.some(vo(r), E0);
     }
     function mO(r, t, i) {
-      if (!!(oc(r, xt) || Yi(r).length !== 0 && E0(r))) {
+      if (oc(r, xt) || Yi(r).length !== 0 && E0(r)) {
         if (el(r))
           return zs(My(vo(r)[0], t, i), Ym(r));
         if (ki(r)) {
@@ -44240,7 +45015,7 @@ var gr;
       var c = !1, L, G = 2048, ce = !0, we, Ue, Je, ar = 0;
       _r(t, i);
       function _r(Wt, Ft) {
-        if (!!qg(Ft)) {
+        if (qg(Ft)) {
           if (Wt === fr) {
             var _n = L;
             L = Wt, _r(Ft, Ft), L = _n;
@@ -46154,7 +46929,7 @@ var gr;
       });
     }
     function fR(r, t) {
-      if (!(De >= 2 || (t.flags & 34) === 0 || !t.valueDeclaration || e.isSourceFile(t.valueDeclaration) || t.valueDeclaration.parent.kind === 291)) {
+      if (!(De >= 2 || !(t.flags & 34) || !t.valueDeclaration || e.isSourceFile(t.valueDeclaration) || t.valueDeclaration.parent.kind === 291)) {
         var i = e.getEnclosingBlockScopeContainer(t.valueDeclaration), o = cR(r, i), s = R0(i);
         if (s) {
           if (o) {
@@ -46407,7 +47182,7 @@ var gr;
     }
     function sL(r) {
       var t = r.parent;
-      if (!!XS(t)) {
+      if (XS(t)) {
         var i = e.getImmediatelyInvokedFunctionExpression(t);
         if (i && i.arguments) {
           var o = u1(i), s = t.parameters.indexOf(r);
@@ -46455,7 +47230,7 @@ var gr;
     }
     function ER(r) {
       var t = e.isExpression(r.parent) && Lc(r.parent);
-      if (!!t)
+      if (t)
         return y_(t, Rn(r).escapedName);
     }
     function TR(r, t) {
@@ -46650,7 +47425,7 @@ var gr;
         }
       }
       var o = e.cast(r.left, e.isAccessExpression);
-      if (!!e.isObjectLiteralMethod(e.getThisContainer(o.expression, !1))) {
+      if (e.isObjectLiteralMethod(e.getThisContainer(o.expression, !1))) {
         var s = zy(o.expression), c = e.getElementOrPropertyAccessName(o);
         return c !== void 0 && y_(s, c) || void 0;
       }
@@ -46710,7 +47485,7 @@ var gr;
     }
     function RR(r, t) {
       var i = Bp(r.openingElement.tagName), o = $y(pm(r));
-      if (!!(i && !Na(i) && o && o !== "")) {
+      if (i && !Na(i) && o && o !== "") {
         var s = e.getSemanticJsxChildren(r.children), c = s.indexOf(t), L = y_(i, o);
         return L && (s.length === 1 ? L : ds(L, function(G) {
           return pp(G) ? Hl(G, Bf(c)) : G;
@@ -46939,7 +47714,7 @@ var gr;
     function VR(r, t) {
       var i = pm(t), o = sw(i), s = o === void 0 ? g1(r, tr) : o === "" ? _o(r) : BR(r, o);
       if (!s)
-        return !!o && !!e.length(t.attributes.properties) && Pr(t, e.Diagnostics.JSX_element_class_does_not_support_attributes_because_it_does_not_have_a_0_property, e.unescapeLeadingUnderscores(o)), tr;
+        return o && e.length(t.attributes.properties) && Pr(t, e.Diagnostics.JSX_element_class_does_not_support_attributes_because_it_does_not_have_a_0_property, e.unescapeLeadingUnderscores(o)), tr;
       if (s = dL(t, i, s), Na(s))
         return s;
       var c = s, L = Up(F.IntrinsicClassAttributes, t);
@@ -47005,7 +47780,7 @@ var gr;
       if (t)
         return t;
       var i = Bp(r, 1);
-      if (!!i) {
+      if (i) {
         if (!(i.flags & 1048576))
           return j0(i, r);
         for (var o, s = i.types, c = 0, L = s; c < L.length; c++) {
@@ -47306,7 +48081,7 @@ var gr;
         if (i && i.jsxImplicitImportContainer)
           return i.jsxImplicitImportContainer;
         var o = e.getJSXRuntimeImport(e.getJSXImplicitImportBase(Xe, t), Xe);
-        if (!!o) {
+        if (o) {
           var s = e.getEmitModuleResolutionKind(Xe) === e.ModuleResolutionKind.Classic, c = s ? e.Diagnostics.Cannot_find_module_0_Did_you_mean_to_set_the_moduleResolution_option_to_node_or_to_add_aliases_to_the_paths_option : e.Diagnostics.Cannot_find_module_0_or_its_corresponding_type_declarations, L = Yu(r, o, c, r), G = L && L !== We ? Ga(wo(L)) : void 0;
           return i && (i.jsxImplicitImportContainer = G || !1), G;
         }
@@ -47587,7 +48362,7 @@ var gr;
       return t && yh(t, void 0, !1), Ze;
     }
     function tb(r) {
-      if (!!e.isExpressionNode(r)) {
+      if (e.isExpressionNode(r)) {
         var t = Zn(r);
         return t.resolvedSymbol === void 0 && (t.resolvedSymbol = rb(r.escapedText, r)), t.resolvedSymbol;
       }
@@ -47626,7 +48401,7 @@ var gr;
       if (e.isPrivateIdentifier(o)) {
         De < 99 && (L !== 0 && nl(r, 1048576), L !== 1 && nl(r, 524288));
         var Ue = rb(o.escapedText, o);
-        if (L && Ue && Ue.valueDeclaration && e.isMethodDeclaration(Ue.valueDeclaration) && sn(o, e.Diagnostics.Cannot_assign_to_private_method_0_Private_methods_are_not_writable, e.idText(o)), (Ue == null ? void 0 : Ue.valueDeclaration) && e.getEmitScriptTarget(Xe) === 99 && !Ye) {
+        if (L && Ue && Ue.valueDeclaration && e.isMethodDeclaration(Ue.valueDeclaration) && sn(o, e.Diagnostics.Cannot_assign_to_private_method_0_Private_methods_are_not_writable, e.idText(o)), Ue != null && Ue.valueDeclaration && e.getEmitScriptTarget(Xe) === 99 && !Ye) {
           var Je = e.getContainingClass(Ue.valueDeclaration), ar = e.findAncestor(r, function(Nn) {
             return Nn === Je ? "quit" : !!(e.isPropertyDeclaration(Nn.parent) && e.hasStaticModifier(Nn.parent) && Nn.parent.initializer === Nn && Nn.parent.parent === Je);
           });
@@ -47674,7 +48449,7 @@ var gr;
       var o = e.getSourceFileOfNode(r);
       if (o && Xe.checkJs === void 0 && o.checkJsDirective === void 0 && (o.scriptKind === 1 || o.scriptKind === 2)) {
         var s = e.forEach(t == null ? void 0 : t.declarations, e.getSourceFileOfNode);
-        return !(o !== s && !!s && Oc(s)) && !(i && t && t.flags & 32) && !(!!r && i && e.isPropertyAccessExpression(r) && r.expression.kind === 108);
+        return !(o !== s && s && Oc(s)) && !(i && t && t.flags & 32) && !(r && i && e.isPropertyAccessExpression(r) && r.expression.kind === 108);
       }
       return !1;
     }
@@ -47804,7 +48579,7 @@ var gr;
     }
     function Dw(r, t) {
       var i = wi(t).symbol;
-      if (!!i)
+      if (i)
         for (var o = e.getScriptTargetFeatures(), s = e.getOwnKeys(o), c = 0, L = s; c < L.length; c++) {
           var G = L[c], ce = o[G], we = ce[e.symbolName(i)];
           if (we !== void 0 && e.contains(we, r))
@@ -47830,7 +48605,7 @@ var gr;
       }) : i === "class" ? e.find(o, function(c) {
         return e.symbolName(c) === "className";
       }) : void 0;
-      return s != null ? s : hh(i, o, 111551);
+      return s ?? hh(i, o, 111551);
     }
     function a1(r, t) {
       var i = n1(r, t);
@@ -47876,7 +48651,7 @@ var gr;
         return !1;
       }
       var s = e.isAssignmentTarget(t) ? "set" : "get";
-      if (!!o(s)) {
+      if (o(s)) {
         var c = e.tryGetPropertyAccessOrIdentifierToString(t.expression);
         return c === void 0 ? c = s : c += "." + s, c;
       }
@@ -47906,7 +48681,7 @@ var gr;
     }
     function yh(r, t, i) {
       var o = r && r.flags & 106500 && r.valueDeclaration;
-      if (!!o) {
+      if (o) {
         var s = e.hasEffectiveModifier(o, 8), c = r.valueDeclaration && e.isNamedDeclaration(r.valueDeclaration) && e.isPrivateIdentifier(r.valueDeclaration.name);
         if (!(!s && !c) && !(t && e.isWriteOnlyAccess(t) && !(r.flags & 65536))) {
           if (i) {
@@ -48204,7 +48979,7 @@ var gr;
           return !0;
         for (var Tt = !1, At = 0, Vt = 0, Nn = Et; Vt < Nn.length; Vt++) {
           var on = Nn[Vt], ca = Uc(on, 0), la = Ni(ca, 0);
-          if (!!e.length(la))
+          if (e.length(la))
             for (var di = 0, Aa = la; di < Aa.length; di++) {
               var Li = Aa[di];
               if (Tt = !0, Au(Li))
@@ -48749,7 +49524,7 @@ var gr;
       ua.add(G), aA(t, i, o ? e.addRelatedInfo(G, o) : G);
     }
     function aA(r, t, i) {
-      if (!!r.symbol) {
+      if (r.symbol) {
         var o = Ja(r.symbol).originatingImport;
         if (o && !e.isImportCall(o)) {
           var s = Ni(An(Ja(r.symbol).target), t);
@@ -48883,7 +49658,7 @@ var gr;
       return s ? Rn(s) : void 0;
     }
     function ub(r, t) {
-      if (!!r.parent) {
+      if (r.parent) {
         var i, o;
         if (e.isVariableDeclaration(r.parent) && r.parent.initializer === r) {
           if (!e.isInJSFile(r) && !(e.isVarConst(r.parent) && e.isFunctionLikeDeclaration(r)))
@@ -49165,7 +49940,7 @@ var gr;
         return _A(o) ? [o.escapedName, !1] : void 0;
       }
       var s = r.parameters[i] || We;
-      if (!!_A(s)) {
+      if (_A(s)) {
         var c = An(s);
         if (ki(c)) {
           var L = c.target.labeledElementDeclarations, G = t - i, ce = L == null ? void 0 : L[G], we = !!(ce != null && ce.dotDotDotToken);
@@ -49278,7 +50053,7 @@ var gr;
     }
     function nv(r) {
       var t = tv(r);
-      return t && !el(t) && !Na(t) && (Eo(t).flags & 131072) === 0 ? t : void 0;
+      return t && !el(t) && !Na(t) && !(Eo(t).flags & 131072) ? t : void 0;
     }
     function m1(r) {
       return g1(r, en);
@@ -49482,7 +50257,7 @@ var gr;
       }
     }
     function h1(r, t) {
-      if (!!Se) {
+      if (Se) {
         var i = e.getFunctionFlags(r), o = t && Db(t, i);
         if (!(o && Jo(o, 16385)) && !(r.kind === 167 || e.nodeIsMissing(r.body) || r.body.kind !== 234 || !TA(r))) {
           var s = r.flags & 512, c = e.getEffectiveReturnTypeNode(r) || r;
@@ -49667,7 +50442,7 @@ var gr;
             var i = e.getSourceFileOfNode(r);
             if (!T_(i)) {
               var o = e.getSpanOfTokenAtPosition(i, r.pos), s = e.createFileDiagnostic(i, o.start, o.length, e.Diagnostics.await_expressions_are_only_allowed_within_async_functions_and_at_the_top_levels_of_modules);
-              if (t && t.kind !== 170 && (e.getFunctionFlags(t) & 2) === 0) {
+              if (t && t.kind !== 170 && !(e.getFunctionFlags(t) & 2)) {
                 var c = e.createDiagnosticForNode(t, e.Diagnostics.Did_you_mean_to_mark_this_function_as_async);
                 e.addRelatedInfo(s, c);
               }
@@ -49808,7 +50583,7 @@ var gr;
       De < 2 && Xe.downlevelIteration && nl(r, 512);
       for (var s = Dd(193, t, kr, r) || dr, c = Xe.noUncheckedIndexedAccess ? void 0 : s, L = 0; L < o.length; L++) {
         var G = s;
-        r.elements[L].kind === 224 && (G = c = c != null ? c : Dd(65, t, kr, r) || dr), CA(r, t, L, G, i);
+        r.elements[L].kind === 224 && (G = c = c ?? (Dd(65, t, kr, r) || dr)), CA(r, t, L, G, i);
       }
       return t;
     }
@@ -50105,7 +50880,7 @@ var gr;
             var Ba = Yn[Ca], Ti = An(Ba);
             if (Ti.symbol && Ti.symbol.flags & 32) {
               var Pi = Ba.escapedName, jn = Uo(Ba.valueDeclaration, Pi, 788968, void 0, Pi, !1);
-              (jn == null ? void 0 : jn.declarations) && jn.declarations.some(e.isJSDocTypedefTag) && (jc(jn, e.Diagnostics.Duplicate_identifier_0, e.unescapeLeadingUnderscores(Pi), Ba), jc(Ba, e.Diagnostics.Duplicate_identifier_0, e.unescapeLeadingUnderscores(Pi), jn));
+              jn != null && jn.declarations && jn.declarations.some(e.isJSDocTypedefTag) && (jc(jn, e.Diagnostics.Duplicate_identifier_0, e.unescapeLeadingUnderscores(Pi), Ba), jc(Ba, e.Diagnostics.Duplicate_identifier_0, e.unescapeLeadingUnderscores(Pi), jn));
             }
           }
       }
@@ -50595,7 +51370,7 @@ var gr;
         return;
       }
       var i = hu(t), o = Sc(i);
-      if (!!o) {
+      if (o) {
         Wi(r.type);
         var s = r.parameterName;
         if (o.kind === 0 || o.kind === 2)
@@ -50650,7 +51425,7 @@ var gr;
     function iv(r) {
       r.kind === 175 ? _3(r) : (r.kind === 178 || r.kind === 255 || r.kind === 179 || r.kind === 173 || r.kind === 170 || r.kind === 174) && Mb(r);
       var t = e.getFunctionFlags(r);
-      if (t & 4 || ((t & 3) === 3 && De < 99 && nl(r, 6144), (t & 3) === 2 && De < 4 && nl(r, 64), (t & 3) !== 0 && De < 2 && nl(r, 128)), wh(e.getEffectiveTypeParameterDeclarations(r)), e.forEach(r.parameters, GA), r.type && Wi(r.type), Se) {
+      if (t & 4 || ((t & 3) === 3 && De < 99 && nl(r, 6144), (t & 3) === 2 && De < 4 && nl(r, 64), t & 3 && De < 2 && nl(r, 128)), wh(e.getEffectiveTypeParameterDeclarations(r)), e.forEach(r.parameters, GA), r.type && Wi(r.type), Se) {
         HP(r);
         var i = e.getEffectiveReturnTypeNode(r);
         if (Ke && !i)
@@ -50894,9 +51669,9 @@ var gr;
     }
     function uP(r) {
       var t = e.tryCast(r.parent, e.isTypeReferenceType);
-      if (!!t) {
+      if (t) {
         var i = C1(t);
-        if (!!i) {
+        if (i) {
           var o = Nl(i[t.typeArguments.indexOf(r)]);
           return o && oi(o, Ol(i, gb(t, i)));
         }
@@ -51343,7 +52118,7 @@ var gr;
       KA(r && e.getEntityNameFromTypeNode(r));
     }
     function KA(r) {
-      if (!!r) {
+      if (r) {
         var t = e.getFirstIdentifier(r), i = (r.kind === 79 ? 788968 : 1920) | 2097152, o = Uo(t, t.escapedText, i, void 0, void 0, !0);
         o && o.flags & 2097152 && Af(o) && !_v(ms(o)) && !Ln(o) && ii(o);
       }
@@ -51389,7 +52164,7 @@ var gr;
       return e.isRestParameter(r) ? e.getRestParameterElementType(t) : t;
     }
     function xh(r) {
-      if (!!r.decorators && !!e.nodeCanBeDecorated(r, r.parent, r.parent.parent)) {
+      if (r.decorators && e.nodeCanBeDecorated(r, r.parent, r.parent.parent)) {
         Xe.experimentalDecorators || Pr(r, e.Diagnostics.Experimental_support_for_decorators_is_a_feature_that_is_subject_to_change_in_a_future_release_Set_the_experimentalDecorators_option_in_your_tsconfig_or_jsconfig_to_remove_this_warning);
         var t = r.decorators[0];
         if (nl(t, 8), r.kind === 163 && nl(t, 32), Xe.emitDecoratorMetadata)
@@ -51602,7 +52377,7 @@ var gr;
       if (!(!i || e.last(i) !== r))
         for (var o = e.getEffectiveTypeParameterDeclarations(r), s = new e.Set(), c = 0, L = o; c < L.length; c++) {
           var G = L[c];
-          if (!!O1(G)) {
+          if (O1(G)) {
             var ce = e.idText(G.name), we = G.parent;
             if (we.kind !== 189 && we.typeParameters.every(O1)) {
               if (e.tryAddToSet(s, we)) {
@@ -51770,10 +52545,10 @@ var gr;
       t && (e.Debug.assert(e.isNamedDeclaration(r) && e.isIdentifier(r.name), "The target of a Reflect collision check should be an identifier"), Zl("noEmit", r, e.Diagnostics.Duplicate_identifier_0_Compiler_reserves_name_1_when_emitting_super_references_in_static_initializers, e.declarationNameToString(r.name), "Reflect"));
     }
     function dg(r, t) {
-      !t || (zP(r, t), qP(r, t), XP(r, t), QP(r, t), e.isClassLike(r) ? (_g(t, e.Diagnostics.Class_name_cannot_be_0), r.flags & 8388608 || L6(t)) : e.isEnumDeclaration(r) && _g(t, e.Diagnostics.Enum_name_cannot_be_0));
+      t && (zP(r, t), qP(r, t), XP(r, t), QP(r, t), e.isClassLike(r) ? (_g(t, e.Diagnostics.Class_name_cannot_be_0), r.flags & 8388608 || L6(t)) : e.isEnumDeclaration(r) && _g(t, e.Diagnostics.Enum_name_cannot_be_0));
     }
     function $P(r) {
-      if (!((e.getCombinedNodeFlags(r) & 3) !== 0 || e.isParameterDeclaration(r)) && !(r.kind === 253 && !r.initializer)) {
+      if (!(e.getCombinedNodeFlags(r) & 3 || e.isParameterDeclaration(r)) && !(r.kind === 253 && !r.initializer)) {
         var t = Rn(r);
         if (t.flags & 1) {
           if (!e.isIdentifier(r.name))
@@ -51874,7 +52649,7 @@ var gr;
       w1(r.expression, t, r.thenStatement), Wi(r.thenStatement), r.thenStatement.kind === 235 && Pr(r.thenStatement, e.Diagnostics.The_body_of_an_if_statement_cannot_be_the_empty_statement), Wi(r.elseStatement);
     }
     function w1(r, t, i) {
-      if (!!Er && !lc(t)) {
+      if (Er && !lc(t)) {
         var o = e.isBinaryExpression(r) ? r.right : r;
         if (!(e.isPropertyAccessExpression(o) && NA(o.expression))) {
           var s = e.isIdentifier(o) ? o : e.isPropertyAccessExpression(o) ? o.name : e.isBinaryExpression(o) && e.isIdentifier(o.right) ? o.right : void 0, c = Ni(t, 0), L = !!sv(t);
@@ -52246,7 +53021,7 @@ var gr;
           }
           return i === "next" ? hi : void 0;
         }
-        if ((we == null ? void 0 : we.symbol) && Ue.length === 1) {
+        if (we != null && we.symbol && Ue.length === 1) {
           var ar = t.getGlobalGeneratorType(!1), _r = t.getGlobalIteratorType(!1), Br = ((c = (s = ar.symbol) === null || s === void 0 ? void 0 : s.members) === null || c === void 0 ? void 0 : c.get(i)) === we.symbol, Zr = !Br && ((G = (L = _r.symbol) === null || L === void 0 ? void 0 : L.members) === null || G === void 0 ? void 0 : G.get(i)) === we.symbol;
           if (Br || Zr) {
             var Et = Br ? ar : _r, Tt = we.mapper;
@@ -52371,7 +53146,7 @@ var gr;
             var c = t.block.locals;
             c && e.forEachKey(t.locals, function(L) {
               var G = c.get(L);
-              (G == null ? void 0 : G.valueDeclaration) && (G.flags & 2) !== 0 && sn(G.valueDeclaration, e.Diagnostics.Cannot_redeclare_identifier_0_in_catch_clause, L);
+              G != null && G.valueDeclaration && G.flags & 2 && sn(G.valueDeclaration, e.Diagnostics.Cannot_redeclare_identifier_0_in_catch_clause, L);
             });
           }
         }
@@ -52601,7 +53376,7 @@ var gr;
             Nn ? Pr(Je, ar ? e.Diagnostics.This_member_cannot_have_a_JSDoc_comment_with_an_override_tag_because_it_is_not_declared_in_the_base_class_0_Did_you_mean_1 : e.Diagnostics.This_member_cannot_have_an_override_modifier_because_it_is_not_declared_in_the_base_class_0_Did_you_mean_1, Vt, Wa(Nn)) : Pr(Je, ar ? e.Diagnostics.This_member_cannot_have_a_JSDoc_comment_with_an_override_tag_because_it_is_not_declared_in_the_base_class_0 : e.Diagnostics.This_member_cannot_have_an_override_modifier_because_it_is_not_declared_in_the_base_class_0, Vt);
           }
           return 2;
-        } else if (Tt && (At == null ? void 0 : At.declarations) && Xe.noImplicitOverride && !_r) {
+        } else if (Tt && (At != null && At.declarations) && Xe.noImplicitOverride && !_r) {
           var on = e.some(At.declarations, e.hasAbstractModifier);
           if (L)
             return 0;
@@ -52676,7 +53451,7 @@ var gr;
           var G = L[c], ce = hm(G);
           if (!(ce.flags & 4194304)) {
             var we = vd(r, ce.escapedName);
-            if (!!we) {
+            if (we) {
               var Ue = hm(we), Je = e.getDeclarationModifierFlagsFromSymbol(ce);
               if (e.Debug.assert(!!Ue, "derived should point to something, even if it is the base class' declaration."), Ue === ce) {
                 var ar = e.getClassLikeDeclarationOfSymbol(r.symbol);
@@ -52953,7 +53728,7 @@ var gr;
       return r.kind === 79 || r.kind === 205 && V1(r.expression) || r.kind === 206 && V1(r.expression) && e.isStringLiteralLike(r.argumentExpression);
     }
     function H6(r) {
-      if (!!Se) {
+      if (Se) {
         uf(r), dg(r, r.name), ov(r), r.members.forEach(J6), DC(r);
         var t = Rn(r), i = e.getDeclarationOfKind(t, r.kind);
         if (r === i) {
@@ -53121,7 +53896,7 @@ var gr;
                 }
             }
         }
-        e.isImportSpecifier(r) && ((t = o.declarations) === null || t === void 0 ? void 0 : t.every(function(we) {
+        e.isImportSpecifier(r) && (!((t = o.declarations) === null || t === void 0) && t.every(function(we) {
           return !!(e.getCombinedNodeFlags(we) & 134217728);
         })) && kc(r.name, o.declarations, i.escapedName);
       }
@@ -53134,7 +53909,7 @@ var gr;
       if (r.assertClause) {
         if (Ae !== e.ModuleKind.ESNext)
           return sn(r.assertClause, e.Diagnostics.Import_assertions_are_only_supported_when_the_module_option_is_set_to_esnext);
-        if (e.isImportDeclaration(r) ? (t = r.importClause) === null || t === void 0 ? void 0 : t.isTypeOnly : r.isTypeOnly)
+        if (e.isImportDeclaration(r) ? !((t = r.importClause) === null || t === void 0) && t.isTypeOnly : r.isTypeOnly)
           return sn(r.assertClause, e.Diagnostics.Import_assertions_cannot_be_used_with_type_only_imports_or_exports);
       }
     }
@@ -53481,7 +54256,7 @@ var gr;
         return;
       }
       var o = e.getParameterSymbolFromJSDoc(i);
-      if (!!o) {
+      if (o) {
         var s = e.getHostSignatureFromJSDoc(i);
         (!s || e.last(s.parameters).symbol !== o) && Pr(r, e.Diagnostics.A_rest_parameter_must_be_last_in_a_parameter_list);
       }
@@ -54439,7 +55214,7 @@ var gr;
         return ce.parent && ce.parent.kind === 227 && ce.parent.parent && ce.parent.parent.kind === 290;
       }
       function s(ce) {
-        if (!!t) {
+        if (t) {
           var we = 790504;
           (ce.kind === 79 && eg(ce) || ce.kind === 205 && !o(ce)) && (we = 1160127);
           var Ue = rs(ce, we, !0);
@@ -54492,7 +55267,7 @@ var gr;
     }
     function Q1(r) {
       var t = r.kind === 260 ? e.tryCast(r.name, e.isStringLiteral) : e.getExternalModuleName(r), i = Mc(t, t, void 0);
-      if (!!i)
+      if (i)
         return e.getDeclarationOfKind(i, 303);
     }
     function e3() {
@@ -54525,7 +55300,7 @@ var gr;
         for (var Je = 0, ar = o; Je < ar.length; Je++)
           for (var _r = ar[Je], Br = 0, Zr = _r; Br < Zr.length; Br++) {
             var Et = Zr[Br];
-            !e.isGlobalScopeAugmentation(Et.parent) || zp(Et);
+            e.isGlobalScopeAugmentation(Et.parent) && zp(Et);
           }
       if (Rs(Fr, Si, e.Diagnostics.Declaration_name_conflicts_with_built_in_global_identifier_0), Ja(He).type = zr, Ja(Jr).type = $s("IArguments", 0, !0), Ja(We).type = dr, Ja(pr).type = Bl(16, pr), se = $s("Array", 1, !0), Un = $s("Object", 0, !0), Oe = $s("Function", 0, !0), oe = Cr && $s("CallableFunction", 0, !0) || Oe, mr = Cr && $s("NewableFunction", 0, !0) || Oe, er = $s("String", 0, !0), hr = $s("Number", 0, !0), qr = $s("Boolean", 0, !0), Dt = $s("RegExp", 0, !0), Sn = zs(Ze), ta = zs(xr), ta === Qn && (ta = ts(void 0, Le, e.emptyArray, e.emptyArray, e.emptyArray)), Be = cS("ReadonlyArray", 1) || se, xa = Be ? Fg(Be, [Ze]) : Sn, Jt = cS("ThisType", 1), o)
         for (var Tt = 0, At = o; Tt < At.length; Tt++)
@@ -56280,7 +57055,7 @@ var gr;
           return C("Invalid character in VLQ"), -1;
         te = (j & 32) !== 0, X = X | (j & 31) << ue, ue += 5;
       }
-      return (X & 1) === 0 ? X = X >> 1 : (X = X >> 1, X = -X), X;
+      return X & 1 ? (X = X >> 1, X = -X) : X = X >> 1, X;
     }
   }
   e.decodeMappings = v;
@@ -56351,7 +57126,7 @@ var gr;
       if (D === void 0) {
         for (var X = [], j = 0, Se = m(); j < Se.length; j++) {
           var Ce = Se[j];
-          if (!!M(Ce)) {
+          if (M(Ce)) {
             var O = X[Ce.sourceIndex];
             O || (X[Ce.sourceIndex] = O = []), O.push(Ce);
           }
@@ -57240,7 +58015,7 @@ var gr;
       }
     }
     function Xe(oe, mr) {
-      if (!!mr.body) {
+      if (mr.body) {
         var se = e.getAllAccessorDeclarations(oe.members, mr), Be = se.firstAccessor, er = se.secondAccessor, hr = se.setAccessor, qr = Be.decorators ? Be : er && er.decorators ? er : void 0;
         if (!(!qr || mr !== qr)) {
           var Dt = qr.decorators, Jt = _e(hr);
@@ -57250,7 +58025,7 @@ var gr;
       }
     }
     function De(oe) {
-      if (!!oe.body) {
+      if (oe.body) {
         var mr = oe.decorators, se = _e(oe);
         if (!(!mr && !se))
           return { decorators: mr, parameters: se };
@@ -57258,11 +58033,11 @@ var gr;
     }
     function Ae(oe) {
       var mr = oe.decorators;
-      if (!!mr)
+      if (mr)
         return { decorators: mr };
     }
     function Ye(oe, mr, se) {
-      if (!!se) {
+      if (se) {
         var Be = [];
         return e.addRange(Be, e.map(se.decorators, Ke)), e.addRange(Be, e.flatMap(se.parameters, Me)), Hr(oe, mr, Be), Be;
       }
@@ -57279,7 +58054,7 @@ var gr;
     }
     function lr(oe, mr) {
       var se = qe(oe, mr), Be = Ye(mr, oe, se);
-      if (!!Be) {
+      if (Be) {
         var er = Lo(oe, mr), hr = In(mr, !0), qr = M > 0 ? mr.kind === 166 ? p.createVoidZero() : p.createNull() : void 0, Dt = N().createDecorateHelper(Be, er, hr, qr);
         return e.setTextRange(Dt, e.moveRangePastDecorators(mr)), e.setEmitFlags(Dt, 1536), Dt;
       }
@@ -57290,7 +58065,7 @@ var gr;
     }
     function Or(oe) {
       var mr = Le(oe), se = Ye(oe, oe, mr);
-      if (!!se) {
+      if (se) {
         var Be = Y && Y[e.getOriginalNodeId(oe)], er = M <= 2 ? p.getInternalName(oe, !1, !0) : p.getLocalName(oe, !1, !0), hr = N().createDecorateHelper(se, er), qr = p.createAssignment(er, Be ? p.createAssignment(Be, hr) : hr);
         return e.setEmitFlags(qr, 1536), e.setSourceMapRange(qr, e.moveRangePastDecorators(oe)), qr;
       }
@@ -57572,7 +58347,7 @@ var gr;
       }
     }
     function or(oe) {
-      if (!!sr(oe))
+      if (sr(oe))
         return p.updateConstructorDeclaration(oe, void 0, void 0, e.visitParameterList(oe.parameters, C, a), fe(oe.body, oe));
     }
     function fe(oe, mr) {
@@ -57588,7 +58363,7 @@ var gr;
     }
     function je(oe) {
       var mr = oe.name;
-      if (!!e.isIdentifier(mr)) {
+      if (e.isIdentifier(mr)) {
         var se = e.setParent(e.setTextRange(p.cloneNode(mr), mr), mr.parent);
         e.setEmitFlags(se, 1584);
         var Be = e.setParent(e.setTextRange(p.cloneNode(mr), mr), mr.parent);
@@ -57596,7 +58371,7 @@ var gr;
       }
     }
     function Ee(oe) {
-      if (!!sr(oe)) {
+      if (sr(oe)) {
         var mr = p.updateMethodDeclaration(oe, void 0, e.visitNodes(oe.modifiers, Se, e.isModifier), oe.asteriskToken, zn(oe), void 0, void 0, e.visitParameterList(oe.parameters, C, a), void 0, e.visitFunctionBody(oe.body, C, a));
         return mr !== oe && (e.setCommentRange(mr, oe), e.setSourceMapRange(mr, e.moveRangePastDecorators(oe))), mr;
       }
@@ -57605,13 +58380,13 @@ var gr;
       return !(e.nodeIsMissing(oe.body) && e.hasSyntacticModifier(oe, 128));
     }
     function ee(oe) {
-      if (!!We(oe)) {
+      if (We(oe)) {
         var mr = p.updateGetAccessorDeclaration(oe, void 0, e.visitNodes(oe.modifiers, Se, e.isModifier), zn(oe), e.visitParameterList(oe.parameters, C, a), void 0, e.visitFunctionBody(oe.body, C, a) || p.createBlock([]));
         return mr !== oe && (e.setCommentRange(mr, oe), e.setSourceMapRange(mr, e.moveRangePastDecorators(oe))), mr;
       }
     }
     function Ne(oe) {
-      if (!!We(oe)) {
+      if (We(oe)) {
         var mr = p.updateSetAccessorDeclaration(oe, void 0, e.visitNodes(oe.modifiers, Se, e.isModifier), zn(oe), e.visitParameterList(oe.parameters, C, a), e.visitFunctionBody(oe.body, C, a) || p.createBlock([]));
         return mr !== oe && (e.setCommentRange(mr, oe), e.setSourceMapRange(mr, e.moveRangePastDecorators(oe))), mr;
       }
@@ -57848,7 +58623,7 @@ var gr;
           var mr = Oe(oe);
           return !mr && ie.importsNotUsedAsValues === 1 ? e.setOriginalNode(e.setTextRange(p.createImportDeclaration(void 0, void 0, void 0, oe.moduleReference.expression, void 0), oe), oe) : mr ? e.visitEachChild(oe, C, a) : void 0;
         }
-        if (!!Qn(oe)) {
+        if (Qn(oe)) {
           var se = e.createExpressionFromEntityName(p, oe.moduleReference);
           return e.setEmitFlags(se, 3584), va(oe) || !Ci(oe) ? e.setOriginalNode(e.setTextRange(p.createVariableStatement(e.visitNodes(oe.modifiers, Se, e.isModifier), p.createVariableDeclarationList([
             e.setOriginalNode(p.createVariableDeclaration(oe.name, void 0, void 0, se), oe)
@@ -57907,13 +58682,13 @@ var gr;
       return e.isStatic(mr) ? p.getDeclarationName(oe) : lo(oe);
     }
     function Ha() {
-      (R & 8) === 0 && (R |= 8, a.enableSubstitution(79));
+      R & 8 || (R |= 8, a.enableSubstitution(79));
     }
     function Yo() {
-      (R & 1) === 0 && (R |= 1, a.enableSubstitution(79), Y = []);
+      R & 1 || (R |= 1, a.enableSubstitution(79), Y = []);
     }
     function co() {
-      (R & 2) === 0 && (R |= 2, a.enableSubstitution(79), a.enableSubstitution(295), a.enableEmitNotification(260));
+      R & 2 || (R |= 2, a.enableSubstitution(79), a.enableSubstitution(295), a.enableEmitNotification(260));
     }
     function za(oe) {
       return e.getOriginalNode(oe).kind === 260;
@@ -58274,7 +59049,7 @@ var gr;
         var Ne = v.createCallBinding(ee.expression, A, J), me = Ne.thisArg, Ze = Ne.target;
         return e.isCallChain(ee) ? v.updateCallChain(ee, v.createPropertyAccessChain(e.visitNode(Ze, g), ee.questionDotToken, "call"), void 0, void 0, Gt([e.visitNode(me, g, e.isExpression)], e.visitNodes(ee.arguments, g, e.isExpression), !0)) : v.updateCallExpression(ee, v.createPropertyAccessExpression(e.visitNode(Ze, g), "call"), void 0, Gt([e.visitNode(me, g, e.isExpression)], e.visitNodes(ee.arguments, g, e.isExpression), !0));
       }
-      if (x && e.isSuperProperty(ee.expression) && D && (I == null ? void 0 : I.classConstructor)) {
+      if (x && e.isSuperProperty(ee.expression) && D && (I != null && I.classConstructor)) {
         var xr = v.createFunctionCallCall(e.visitNode(ee.expression, g, e.isExpression), I.classConstructor, e.visitNodes(ee.arguments, g, e.isExpression));
         return e.setOriginalNode(xr, ee), e.setTextRange(xr, ee), xr;
       }
@@ -58285,7 +59060,7 @@ var gr;
         var Ne = v.createCallBinding(ee.tag, A, J), me = Ne.thisArg, Ze = Ne.target;
         return v.updateTaggedTemplateExpression(ee, v.createCallExpression(v.createPropertyAccessExpression(e.visitNode(Ze, g), "bind"), void 0, [e.visitNode(me, g, e.isExpression)]), void 0, e.visitNode(ee.template, g, e.isTemplateLiteral));
       }
-      if (x && e.isSuperProperty(ee.tag) && D && (I == null ? void 0 : I.classConstructor)) {
+      if (x && e.isSuperProperty(ee.tag) && D && (I != null && I.classConstructor)) {
         var xr = v.createFunctionBindCall(e.visitNode(ee.tag, g, e.isExpression), I.classConstructor, []);
         return e.setOriginalNode(xr, ee), e.setTextRange(xr, ee), v.updateTaggedTemplateExpression(ee, xr, void 0, e.visitNode(ee.template, g, e.isTemplateLiteral));
       }
@@ -58376,7 +59151,7 @@ var gr;
       e.isClassDeclaration(me) && e.classOrConstructorParameterIsDecorated(me) && (Ne |= 1);
       for (var Ze = 0, xr = ee.members; Ze < xr.length; Ze++) {
         var fr = xr[Ze];
-        !e.isStatic(fr) || (fr.name && e.isPrivateIdentifier(fr.name) && P && (Ne |= 2), (e.isPropertyDeclaration(fr) || e.isClassStaticBlockDeclaration(fr)) && (w && fr.transformFlags & 8192 && (Ne |= 8, Ne & 1 || (Ne |= 2)), x && fr.transformFlags & 33554432 && (Ne & 1 || (Ne |= 6))));
+        e.isStatic(fr) && (fr.name && e.isPrivateIdentifier(fr.name) && P && (Ne |= 2), (e.isPropertyDeclaration(fr) || e.isClassStaticBlockDeclaration(fr)) && (w && fr.transformFlags & 8192 && (Ne |= 8, Ne & 1 || (Ne |= 2)), x && fr.transformFlags & 33554432 && (Ne & 1 || (Ne |= 6))));
       }
       return Ne;
     }
@@ -58453,8 +59228,8 @@ var gr;
       if (!e.some(Ze))
         return me;
       var xr = e.visitParameterList(me ? me.parameters : void 0, g, h), fr = ur(ee, me, Ne);
-      if (!!fr)
-        return e.startOnNewLine(e.setOriginalNode(e.setTextRange(v.createConstructorDeclaration(void 0, void 0, xr != null ? xr : [], fr), me || ee), me));
+      if (fr)
+        return e.startOnNewLine(e.setOriginalNode(e.setTextRange(v.createConstructorDeclaration(void 0, void 0, xr ?? [], fr), me || ee), me));
     }
     function ur(ee, Ne, me) {
       var Ze = e.getProperties(ee, !1, !1);
@@ -58478,7 +59253,7 @@ var gr;
     function vr(ee, Ne, me) {
       for (var Ze = 0, xr = Ne; Ze < xr.length; Ze++) {
         var fr = xr[Ze], dr = e.isClassStaticBlockDeclaration(fr) ? _e(fr) : Fe(fr, me);
-        if (!!dr) {
+        if (dr) {
           var et = v.createExpressionStatement(dr);
           e.setSourceMapRange(et, e.moveRangePastModifiers(fr)), e.setCommentRange(et, fr), e.setOriginalNode(et, fr), ee.push(et);
         }
@@ -58487,13 +59262,13 @@ var gr;
     function de(ee, Ne) {
       for (var me = [], Ze = 0, xr = ee; Ze < xr.length; Ze++) {
         var fr = xr[Ze], dr = e.isClassStaticBlockDeclaration(fr) ? _e(fr) : Fe(fr, Ne);
-        !dr || (e.startOnNewLine(dr), e.setSourceMapRange(dr, e.moveRangePastModifiers(fr)), e.setCommentRange(dr, fr), e.setOriginalNode(dr, fr), me.push(dr));
+        dr && (e.startOnNewLine(dr), e.setSourceMapRange(dr, e.moveRangePastModifiers(fr)), e.setCommentRange(dr, fr), e.setOriginalNode(dr, fr), me.push(dr));
       }
       return me;
     }
     function Fe(ee, Ne) {
       var me = D, Ze = $e(ee, Ne);
-      return Ze && e.hasStaticModifier(ee) && (I == null ? void 0 : I.facts) && (e.setOriginalNode(Ze, ee), e.addEmitFlags(Ze, 2), T.set(e.getOriginalNodeId(Ze), I)), D = me, Ze;
+      return Ze && e.hasStaticModifier(ee) && (I != null && I.facts) && (e.setOriginalNode(Ze, ee), e.addEmitFlags(Ze, 2), T.set(e.getOriginalNodeId(Ze), I)), D = me, Ze;
     }
     function $e(ee, Ne) {
       var me, Ze = !k, xr = e.isComputedPropertyName(ee.name) && !e.isSimpleInlineableExpression(ee.name.expression) ? v.updateComputedPropertyName(ee.name, v.getGeneratedNameForNode(ee.name)) : ee.name;
@@ -58518,10 +59293,10 @@ var gr;
       }
     }
     function Dr() {
-      (ne & 1) === 0 && (ne |= 1, h.enableSubstitution(79), R = []);
+      ne & 1 || (ne |= 1, h.enableSubstitution(79), R = []);
     }
     function Fr() {
-      (ne & 2) === 0 && (ne |= 2, h.enableSubstitution(108), h.enableEmitNotification(255), h.enableEmitNotification(212), h.enableEmitNotification(170), h.enableEmitNotification(171), h.enableEmitNotification(172), h.enableEmitNotification(168), h.enableEmitNotification(166), h.enableEmitNotification(161));
+      ne & 2 || (ne |= 2, h.enableSubstitution(108), h.enableEmitNotification(255), h.enableEmitNotification(212), h.enableEmitNotification(170), h.enableEmitNotification(171), h.enableEmitNotification(172), h.enableEmitNotification(168), h.enableEmitNotification(166), h.enableEmitNotification(161));
     }
     function He(ee, Ne, me) {
       if (!(!P || !e.some(Ne))) {
@@ -58741,7 +59516,7 @@ var gr;
       }
       for (var Ze = $.length - 1; Ze >= 0; --Ze) {
         var xr = $[Ze];
-        if (!!xr) {
+        if (xr) {
           var me = (Ne = xr.privateIdentifierEnvironment) === null || Ne === void 0 ? void 0 : Ne.identifiers.get(ee.escapedText);
           if (me)
             return me;
@@ -58872,7 +59647,7 @@ var gr;
       return e.visitEachChild(De, I, p);
     }
     function I(De) {
-      if ((De.transformFlags & 128) === 0)
+      if (!(De.transformFlags & 128))
         return De;
       switch (De.kind) {
         case 131:
@@ -59066,7 +59841,7 @@ var gr;
       }
     }
     function Ie() {
-      (M & 1) === 0 && (M |= 1, p.enableSubstitution(207), p.enableSubstitution(205), p.enableSubstitution(206), p.enableEmitNotification(256), p.enableEmitNotification(168), p.enableEmitNotification(171), p.enableEmitNotification(172), p.enableEmitNotification(170), p.enableEmitNotification(236));
+      M & 1 || (M |= 1, p.enableSubstitution(207), p.enableSubstitution(205), p.enableSubstitution(206), p.enableEmitNotification(256), p.enableEmitNotification(168), p.enableEmitNotification(171), p.enableEmitNotification(172), p.enableEmitNotification(170), p.enableEmitNotification(236));
     }
     function Ge(De, Ae, Ye) {
       if (M & 1 && qe(Ae)) {
@@ -59196,7 +59971,7 @@ var gr;
       return e.visitEachChild(He, I, a);
     }
     function u(He, pr) {
-      if ((He.transformFlags & 64) === 0)
+      if (!(He.transformFlags & 64))
         return He;
       switch (He.kind) {
         case 217:
@@ -59508,7 +60283,7 @@ var gr;
       return He;
     }
     function Me() {
-      (B & 1) === 0 && (B |= 1, a.enableSubstitution(207), a.enableSubstitution(205), a.enableSubstitution(206), a.enableEmitNotification(256), a.enableEmitNotification(168), a.enableEmitNotification(171), a.enableEmitNotification(172), a.enableEmitNotification(170), a.enableEmitNotification(236));
+      B & 1 || (B |= 1, a.enableSubstitution(207), a.enableSubstitution(205), a.enableSubstitution(206), a.enableEmitNotification(256), a.enableEmitNotification(168), a.enableEmitNotification(171), a.enableEmitNotification(172), a.enableEmitNotification(170), a.enableEmitNotification(236));
     }
     function Hr(He, pr, Jr) {
       if (B & 1 && Dr(pr)) {
@@ -59574,7 +60349,7 @@ var gr;
       return H.isDeclarationFile ? H : e.visitEachChild(H, p, f);
     }
     function p(H) {
-      if ((H.transformFlags & 32) === 0)
+      if (!(H.transformFlags & 32))
         return H;
       switch (H.kind) {
         case 291:
@@ -59598,7 +60373,7 @@ var gr;
       return B.isDeclarationFile ? B : e.visitEachChild(B, N, f);
     }
     function N(B) {
-      if ((B.transformFlags & 16) === 0)
+      if (!(B.transformFlags & 16))
         return B;
       switch (B.kind) {
         case 207: {
@@ -59701,7 +60476,7 @@ var gr;
       return h.isDeclarationFile ? h : e.visitEachChild(h, N, f);
     }
     function N(h) {
-      if ((h.transformFlags & 8) === 0)
+      if (!(h.transformFlags & 8))
         return h;
       switch (h.kind) {
         case 220:
@@ -59736,7 +60511,7 @@ var gr;
       return p.isDeclarationFile ? p : e.visitEachChild(p, a, f);
     }
     function a(p) {
-      if ((p.transformFlags & 4) === 0)
+      if (!(p.transformFlags & 4))
         return p;
       switch (p.kind) {
         default:
@@ -60260,7 +61035,7 @@ var gr;
       return A.isDeclarationFile ? A : e.visitEachChild(A, N, f);
     }
     function N(A) {
-      if ((A.transformFlags & 256) === 0)
+      if (!(A.transformFlags & 256))
         return A;
       switch (A.kind) {
         case 220:
@@ -60545,7 +61320,7 @@ var gr;
         e.setOriginalNode(Be, se), mr.push(Be);
       }
       var er = e.getEmitFlags(Oe);
-      return (er & 4194304) === 0 && (mr.push(A.createEndOfDeclarationMarker(Oe)), e.setEmitFlags(se, er | 4194304)), e.singleOrMany(mr);
+      return er & 4194304 || (mr.push(A.createEndOfDeclarationMarker(Oe)), e.setEmitFlags(se, er | 4194304)), e.singleOrMany(mr);
     }
     function Te(Oe) {
       return ge(Oe);
@@ -60865,7 +61640,7 @@ var gr;
     }
     function lt(Oe) {
       var oe = $(0, e.hasSyntacticModifier(Oe, 1) ? 32 : 0), mr;
-      if (R && (Oe.declarationList.flags & 3) === 0 && !Yr(Oe)) {
+      if (R && !(Oe.declarationList.flags & 3) && !Yr(Oe)) {
         for (var se = void 0, Be = 0, er = Oe.declarationList.declarations; Be < er.length; Be++) {
           var hr = er[Be];
           if (Ir(R, hr), hr.initializer) {
@@ -61163,7 +61938,7 @@ var gr;
       var qr = A.createBlock(hr, !0);
       e.isBlock(Be) && e.setOriginalNode(qr, Be);
       var Dt = (Oe.statement.transformFlags & 524288) !== 0, Jt = 524288;
-      oe.containsLexicalThis && (Jt |= 8), Dt && (K & 4) !== 0 && (Jt |= 262144);
+      oe.containsLexicalThis && (Jt |= 8), Dt && K & 4 && (Jt |= 262144);
       var Sn = A.createVariableStatement(void 0, e.setEmitFlags(A.createVariableDeclarationList([
         A.createVariableDeclaration(se, void 0, void 0, e.setEmitFlags(A.createFunctionExpression(void 0, Dt ? A.createToken(41) : void 0, void 0, void 0, oe.loopParameters, void 0, qr), Jt))
       ]), 2097152)), ta = Wn(se, oe, mr, Dt);
@@ -61206,7 +61981,7 @@ var gr;
       oe ? (Oe.labeledNonLocalBreaks || (Oe.labeledNonLocalBreaks = new e.Map()), Oe.labeledNonLocalBreaks.set(mr, se)) : (Oe.labeledNonLocalContinues || (Oe.labeledNonLocalContinues = new e.Map()), Oe.labeledNonLocalContinues.set(mr, se));
     }
     function St(Oe, oe, mr, se, Be) {
-      !Oe || Oe.forEach(function(er, hr) {
+      Oe && Oe.forEach(function(er, hr) {
         var qr = [];
         if (!se || se.labels && se.labels.get(hr)) {
           var Dt = A.createIdentifier(hr);
@@ -61424,10 +62199,10 @@ var gr;
       P(Oe, oe, mr);
     }
     function Zi() {
-      (Y & 2) === 0 && (Y |= 2, v.enableSubstitution(79));
+      Y & 2 || (Y |= 2, v.enableSubstitution(79));
     }
     function Mo() {
-      (Y & 1) === 0 && (Y |= 1, v.enableSubstitution(108), v.enableEmitNotification(170), v.enableEmitNotification(168), v.enableEmitNotification(171), v.enableEmitNotification(172), v.enableEmitNotification(213), v.enableEmitNotification(212), v.enableEmitNotification(255));
+      Y & 1 || (Y |= 1, v.enableSubstitution(108), v.enableEmitNotification(170), v.enableEmitNotification(168), v.enableEmitNotification(171), v.enableEmitNotification(172), v.enableEmitNotification(213), v.enableEmitNotification(212), v.enableEmitNotification(255));
     }
     function Po(Oe, oe) {
       return oe = k(Oe, oe), Oe === 1 ? Es(oe) : e.isIdentifier(oe) ? Fo(oe) : oe;
@@ -61593,7 +62368,7 @@ var gr;
     var P, x, w, K, Z, ne, R, Y, U, $, T = 1, I, y, D, C, m = 0, u = 0, g, F, te, ue, X, j, Se, Ce;
     return e.chainBundle(h, O);
     function O(yr) {
-      if (yr.isDeclarationFile || (yr.transformFlags & 1024) === 0)
+      if (yr.isDeclarationFile || !(yr.transformFlags & 1024))
         return yr;
       var dt = e.visitEachChild(yr, Q, h);
       return e.addEmitHelpers(dt, h.readEmitHelpers()), dt;
@@ -61786,7 +62561,7 @@ var gr;
     function Ae(yr) {
       var dt = fr(), tn = e.visitNode(yr.expression, Q, e.isExpression);
       if (yr.asteriskToken) {
-        var Un = (e.getEmitFlags(yr.expression) & 8388608) === 0 ? e.setTextRange(A().createValuesHelper(tn), yr) : tn;
+        var Un = e.getEmitFlags(yr.expression) & 8388608 ? tn : e.setTextRange(A().createValuesHelper(tn), yr);
         Ci(Un, yr);
       } else
         _i(tn, yr);
@@ -62395,7 +63170,7 @@ var gr;
       return X || [];
     }
     function ji() {
-      !X || (No(!F), F = !1, te = !1, u++);
+      X && (No(!F), F = !1, te = !1, u++);
     }
     function Hi(yr) {
       to(yr) && (lo(yr), Ce = void 0, Zi(void 0, void 0)), X && ue && No(!1), Lo();
@@ -62433,7 +63208,7 @@ var gr;
       ue.push(v.createCaseClause(v.createNumericLiteral(u), X || [])), X = void 0;
     }
     function lo(yr) {
-      if (!!U)
+      if (U)
         for (var dt = 0; dt < U.length; dt++)
           U[dt] === yr && (ji(), g === void 0 && (g = []), g[u] === void 0 ? g[u] = [dt] : g[u].push(dt));
     }
@@ -62798,7 +63573,7 @@ var gr;
         case e.ModuleKind.AMD:
           return Q(lt, tt);
         case e.ModuleKind.UMD:
-          return O(lt != null ? lt : p.createVoidZero(), tt);
+          return O(lt ?? p.createVoidZero(), tt);
         case e.ModuleKind.CommonJS:
         default:
           return V(lt, tt);
@@ -62872,7 +63647,7 @@ var gr;
       return e.singleOrMany(Ar);
     }
     function Ie(ze) {
-      if (!!ze.moduleSpecifier) {
+      if (ze.moduleSpecifier) {
         var Ar = p.getGeneratedNameForNode(ze);
         if (ze.exportClause && e.isNamedExports(ze.exportClause)) {
           var Yr = [];
@@ -63228,7 +64003,7 @@ var gr;
       return fe.push(d.createReturnStatement(me)), d.createBlock(fe, !0);
     }
     function U(ye) {
-      if (!!k.hasExportStarsToExportValues) {
+      if (k.hasExportStarsToExportValues) {
         if (!k.exportedNames && k.exportSpecifiers.size === 0) {
           for (var or = !1, fe = 0, je = k.externalImports; fe < je.length; fe++) {
             var Ee = je[fe];
@@ -64139,7 +64914,7 @@ var gr;
     }, I, y, D, C, m, u, g = b.getEmitResolver(), F = b.getCompilerOptions(), te = F.noResolve, ue = F.stripInternal;
     return ve;
     function X(ir) {
-      if (!!ir) {
+      if (ir) {
         K = K || new e.Set();
         for (var Rr = 0, sr = ir; Rr < sr.length; Rr++) {
           var ye = sr[Rr];
@@ -64402,7 +65177,7 @@ var gr;
         var ye = e.map(Rr, function(or) {
           return qe(or, sr);
         });
-        if (!!ye)
+        if (ye)
           return U.createNodeArray(ye, Rr.hasTrailingComma);
       }
     }
@@ -64439,7 +65214,7 @@ var gr;
       return e.hasJSDocNodes(ir) && e.hasJSDocNodes(Rr) && (ir.jsDoc = Rr.jsDoc), e.setCommentRange(ir, e.getCommentRange(Rr));
     }
     function ur(ir, Rr) {
-      if (!!Rr) {
+      if (Rr) {
         if (k = k || ir.kind !== 260 && ir.kind !== 199, e.isStringLiteralLike(Rr))
           if (J) {
             var sr = e.getExternalModuleNameFromDeclaration(b.getEmitHost(), g, ir);
@@ -64453,7 +65228,7 @@ var gr;
       }
     }
     function vr(ir) {
-      if (!!g.isDeclarationVisible(ir))
+      if (g.isDeclarationVisible(ir))
         if (ir.moduleReference.kind === 276) {
           var Rr = e.getExternalModuleImportEqualsDeclarationExpression(ir);
           return U.updateImportEqualsDeclaration(ir, void 0, ir.modifiers, ir.isTypeOnly, ir.name, U.updateExternalModuleReference(ir.moduleReference, ur(ir, Rr)));
@@ -64582,7 +65357,7 @@ var gr;
       return ir.parent.kind === 168 && e.hasEffectiveModifier(ir.parent, 8);
     }
     function Fr(ir) {
-      if (!!q(ir) && !lt(ir)) {
+      if (q(ir) && !lt(ir)) {
         switch (ir.kind) {
           case 271:
             return e.isSourceFile(ir.parent) && (k = !0), x = !0, U.updateExportDeclaration(ir, void 0, ir.modifiers, ir.isTypeOnly, ir.exportClause, ur(ir, ir.moduleSpecifier), void 0);
@@ -64752,9 +65527,9 @@ var gr;
       }
     }
     function Jr(ir) {
-      if (!!e.forEach(ir.declarationList.declarations, Er)) {
+      if (e.forEach(ir.declarationList.declarations, Er)) {
         var Rr = e.visitNodes(ir.declarationList.declarations, $e);
-        if (!!e.length(Rr))
+        if (e.length(Rr))
           return U.updateVariableStatement(ir, U.createNodeArray(cn(ir)), U.updateVariableDeclarationList(ir.declarationList, Rr));
       }
     }
@@ -65182,7 +65957,7 @@ var gr;
   e.forEachEmittedFile = d;
   function a(y) {
     var D = y.configFilePath;
-    if (!!e.isIncrementalCompilation(y)) {
+    if (e.isIncrementalCompilation(y)) {
       if (y.tsBuildInfoFile)
         return y.tsBuildInfoFile;
       var C = e.outFile(y), m;
@@ -65373,7 +66148,7 @@ var gr;
       }
     }
     function ve(Ae, Ye, Lr, Er) {
-      if (!!Ae) {
+      if (Ae) {
         if (!Ye) {
           (u || X.emitDeclarationOnly) && (ke = !0);
           return;
@@ -65532,7 +66307,7 @@ var gr;
       var ue, X, j = g == null ? void 0 : g.get(te), Se = j == null ? void 0 : j.directives.map(function(Q) {
         var V = e.setTextRange(e.factory.createStringLiteral(Q.expression.text), Q.expression), z = e.setTextRange(e.factory.createExpressionStatement(V), Q);
         return e.setParent(V, z), z;
-      }), Ce = e.factory.createToken(1), O = e.factory.createSourceFile(Se != null ? Se : [], Ce, 0);
+      }), Ce = e.factory.createToken(1), O = e.factory.createSourceFile(Se ?? [], Ce, 0);
       return O.fileName = e.getRelativePathFromDirectory(C.getCurrentDirectory(), e.getNormalizedAbsolutePath(F, D), !C.useCaseSensitiveFileNames()), O.text = (ue = j == null ? void 0 : j.text) !== null && ue !== void 0 ? ue : "", e.setTextRangePosWidth(O, 0, (X = j == null ? void 0 : j.text.length) !== null && X !== void 0 ? X : 0), e.setEachParent(O.statements, O), e.setTextRangePosWidth(Ce, O.end, 0), e.setParent(Ce, O), O;
     });
   }
@@ -66274,7 +67049,7 @@ var gr;
       if (!(z === e.ModuleKind.None || y.noEmitHelpers)) {
         for (var nt = new e.Map(), Ot = 0, fa = E.sourceFiles; Ot < fa.length; Ot++) {
           var Oa = fa[Ot], ia = e.getExternalHelpersModuleName(Oa) !== void 0, ti = Wn(Oa);
-          if (!!ti)
+          if (ti)
             for (var Na = 0, Ua = ti; Na < Ua.length; Na++) {
               var Go = Ua[Na];
               !Go.scoped && !ia && !nt.get(Go.name) && (nt.set(Go.name, !0), (Qe || (Qe = [])).push(Go.name));
@@ -66882,7 +67657,7 @@ var gr;
     function $l(E) {
       Wr(E.name), Ln(":"), Dn();
       var Qe = E.value;
-      if ((e.getEmitFlags(Qe) & 512) === 0) {
+      if (!(e.getEmitFlags(Qe) & 512)) {
         var nt = e.getCommentRange(Qe);
         Wu(nt.pos);
       }
@@ -66990,7 +67765,7 @@ var gr;
     function Od(E) {
       Wr(E.name), Ln(":"), Dn();
       var Qe = E.initializer;
-      if ((e.getEmitFlags(Qe) & 512) === 0) {
+      if (!(e.getEmitFlags(Qe) & 512)) {
         var nt = e.getCommentRange(Qe);
         Wu(nt.pos);
       }
@@ -67201,7 +67976,7 @@ var gr;
       }
     }
     function Mu(E, Qe) {
-      if (!!E) {
+      if (E) {
         var nt = De;
         De = Qe, Wr(E), De = nt;
       }
@@ -67300,7 +68075,7 @@ var gr;
             else if (os) {
               Ot & 60 && os.end !== (Qe ? Qe.end : -1) && qc(os.end), ad(Ot), je(is);
               var _d = $p(os, Zc, Ot);
-              _d > 0 ? ((Ot & 131) === 0 && (wc(), Vl = !0), fs(_d), Go = !1) : os && Ot & 512 && Dn();
+              _d > 0 ? (Ot & 131 || (wc(), Vl = !0), fs(_d), Go = !1) : os && Ot & 512 && Dn();
             }
             if (is = fe(Zc), Go) {
               if (Wu) {
@@ -67312,7 +68087,7 @@ var gr;
             Le = Zc.pos, E.length === 1 ? E(Zc) : E(Zc, fa), Vl && (Hs(), Vl = !1), os = Zc;
           }
           var rf = os ? e.getEmitFlags(os) : 0, Rf = pr || !!(rf & 1024), t_ = (nt == null ? void 0 : nt.hasTrailingComma) && Ot & 64 && Ot & 16;
-          t_ && (os && !Rf ? La(27, os.end, Ln, os) : Ln(",")), os && (Qe ? Qe.end : -1) !== os.end && Ot & 60 && !Rf && qc(t_ && (nt == null ? void 0 : nt.end) ? nt.end : os.end), Ot & 128 && Hs(), je(is);
+          t_ && (os && !Rf ? La(27, os.end, Ln, os) : Ln(",")), os && (Qe ? Qe.end : -1) !== os.end && Ot & 60 && !Rf && qc(t_ && (nt != null && nt.end) ? nt.end : os.end), Ot & 128 && Hs(), je(is);
           var md = Fu(Qe, nt, Ot);
           md ? fs(md) : Ot & 2097408 && Dn();
         }
@@ -67511,7 +68286,7 @@ var gr;
       (!Ve || Ve === e.lastOrUndefined(ve)) && (Ve = new e.Set()), Ve.add(E);
     }
     function Ga(E) {
-      if (!!E)
+      if (E)
         switch (E.kind) {
           case 234:
             e.forEach(E.statements, Ga);
@@ -67586,7 +68361,7 @@ var gr;
         }
     }
     function Rn(E) {
-      if (!!E)
+      if (E)
         switch (E.kind) {
           case 294:
           case 295:
@@ -67710,7 +68485,7 @@ var gr;
       return e.Debug.fail("Unsupported GeneratedIdentifierKind.");
     }
     function Cf(E) {
-      for (var Qe = E.autoGenerateId, nt = E, Ot = nt.original; Ot && (nt = Ot, !(e.isIdentifier(nt) && !!(nt.autoGenerateFlags & 4) && nt.autoGenerateId !== Qe)); )
+      for (var Qe = E.autoGenerateId, nt = E, Ot = nt.original; Ot && (nt = Ot, !(e.isIdentifier(nt) && nt.autoGenerateFlags & 4 && nt.autoGenerateId !== Qe)); )
         Ot = nt.original;
       return nt;
     }
@@ -67729,7 +68504,7 @@ var gr;
     function Al(E, Qe, nt, Ot) {
       Yr(), He = !1;
       var fa = nt < 0 || (Qe & 512) !== 0 || E.kind === 11, Oa = Ot < 0 || (Qe & 1024) !== 0 || E.kind === 11;
-      (nt > 0 || Ot > 0) && nt !== Ot && (fa || If(nt, E.kind !== 347), (!fa || nt >= 0 && (Qe & 512) !== 0) && (de = nt), (!Oa || Ot >= 0 && (Qe & 1024) !== 0) && (Fe = Ot, E.kind === 254 && ($e = Ot))), e.forEach(e.getSyntheticLeadingComments(E), uu), lt();
+      (nt > 0 || Ot > 0) && nt !== Ot && (fa || If(nt, E.kind !== 347), (!fa || nt >= 0 && Qe & 512) && (de = nt), (!Oa || Ot >= 0 && Qe & 1024) && (Fe = Ot, E.kind === 254 && ($e = Ot))), e.forEach(e.getSyntheticLeadingComments(E), uu), lt();
     }
     function ts(E, Qe, nt, Ot, fa, Oa, ia) {
       Yr();
@@ -67768,7 +68543,7 @@ var gr;
       return fa !== void 0 && fa > -1 && Ot.indexOf(Qe) === fa + 1;
     }
     function If(E, Qe) {
-      He = !1, Qe ? E === 0 && (ge == null ? void 0 : ge.isDeclarationFile) ? fu(E, zc) : fu(E, Vu) : E === 0 && fu(E, yc);
+      He = !1, Qe ? E === 0 && (ge != null && ge.isDeclarationFile) ? fu(E, zc) : fu(E, Vu) : E === 0 && fu(E, yc);
     }
     function yc(E, Qe, nt, Ot, fa) {
       Zd(E, Qe) && Vu(E, Qe, nt, Ot, fa);
@@ -67780,7 +68555,7 @@ var gr;
       return y.onlyPrintJsDocStyle ? e.isJSDocLikeText(E, Qe) || e.isPinnedComment(E, Qe) : !0;
     }
     function Vu(E, Qe, nt, Ot, fa) {
-      !ef(ge.text, E) || (He || (e.emitNewLineBeforeLeadingCommentOfPosition(yt(), qe, fa, E), He = !0), Ul(E), e.writeCommentRange(ge.text, yt(), qe, E, Qe, V), Ul(Qe), Ot ? qe.writeLine() : nt === 3 && qe.writeSpace(" "));
+      ef(ge.text, E) && (He || (e.emitNewLineBeforeLeadingCommentOfPosition(yt(), qe, fa, E), He = !0), Ul(E), e.writeCommentRange(ge.text, yt(), qe, E, Qe, V), Ul(Qe), Ot ? qe.writeLine() : nt === 3 && qe.writeSpace(" "));
     }
     function qc(E) {
       pr || E === -1 || If(E, !0);
@@ -67789,7 +68564,7 @@ var gr;
       gn(E, bc);
     }
     function bc(E, Qe, nt, Ot) {
-      !ef(ge.text, E) || (qe.isAtStartOfLine() || qe.writeSpace(" "), Ul(E), e.writeCommentRange(ge.text, yt(), qe, E, Qe, V), Ul(Qe), Ot && qe.writeLine());
+      ef(ge.text, E) && (qe.isAtStartOfLine() || qe.writeSpace(" "), Ul(E), e.writeCommentRange(ge.text, yt(), qe, E, Qe, V), Ul(Qe), Ot && qe.writeLine());
     }
     function Wu(E, Qe, nt) {
       pr || (Yr(), gn(E, Qe ? bc : nt ? e_ : Wa), lt());
@@ -67818,7 +68593,7 @@ var gr;
       Qe && (Fr ? Fr.push(Qe) : Fr = [Qe]);
     }
     function Pc(E, Qe, nt, Ot, fa, Oa) {
-      !ef(ge.text, Ot) || (Ul(Ot), e.writeCommentRange(E, Qe, nt, Ot, fa, Oa), Ul(fa));
+      ef(ge.text, Ot) && (Ul(Ot), e.writeCommentRange(E, Qe, nt, Ot, fa, Oa), Ul(fa));
     }
     function Zd(E, Qe) {
       return e.isRecognizedTripleSlashComment(ge.text, E, Qe);
@@ -67838,12 +68613,12 @@ var gr;
         Ot && Ke && Ke.appendSourceMap(qe.getLine(), qe.getColumn(), Ot, E.parent.sourceMapPath, E.parent.getLineAndCharacterOfPosition(E.pos), E.parent.getLineAndCharacterOfPosition(E.end));
       } else {
         var fa = nt.source || Me;
-        E.kind !== 347 && (Qe & 16) === 0 && nt.pos >= 0 && kf(nt.source || Me, Lp(fa, nt.pos)), Qe & 64 && (Or = !0);
+        E.kind !== 347 && !(Qe & 16) && nt.pos >= 0 && kf(nt.source || Me, Lp(fa, nt.pos)), Qe & 64 && (Or = !0);
       }
     }
     function dd(E) {
       var Qe = e.getEmitFlags(E), nt = e.getSourceMapRange(E);
-      e.isUnparsedNode(E) || (Qe & 64 && (Or = !1), E.kind !== 347 && (Qe & 32) === 0 && nt.end >= 0 && kf(nt.source || Me, nt.end));
+      e.isUnparsedNode(E) || (Qe & 64 && (Or = !1), E.kind !== 347 && !(Qe & 32) && nt.end >= 0 && kf(nt.source || Me, nt.end));
     }
     function Lp(E, Qe) {
       return E.skipTrivia ? E.skipTrivia(Qe) : e.skipTrivia(E.text, Qe);
@@ -67865,7 +68640,7 @@ var gr;
       if (Or || E && e.isInJsonFile(E))
         return fa(Qe, nt, Ot);
       var Oa = E && E.emitNode, ia = Oa && Oa.flags || 0, ti = Oa && Oa.tokenSourceMapRanges && Oa.tokenSourceMapRanges[Qe], Na = ti && ti.source || Me;
-      return Ot = Lp(Na, ti ? ti.pos : Ot), (ia & 128) === 0 && Ot >= 0 && kf(Na, Ot), Ot = fa(Qe, nt, Ot), ti && (Ot = ti.end), (ia & 256) === 0 && Ot >= 0 && kf(Na, Ot), Ot;
+      return Ot = Lp(Na, ti ? ti.pos : Ot), !(ia & 128) && Ot >= 0 && kf(Na, Ot), Ot = fa(Qe, nt, Ot), ti && (Ot = ti.end), !(ia & 256) && Ot >= 0 && kf(Na, Ot), Ot;
     }
     function Fc(E) {
       if (!Or) {
@@ -68026,7 +68801,7 @@ var gr;
         return;
       }
       var Ce = K(j);
-      if (!!Ce) {
+      if (Ce) {
         if (!S.directoryExists) {
           ue();
           return;
@@ -68078,7 +68853,7 @@ var gr;
   }
   e.clearSharedExtendedConfigFileWatcher = d;
   function a(S, B, J) {
-    !S.delete(B) || S.forEach(function(k, P) {
+    S.delete(B) && S.forEach(function(k, P) {
       var x, w = k.extendedResult;
       !((x = w.extendedSourceFiles) === null || x === void 0) && x.some(function(K) {
         return J(K) === B;
@@ -68604,7 +69379,7 @@ var gr;
           return Ve;
       }
       return e.forEach(he, function(_e, Le) {
-        if (!(_e && (Pe == null ? void 0 : Pe.has(_e.sourceFile.path)))) {
+        if (!(_e && (Pe != null && Pe.has(_e.sourceFile.path)))) {
           var qe = ge(_e, ve, Le);
           return qe || !_e ? qe : ((Pe || (Pe = new e.Set())).add(_e.sourceFile.path), Ie(_e.commandLine.projectReferences, _e.references, _e));
         }
@@ -68653,7 +69428,7 @@ var gr;
   }
   e.getReferencedFileLocation = y;
   function D(z, Te, ge, ke, Pe, Ie, Ge, he, ve) {
-    if (!z || (Ge == null ? void 0 : Ge()) || !e.arrayIsEqualTo(z.getRootFileNames(), Te))
+    if (!z || Ge != null && Ge() || !e.arrayIsEqualTo(z.getRootFileNames(), Te))
       return !1;
     var Ve;
     if (!e.arrayIsEqualTo(z.getProjectReferences(), ve, Xe) || z.getSourceFiles().some(Le) || z.getMissingFilePaths().some(Pe))
@@ -68770,7 +69545,7 @@ var gr;
     var vt;
     if (e.tracing === null || e.tracing === void 0 || e.tracing.push("program", "tryReuseStructureFromOldProgram", {}), vt = Cn(), e.tracing === null || e.tracing === void 0 || e.tracing.pop(), vt !== 2) {
       Ae = [], Ye = [], Xe && (xr || (xr = Xe.map(Ia)), _e.length && (xr == null || xr.forEach(function(Mr, $r) {
-        if (!!Mr) {
+        if (Mr) {
           var Lt = e.outFile(Mr.commandLine.options);
           if (yt) {
             if (Lt || e.getEmitModuleKind(Mr.commandLine.options) === e.ModuleKind.None)
@@ -68959,10 +69734,10 @@ var gr;
       var $r = ko(Mr);
       if (e.isString($r))
         return Gi($r);
-      if (!!$r)
+      if ($r)
         return Ro(function(Lt) {
           var Kt = e.outFile(Lt.commandLine.options);
-          if (!!Kt)
+          if (Kt)
             return pt(Kt) === Mr ? Lt : void 0;
         });
     }
@@ -69130,7 +69905,7 @@ var gr;
       }
       if (vt !== 2)
         return vt;
-      if (e.changesAffectingProgramStructure($r, Le) || ((Mr = pr.hasChangedAutomaticTypeDirectiveNames) === null || Mr === void 0 ? void 0 : Mr.call(pr)))
+      if (e.changesAffectingProgramStructure($r, Le) || !((Mr = pr.hasChangedAutomaticTypeDirectiveNames) === null || Mr === void 0) && Mr.call(pr))
         return 1;
       me = De.getMissingFilePaths(), e.Debug.assert(Kt.length === De.getSourceFiles().length);
       for (var $l = 0, dc = Kt; $l < dc.length; $l++) {
@@ -69762,7 +70537,7 @@ var gr;
       return e.forEachResolvedProjectReference(xr, Mr);
     }
     function ko(Mr) {
-      if (!!e.isDeclarationFileName(Mr))
+      if (e.isDeclarationFileName(Mr))
         return et === void 0 && (et = new e.Map(), Ro(function($r) {
           var Lt = e.outFile($r.commandLine.options);
           if (Lt) {
@@ -69785,7 +70560,7 @@ var gr;
       return yt && !!Gi(Mr);
     }
     function as(Mr) {
-      if (!!fr)
+      if (fr)
         return fr.get(Mr) || void 0;
     }
     function pe(Mr, $r) {
@@ -69797,7 +70572,7 @@ var gr;
       var $r = e.map(Mr.typeReferenceDirectives, function(Kn) {
         return e.toFileNameLowerCase(Kn.fileName);
       });
-      if (!!$r)
+      if ($r)
         for (var Lt = St($r, Mr), Kt = 0; Kt < $r.length; Kt++) {
           var pn = Mr.typeReferenceDirectives[Kt], fn = Lt[Kt], kn = e.toFileNameLowerCase(pn.fileName);
           e.setResolvedTypeReferenceDirective(Mr, kn, fn), ft(kn, fn, { kind: e.FileIncludeKind.TypeReferenceDirective, file: Mr.path, index: Kt });
@@ -69914,7 +70689,7 @@ var gr;
         }
       if (Le.paths) {
         for (var kn in Le.paths)
-          if (!!e.hasProperty(Le.paths, kn))
+          if (e.hasProperty(Le.paths, kn))
             if (e.hasZeroOrOneAsteriskCharacter(kn) || Vs(!0, kn, e.Diagnostics.Pattern_0_can_have_at_most_one_Asterisk_character, kn), e.isArray(Le.paths[kn])) {
               var Kn = Le.paths[kn].length;
               Kn === 0 && Vs(!1, kn, e.Diagnostics.Substitutions_for_pattern_0_shouldn_t_be_an_empty_array, kn);
@@ -70016,7 +70791,7 @@ var gr;
         }
         return I($r) ? e.createFileDiagnostic($r.file, $r.pos, $r.end - $r.pos, Lt) : void 0;
       }
-      if (!!Le.configFile) {
+      if (Le.configFile) {
         var Kt, pn;
         switch (Mr.kind) {
           case e.FileIncludeKind.RootFile:
@@ -70254,7 +71029,7 @@ var gr;
       if (!lr)
         return !1;
       var Cr = z.toPath(Xe);
-      return e.stringContains(Cr, e.nodeModulesPathPart) ? De && ((Ae = Er.getSymlinkedFiles()) === null || Ae === void 0 ? void 0 : Ae.has(Cr)) ? !0 : e.firstDefinedIterator(lr.entries(), function(Or) {
+      return e.stringContains(Cr, e.nodeModulesPathPart) ? De && (!((Ae = Er.getSymlinkedFiles()) === null || Ae === void 0) && Ae.has(Cr)) ? !0 : e.firstDefinedIterator(lr.entries(), function(Or) {
         var Ke = Or[0], Me = Or[1];
         if (!(!Me || !e.startsWith(Cr, Ke))) {
           var Hr = Ye(Cr.replace(Ke, Me.realPath));
@@ -70272,7 +71047,7 @@ var gr;
     var Pe = z.getCompilerOptions();
     if (Pe.noEmit)
       return z.getSemanticDiagnostics(Te, ke), Te || e.outFile(Pe) ? e.emitSkippedWithNoDiagnostics : z.emitBuildInfo(ge, ke);
-    if (!!Pe.noEmitOnError) {
+    if (Pe.noEmitOnError) {
       var Ie = Gt(Gt(Gt(Gt([], z.getOptionsDiagnostics(ke), !0), z.getSyntacticDiagnostics(Te, ke), !0), z.getGlobalDiagnostics(ke), !0), z.getSemanticDiagnostics(Te, ke), !0);
       if (Ie.length === 0 && e.getEmitDeclarations(z.getCompilerOptions()) && (Ie = z.getDeclarationDiagnostics(void 0, ke)), !!Ie.length) {
         var Ge;
@@ -70481,16 +71256,16 @@ var gr;
           Ie(Ce);
         }
       if (y.resolvedTypeReferenceDirectiveNames && y.resolvedTypeReferenceDirectiveNames.forEach(function(Ge) {
-        if (!!Ge) {
+        if (Ge) {
           var he = Ge.resolvedFileName, ve = v(I, he, ue, D);
           Ie(ve);
         }
       }), y.moduleAugmentations.length)
         for (var m = I.getTypeChecker(), O = 0, Q = y.moduleAugmentations; O < Q.length; O++) {
           var V = Q[O];
-          if (!!e.isStringLiteral(V)) {
+          if (e.isStringLiteral(V)) {
             var z = m.getSymbolAtLocation(V);
-            !z || Pe(z);
+            z && Pe(z);
           }
         }
       for (var Te = 0, ge = I.getTypeChecker().getAmbientModules(); Te < ge.length; Te++) {
@@ -70499,7 +71274,7 @@ var gr;
       }
       return C;
       function Pe(Ge) {
-        if (!!Ge.declarations)
+        if (Ge.declarations)
           for (var he = 0, ve = Ge.declarations; he < ve.length; he++) {
             var Ve = ve[he], _e = e.getSourceFileOfNode(Ve);
             _e && _e !== y && Ie(_e.resolvedPath);
@@ -70867,7 +71642,7 @@ var gr;
   }
   function M(m, u, g) {
     var F, te;
-    if (!(!m.exportedModulesMap || !m.changedFilesSet.has(u.resolvedPath)) && !!b(m, u.resolvedPath)) {
+    if (!(!m.exportedModulesMap || !m.changedFilesSet.has(u.resolvedPath)) && b(m, u.resolvedPath)) {
       if (m.compilerOptions.isolatedModules) {
         var ue = new e.Map();
         ue.set(u.resolvedPath, !0);
@@ -70897,7 +71672,7 @@ var gr;
   }
   function B(m, u, g, F) {
     var te, ue, X;
-    !e.tryAddToSet(g, u) || (F(m, u), e.Debug.assert(!!m.currentAffectedFilesExportedModulesMap), (te = m.currentAffectedFilesExportedModulesMap.getKeys(u)) === null || te === void 0 || te.forEach(function(j) {
+    e.tryAddToSet(g, u) && (F(m, u), e.Debug.assert(!!m.currentAffectedFilesExportedModulesMap), (te = m.currentAffectedFilesExportedModulesMap.getKeys(u)) === null || te === void 0 || te.forEach(function(j) {
       return B(m, j, g, F);
     }), (ue = m.exportedModulesMap.getKeys(u)) === null || ue === void 0 || ue.forEach(function(j) {
       var Se;
@@ -70934,7 +71709,7 @@ var gr;
     var g = e.Debug.checkDefined(m.program).getCurrentDirectory(), F = e.getDirectoryPath(e.getNormalizedAbsolutePath(e.getTsBuildInfoEmitOutputFilePath(m.compilerOptions), g)), te = [], ue = new e.Map(), X, j, Se = e.arrayFrom(m.fileInfos.entries(), function(qe) {
       var Xe = qe[0], De = qe[1], Ae = _e(Xe);
       e.Debug.assert(te[Ae - 1] === Ve(Xe));
-      var Ye = m.currentAffectedFilesSignatures && m.currentAffectedFilesSignatures.get(Xe), Lr = Ye != null ? Ye : De.signature;
+      var Ye = m.currentAffectedFilesSignatures && m.currentAffectedFilesSignatures.get(Xe), Lr = Ye ?? De.signature;
       return De.version === Lr ? De.affectsGlobalScope ? { version: De.version, signature: void 0, affectsGlobalScope: !0, impliedFormat: De.impliedFormat } : De.version : Lr !== void 0 ? Ye === void 0 ? De : { version: De.version, signature: Ye, affectsGlobalScope: De.affectsGlobalScope, impliedFormat: De.impliedFormat } : { version: De.version, signature: !1, affectsGlobalScope: De.affectsGlobalScope, impliedFormat: De.impliedFormat };
     }), Ce;
     m.referencedMap && (Ce = e.arrayFrom(m.referencedMap.keys()).sort(e.compareStringsCaseSensitive).map(function(qe) {
@@ -70998,7 +71773,7 @@ var gr;
   function Z(m, u) {
     for (var g, F = e.getOptionsNameMap().optionsNameMap, te = 0, ue = e.getOwnKeys(m).sort(e.compareStringsCaseSensitive); te < ue.length; te++) {
       var X = ue[te], j = X.toLowerCase(), Se = F.get(j);
-      ((Se == null ? void 0 : Se.affectsEmit) || (Se == null ? void 0 : Se.affectsSemanticDiagnostics) || j === "strict" || j === "skiplibcheck" || j === "skipdefaultlibcheck") && ((g || (g = {}))[X] = ne(Se, m[X], u));
+      (Se != null && Se.affectsEmit || Se != null && Se.affectsSemanticDiagnostics || j === "strict" || j === "skiplibcheck" || j === "skipdefaultlibcheck") && ((g || (g = {}))[X] = ne(Se, m[X], u));
     }
     return g;
   }
@@ -71218,7 +71993,7 @@ var gr;
       return j[ge - 1];
     }
     function Te(ge) {
-      if (!!ge) {
+      if (ge) {
         var ke = e.BuilderState.createManyToManyPathMap();
         return ge.forEach(function(Pe) {
           var Ie = Pe[0], Ge = Pe[1];
@@ -71490,7 +72265,7 @@ var gr;
     }
     function ge(Fe, $e, Dr) {
       var Fr = x.get(p.toPath($e));
-      if (!!Fr)
+      if (Fr)
         return Fr.get(Fe, Dr);
     }
     function ke(Fe) {
@@ -71542,7 +72317,7 @@ var gr;
     function ve(Fe) {
       e.Debug.assert(!!Fe.refCount);
       var $e = Fe.failedLookupLocations;
-      if (!!$e.length) {
+      if ($e.length) {
         ie.push(Fe);
         for (var Dr = !1, Fr = 0, He = $e; Fr < He.length; Fr++) {
           var pr = He[Fr], Jr = p.toPath(pr), ze = Pe(pr, Jr);
@@ -71598,11 +72373,11 @@ var gr;
       }), Fe.delete($e));
     }
     function Ae(Fe) {
-      if (!!e.fileExtensionIs(Fe, ".json")) {
+      if (e.fileExtensionIs(Fe, ".json")) {
         var $e = p.getCurrentProgram();
-        if (!!$e) {
+        if ($e) {
           var Dr = $e.getResolvedProjectReferenceByPath(Fe);
-          !Dr || Dr.commandLine.fileNames.forEach(function(Fr) {
+          Dr && Dr.commandLine.fileNames.forEach(function(Fr) {
             return Ye(p.toPath(Fr));
           });
         }
@@ -71709,7 +72484,7 @@ var gr;
   e.createResolutionCache = d;
   function a(p) {
     var N, H;
-    return !!(((N = p.resolvedModule) === null || N === void 0 ? void 0 : N.originalPath) || ((H = p.resolvedTypeReferenceDirective) === null || H === void 0 ? void 0 : H.originalPath));
+    return !!(!((N = p.resolvedModule) === null || N === void 0) && N.originalPath || !((H = p.resolvedTypeReferenceDirective) === null || H === void 0) && H.originalPath);
   }
 })(gr || (gr = {}));
 var gr;
@@ -71899,9 +72674,9 @@ var gr;
       }
       var ve = (Q = Se.getSymlinkCache) === null || Q === void 0 ? void 0 : Q.call(Se).getSymlinkedDirectoriesByRealpath(), Ve = e.getNormalizedAbsolutePath(j, z), _e = ve && e.forEachAncestorDirectory(e.getDirectoryPath(Ve), function(Le) {
         var qe = ve.get(e.ensureTrailingDirectorySeparator(e.toPath(Le, z, V)));
-        if (!!qe)
+        if (qe)
           return e.startsWithDirectory(X, Le, V) ? !1 : e.forEach(Ie, function(Xe) {
-            if (!!e.startsWithDirectory(Xe, Le, V))
+            if (e.startsWithDirectory(Xe, Le, V))
               for (var De = e.getRelativePathFromDirectory(Le, Xe, V), Ae = 0, Ye = qe; Ae < Ye.length; Ae++) {
                 var Lr = Ye[Ae], Er = e.resolvePath(Lr, De), lr = O(Er, Xe === Te);
                 if (Ge = !0, lr)
@@ -71964,7 +72739,7 @@ var gr;
         if (!e.isModuleDeclaration(V))
           return;
         var Pe = ve(V);
-        if (!(((z = Pe == null ? void 0 : Pe.parent) === null || z === void 0 ? void 0 : z.parent) && e.isModuleBlock(Pe.parent) && e.isAmbientModule(Pe.parent.parent) && e.isSourceFile(Pe.parent.parent.parent)))
+        if (!(!((z = Pe == null ? void 0 : Pe.parent) === null || z === void 0) && z.parent && e.isModuleBlock(Pe.parent) && e.isAmbientModule(Pe.parent.parent) && e.isSourceFile(Pe.parent.parent.parent)))
           return;
         var Ie = (ke = (ge = (Te = Pe.parent.parent.symbol.exports) === null || Te === void 0 ? void 0 : Te.get("export=")) === null || ge === void 0 ? void 0 : ge.valueDeclaration) === null || ke === void 0 ? void 0 : ke.expression;
         if (!Ie)
@@ -72123,7 +72898,7 @@ var gr;
       }
     }
     function D(X, j) {
-      if (!!X.fileExists)
+      if (X.fileExists)
         for (var Se = e.flatten(e.getSupportedExtensions({ allowJs: !0 }, [{ extension: "node", isMixedContent: !1 }, { extension: "json", isMixedContent: !1, scriptKind: 6 }])), Ce = 0, O = Se; Ce < O.length; Ce++) {
           var Q = O[Ce], V = j + Q;
           if (X.fileExists(V))
@@ -72324,7 +73099,7 @@ var gr;
   e.explainIfFileIsRedirect = M;
   function S(y, D) {
     var C, m = y.getCompilerOptions().configFile;
-    if (!!(!((C = m == null ? void 0 : m.configFileSpecs) === null || C === void 0) && C.validatedFilesSpec)) {
+    if (!((C = m == null ? void 0 : m.configFileSpecs) === null || C === void 0) && C.validatedFilesSpec) {
       var u = e.createGetCanonicalFileName(y.useCaseSensitiveFileNames()), g = u(D), F = e.getDirectoryPath(e.getNormalizedAbsolutePath(m.fileName, y.getCurrentDirectory()));
       return e.find(m.configFileSpecs.validatedFilesSpec, function(te) {
         return u(e.getNormalizedAbsolutePath(te, F)) === g;
@@ -72334,7 +73109,7 @@ var gr;
   e.getMatchedFileSpec = S;
   function B(y, D) {
     var C, m, u = y.getCompilerOptions().configFile;
-    if (!!(!((C = u == null ? void 0 : u.configFileSpecs) === null || C === void 0) && C.validatedIncludeSpecs)) {
+    if (!((C = u == null ? void 0 : u.configFileSpecs) === null || C === void 0) && C.validatedIncludeSpecs) {
       var g = e.fileExtensionIs(D, ".json"), F = e.getDirectoryPath(e.getNormalizedAbsolutePath(u.fileName, y.getCurrentDirectory())), te = y.useCaseSensitiveFileNames();
       return e.find((m = u == null ? void 0 : u.configFileSpecs) === null || m === void 0 ? void 0 : m.validatedIncludeSpecs, function(ue) {
         if (g && !e.endsWith(ue, ".json"))
@@ -72623,11 +73398,11 @@ var gr;
   function n(N, H) {
     if (!e.outFile(N)) {
       var h = e.getTsBuildInfoEmitOutputFilePath(N);
-      if (!!h) {
+      if (h) {
         var v = H.readFile(h);
-        if (!!v) {
+        if (v) {
           var A = e.getBuildInfo(v);
-          if (A.version === e.version && !!A.program)
+          if (A.version === e.version && A.program)
             return e.createBuildProgramUsingProgramBuildInfo(A.program, h, H);
         }
       }
@@ -72879,7 +73654,7 @@ var gr;
     }
     function Jr(Rr) {
       var sr, ye = Le(Rr), or = M == null ? void 0 : M.get(ye);
-      !or || (M.delete(ye), or.watchedDirectories && e.clearMap(or.watchedDirectories, e.closeFileWatcherOf), (sr = or.watcher) === null || sr === void 0 || sr.close(), e.clearSharedExtendedConfigFileWatcher(ye, S));
+      or && (M.delete(ye), or.watchedDirectories && e.clearMap(or.watchedDirectories, e.closeFileWatcherOf), (sr = or.watcher) === null || sr === void 0 || sr.close(), e.clearSharedExtendedConfigFileWatcher(ye, S));
     }
     function ze(Rr, sr, ye, or, fe, je) {
       return Se(sr, function(Ee, We) {
@@ -72932,7 +73707,7 @@ var gr;
           var ee;
           Yr(fe, je, We), B && e.cleanExtendedConfigCache(B, je, Le);
           var Ne = (ee = S.get(je)) === null || ee === void 0 ? void 0 : ee.projects;
-          !(Ne != null && Ne.size) || Ne.forEach(function(me) {
+          Ne != null && Ne.size && Ne.forEach(function(me) {
             if (Le(Z) === me)
               h = e.ConfigFileProgramReloadLevel.Full;
             else {
@@ -72956,7 +73731,7 @@ var gr;
           var xr = Le(Ze);
           F && F.addOrDeleteFileOrDirectory(Ze, xr), Ye(xr);
           var fr = M == null ? void 0 : M.get(sr);
-          !(fr != null && fr.parsedCommandLine) || e.isIgnoredFileFromWildCardWatching({
+          fr != null && fr.parsedCommandLine && (e.isIgnoredFileFromWildCardWatching({
             watchedDirPath: Le(ee),
             fileOrDirectory: Ze,
             fileOrDirectoryPath: xr,
@@ -72967,7 +73742,7 @@ var gr;
             useCaseSensitiveFileNames: w,
             writeLog: O,
             toPath: Le
-          }) || fr.reloadLevel !== e.ConfigFileProgramReloadLevel.Full && (fr.reloadLevel = e.ConfigFileProgramReloadLevel.Partial, Hr());
+          }) || fr.reloadLevel !== e.ConfigFileProgramReloadLevel.Full && (fr.reloadLevel = e.ConfigFileProgramReloadLevel.Partial, Hr()));
         }, Ne, ((me = ye.parsedCommandLine) === null || me === void 0 ? void 0 : me.watchOptions) || y, e.WatchType.WildcardDirectoryOfReferencedProject);
       }) : ye.watchedDirectories && (e.clearMap(ye.watchedDirectories, e.closeFileWatcherOf), ye.watchedDirectories = void 0), zn(sr, (Ee = ye.parsedCommandLine) === null || Ee === void 0 ? void 0 : Ee.options, ((We = ye.parsedCommandLine) === null || We === void 0 ? void 0 : We.watchOptions) || y, e.WatchType.ExtendedConfigOfReferencedProject);
     }
@@ -73241,7 +74016,7 @@ var gr;
     };
   }
   function T(de) {
-    if (!!de.cache) {
+    if (de.cache) {
       var Fe = de.cache, $e = de.host, Dr = de.compilerHost, Fr = de.extendedConfigCache, He = de.moduleResolutionCache, pr = de.typeReferenceDirectiveResolutionCache;
       $e.readFile = Fe.originalReadFile, $e.fileExists = Fe.originalFileExists, $e.directoryExists = Fe.originalDirectoryExists, $e.createDirectory = Fe.originalCreateDirectory, $e.writeFile = Fe.originalWriteFile, Dr.getSourceFile = Fe.originalGetSourceFile, de.readFileWithCache = Fe.originalReadFileWithCache, Fr.clear(), He == null || He.clear(), pr == null || pr.clear(), de.cache = void 0;
     }
@@ -73254,7 +74029,7 @@ var gr;
     (Fr === void 0 || Fr < $e) && Dr.set(Fe, $e);
   }
   function D(de, Fe) {
-    if (!!de.allProjectBuildPending) {
+    if (de.allProjectBuildPending) {
       de.allProjectBuildPending = !1, de.options.watch && lr(de, e.Diagnostics.Starting_compilation_in_watch_mode), $(de);
       var $e = v(R(de));
       $e.forEach(function(Dr) {
@@ -73528,7 +74303,7 @@ var gr;
     return Fe.type !== e.UpToDateStatusType.OutOfDateWithPrepend || Dr.force ? !0 : $e.fileNames.length === 0 || !!e.getConfigFileParsingDiagnostics($e).length || !e.isIncrementalCompilation($e.options);
   }
   function ue(de, Fe, $e) {
-    if (!!de.projectPendingBuild.size && !h(Fe)) {
+    if (de.projectPendingBuild.size && !h(Fe)) {
       if (de.currentInvalidatedProject)
         return e.arrayIsEqualTo(de.currentInvalidatedProject.buildOrder, Fe) ? de.currentInvalidatedProject : void 0;
       for (var Dr = de.options, Fr = de.projectPendingBuild, He = 0; He < Fe.length; He++) {
@@ -73742,7 +74517,7 @@ var gr;
     });
   }
   function ge(de, Fe, $e, Dr, Fr, He, pr) {
-    if (!(pr & d.AnyErrors) && !!Fr.options.composite)
+    if (!(pr & d.AnyErrors) && Fr.options.composite)
       for (var Jr = Dr + 1; Jr < He.length; Jr++) {
         var ze = He[Jr], Ar = P(de, ze);
         if (!de.projectPendingBuild.has(Ar)) {
@@ -73810,7 +74585,7 @@ var gr;
         continue;
       }
       var tt = e.getAllProjectOutputs(lt, !He.useCaseSensitiveFileNames());
-      if (!!tt.length)
+      if (tt.length)
         for (var Rt = new e.Set(lt.fileNames.map(function(zn) {
           return k(de, zn);
         })), cn = 0, bn = tt; cn < bn.length; cn++) {
@@ -73860,7 +74635,7 @@ var gr;
     });
   }
   function Le(de, Fe, $e, Dr) {
-    !de.watch || e.updateWatchingWildcardDirectories(p(de.allWatchedWildcardDirectories, $e), new e.Map(e.getEntries(Dr.wildcardDirectories)), function(Fr, He) {
+    de.watch && e.updateWatchingWildcardDirectories(p(de.allWatchedWildcardDirectories, $e), new e.Map(e.getEntries(Dr.wildcardDirectories)), function(Fr, He) {
       return de.watchDirectory(Fr, function(pr) {
         var Jr;
         e.isIgnoredFileFromWildCardWatching({
@@ -73883,7 +74658,7 @@ var gr;
     });
   }
   function qe(de, Fe, $e, Dr) {
-    !de.watch || e.mutateMap(p(de.allWatchedInputFiles, $e), e.arrayToMap(Dr.fileNames, function(Fr) {
+    de.watch && e.mutateMap(p(de.allWatchedInputFiles, $e), e.arrayToMap(Dr.fileNames, function(Fr) {
       return k(de, Fr);
     }), {
       createNewValue: function(Fr, He) {
@@ -73905,7 +74680,7 @@ var gr;
     });
   }
   function De(de, Fe) {
-    if (!!de.watchAllProjectsPending) {
+    if (de.watchAllProjectsPending) {
       de.watchAllProjectsPending = !1;
       for (var $e = 0, Dr = v(Fe); $e < Dr.length; $e++) {
         var Fr = Dr[$e], He = P(de, Fr), pr = K(de, Fr, He);
@@ -73991,7 +74766,7 @@ var gr;
     Or(de, Fe, [de.configFileCache.get(Fe)]);
   }
   function Me(de, Fe) {
-    if (!!de.needsSummary) {
+    if (de.needsSummary) {
       de.needsSummary = !1;
       var $e = de.watch || !!de.host.reportErrorSummary, Dr = de.diagnostics, Fr = 0;
       h(Fe) ? (Hr(de, Fe.buildOrder), Cr(de, Fe.circularDiagnostics), $e && (Fr += e.getErrorCountForSummary(Fe.circularDiagnostics))) : (Fe.forEach(function(He) {
@@ -74192,7 +74967,7 @@ var gr;
         M && M("".concat(X, ": ").concat(JSON.stringify(ue))), e.forEach(ue, m);
       }
       function g(ue, X) {
-        if (!!b.fileExists(ue)) {
+        if (b.fileExists(ue)) {
           X.push(ue);
           var j = e.readConfigFile(ue, function(Ce) {
             return b.readFile(Ce);
@@ -74202,7 +74977,7 @@ var gr;
       }
       function F(ue) {
         var X = e.mapDefined(ue, function(Se) {
-          if (!!e.hasJSFileExtension(Se)) {
+          if (e.hasJSFileExtension(Se)) {
             var Ce = e.removeFileExtension(e.getBaseFileName(Se.toLowerCase())), O = e.removeMinAndVersionNumbers(Ce);
             return J.get(O);
           }
@@ -74225,7 +75000,7 @@ var gr;
               }), ge = Te.config;
               if (!(z === "package.json" && ge._requiredBy && e.filter(ge._requiredBy, function(Ie) {
                 return Ie[0] === "#" || Ie === "/";
-              }).length === 0) && !!ge.name) {
+              }).length === 0) && ge.name) {
                 var ke = ge.types || ge.typings;
                 if (ke) {
                   var Pe = e.getNormalizedAbsolutePath(ke, e.getDirectoryPath(V));
@@ -74910,7 +75685,7 @@ var gr;
   }
   function Pe(le) {
     var rr = he(le);
-    if (!!rr) {
+    if (rr) {
       var br = rr.getChildren(), ct = e.indexOfNode(br, le);
       return {
         listItemIndex: ct,
@@ -75459,7 +76234,7 @@ var gr;
     return !!ct && br === F.test(le.text.substring(ct.pos, ct.end));
   }
   function fr(le) {
-    if (!!le)
+    if (le)
       switch (le.kind) {
         case 10:
         case 14:
@@ -75673,7 +76448,7 @@ var gr;
   }
   e.getPropertySymbolFromBindingElement = Mt;
   function It(le, rr, br) {
-    if (!!le)
+    if (le)
       for (; le.parent; ) {
         if (e.isSourceFile(le.parent) || !rt(br, le.parent, rr))
           return le;
@@ -76336,7 +77111,7 @@ var gr;
     if (jt)
       for (var ha = 0, ri = br; ha < ri.length; ha++) {
         var Ta = ri[ha], Ya = jt[Ta];
-        if (!!Ya) {
+        if (Ya) {
           var fi = new e.Map();
           for (var ci in Ya)
             fi.set(ci, Ya[ci]);
@@ -76400,9 +77175,9 @@ var gr;
       return !!(e.isSourceFileJS(le) && e.JsTyping.nodeCoreModules.has(Si) && (jt === void 0 && (jt = zl(le)), jt));
     }
     function fi(Si, Do) {
-      if (!!e.stringContains(Si, "node_modules")) {
+      if (e.stringContains(Si, "node_modules")) {
         var bo = e.moduleSpecifiers.getNodeModulesPackageName(br.getCompilationSettings(), le.path, Si, Do, rr);
-        if (!!bo && !e.pathIsRelative(bo) && !e.isRootedDiskPath(bo))
+        if (bo && !e.pathIsRelative(bo) && !e.isRootedDiskPath(bo))
           return ci(bo);
       }
     }
@@ -76523,7 +77298,7 @@ var gr;
       if (e.JsTyping.nodeCoreModules.has(ct.text))
         return e.startsWith(ct.text, "node:");
     });
-    return br != null ? br : rr.usesUriStyleNodeCoreModules;
+    return br ?? rr.usesUriStyleNodeCoreModules;
   }
   e.shouldUseUriStyleNodeCoreModules = Kn;
   function Fa(le) {
@@ -76720,7 +77495,7 @@ var gr;
   e.getExportInfoMap = N;
   function H(ie, b, M) {
     var S = v(ie, b);
-    if (!!S) {
+    if (S) {
       var B = S.symbol, J = S.exportKind, k = A(B, b, M);
       return k && wn({ symbol: B, exportKind: J }, k);
     }
@@ -76850,7 +77625,7 @@ var gr;
           return;
         for (var ne = w.getTokenText(), R = ne.length - 1, Y = 0; ne.charCodeAt(R - Y) === 92; )
           Y++;
-        return (Y & 1) === 0 ? void 0 : ne.charCodeAt(0) === 34 ? 3 : 2;
+        return Y & 1 ? ne.charCodeAt(0) === 34 ? 3 : 2 : void 0;
       }
       case 3:
         return w.isUnterminated() ? 1 : void 0;
@@ -77082,7 +77857,7 @@ var gr;
   e.getEncodedSemanticClassifications = M;
   function S(w, K, Z) {
     var ne = w.getFlags();
-    if ((ne & 2885600) !== 0)
+    if (ne & 2885600)
       return ne & 32 ? 11 : ne & 384 ? 12 : ne & 524288 ? 16 : ne & 1536 ? K & 4 || K & 1 && B(w) ? 14 : void 0 : ne & 2097152 ? S(Z.getAliasedSymbol(w), K, Z) : K & 2 ? ne & 64 ? 13 : ne & 262144 ? 15 : void 0 : void 0;
   }
   function B(w) {
@@ -77373,7 +78148,7 @@ var gr;
       }
     }
     function j(Se) {
-      if (!!Se && e.decodedTextSpanIntersectsWith(ne, R, Se.pos, Se.getFullWidth())) {
+      if (Se && e.decodedTextSpanIntersectsWith(ne, R, Se.pos, Se.getFullWidth())) {
         b(w, Se.kind);
         for (var Ce = 0, O = Se.getChildren(K); Ce < O.length; Ce++) {
           var Q = O[Ce];
@@ -77753,7 +78528,7 @@ var gr;
       }
       function S(V, z) {
         var Te = V.getContextualType(z);
-        if (!!Te) {
+        if (Te) {
           var ge = V.getContextualType(z, 4), ke = n.getPropertiesForObjectExpression(Te, ge, z, V);
           return {
             kind: 1,
@@ -77860,7 +78635,7 @@ var gr;
       }
       function T(V, z, Te, ge, ke, Pe) {
         for (var Ie in ke)
-          if (!!e.hasProperty(ke, Ie)) {
+          if (e.hasProperty(ke, Ie)) {
             var Ge = ke[Ie];
             if (Ge)
               for (var he = function(De, Ae, Ye) {
@@ -77960,9 +78735,9 @@ var gr;
         var ke = e.getTokenAtPosition(V, z), Pe = e.getLeadingCommentRanges(V.text, ke.pos), Ie = Pe && e.find(Pe, function(Xe) {
           return z >= Xe.pos && z <= Xe.end;
         });
-        if (!!Ie) {
+        if (Ie) {
           var Ge = V.text.slice(Ie.pos, z), he = Se.exec(Ge);
-          if (!!he) {
+          if (he) {
             var ve = he[1], Ve = he[2], _e = he[3], Le = e.getDirectoryPath(V.path), qe = Ve === "path" ? $(_e, Le, K(Te, 1), ge, V.path) : Ve === "types" ? te(ge, Te, Le, y(_e), K(Te)) : e.Debug.fail();
             return P(_e, Ie.pos + ve.length, qe);
           }
@@ -77982,7 +78757,7 @@ var gr;
         }
         return Pe;
         function De(Ae) {
-          if (!!e.tryDirectoryExists(V, Ae))
+          if (e.tryDirectoryExists(V, Ae))
             for (var Ye = 0, Lr = e.tryGetDirectories(V, Ae); Ye < Lr.length; Ye++) {
               var Er = Lr[Ye], lr = e.unmangleScopedPackageName(Er);
               if (!(z.types && !e.contains(z.types, lr)))
@@ -78001,7 +78776,7 @@ var gr;
         for (var Te = [], ge = 0, ke = e.findPackageJsons(z, V); ge < ke.length; ge++)
           for (var Pe = ke[ge], Ie = e.readJson(Pe, V), Ge = 0, he = Ce; Ge < he.length; Ge++) {
             var ve = he[Ge], Ve = Ie[ve];
-            if (!!Ve)
+            if (Ve)
               for (var _e in Ve)
                 Ve.hasOwnProperty(_e) && !e.startsWith(_e, "@types/") && Te.push(_e);
           }
@@ -78112,7 +78887,7 @@ var gr;
         if (dr && e.isBreakOrContinueStatement(dr.parent) && (dr.kind === 81 || dr.kind === 86 || dr.kind === 79))
           return V(dr.parent);
         var Ir = Xe(je, Ee, We, U(We, et), ee, Ne, void 0, fe, xr);
-        if (!!Ir)
+        if (Ir)
           switch (Ir.kind) {
             case 0:
               var kr = Y(We, fe, je, et, Ee, Ir, Ne);
@@ -78136,12 +78911,12 @@ var gr;
     }
     function P(fe, je, Ee, We, ee, Ne, me) {
       var Ze = fe.get();
-      if (!!Ze) {
+      if (Ze) {
         var xr = Ee.text.toLowerCase(), fr = e.getExportInfoMap(je, ee, We, me), dr = B("continuePreviousIncompleteResponse", ee, We, je, Ne, !1, function(et) {
           var yt = e.mapDefined(Ze.entries, function(Wr) {
             if (!Wr.hasAction || !Wr.source || !Wr.data || k(Wr.data))
               return Wr;
-            if (!!ye(Wr.name, xr)) {
+            if (ye(Wr.name, xr)) {
               var tr = e.Debug.checkDefined(Ae(Wr.name, Wr.data, We, ee)).origin, Ir = fr.get(je.path, Wr.data.exportMapKey), kr = Ir && et.tryResolve(Ir, !e.isExternalModuleNameRelative(e.stripQuotes(tr.moduleSymbol.name)));
               if (!kr)
                 return Wr;
@@ -78475,7 +79250,7 @@ var gr;
         var na = fe[Jn], Wn = vt == null ? void 0 : vt[Jn], en = Ye(na, xr, Wn, dr, !!Ir);
         if (!(!en || ba.get(en.name) || dr === 1 && ut && !pt(na, ut))) {
           var St = en.name, Ut = en.needsConvertPropertyAccess, qt = (wt = ut == null ? void 0 : ut[e.getSymbolId(na)]) !== null && wt !== void 0 ? wt : 11, Mn = (sr(na, sa) ? 8 + qt : qt).toString(), dn = C(na, Mn, Ee, We, ee, Ne, me, Ze, St, Ut, Wn, gt, tr, kr, zr, rn, yt, et, dr, ht, xt);
-          if (!!dn) {
+          if (dn) {
             var oa = !Wn && !(na.parent === void 0 && !e.some(na.declarations, function(_t) {
               return _t.getSourceFile() === ee.getSourceFile();
             }));
@@ -78498,7 +79273,7 @@ var gr;
           if (mt && _t.valueDeclaration === mt)
             return !1;
           var It = e.skipAlias(_t, sa);
-          if (!!Ne.externalModuleIndicator && !yt.allowUmdGlobalAccess && Mt[e.getSymbolId(_t)] === 15 && (Mt[e.getSymbolId(It)] === 16 || Mt[e.getSymbolId(It)] === 11))
+          if (Ne.externalModuleIndicator && !yt.allowUmdGlobalAccess && Mt[e.getSymbolId(_t)] === 15 && (Mt[e.getSymbolId(It)] === 16 || Mt[e.getSymbolId(It)] === 11))
             return !1;
           if (_t = It, e.isInRightSideOfInternalImportEqualsDeclaration(ee))
             return !!(_t.flags & 1920);
@@ -79056,7 +79831,7 @@ var gr;
         var da = vt === ut && Jn && cn(Jn, ut), ei = da ? "" : vt && e.isIdentifier(vt) ? vt.text.toLowerCase() : "", bi = (bt = Ze.getModuleSpecifierCache) === null || bt === void 0 ? void 0 : bt.call(Ze), xi = e.getExportInfoMap(Ee, Ze, fe, xr), ka = (Pn = Ze.getPackageJsonAutoImportProvider) === null || Pn === void 0 ? void 0 : Pn.call(Ze), mi = me ? void 0 : e.createPackageJsonImportFilter(Ee, Ne, Ze);
         B("collectAutoImports", Ze, fe, Ee, Ne, !!Jn, function(Gi) {
           xi.forEach(Ee.path, function(Ro, ko, es, as) {
-            if (!!e.isIdentifierText(ko, e.getEmitScriptTarget(Ze.getCompilationSettings())) && !(!me && e.isStringANonContextualKeyword(ko)) && !(!Cn && !Jn && !(Ro[0].targetFlags & 111551)) && !(Cn && !(Ro[0].targetFlags & 790504))) {
+            if (e.isIdentifierText(ko, e.getEmitScriptTarget(Ze.getCompilationSettings())) && !(!me && e.isStringANonContextualKeyword(ko)) && !(!Cn && !Jn && !(Ro[0].targetFlags & 111551)) && !(Cn && !(Ro[0].targetFlags & 790504))) {
               var pe = me && e.some(Ro, function(gi) {
                 return me.source === e.stripQuotes(gi.moduleSymbol.name);
               });
@@ -79508,9 +80283,9 @@ var gr;
     }
     function Ae(fe, je, Ee, We) {
       var ee = je.isPackageJsonImport ? We.getPackageJsonAutoImportProvider() : Ee, Ne = ee.getTypeChecker(), me = je.ambientModuleName ? Ne.tryFindAmbientModule(je.ambientModuleName) : je.fileName ? Ne.getMergedSymbol(e.Debug.checkDefined(ee.getSourceFile(je.fileName)).symbol) : void 0;
-      if (!!me) {
+      if (me) {
         var Ze = je.exportName === "export=" ? Ne.resolveExternalModuleSymbol(me) : Ne.tryGetMemberInModuleExportsAndProperties(je.exportName, me);
-        if (!!Ze) {
+        if (Ze) {
           var xr = je.exportName === "default";
           return Ze = xr && e.getLocalSymbolForExportDefault(Ze) || Ze, { symbol: Ze, origin: X(je, fe, me) };
         }
@@ -79685,7 +80460,7 @@ var gr;
             return e.findAncestor(Ee, e.isObjectTypeDeclaration);
         }
       }
-      if (!!je) {
+      if (je) {
         if (Ee.kind === 134 || e.isIdentifier(je) && e.isPropertyDeclaration(je.parent) && e.isClassLike(Ee))
           return e.findAncestor(je, e.isClassLike);
         switch (je.kind) {
@@ -79706,7 +80481,7 @@ var gr;
       }
     }
     function He(fe) {
-      if (!!fe) {
+      if (fe) {
         var je = fe.parent;
         switch (fe.kind) {
           case 18:
@@ -79723,11 +80498,11 @@ var gr;
       }
     }
     function pr(fe, je) {
-      if (!!fe) {
+      if (fe) {
         if (e.isTypeNode(fe) && e.isTypeReferenceType(fe.parent))
           return je.getTypeArgumentConstraint(fe);
         var Ee = pr(fe.parent, je);
-        if (!!Ee)
+        if (Ee)
           switch (fe.kind) {
             case 165:
               return je.getTypeOfPropertyOfContextualType(Ee, fe.symbol.escapedName);
@@ -79886,7 +80661,7 @@ var gr;
       var C = new e.Set(D.map(function(F) {
         return F.fileName;
       })), m = e.FindAllReferences.getReferenceEntriesForNode($, T, I, D, y, void 0, C);
-      if (!!m) {
+      if (m) {
         var u = e.arrayToMultiMap(m.map(e.FindAllReferences.toHighlightSpan), function(F) {
           return F.fileName;
         }, function(F) {
@@ -80096,7 +80871,7 @@ var gr;
     }
     function x($, T) {
       var I = h($);
-      if (!!I) {
+      if (I) {
         var y = [];
         return e.forEach(H(I), function(D) {
           y.push(e.findChildOfKind(D, 109, T));
@@ -80107,7 +80882,7 @@ var gr;
     }
     function w($, T) {
       var I = e.getContainingFunction($);
-      if (!!I) {
+      if (I) {
         var y = [];
         return e.forEachReturnStatement(e.cast(I.body, e.isBlock), function(D) {
           y.push(e.findChildOfKind(D, 105, T));
@@ -80118,7 +80893,7 @@ var gr;
     }
     function K($) {
       var T = e.getContainingFunction($);
-      if (!!T) {
+      if (T) {
         var I = [];
         return T.modifiers && T.modifiers.forEach(function(y) {
           S(I, y, 131);
@@ -80131,7 +80906,7 @@ var gr;
     }
     function Z($) {
       var T = e.getContainingFunction($);
-      if (!!T) {
+      if (T) {
         var I = [];
         return e.forEachChild(T, function(y) {
           ne(y, function(D) {
@@ -80337,7 +81112,7 @@ var gr;
         if (j)
           for (var Se = 0, Ce = j; Se < Ce.length; Se++) {
             var O = Ce[Se];
-            if (!!$(O))
+            if ($(O))
               switch (R && R.throwIfCancellationRequested(), O.kind) {
                 case 207:
                   if (e.isImportCall(O)) {
@@ -80398,9 +81173,9 @@ var gr;
       function te(X, j) {
         j === void 0 && (j = !1), e.Debug.assert(!y);
         var Se = T(X);
-        if (!!Se && (D.push(X), !!j)) {
+        if (Se && (D.push(X), !!j)) {
           var Ce = ne.getMergedSymbol(X.symbol);
-          if (!!Ce) {
+          if (Ce) {
             e.Debug.assert(!!(Ce.flags & 1536));
             var O = ue(Ce);
             if (O)
@@ -80470,10 +81245,10 @@ var gr;
         K === 2 && (!ne || m(u.escapedText)) && U(u, Z.getSymbolAtLocation(u));
       }
       function C(u) {
-        if (!!u)
+        if (u)
           for (var g = 0, F = u.elements; g < F.length; g++) {
             var te = F[g], ue = te.name, X = te.propertyName;
-            if (!!m((X || ue).escapedText))
+            if (m((X || ue).escapedText))
               if (X)
                 Y.push(X), (!ne || ue.escapedText === w.escapedName) && U(ue, Z.getSymbolAtLocation(ue));
               else {
@@ -80489,7 +81264,7 @@ var gr;
     function p(x, w, K) {
       var Z = K.getSymbolAtLocation(w);
       return !!h(x, function(ne) {
-        if (!!e.isExportDeclaration(ne)) {
+        if (e.isExportDeclaration(ne)) {
           var R = ne.exportClause, Y = ne.moduleSpecifier;
           return !Y && R && e.isNamedExports(R) && R.elements.some(function(U) {
             return K.getExportSpecifierLocalTargetSymbol(U) === Z;
@@ -80564,9 +81339,9 @@ var gr;
       function ne() {
         var $, T = x.parent, I = T.parent;
         if (w.exportSymbol)
-          return T.kind === 205 ? (($ = w.declarations) === null || $ === void 0 ? void 0 : $.some(function(u) {
+          return T.kind === 205 ? !(($ = w.declarations) === null || $ === void 0) && $.some(function(u) {
             return u === T;
-          })) && e.isBinaryExpression(I) ? m(I, !1) : void 0 : Y(w.exportSymbol, U(T));
+          }) && e.isBinaryExpression(I) ? m(I, !1) : void 0 : Y(w.exportSymbol, U(T));
         var y = ie(T, x);
         if (y && e.hasSyntacticModifier(y, 1))
           if (e.isImportEqualsDeclaration(y) && y.moduleReference === x) {
@@ -80591,7 +81366,7 @@ var gr;
             return Y(w, 0);
         }
         function C(u) {
-          if (!!u.symbol.parent) {
+          if (u.symbol.parent) {
             var g = u.isExportEquals ? 2 : 1;
             return { kind: 1, symbol: w, exportInfo: { exportingModuleSymbol: u.symbol.parent, exportKind: g } };
           }
@@ -80614,9 +81389,9 @@ var gr;
       }
       function R() {
         var $ = b(x);
-        if (!!$) {
+        if ($) {
           var T = K.getImmediateAliasedSymbol(w);
-          if (!!T) {
+          if (T) {
             T = S(T, K), T.escapedName === "export=" && (T = q(T, K));
             var I = e.symbolEscapedNameNoDefault(T);
             if (I === void 0 || I === "default" || I === w.escapedName)
@@ -80661,7 +81436,7 @@ var gr;
     }
     function M(x, w, K) {
       var Z = x.parent;
-      if (!!Z) {
+      if (Z) {
         var ne = K.getMergedSymbol(Z);
         return e.isExternalModuleSymbol(ne) ? { exportingModuleSymbol: ne, exportKind: w } : void 0;
       }
@@ -80720,7 +81495,7 @@ var gr;
     function a(T) {
       if (e.isDeclaration(T))
         return p(T);
-      if (!!T.parent) {
+      if (T.parent) {
         if (!e.isDeclaration(T.parent) && !e.isExportAssignment(T.parent)) {
           if (e.isInJSFile(T)) {
             var I = e.isBinaryExpression(T.parent) ? T.parent : e.isAccessExpression(T.parent) && e.isBinaryExpression(T.parent.parent) && T.parent.parent.left === T.parent ? T.parent.parent : void 0;
@@ -80748,7 +81523,7 @@ var gr;
       }
     }
     function p(T) {
-      if (!!T)
+      if (T)
         switch (T.kind) {
           case 253:
             return !e.isVariableDeclarationList(T.parent) || T.parent.declarations.length !== 1 ? T : e.isVariableStatement(T.parent.parent) ? T.parent.parent : e.isForInOrOfStatement(T.parent.parent) ? p(T.parent.parent) : T.parent;
@@ -80781,7 +81556,7 @@ var gr;
     }
     n.getContextNode = p;
     function N(T, I, y) {
-      if (!!y) {
+      if (y) {
         var D = d(y) ? Z(y.start, I, y.end) : Z(y, I);
         return D.start !== T.start || D.length !== T.length ? { contextSpan: D } : void 0;
       }
@@ -80811,7 +81586,7 @@ var gr;
       else
         for (var F = g && Gt([], g, !0), te = new e.Map(); F && F.length; ) {
           var ue = F.shift();
-          if (!!e.addToSeen(te, e.getNodeId(ue.node))) {
+          if (e.addToSeen(te, e.getNodeId(ue.node))) {
             u = e.append(u, ue);
             var X = v(T, I, y, ue.node, ue.node.pos);
             X && F.push.apply(F, X);
@@ -80994,7 +81769,7 @@ var gr;
       if (!I)
         return !1;
       var D = e.getDeclarationFromName(T) || (T.kind === 88 ? T.parent : e.isLiteralComputedPropertyDeclarationName(T) || T.kind === 134 && e.isConstructorDeclaration(T.parent) ? T.parent.parent : void 0), C = D && e.isBinaryExpression(D) ? D.left : void 0;
-      return !!(D && ((y = I.declarations) === null || y === void 0 ? void 0 : y.some(function(m) {
+      return !!(D && (!((y = I.declarations) === null || y === void 0) && y.some(function(m) {
         return m === D || m === C;
       })));
     }
@@ -81127,7 +81902,7 @@ var gr;
       }
       function m(Ee, We, ee, Ne, me, Ze) {
         var xr = Ee.flags & 1536 && Ee.declarations && e.find(Ee.declarations, e.isSourceFile);
-        if (!!xr) {
+        if (xr) {
           var fr = Ee.exports.get("export="), dr = F(We, Ee, !!fr, ee, Ze);
           if (!fr || !Ze.has(xr.fileName))
             return dr;
@@ -81286,7 +82061,7 @@ var gr;
         Ee[Ee.None = 0] = "None", Ee[Ee.Constructor = 1] = "Constructor", Ee[Ee.Class = 2] = "Class";
       })(O || (O = {}));
       function Q(Ee) {
-        if (!!(Ee.flags & 33555968)) {
+        if (Ee.flags & 33555968) {
           var We = Ee.declarations && e.find(Ee.declarations, function(ee) {
             return !e.isSourceFile(ee) && !e.isModuleDeclaration(ee);
           });
@@ -81373,7 +82148,7 @@ var gr;
         return Lr(Ee, We) ? We.options.use !== 2 ? !0 : e.isIdentifier(Ee) ? !(e.isImportOrExportSpecifier(Ee.parent) && Ee.escapedText === "default") : !1 : !1;
       }
       function ke(Ee, We) {
-        if (!!Ee.declarations)
+        if (Ee.declarations)
           for (var ee = 0, Ne = Ee.declarations; ee < Ne.length; ee++) {
             var me = Ne[ee], Ze = me.getSourceFile();
             Ae(Ze, We.createSearch(me, Ee, 0), We, We.includesSourceFile(Ze));
@@ -81389,7 +82164,7 @@ var gr;
         var We = Ee.declarations, ee = Ee.flags, Ne = Ee.parent, me = Ee.valueDeclaration;
         if (me && (me.kind === 212 || me.kind === 225))
           return me;
-        if (!!We) {
+        if (We) {
           if (ee & 8196) {
             var Ze = e.find(We, function(Ir) {
               return e.hasEffectiveModifier(Ir, 8) || e.isPrivateIdentifierClassElementDeclaration(Ir);
@@ -81421,7 +82196,7 @@ var gr;
       function ve(Ee, We, ee, Ne, me) {
         me === void 0 && (me = ee);
         var Ze = e.isParameterPropertyDeclaration(Ee.parent, Ee.parent.parent) ? e.first(We.getSymbolsOfParameterPropertyDeclaration(Ee.parent, Ee.text)) : We.getSymbolAtLocation(Ee);
-        if (!!Ze)
+        if (Ze)
           for (var xr = 0, fr = _e(ee, Ze.name, me); xr < fr.length; xr++) {
             var dr = fr[xr];
             if (!(!e.isIdentifier(dr) || dr === Ee || dr.escapedText !== Ee.escapedText)) {
@@ -81507,7 +82282,7 @@ var gr;
         return Ne === void 0 && (Ne = !0), ee.cancellationToken.throwIfCancellationRequested(), Ye(Ee, Ee, We, ee, Ne);
       }
       function Ye(Ee, We, ee, Ne, me) {
-        if (!!Ne.markSearchedSymbols(We, ee.allSearchSymbols))
+        if (Ne.markSearchedSymbols(We, ee.allSearchSymbols))
           for (var Ze = 0, xr = Le(We, ee.text, Ee); Ze < xr.length; Ze++) {
             var fr = xr[Ze];
             Er(We, fr, ee, Ne, me);
@@ -81522,9 +82297,9 @@ var gr;
           !Ne.options.implementations && (Ne.options.findInStrings && e.isInString(Ee, We) || Ne.options.findInComments && e.isInNonReferenceComment(Ee, We)) && Ne.addStringOrCommentReference(Ee.fileName, e.createTextSpan(We, ee.text.length));
           return;
         }
-        if (!!Lr(Ze, Ne)) {
+        if (Lr(Ze, Ne)) {
           var xr = Ne.checker.getSymbolAtLocation(Ze);
-          if (!!xr) {
+          if (xr) {
             var fr = Ze.parent;
             if (!(e.isImportSpecifier(fr) && fr.propertyName === Ze)) {
               if (e.isExportSpecifier(fr)) {
@@ -81580,7 +82355,7 @@ var gr;
       }
       function Ke(Ee, We, ee, Ne) {
         var me = n.getImportOrExportSymbol(Ee, We, Ne.checker, ee.comingFrom === 1);
-        if (!!me) {
+        if (me) {
           var Ze = me.symbol;
           me.kind === 0 ? je(Ne.options) || ke(Ze, Ne) : z(Ee, Ze, me.exportInfo, Ne);
         }
@@ -81612,7 +82387,7 @@ var gr;
           e.Debug.assert(Ne.name === Ee);
           for (var me = ee.referenceAdder(We.symbol), Ze = 0, xr = Ne.members; Ze < xr.length; Ze++) {
             var fr = xr[Ze];
-            !(e.isMethodOrAccessor(fr) && e.isStatic(fr)) || fr.body && fr.body.forEachChild(function dr(et) {
+            e.isMethodOrAccessor(fr) && e.isStatic(fr) && fr.body && fr.body.forEachChild(function dr(et) {
               et.kind === 108 ? me(et) : !e.isFunctionLike(et) && !e.isClassLike(et) && et.forEachChild(dr);
             });
           }
@@ -81640,7 +82415,7 @@ var gr;
       }
       function $e(Ee, We) {
         var ee = Fe(Ee.symbol);
-        if (!!(ee && ee.declarations))
+        if (ee && ee.declarations)
           for (var Ne = 0, me = ee.declarations; Ne < me.length; Ne++) {
             var Ze = me[Ne];
             e.Debug.assert(Ze.kind === 170);
@@ -81723,7 +82498,7 @@ var gr;
       }
       function Ar(Ee) {
         var We = e.getSuperContainer(Ee, !1);
-        if (!!We) {
+        if (We) {
           var ee = 32;
           switch (We.kind) {
             case 166:
@@ -82156,7 +82931,7 @@ var gr;
         }
       }
       function u(g) {
-        if (!!g && !(g.flags & 8388608)) {
+        if (g && !(g.flags & 8388608)) {
           if (p(g)) {
             if (e.isClassLike(g))
               for (var F = 0, te = g.members; F < te.length; F++) {
@@ -82332,7 +83107,7 @@ var gr;
           ie(Y.initializer, function(y, D) {
             var C = e.getOptionFromName(D);
             C && (C.isFilePath || C.type === "list" && C.element.isFilePath) ? Z(y) : D === "paths" && ie(y.initializer, function(m) {
-              if (!!e.isArrayLiteralExpression(m.initializer))
+              if (e.isArrayLiteralExpression(m.initializer))
                 for (var u = 0, g = m.initializer.elements; u < g.length; u++) {
                   var F = g[u];
                   ne(F);
@@ -82361,15 +83136,15 @@ var gr;
   }
   function p(b, M, S, B, J, k) {
     for (var P = b.getSourceFiles(), x = function(ne) {
-      var R = S(ne.fileName), Y = R != null ? R : ne.fileName, U = e.getDirectoryPath(Y), $ = B(ne.fileName), T = $ || ne.fileName, I = e.getDirectoryPath(T), y = R !== void 0 || $ !== void 0;
+      var R = S(ne.fileName), Y = R ?? ne.fileName, U = e.getDirectoryPath(Y), $ = B(ne.fileName), T = $ || ne.fileName, I = e.getDirectoryPath(T), y = R !== void 0 || $ !== void 0;
       A(ne, M, function(D) {
-        if (!!e.pathIsRelative(D)) {
+        if (e.pathIsRelative(D)) {
           var C = H(I, D), m = S(C);
           return m === void 0 ? void 0 : e.ensurePathIsNonModuleName(e.getRelativePathFromDirectory(U, m, k));
         }
       }, function(D) {
         var C = b.getTypeChecker().getSymbolAtLocation(D);
-        if (!((C == null ? void 0 : C.declarations) && C.declarations.some(function(u) {
+        if (!(C != null && C.declarations && C.declarations.some(function(u) {
           return e.isAmbientModule(u);
         }))) {
           var m = $ !== void 0 ? v(D, e.resolveModuleName(D.text, T, b.getCompilerOptions(), J), S, P) : h(C, D, ne, b, J, S);
@@ -82436,7 +83211,7 @@ var gr;
     return e.createRange(b.getStart(M) + 1, b.end - 1);
   }
   function ie(b, M) {
-    if (!!e.isObjectLiteralExpression(b))
+    if (e.isObjectLiteralExpression(b))
       for (var S = 0, B = b.properties; S < B.length; S++) {
         var J = B[S];
         e.isPropertyAssignment(J) && e.isStringLiteral(J.name) && M(J, J.name.text);
@@ -82511,13 +83286,13 @@ var gr;
     }
     function p(ne, R) {
       var Y = e.findAncestor(R, e.isClassElement);
-      if (!!(Y && Y.name)) {
+      if (Y && Y.name) {
         var U = e.findAncestor(Y, e.isClassLike);
-        if (!!U) {
+        if (U) {
           var $ = e.getEffectiveBaseTypeNode(U), T = $ ? ne.getTypeAtLocation($) : void 0;
-          if (!!T) {
+          if (T) {
             var I = e.unescapeLeadingUnderscores(e.getTextOfPropertyName(Y.name)), y = e.hasStaticModifier(Y) ? ne.getPropertyOfType(ne.getTypeOfSymbolAtLocation(T.symbol, U), I) : ne.getPropertyOfType(T, I);
-            if (!!y)
+            if (y)
               return M(ne, y, R);
           }
         }
@@ -82561,7 +83336,7 @@ var gr;
       var U = e.getTouchingPropertyName(R, Y);
       if (U !== R) {
         var $ = ne.getSymbolAtLocation(U);
-        if (!!$) {
+        if ($) {
           var T = ne.getTypeOfSymbolAtLocation($, U), I = v($, T, ne), y = I && h(I, ne, U);
           return y && y.length !== 0 ? y : h(T, ne, U);
         }
@@ -82598,7 +83373,7 @@ var gr;
     }
     function ie(ne, R) {
       var Y = R.getSymbolAtLocation(ne);
-      if ((Y == null ? void 0 : Y.declarations) && Y.flags & 2097152 && b(ne, Y.declarations[0])) {
+      if (Y != null && Y.declarations && Y.flags & 2097152 && b(ne, Y.declarations[0])) {
         var U = R.getAliasedSymbol(Y);
         if (U.declarations)
           return U;
@@ -82640,7 +83415,7 @@ var gr;
         return e.isCallOrNewExpressionTarget(Y) || e.isNameOfFunctionDeclaration(Y) ? y($, !1) : void 0;
       }
       function y(D, C) {
-        if (!!D) {
+        if (D) {
           var m = D.filter(C ? e.isConstructorDeclaration : e.isFunctionLike), u = m.filter(function(g) {
             return !!g.body;
           });
@@ -82961,7 +83736,7 @@ var gr;
         return e.emptyArray;
       var Y = R.name.text, U = R.parent, $ = U.parent;
       return e.isFunctionLike($) ? e.mapDefined($.parameters, function(T) {
-        if (!!e.isIdentifier(T.name)) {
+        if (e.isIdentifier(T.name)) {
           var I = T.name.text;
           if (!(U.tags.some(function(y) {
             return y !== R && e.isJSDocParameterTag(y) && e.isIdentifier(y.name) && y.name.escapedText === I;
@@ -82989,7 +83764,7 @@ var gr;
         var y = T.getStart(Y);
         if (!(!I && y < U)) {
           var D = w(T, $);
-          if (!!D) {
+          if (D) {
             var C = D.commentOwner, m = D.parameters, u = D.hasReturn;
             if (!(C.getStart(Y) < U)) {
               var g = k(Y, U), F = e.hasJSFileExtension(Y.fileName), te = (m ? P(m || [], F, g, R) : "") + (u ? x(g, R) : ""), ue = "/**", X = " */";
@@ -83102,10 +83877,10 @@ var gr;
     n.getNavigateToItems = f;
     function d(q, ie, b, M, S, B) {
       var J = q.getMatchForLastSegmentOfPattern(ie);
-      if (!!J)
+      if (J)
         for (var k = 0, P = b; k < P.length; k++) {
           var x = P[k];
-          if (!!a(x, M))
+          if (a(x, M))
             if (q.patternContainsDots) {
               var w = q.getFullMatch(h(x), ie);
               w && B.push({ name: ie, fileName: S, matchKind: w.kind, isCaseSensitive: w.isCaseSensitive, declaration: x });
@@ -83700,7 +84475,7 @@ var gr;
       F(y, h);
       for (var D = 0, C = K.statements.filter(e.isAmbientModule); D < C.length; D++) {
         var m = C[D];
-        if (!!m.body) {
+        if (m.body) {
           var u = m.body.statements.filter(e.isImportDeclaration);
           F(u, T);
           var g = m.body.statements.filter(e.isExportDeclaration);
@@ -84068,7 +84843,7 @@ var gr;
           return P(S);
       }
       function P($) {
-        if (!!$.arguments.length) {
+        if ($.arguments.length) {
           var T = e.findChildOfKind($, 20, B), I = e.findChildOfKind($, 21, B);
           if (!(!T || !I || e.positionsAreOnSameLine(T.pos, I.pos, B)))
             return ie(T, I, $, B, !1, !0);
@@ -84162,7 +84937,7 @@ var gr;
   e.createPatternMatcher = d;
   function a(y, D, C, m) {
     var u = H(D, e.last(C), m);
-    if (!!u && !(C.length - 1 > y.length)) {
+    if (u && !(C.length - 1 > y.length)) {
       for (var g, F = C.length - 2, te = y.length - 1; F >= 0; F -= 1, te -= 1)
         g = h(g, H(y[te], C[F], m));
       return g;
@@ -84570,7 +85345,7 @@ var gr;
       if (!e.isExternalModuleNameRelative(A.text))
         return H(e.Diagnostics.You_cannot_rename_a_module_via_a_global_import);
       var b = ie.declarations && e.find(ie.declarations, e.isSourceFile);
-      if (!!b) {
+      if (b) {
         var M = e.endsWith(A.text, "/index") || e.endsWith(A.text, "/index.js") ? void 0 : e.tryRemoveSuffix(e.removeFileExtension(b.fileName), "/index"), S = M === void 0 ? b.fileName : M, B = M === void 0 ? "module" : "directory", J = A.text.lastIndexOf("/") + 1, k = e.createTextSpan(A.getStart(q) + 1 + J, A.text.length - J);
         return {
           canRename: !0,
@@ -84645,7 +85420,7 @@ var gr;
                 $(Z, ne);
               }
               var R = e.isSyntaxList(x) && v(P) && A(w) && !e.positionsAreOnSameLine(P.getStart(), w.getStart(), b), Y = R ? P.getEnd() : x.getStart(), U = R ? w.getStart() : q(b, x);
-              e.hasJSDocNodes(x) && ((M = x.jsDoc) === null || M === void 0 ? void 0 : M.length) && $(e.first(x.jsDoc).getStart(), U), $(Y, U), (e.isStringLiteral(x) || e.isTemplateLiteral(x)) && $(Y + 1, U - 1), B = x;
+              e.hasJSDocNodes(x) && (!((M = x.jsDoc) === null || M === void 0) && M.length) && $(e.first(x.jsDoc).getStart(), U), $(Y, U), (e.isStringLiteral(x) || e.isTemplateLiteral(x)) && $(Y + 1, U - 1), B = x;
               break;
             }
             if (k === J.length - 1)
@@ -84774,11 +85549,11 @@ var gr;
     })(f || (f = {}));
     function d(X, j, Se, Ce, O) {
       var Q = X.getTypeChecker(), V = e.findTokenOnLeftOfPosition(j, Se);
-      if (!!V) {
+      if (V) {
         var z = !!Ce && Ce.kind === "characterTyped";
         if (!(z && (e.isInString(j, Se, V) || e.isInComment(j, Se)))) {
           var Te = !!Ce && Ce.kind === "invoked", ge = R(V, Se, j, Q, Te);
-          if (!!ge) {
+          if (ge) {
             O.throwIfCancellationRequested();
             var ke = p(ge, Q, j, V, z);
             return O.throwIfCancellationRequested(), ke ? Q.runWithCancellationToken(O, function(Pe) {
@@ -84865,7 +85640,7 @@ var gr;
     n.getArgumentInfoForCompletions = v;
     function A(X, j) {
       var Se = q(X, j);
-      if (!!Se) {
+      if (Se) {
         var Ce = Se.list, O = Se.argumentIndex, Q = x(Ce);
         O !== 0 && e.Debug.assertLessThan(O, Q);
         var V = Z(Ce, j);
@@ -84930,7 +85705,7 @@ var gr;
     }
     function B(X, j, Se, Ce) {
       var O = J(X, Se, Ce);
-      if (!!O) {
+      if (O) {
         var Q = O.contextualType, V = O.argumentIndex, z = O.argumentCount, Te = O.argumentsSpan, ge = Q.getNonNullableType(), ke = ge.getCallSignatures();
         if (ke.length === 1) {
           var Pe = { kind: 2, signature: e.first(ke), node: X, symbol: k(ge.symbol) };
@@ -85060,7 +85835,7 @@ var gr;
     }
     function y(X, j, Se, Ce) {
       var O = j.argumentCount, Q = j.argumentsSpan, V = j.invocation, z = j.argumentIndex, Te = Ce.getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(X);
-      if (!!Te) {
+      if (Te) {
         var ge = [D(X, Te, Ce, $(V), Se)];
         return { items: ge, applicableSpan: Q, selectedItemIndex: 0, argumentIndex: z, argumentCount: O };
       }
@@ -85169,7 +85944,7 @@ var gr;
             case 213:
               q.throwIfCancellationRequested();
           }
-          if (!!e.textSpanIntersectsWith(A, g.pos, g.getFullWidth()) && !e.isTypeNode(g))
+          if (e.textSpanIntersectsWith(A, g.pos, g.getFullWidth()) && !e.isTypeNode(g))
             return ie.includeInlayVariableTypeHints && e.isVariableDeclaration(g) || ie.includeInlayPropertyDeclarationTypeHints && e.isPropertyDeclaration(g) ? ne(g) : ie.includeInlayEnumMemberValueHints && e.isEnumMember(g) ? K(g) : a(ie) && (e.isCallExpression(g) || e.isNewExpression(g)) ? R(g) : (ie.includeInlayFunctionParameterTypeHints && e.isFunctionLikeDeclaration(g) && e.hasContextSensitiveParameters(g) && y(g), ie.includeInlayFunctionLikeReturnTypeHints && k(g) && T(g)), e.forEachChild(g, J);
         }
       }
@@ -85281,11 +86056,11 @@ var gr;
           var F = e.getEffectiveReturnTypeNode(g);
           if (!(F || !g.body)) {
             var te = S.getSignatureFromDeclaration(g);
-            if (!!te) {
+            if (te) {
               var ue = S.getReturnTypeOfSignature(te);
               if (!Z(ue)) {
                 var X = m(ue);
-                !X || x(X, I(g));
+                X && x(X, I(g));
               }
             }
           }
@@ -85297,12 +86072,12 @@ var gr;
       }
       function y(g) {
         var F = S.getSignatureFromDeclaration(g);
-        if (!!F)
+        if (F)
           for (var te = 0; te < g.parameters.length && te < F.parameters.length; ++te) {
             var ue = g.parameters[te], X = e.getEffectiveTypeAnnotationNode(ue);
             if (!X) {
               var j = D(F.parameters[te]);
-              !j || x(j, ue.name.end);
+              j && x(j, ue.name.end);
             }
           }
       }
@@ -85358,9 +86133,9 @@ var gr;
       return A.set(K, ne || e.identitySourceMapConsumer), ne || e.identitySourceMapConsumer;
     }
     function b(x) {
-      if (!!e.isDeclarationFileName(x.fileName)) {
+      if (e.isDeclarationFileName(x.fileName)) {
         var w = S(x.fileName);
-        if (!!w) {
+        if (w) {
           var K = ie(x.fileName).getSourcePosition(x);
           return !K || K === x ? void 0 : b(K) || K;
         }
@@ -85369,7 +86144,7 @@ var gr;
     function M(x) {
       if (!e.isDeclarationFileName(x.fileName)) {
         var w = S(x.fileName);
-        if (!!w) {
+        if (w) {
           var K = N.getProgram();
           if (!K.isSourceOfProjectReferenceRedirect(w.fileName)) {
             var Z = K.getCompilerOptions(), ne = e.outFile(Z), R = ne ? e.removeFileExtension(ne) + ".d.ts" : e.getDeclarationEmitOutputFilePathWorker(x.fileName, K.getCompilerOptions(), h, K.getCommonSourceDirectory(), H);
@@ -85383,7 +86158,7 @@ var gr;
     }
     function S(x) {
       var w = N.getProgram();
-      if (!!w) {
+      if (w) {
         var K = q(x), Z = w.getSourceFileByPath(K);
         return Z && Z.resolvedPath === K ? Z : void 0;
       }
@@ -85460,7 +86235,7 @@ var gr;
     if (n.clear(), C(P), e.getAllowSyntheticDefaultImports(x.getCompilerOptions()))
       for (var Y = 0, U = P.imports; Y < U.length; Y++) {
         var $ = U[Y], T = e.importFromModuleSpecifier($), I = p(T);
-        if (!!I) {
+        if (I) {
           var y = e.getResolvedModule(P, $.text, e.getModeForUsageLocation(P, $)), D = y && x.getSourceFile(y.resolvedFileName);
           D && D.externalModuleIndicator && e.isExportAssignment(D.externalModuleIndicator) && D.externalModuleIndicator.isExportEquals && K.push(e.createDiagnosticForNode(I, e.Diagnostics.Import_may_be_converted_to_a_default_import));
         }
@@ -85592,10 +86367,10 @@ var gr;
   function J(P, x) {
     var w, K, Z, ne;
     if (P.kind === 212) {
-      if (e.isVariableDeclaration(P.parent) && ((w = P.symbol.members) === null || w === void 0 ? void 0 : w.size))
+      if (e.isVariableDeclaration(P.parent) && (!((w = P.symbol.members) === null || w === void 0) && w.size))
         return !0;
       var R = x.getSymbolOfExpando(P, !1);
-      return !!(R && (((K = R.exports) === null || K === void 0 ? void 0 : K.size) || ((Z = R.members) === null || Z === void 0 ? void 0 : Z.size)));
+      return !!(R && (!((K = R.exports) === null || K === void 0) && K.size || !((Z = R.members) === null || Z === void 0) && Z.size));
     }
     return P.kind === 255 ? !!(!((ne = P.symbol.members) === null || ne === void 0) && ne.size) : !1;
   }
@@ -85839,7 +86614,7 @@ var gr;
           var g = ge[Te];
           if (!(!g.parent || g.parent.kind !== 220)) {
             var ke = v.getSymbolAtLocation(g.parent.right);
-            if (!!ke && (k = ke.getDocumentationComment(v), P = ke.getJsDocTags(v), k.length > 0))
+            if (ke && (k = ke.getDocumentationComment(v), P = ke.getJsDocTags(v), k.length > 0))
               break;
           }
         }
@@ -88814,7 +89589,7 @@ var gr;
         var v = h.sourceFile, A = h.errorCode, q = h.cancellationToken, ie = h.program, b = h.span, M = e.find(ie.getDiagnosticsProducingTypeChecker().getDiagnostics(v, q), H(b, A)), S = M && M.relatedInformation && e.find(M.relatedInformation, function(k) {
           return k.code === e.Diagnostics.Did_you_mean_to_mark_this_function_as_async.code;
         }), B = N(v, S);
-        if (!!B) {
+        if (B) {
           var J = function(k) {
             return e.textChanges.ChangeTracker.with(h, k);
           };
@@ -88827,7 +89602,7 @@ var gr;
           var b = ie.relatedInformation && e.find(ie.relatedInformation, function(B) {
             return B.code === e.Diagnostics.Did_you_mean_to_mark_this_function_as_async.code;
           }), M = N(v, b);
-          if (!!M) {
+          if (M) {
             var S = function(B) {
               return B(q), [];
             };
@@ -88850,7 +89625,7 @@ var gr;
       }
     }
     function N(h, v) {
-      if (!!v) {
+      if (v) {
         var A = e.getTokenAtPosition(h, v.start), q = e.findAncestor(A, function(ie) {
           return ie.getStart(h) < v.start || ie.getEnd() > e.textSpanEnd(v) ? "quit" : (e.isArrowFunction(ie) || e.isMethodDeclaration(ie) || e.isFunctionExpression(ie) || e.isFunctionDeclaration(ie)) && e.textSpansEqual(v, e.createTextSpanFromNode(ie, h));
         });
@@ -88896,7 +89671,7 @@ var gr;
       errorCodes: p,
       getCodeActions: function(B) {
         var J = B.sourceFile, k = B.errorCode, P = B.span, x = B.cancellationToken, w = B.program, K = N(J, k, P, x, w);
-        if (!!K) {
+        if (K) {
           var Z = B.program.getTypeChecker(), ne = function(R) {
             return e.textChanges.ChangeTracker.with(B, R);
           };
@@ -88910,7 +89685,7 @@ var gr;
         var J = B.sourceFile, k = B.program, P = B.cancellationToken, x = B.program.getTypeChecker(), w = new e.Set();
         return n.codeFixAll(B, p, function(K, Z) {
           var ne = N(J, Z.code, Z, P, k);
-          if (!!ne) {
+          if (ne) {
             var R = function(Y) {
               return Y(K), [];
             };
@@ -88952,7 +89727,7 @@ var gr;
     }
     function A(B, J, k, P, x) {
       var w = q(B, x);
-      if (!!w) {
+      if (w) {
         for (var K = w.isCompleteFix, Z, ne = function($) {
           var T = x.getSymbolAtLocation($);
           if (!T)
@@ -89158,7 +89933,7 @@ var gr;
     });
     function a(p, N, H, h) {
       var v = e.getTokenAtPosition(N, H);
-      if (!!e.isIdentifier(v)) {
+      if (e.isIdentifier(v)) {
         var A = v.parent;
         A.kind === 166 && (!h || e.tryAddToSet(h, A)) && p.insertModifierBefore(N, 135, A);
       }
@@ -89234,7 +90009,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(h) {
         var v = h.program.getTypeChecker(), A = a(h.sourceFile, h.span, v);
-        if (!!A.length) {
+        if (A.length) {
           var q = e.textChanges.ChangeTracker.with(h, function(ie) {
             return H(ie, A);
           });
@@ -89306,7 +90081,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(J) {
         var k = a(J.sourceFile, J.span.start);
-        if (!!k) {
+        if (k) {
           var P = e.textChanges.ChangeTracker.with(J, function(x) {
             return H(x, J.sourceFile, k);
           });
@@ -89485,7 +90260,7 @@ var gr;
         }), K;
         function Z(R, Y) {
           return e.isAccessExpression(R) ? e.isPropertyAccessExpression(R) && N(R) ? !0 : e.isFunctionLike(Y) : e.every(R.properties, function(U) {
-            return !!(e.isMethodDeclaration(U) || e.isGetOrSetAccessorDeclaration(U) || e.isPropertyAssignment(U) && e.isFunctionExpression(U.initializer) && !!U.name || N(U));
+            return !!(e.isMethodDeclaration(U) || e.isGetOrSetAccessorDeclaration(U) || e.isPropertyAssignment(U) && e.isFunctionExpression(U.initializer) && U.name || N(U));
           });
         }
         function ne(R, Y) {
@@ -89589,9 +90364,9 @@ var gr;
       var Te = e.getTokenAtPosition(Q, V), ge;
       if (e.isIdentifier(Te) && e.isVariableDeclaration(Te.parent) && Te.parent.initializer && e.isFunctionLikeDeclaration(Te.parent.initializer) ? ge = Te.parent.initializer : ge = e.tryCast(e.getContainingFunction(e.getTokenAtPosition(Q, V)), e.canBeConvertedToAsync), !!ge) {
         var ke = new e.Map(), Pe = e.isInJSFile(ge), Ie = h(ge, z), Ge = b(ge, z, ke);
-        if (!!e.returnsPromise(Ge, z)) {
+        if (e.returnsPromise(Ge, z)) {
           var he = Ge.body && e.isBlock(Ge.body) ? H(Ge.body, z) : e.emptyArray, ve = { checker: z, synthNamesMap: ke, setOfExpressionsToReturn: Ie, isInJSFile: Pe };
-          if (!!he.length) {
+          if (he.length) {
             var Ve = ge.modifiers ? ge.modifiers.end : ge.decorators ? e.skipTrivia(Q.text, ge.decorators.end) : ge.getStart(Q), _e = ge.modifiers ? { prefix: " " } : { suffix: " " };
             O.insertModifierAt(Q, Ve, 131, _e);
             for (var Le = function(Ye) {
@@ -90003,7 +90778,7 @@ var gr;
       p(D, te, m);
       for (var ue = !1, X, j = 0, Se = e.filter(D.statements, e.isVariableStatement); j < Se.length; j++) {
         var Ce = Se[j], O = h(D, Ce, m, C, F, u, g);
-        O && e.copyEntries(O, X != null ? X : X = new e.Map());
+        O && e.copyEntries(O, X ?? (X = new e.Map()));
       }
       for (var Q = 0, V = e.filter(D.statements, function(Te) {
         return !e.isVariableStatement(Te);
@@ -90077,7 +90852,7 @@ var gr;
         }));
         var Se;
         return e.forEach(j, function(Ce) {
-          Ce.useSitesToUnqualify && e.copyEntries(Ce.useSitesToUnqualify, Se != null ? Se : Se = new e.Map());
+          Ce.useSitesToUnqualify && e.copyEntries(Ce.useSitesToUnqualify, Se ?? (Se = new e.Map()));
         }), Se;
       }
     }
@@ -90224,11 +90999,11 @@ var gr;
             if (Q === "default") {
               ue = !0;
               var V = Ce.getText();
-              (X != null ? X : X = new e.Map()).set(O, e.factory.createIdentifier(V));
+              (X ?? (X = new e.Map())).set(O, e.factory.createIdentifier(V));
             } else {
               e.Debug.assert(O.expression === Ce, "Didn't expect expression === use");
               var z = te.get(Q);
-              z === void 0 && (z = w(Q, u), te.set(Q, z)), (X != null ? X : X = new e.Map()).set(O, e.factory.createIdentifier(z));
+              z === void 0 && (z = w(Q, u), te.set(Q, z)), (X ?? (X = new e.Map())).set(O, e.factory.createIdentifier(z));
             }
           } else
             ue = !0;
@@ -90303,7 +91078,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(N) {
         var H = a(N.sourceFile, N.span.start);
-        if (!!H) {
+        if (H) {
           var h = e.textChanges.ChangeTracker.with(N, function(A) {
             return p(A, N.sourceFile, H);
           }), v = "".concat(H.left.text, '["').concat(H.right.text, '"]');
@@ -90354,7 +91129,7 @@ var gr;
       return e.tryCast(e.getTokenAtPosition(h, H.start).parent, e.isExportSpecifier);
     }
     function p(H, h, v) {
-      if (!!h) {
+      if (h) {
         var A = h.parent, q = A.parent, ie = N(h, v);
         if (ie.length === A.elements.length)
           H.insertModifierBefore(v.sourceFile, 151, A);
@@ -90407,7 +91182,7 @@ var gr;
       return e.tryCast(e.getTokenAtPosition(H, N.start).parent, e.isImportDeclaration);
     }
     function p(N, H, h) {
-      if (!!(H != null && H.importClause)) {
+      if (H != null && H.importClause) {
         var v = H.importClause;
         N.insertText(h.sourceFile, H.getStart() + 6, " type"), v.name && v.namedBindings && (N.deleteNodeRangeExcludingEnd(h.sourceFile, v.name, H.importClause.namedBindings), N.insertNodeBefore(h.sourceFile, H, e.factory.updateImportDeclaration(H, void 0, void 0, e.factory.createImportClause(!0, v.name, void 0), H.moduleSpecifier, void 0)));
       }
@@ -90422,7 +91197,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(N) {
         var H = N.sourceFile, h = N.span, v = a(H, h.start);
-        if (!!v) {
+        if (v) {
           var A = v.name, q = v.constraint, ie = e.textChanges.ChangeTracker.with(N, function(b) {
             return p(b, H, v);
           });
@@ -90538,7 +91313,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(Ie) {
         var Ge = Ie.errorCode, he = Ie.preferences, ve = Ie.sourceFile, Ve = Ie.span, _e = Ie.program, Le = R(Ie, Ge, Ve.start, !0);
-        if (!!Le) {
+        if (Le) {
           var qe = Le.fixes, Xe = Le.symbolName, De = e.getQuotePreference(ve, he);
           return qe.map(function(Ae) {
             return ue(Ie, ve, Xe, Ae, De, _e.getCompilerOptions());
@@ -90610,7 +91385,7 @@ var gr;
             e.Debug.assertNever(ur, "fix wasn't never - got kind ".concat(ur.kind));
         }
         function Jr(Yr, lt) {
-          return Math.max(Yr != null ? Yr : 0, lt);
+          return Math.max(Yr ?? 0, lt);
         }
         function ze(Yr, lt, tt, Rt) {
           var cn = Ar(Yr, !0), bn = Ar(Yr, !1), In = De.get(cn), zn = De.get(bn), ir = {
@@ -90763,7 +91538,7 @@ var gr;
       }
     }
     function k(Ie, Ge, he, ve, Ve, _e) {
-      return Ie ? Ge && _e.importsNotUsedAsValues === 2 || _e.isolatedModules && _e.preserveValueImports && (!(ve & 111551) || !!Ve.getTypeOnlyAliasDeclaration(he)) ? 2 : 1 : 4;
+      return Ie ? Ge && _e.importsNotUsedAsValues === 2 || _e.isolatedModules && _e.preserveValueImports && (!(ve & 111551) || Ve.getTypeOnlyAliasDeclaration(he)) ? 2 : 1 : 4;
     }
     function P(Ie, Ge, he, ve) {
       return e.firstDefined(Ie, function(Ve) {
@@ -90869,7 +91644,7 @@ var gr;
       });
     }
     function U(Ie, Ge, he, ve, Ve) {
-      if (!!e.some(Ie)) {
+      if (e.some(Ie)) {
         if (Ie[0].kind === 0 || Ie[0].kind === 2)
           return Ie[0];
         var _e = e.createPackageJsonImportFilter(Ge, Ve, ve).allowsImportingSpecifier;
@@ -90886,7 +91661,7 @@ var gr;
     }
     function I(Ie, Ge) {
       var he = Ie.sourceFile, ve = Ie.program, Ve = Ie.host, _e = Ie.preferences, Le = ve.getTypeChecker(), qe = y(Ge, Le);
-      if (!!qe) {
+      if (qe) {
         var Xe = Le.getAliasedSymbol(qe), De = qe.name, Ae = [{ symbol: qe, moduleSymbol: Xe, moduleFileName: void 0, exportKind: 3, targetFlags: Xe.flags, isFromPackageJson: !1 }], Ye = w(he, ve), Lr = M(Ae, De, e.isIdentifier(Ge) ? Ge.getStart(he) : void 0, !1, Ye, ve, he, Ve, _e);
         return { fixes: Lr, symbolName: De };
       }
@@ -91038,7 +91813,7 @@ var gr;
         var Er = e.stableSort(Ve.map(function(Dr) {
           return e.factory.createImportSpecifier((!he.isTypeOnly || Ae) && Q(Dr), void 0, e.factory.createIdentifier(Dr.name));
         }), e.OrganizeImports.compareImportOrExportSpecifiers);
-        if ((Ye == null ? void 0 : Ye.length) && e.OrganizeImports.importSpecifiersAreSorted(Ye))
+        if (Ye != null && Ye.length && e.OrganizeImports.importSpecifiersAreSorted(Ye))
           for (var lr = 0, Cr = Er; lr < Cr.length; lr++) {
             var Or = Cr[lr], Ke = Lr && !Or.isTypeOnly ? 0 : e.OrganizeImports.getImportSpecifierInsertionIndex(Ye, Or), Me = he.namedBindings.elements[Ke - 1];
             Me ? Ie.insertNodeInListAfter(Ge, Me, Or) : Ie.insertNodeBefore(Ge, Ye[0], Or, !e.positionsAreOnSameLine(Ye[0].getStart(), he.parent.getStart(), Ge));
@@ -91081,7 +91856,7 @@ var gr;
     }
     function V(Ie, Ge, he, ve, Ve) {
       var _e = e.makeStringLiteral(Ie, Ge), Le;
-      if (he !== void 0 || (ve == null ? void 0 : ve.length)) {
+      if (he !== void 0 || ve != null && ve.length) {
         var qe = (!he || Q(he)) && e.every(ve, Q);
         Le = e.combine(Le, e.makeImport(he && e.factory.createIdentifier(he.name), ve == null ? void 0 : ve.map(function(De) {
           var Ae = De.addAsTypeOnly, Ye = De.name;
@@ -91096,7 +91871,7 @@ var gr;
     }
     function z(Ie, Ge, he, ve, Ve) {
       var _e = e.makeStringLiteral(Ie, Ge), Le;
-      if (he || (ve == null ? void 0 : ve.length)) {
+      if (he || ve != null && ve.length) {
         var qe = (ve == null ? void 0 : ve.map(function(De) {
           var Ae = De.name;
           return e.factory.createBindingElement(void 0, void 0, Ae);
@@ -91327,7 +92102,7 @@ var gr;
       });
     }
     function p(N, H, h) {
-      if (!!h) {
+      if (h) {
         for (var v = h.type, A = !1, q = !1; v.kind === 184 || v.kind === 185 || v.kind === 190; )
           v.kind === 184 ? A = !0 : v.kind === 185 && (q = !0), v = v.type;
         var ie = e.factory.updateNamedTupleMember(h, h.dotDotDotToken || (q ? e.factory.createToken(25) : void 0), h.name, h.questionToken || (A ? e.factory.createToken(57) : void 0), v);
@@ -91357,7 +92132,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(h) {
         var v = h.sourceFile, A = h.errorCode, q = a(v, h.span.start, h, A);
-        if (!!q) {
+        if (q) {
           var ie = q.node, b = q.suggestedSymbol, M = e.getEmitScriptTarget(h.host.getCompilationSettings()), S = e.textChanges.ChangeTracker.with(h, function(B) {
             return p(B, v, ie, b, M);
           });
@@ -91419,7 +92194,7 @@ var gr;
     function H(h, v, A) {
       if (!(!A || !e.isStringLiteralLike(A.moduleSpecifier))) {
         var q = e.getResolvedModule(h, A.moduleSpecifier.text, e.getModeForUsageLocation(h, A.moduleSpecifier));
-        if (!!q)
+        if (q)
           return v.program.getSourceFile(q.resolvedFileName);
       }
     }
@@ -91440,13 +92215,13 @@ var gr;
       fixIds: [d, a, p],
       getCodeActions: function(P) {
         var x = P.program, w = P.sourceFile, K = P.span.start, Z = P.errorCode, ne = q(x.getTypeChecker(), w, K, Z);
-        if (!!ne)
+        if (ne)
           return ne.kind === H.MissingReturnStatement ? e.append([B(P, ne.expression, ne.statement)], e.isArrowFunction(ne.declaration) ? J(P, ne.declaration, ne.expression, ne.commentSource) : void 0) : [k(P, ne.declaration, ne.expression)];
       },
       getAllCodeActions: function(P) {
         return n.codeFixAll(P, N, function(x, w) {
           var K = q(P.program.getTypeChecker(), w.file, w.start, w.code);
-          if (!!K)
+          if (K)
             switch (P.fixId) {
               case d:
                 b(x, w.file, K.expression, K.statement);
@@ -91530,7 +92305,7 @@ var gr;
     }
     function q(P, x, w, K) {
       var Z = e.getTokenAtPosition(x, w);
-      if (!!Z.parent) {
+      if (Z.parent) {
         var ne = e.findAncestor(Z.parent, e.isFunctionLikeDeclaration);
         switch (K) {
           case e.Diagnostics.A_function_whose_declared_type_is_neither_void_nor_any_must_return_a_value.code:
@@ -91618,7 +92393,7 @@ var gr;
       errorCodes: N,
       getCodeActions: function(T) {
         var I = T.program.getTypeChecker(), y = h(T.sourceFile, T.span.start, T.errorCode, I, T.program);
-        if (!!y) {
+        if (y) {
           if (y.kind === 3) {
             var D = e.textChanges.ChangeTracker.with(T, function(C) {
               return ne(C, T, y);
@@ -91718,7 +92493,7 @@ var gr;
         var ue = e.arrayFrom(D.getUnmatchedProperties(D.getTypeAtLocation(u), D.getTypeAtLocation(te), !1, !1));
         return e.length(ue) ? { kind: 3, token: te.name, properties: ue, indentation: 0, parentDeclaration: u } : void 0;
       }
-      if (!!e.isMemberName(m)) {
+      if (e.isMemberName(m)) {
         if (e.isIdentifier(m) && e.hasInitializer(u) && u.initializer && e.isObjectLiteralExpression(u.initializer)) {
           var ue = e.arrayFrom(D.getUnmatchedProperties(D.getTypeAtLocation(u.initializer), D.getTypeAtLocation(m), !1, !1));
           return e.length(ue) ? { kind: 3, token: m, properties: ue, indentation: void 0, parentDeclaration: u.initializer } : void 0;
@@ -91729,7 +92504,7 @@ var gr;
         }
         if (e.isIdentifier(m) && e.isCallExpression(u))
           return { kind: 2, token: m, call: u, sourceFile: T, modifierFlags: 0, parentDeclaration: T };
-        if (!!e.isPropertyAccessExpression(u)) {
+        if (e.isPropertyAccessExpression(u)) {
           var j = e.skipConstraint(D.getTypeAtLocation(u.expression)), Se = j.symbol;
           if (!(!Se || !Se.declarations)) {
             if (e.isIdentifier(m) && e.isCallExpression(u.parent)) {
@@ -91915,7 +92690,7 @@ var gr;
         var g = e.firstDefined(C.types, function(Ce) {
           return R(T, I, y, D, Ce);
         });
-        return g != null ? g : Y();
+        return g ?? Y();
       }
       if (I.isArrayLikeType(C))
         return e.factory.createArrayLiteralExpression();
@@ -91934,7 +92709,7 @@ var gr;
         if (ue === void 0)
           return Y();
         var X = n.createSignatureDeclarationFromSignature(212, T, D, ue[0], n.createStubbedBody(e.Diagnostics.Function_not_implemented.message, D), void 0, void 0, void 0, void 0, y);
-        return X != null ? X : Y();
+        return X ?? Y();
       }
       if (e.getObjectFlags(C) & 1) {
         var j = e.getClassLikeDeclarationOfSymbol(C.symbol);
@@ -92040,7 +92815,7 @@ var gr;
     }
     function H(v, A) {
       var q = e.tryCast(e.getTokenAtPosition(v, A), e.isStringLiteral);
-      if (!!q) {
+      if (q) {
         var ie = q.text, b = e.parsePackageName(ie).packageName;
         return e.isExternalModuleNameRelative(b) ? void 0 : b;
       }
@@ -92099,7 +92874,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(H) {
         var h = H.sourceFile, v = H.span, A = p(h, v.start);
-        if (!!A) {
+        if (A) {
           var q = A.constructor, ie = A.superCall, b = e.textChanges.ChangeTracker.with(H, function(M) {
             return a(M, h, q, ie);
           });
@@ -92111,7 +92886,7 @@ var gr;
         var h = H.sourceFile, v = new e.Map();
         return n.codeFixAll(H, d, function(A, q) {
           var ie = p(q.file, q.start);
-          if (!!ie) {
+          if (ie) {
             var b = ie.constructor, M = ie.superCall;
             e.addToSeen(v, e.getNodeId(b.parent)) && a(A, h, b, M);
           }
@@ -92246,7 +93021,7 @@ var gr;
           if (A) {
             var h = e.textChanges.ChangeTracker.with(f, function(ie) {
               var b = e.getTsConfigObjectLiteralExpression(a);
-              if (!!b) {
+              if (b) {
                 var M = [["target", e.factory.createStringLiteral("es2017")]];
                 N === e.ModuleKind.CommonJS && M.push(["module", e.factory.createStringLiteral("commonjs")]), n.setJsonCompilerOptionValues(ie, a, M);
               }
@@ -92296,7 +93071,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(N) {
         var H = N.sourceFile, h = a(H, N.span.start);
-        if (!!h) {
+        if (h) {
           var v = h.extendsToken, A = h.heritageClauses, q = e.textChanges.ChangeTracker.with(N, function(ie) {
             return p(ie, H, v, A);
           });
@@ -92338,7 +93113,7 @@ var gr;
       errorCodes: a,
       getCodeActions: function(H) {
         var h = H.sourceFile, v = p(h, H.span.start, H.errorCode);
-        if (!!v) {
+        if (v) {
           var A = e.textChanges.ChangeTracker.with(H, function(q) {
             return N(q, h, v);
           });
@@ -92400,7 +93175,7 @@ var gr;
     }
     function H(h, v, A, q, ie) {
       var b = A.getText()[q];
-      if (!!N(b)) {
+      if (N(b)) {
         var M = ie ? p[b] : "{".concat(e.quote(A, v, b), "}");
         h.replaceRangeWithText(A, { pos: q, end: q + 1 }, M);
       }
@@ -92763,7 +93538,7 @@ var gr;
         var v = h.fixId, A = h.program, q = h.sourceFile, ie = A.getTypeChecker();
         return n.codeFixAll(h, a, function(b, M) {
           var S = N(M.file, M.start, ie);
-          if (!!S) {
+          if (S) {
             var B = S.typeNode, J = S.type, k = B.kind === 312 && v === d ? ie.getNullableType(J, 32768) : J;
             p(b, q, B, k, ie);
           }
@@ -92813,7 +93588,7 @@ var gr;
       fixIds: [f],
       getCodeActions: function(N) {
         var H = N.sourceFile, h = N.span, v = p(H, h.start);
-        if (!!v) {
+        if (v) {
           var A = e.textChanges.ChangeTracker.with(N, function(q) {
             return a(q, N.sourceFile, v);
           });
@@ -92853,7 +93628,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(H) {
         var h = H.sourceFile, v = H.span, A = p(h, v.start);
-        if (!!A) {
+        if (A) {
           var q = e.textChanges.ChangeTracker.with(H, function(ie) {
             return N(ie, h, A);
           });
@@ -92877,7 +93652,7 @@ var gr;
     }
     function p(H, h) {
       var v = e.getTokenAtPosition(H, h), A = e.getContainingFunction(v);
-      if (!!A) {
+      if (A) {
         var q;
         switch (A.kind) {
           case 168:
@@ -93089,7 +93864,7 @@ var gr;
       e.isIdentifier(Y.name) && ie(Z, ne, R, Y, P(Y.name, U, T), U, $);
     }
     function h(Z, ne, R, Y, U, $, T, I) {
-      if (!!e.isIdentifier(Y.name)) {
+      if (e.isIdentifier(Y.name)) {
         var y = x(U, R, $, I);
         if (e.Debug.assert(U.parameters.length === y.length, "Parameter count and inference count should match"), e.isInJSFile(U))
           M(Z, R, y, $, T);
@@ -93108,7 +93883,7 @@ var gr;
       var T = w(R, ne, Y, $);
       if (!(!T || !T.length)) {
         var I = K(Y, T, $).thisParameter(), y = e.getTypeNodeIfAccessible(I, R, Y, U);
-        !y || (e.isInJSFile(R) ? A(Z, ne, R, y) : Z.tryInsertThisTypeAnnotation(ne, R, y));
+        y && (e.isInJSFile(R) ? A(Z, ne, R, y) : Z.tryInsertThisTypeAnnotation(ne, R, y));
       }
     }
     function A(Z, ne, R, Y) {
@@ -93143,7 +93918,7 @@ var gr;
     }
     function M(Z, ne, R, Y, U) {
       var $ = R.length && R[0].declaration.parent;
-      if (!!$) {
+      if ($) {
         var T = e.mapDefined(R, function(D) {
           var C = D.declaration;
           if (!(C.initializer || e.getJSDocType(C) || !e.isIdentifier(C.name))) {
@@ -93154,7 +93929,7 @@ var gr;
             }
           }
         });
-        if (!!T.length)
+        if (T.length)
           if (e.isArrowFunction($) || e.isFunctionExpression($)) {
             var I = e.isArrowFunction($) && !e.findChildOfKind($, 20, ne);
             I && Z.insertNodeBefore(ne, e.first($.parameters), e.factory.createToken(20)), e.forEach(T, function(D) {
@@ -93234,7 +94009,7 @@ var gr;
           U = Z.name;
           break;
       }
-      if (!!U)
+      if (U)
         return k(U, R, Y);
     }
     function K(Z, ne, R) {
@@ -93595,7 +94370,7 @@ var gr;
       }
       function ke(De) {
         var Ae, Ye, Lr, Er = [];
-        return De.isNumber && Er.push(Y.getNumberType()), De.isString && Er.push(Y.getStringType()), De.isNumberOrString && Er.push(Y.getUnionType([Y.getStringType(), Y.getNumberType()])), De.numberIndex && Er.push(Y.createArrayType(z(De.numberIndex))), (((Ae = De.properties) === null || Ae === void 0 ? void 0 : Ae.size) || ((Ye = De.calls) === null || Ye === void 0 ? void 0 : Ye.length) || ((Lr = De.constructs) === null || Lr === void 0 ? void 0 : Lr.length) || De.stringIndex) && Er.push(Pe(De)), Er.push.apply(Er, (De.candidateTypes || []).map(function(lr) {
+        return De.isNumber && Er.push(Y.getNumberType()), De.isString && Er.push(Y.getStringType()), De.isNumberOrString && Er.push(Y.getUnionType([Y.getStringType(), Y.getNumberType()])), De.numberIndex && Er.push(Y.createArrayType(z(De.numberIndex))), (!((Ae = De.properties) === null || Ae === void 0) && Ae.size || !((Ye = De.calls) === null || Ye === void 0) && Ye.length || !((Lr = De.constructs) === null || Lr === void 0) && Lr.length || De.stringIndex) && Er.push(Pe(De)), Er.push.apply(Er, (De.candidateTypes || []).map(function(lr) {
           return Y.getBaseTypeOfLiteralType(lr);
         })), Er.push.apply(Er, Ie(De)), Er;
       }
@@ -93712,7 +94487,7 @@ var gr;
       fixIds: [f],
       getCodeActions: function(N) {
         var H = N.sourceFile, h = N.program, v = N.span, A = h.getTypeChecker(), q = a(H, h.getTypeChecker(), v.start);
-        if (!!q) {
+        if (q) {
           var ie = q.returnTypeNode, b = q.returnType, M = q.promisedTypeNode, S = q.promisedType, B = e.textChanges.ChangeTracker.with(N, function(J) {
             return p(J, H, ie, M);
           });
@@ -93733,7 +94508,7 @@ var gr;
     function a(N, H, h) {
       if (!e.isInJSFile(N)) {
         var v = e.getTokenAtPosition(N, h), A = e.findAncestor(v, e.isFunctionLikeDeclaration), q = A == null ? void 0 : A.type;
-        if (!!q) {
+        if (q) {
           var ie = H.getTypeFromTypeNode(q), b = H.getAwaitedType(ie) || H.getVoidType(), M = H.typeToTypeNode(b, q, void 0);
           if (M)
             return { returnTypeNode: q, returnType: ie, promisedTypeNode: M, promisedType: b };
@@ -93868,7 +94643,7 @@ var gr;
     n.addNewNodeForMemberSymbol = a;
     function p(K, Z, ne, R, Y, U, $, T, I, y) {
       var D = Z.program, C = D.getTypeChecker(), m = e.getEmitScriptTarget(D.getCompilerOptions()), u = 1073742081 | (ne === 0 ? 268435456 : 0), g = C.signatureToSignatureDeclaration(R, K, I, u, d(Z));
-      if (!!g) {
+      if (g) {
         var F = g.typeParameters, te = g.parameters, ue = g.type;
         if (y) {
           if (F) {
@@ -93897,11 +94672,11 @@ var gr;
         }
         var Ce = T ? e.factory.createToken(57) : void 0, O = g.asteriskToken;
         if (e.isFunctionExpression(g))
-          return e.factory.updateFunctionExpression(g, $, g.asteriskToken, e.tryCast(U, e.isIdentifier), F, te, ue, Y != null ? Y : g.body);
+          return e.factory.updateFunctionExpression(g, $, g.asteriskToken, e.tryCast(U, e.isIdentifier), F, te, ue, Y ?? g.body);
         if (e.isArrowFunction(g))
-          return e.factory.updateArrowFunction(g, $, F, te, ue, g.equalsGreaterThanToken, Y != null ? Y : g.body);
+          return e.factory.updateArrowFunction(g, $, F, te, ue, g.equalsGreaterThanToken, Y ?? g.body);
         if (e.isMethodDeclaration(g))
-          return e.factory.updateMethodDeclaration(g, void 0, $, O, U != null ? U : e.factory.createIdentifier(""), Ce, F, te, ue, Y);
+          return e.factory.updateMethodDeclaration(g, void 0, $, O, U ?? e.factory.createIdentifier(""), Ce, F, te, ue, Y);
       }
     }
     n.createSignatureDeclarationFromSignature = p;
@@ -93970,7 +94745,7 @@ var gr;
     }
     function S(K, Z, ne) {
       var R = e.getTsConfigObjectLiteralExpression(Z);
-      if (!!R) {
+      if (R) {
         var Y = k(R, "compilerOptions");
         if (Y === void 0) {
           K.insertNodeAtObjectStart(Z, R, J("compilerOptions", e.factory.createObjectLiteralExpression(ne.map(function(m) {
@@ -93980,7 +94755,7 @@ var gr;
           return;
         }
         var U = Y.initializer;
-        if (!!e.isObjectLiteralExpression(U))
+        if (e.isObjectLiteralExpression(U))
           for (var $ = 0, T = ne; $ < T.length; $++) {
             var I = T[$], y = I[0], D = I[1], C = k(U, y);
             C === void 0 ? K.insertNodeAtObjectStart(Z, U, J(y, D)) : K.replaceNode(Z, C.initializer, D);
@@ -94132,7 +94907,7 @@ var gr;
       e.isParameterPropertyDeclaration(K, K.parent) ? P.insertNodeAtClassStart(x, Z, w) : e.isPropertyAssignment(K) ? P.insertNodeAfterComma(x, K, w) : P.insertNodeAfter(x, K, w);
     }
     function B(P, x, w, K, Z) {
-      !w.body || w.body.forEachChild(function ne(R) {
+      w.body && w.body.forEachChild(function ne(R) {
         e.isElementAccessExpression(R) && R.expression.kind === 108 && e.isStringLiteral(R.argumentExpression) && R.argumentExpression.text === Z && e.isWriteAccess(R) && P.replaceNode(x, R.argumentExpression, e.factory.createStringLiteral(K)), e.isPropertyAccessExpression(R) && R.expression.kind === 108 && R.name.text === Z && e.isWriteAccess(R) && P.replaceNode(x, R.name, e.factory.createIdentifier(K)), !e.isFunctionLike(R) && !e.isClassLike(R) && R.forEachChild(ne);
       });
     }
@@ -94237,7 +95012,7 @@ var gr;
       errorCodes: N,
       getCodeActions: function(B) {
         var J = H(B.sourceFile, B.span.start);
-        if (!!J) {
+        if (J) {
           var k = [
             A(B, J),
             h(B, J)
@@ -94249,7 +95024,7 @@ var gr;
       getAllCodeActions: function(B) {
         return n.codeFixAll(B, N, function(J, k) {
           var P = H(k.file, k.start);
-          if (!!P)
+          if (P)
             switch (B.fixId) {
               case d:
                 v(J, k.file, P);
@@ -94295,7 +95070,7 @@ var gr;
     }
     function ie(B, J) {
       var k = B.program.getTypeChecker(), P = M(k, J);
-      if (!!P) {
+      if (P) {
         var x = e.textChanges.ChangeTracker.with(B, function(w) {
           return b(w, B.sourceFile, J, P);
         });
@@ -94341,7 +95116,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(H) {
         var h = p(H.sourceFile, H.program, H.span.start);
-        if (!!h) {
+        if (h) {
           var v = e.textChanges.ChangeTracker.with(H, function(A) {
             return a(A, H.sourceFile, h);
           });
@@ -94394,7 +95169,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(N) {
         var H = N.sourceFile, h = N.span.start, v = a(H, h);
-        if (!!v) {
+        if (v) {
           var A = e.textChanges.ChangeTracker.with(N, function(q) {
             return p(q, H, v, N.preferences);
           });
@@ -94411,7 +95186,7 @@ var gr;
     });
     function a(N, H) {
       var h = e.getTokenAtPosition(N, H);
-      if (!!e.isIdentifier(h)) {
+      if (e.isIdentifier(h)) {
         var v = h.parent;
         if (e.isImportEqualsDeclaration(v) && e.isExternalModuleReference(v.moduleReference))
           return { importNode: v, name: h, moduleSpecifier: v.moduleReference.expression };
@@ -94450,7 +95225,7 @@ var gr;
     });
     function a(p, N, H) {
       var h = e.tryCast(e.getTokenAtPosition(N, H.start), e.isNumericLiteral);
-      if (!!h) {
+      if (h) {
         var v = h.getText(N) + "n";
         p.replaceNode(N, h, e.factory.createBigIntLiteral(v));
       }
@@ -94494,7 +95269,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(H) {
         var h = H.sourceFile, v = H.span, A = a(h, v.start);
-        if (!!A) {
+        if (A) {
           var q = e.textChanges.ChangeTracker.with(H, function(ie) {
             return p(ie, h, A);
           });
@@ -94505,13 +95280,13 @@ var gr;
       getAllCodeActions: function(H) {
         return n.codeFixAll(H, d, function(h, v) {
           var A = a(H.sourceFile, v.start);
-          !A || p(h, H.sourceFile, A);
+          A && p(h, H.sourceFile, A);
         });
       }
     });
     function a(H, h) {
       var v = e.getTokenAtPosition(H, h), A = v.parent, q = A.parent;
-      if (!(!e.isBinaryExpression(q) && (q = q.parent, !e.isBinaryExpression(q))) && !!e.nodeIsMissing(q.operatorToken))
+      if (!(!e.isBinaryExpression(q) && (q = q.parent, !e.isBinaryExpression(q))) && e.nodeIsMissing(q.operatorToken))
         return q;
     }
     function p(H, h, v) {
@@ -94541,7 +95316,7 @@ var gr;
       errorCodes: a,
       getCodeActions: function(h) {
         var v = h.sourceFile, A = h.span, q = p(v, A.start);
-        if (!!q) {
+        if (q) {
           var ie = e.textChanges.ChangeTracker.with(h, function(M) {
             return H(M, v, q);
           }), b = e.idText(q.container.name);
@@ -94586,7 +95361,7 @@ var gr;
       errorCodes: d,
       getCodeActions: function(a) {
         var p = e.findAncestor(e.getTokenAtPosition(a.sourceFile, a.span.start), e.isCallExpression);
-        if (!!p) {
+        if (p) {
           var N = e.textChanges.ChangeTracker.with(a, function(H) {
             H.deleteRange(a.sourceFile, { pos: p.expression.end, end: p.end });
           });
@@ -94623,7 +95398,7 @@ var gr;
       var h = e.tryCast(e.getTokenAtPosition(N, H.start), function(M) {
         return M.kind === 132;
       }), v = h && e.tryCast(h.parent, e.isAwaitExpression);
-      if (!!v) {
+      if (v) {
         var A = v, q = e.isParenthesizedExpression(v.parent);
         if (q) {
           var ie = e.getLeftmostExpression(v.expression, !1);
@@ -94661,7 +95436,7 @@ var gr;
       return e.findAncestor(e.getTokenAtPosition(N, H.start), e.isImportDeclaration);
     }
     function p(N, H, h) {
-      if (!!H) {
+      if (H) {
         var v = e.Debug.checkDefined(H.importClause);
         N.replaceNode(h.sourceFile, H, e.factory.updateImportDeclaration(H, H.decorators, H.modifiers, e.factory.updateImportClause(v, v.isTypeOnly, v.name, void 0), H.moduleSpecifier, H.assertClause)), N.insertNodeAfter(h.sourceFile, H, e.factory.createImportDeclaration(void 0, void 0, e.factory.updateImportClause(v, v.isTypeOnly, void 0, v.namedBindings), H.moduleSpecifier, H.assertClause));
       }
@@ -94706,7 +95481,7 @@ var gr;
       errorCodes: a,
       getCodeActions: function(H) {
         var h = H.sourceFile, v = p(h, H.span.start, H.errorCode);
-        if (!!v) {
+        if (v) {
           var A = e.textChanges.ChangeTracker.with(H, function(q) {
             return N(q, h, v);
           });
@@ -94827,7 +95602,7 @@ var gr;
     });
     function p(b, M) {
       M === void 0 && (M = !0);
-      var S = b.file, B = b.program, J = e.getRefactorContextSpan(b), k = e.getTokenAtPosition(S, J.start), P = !!(k.parent && e.getSyntacticModifierFlags(k.parent) & 1) && M ? k.parent : e.getParentNodeInSpan(k, S, J);
+      var S = b.file, B = b.program, J = e.getRefactorContextSpan(b), k = e.getTokenAtPosition(S, J.start), P = k.parent && e.getSyntacticModifierFlags(k.parent) & 1 && M ? k.parent : e.getParentNodeInSpan(k, S, J);
       if (!P || !e.isSourceFile(P.parent) && !(e.isModuleBlock(P.parent) && e.isAmbientModule(P.parent.parent)))
         return { error: e.getLocaleSpecificMessage(e.Diagnostics.Could_not_find_export_statement) };
       var x = e.isSourceFile(P.parent) ? P.parent.symbol : P.parent.parent.symbol, w = e.getSyntacticModifierFlags(P) || (e.isExportAssignment(P) && !P.isExportEquals ? 513 : 0), K = !!(w & 512);
@@ -95349,15 +96124,15 @@ var gr;
       }
       function v(A, q, ie) {
         var b = e.getTokenAtPosition(A, q), M = e.findAncestor(b, h);
-        if (!!M) {
+        if (M) {
           var S = ie.getTypeChecker(), B = M.symbol;
-          if (!!B) {
+          if (B) {
             var J = B.declarations;
-            if (!(e.length(J) <= 1) && !!e.every(J, function(K) {
+            if (!(e.length(J) <= 1) && e.every(J, function(K) {
               return e.getSourceFileOfNode(K) === A;
-            }) && !!h(J[0])) {
+            }) && h(J[0])) {
               var k = J[0].kind;
-              if (!!e.every(J, function(K) {
+              if (e.every(J, function(K) {
                 return K.kind === k;
               })) {
                 var P = J;
@@ -95371,7 +96146,7 @@ var gr;
                   });
                   if (e.length(x) === e.length(J)) {
                     var w = S.getReturnTypeOfSignature(x[0]);
-                    if (!!e.every(x, function(K) {
+                    if (e.every(x, function(K) {
                       return S.getReturnTypeOfSignature(K) === w;
                     }))
                       return P;
@@ -95877,7 +96652,7 @@ var gr;
         function Hr(ur, vr) {
           if (ur === void 0)
             return { variableType: ur, initializer: vr };
-          if (!e.isFunctionExpression(vr) && !e.isArrowFunction(vr) || !!vr.typeParameters)
+          if (!e.isFunctionExpression(vr) && !e.isArrowFunction(vr) || vr.typeParameters)
             return { variableType: ur, initializer: vr };
           var de = Ge.getTypeAtLocation(V), Fe = e.singleOrUndefined(Ge.getSignaturesOfType(de, 0));
           if (!Fe)
@@ -95898,7 +96673,7 @@ var gr;
           if (ur = void 0, e.isArrowFunction(vr))
             vr = e.factory.updateArrowFunction(vr, V.modifiers, vr.typeParameters, $e, vr.type || Ge.typeToTypeNode(Fe.getReturnType(), z, 1), vr.equalsGreaterThanToken, vr.body);
           else {
-            if (Fe && !!Fe.thisParameter) {
+            if (Fe && Fe.thisParameter) {
               var ze = e.firstOrUndefined($e);
               if (!ze || e.isIdentifier(ze.name) && ze.name.escapedText !== "this") {
                 var Ar = Ge.getTypeOfSymbolAtLocation(Fe.thisParameter, V);
@@ -96137,7 +96912,7 @@ var gr;
         }
         function bn(Rr, sr, ye) {
           var or = zn(Rr);
-          if (!!or) {
+          if (or) {
             var fe = e.getSymbolId(or).toString(), je = Me.get(fe);
             if (je && je >= sr)
               return fe;
@@ -96151,7 +96926,7 @@ var gr;
             var me = or.getDeclarations(), Ze = me && e.find(me, function(gt) {
               return gt.getSourceFile() === ge;
             });
-            if (!!Ze && !e.rangeContainsStartEnd(Te, Ze.getStart(), Ze.end)) {
+            if (Ze && !e.rangeContainsStartEnd(Te, Ze.getStart(), Ze.end)) {
               if (V.facts & v.IsGenerator && sr === 2) {
                 for (var xr = e.createDiagnosticForNode(Rr, h.cannotExtractRangeThatContainsWritesToReferencesLocatedOutsideOfTheTargetRangeInGenerators), fr = 0, dr = ve; fr < dr.length; fr++) {
                   var et = dr[fr];
@@ -96202,7 +96977,7 @@ var gr;
           return Rr.parent && e.isShorthandPropertyAssignment(Rr.parent) && Rr.parent.name === Rr ? ke.getShorthandAssignmentValueSymbol(Rr.parent) : ke.getSymbolAtLocation(Rr);
         }
         function ir(Rr, sr, ye) {
-          if (!!Rr) {
+          if (Rr) {
             var or = Rr.getDeclarations();
             if (or && or.some(function(je) {
               return je.parent === sr;
@@ -96324,7 +97099,7 @@ var gr;
       return { isJS: J, selection: w, firstStatement: Z, typeParameters: ne, typeElements: R };
     }
     function H(b, M) {
-      if (!!M)
+      if (M)
         if (e.isIntersectionTypeNode(M)) {
           for (var S = [], B = new e.Map(), J = 0, k = M.types; J < k.length; J++) {
             var P = k[J], x = H(b, P);
@@ -96368,7 +97143,7 @@ var gr;
         } else if (e.isTypeQueryNode(P)) {
           if (e.isIdentifier(P.exprName)) {
             var w = b.resolveName(P.exprName.text, P.exprName, 111551, !1);
-            if ((w == null ? void 0 : w.valueDeclaration) && h(S, w.valueDeclaration, B) && !h(M, w.valueDeclaration, B))
+            if (w != null && w.valueDeclaration && h(S, w.valueDeclaration, B) && !h(M, w.valueDeclaration, B))
               return !0;
           } else if (e.isThisIdentifier(P.exprName.left) && !h(M, P.parent, B))
             return !0;
@@ -96413,11 +97188,11 @@ var gr;
       n.registerRefactor(d, {
         kinds: [p.kind],
         getEditsForAction: function(N, H) {
-          if (!!N.endPosition) {
+          if (N.endPosition) {
             var h = e.codefix.getAccessorConvertiblePropertyAtPosition(N.file, N.program, N.startPosition, N.endPosition);
             e.Debug.assert(h && !n.isRefactorErrorInfo(h), "Expected applicable refactor info");
             var v = e.codefix.generateAccessorFromProperty(N.file, N.program, N.startPosition, N.endPosition, N, H);
-            if (!!v) {
+            if (v) {
               var A = N.file.fileName, q = h.renameAccessor ? h.accessorName : h.fieldName, ie = e.isIdentifier(q) ? 0 : -1, b = ie + e.getRenameLocation(v, A, q.text, e.isParameter(h.declaration));
               return { renameFilename: A, renameLocation: b, edits: v };
             }
@@ -96534,7 +97309,7 @@ var gr;
     }
     function A(he, ve, Ve, _e, Le) {
       var qe = he.getCompilerOptions().configFile;
-      if (!!qe) {
+      if (qe) {
         var Xe = e.normalizePath(e.combinePaths(Ve, "..", _e)), De = e.getRelativePathFromFile(qe.fileName, Xe, Le), Ae = qe.statements[0] && e.tryCast(qe.statements[0].expression, e.isObjectLiteralExpression), Ye = Ae && e.find(Ae.properties, function(Lr) {
           return e.isPropertyAssignment(Lr) && e.isStringLiteral(Lr.name) && Lr.name.text === "files";
         });
@@ -96610,7 +97385,7 @@ var gr;
     function B(he, ve, Ve, _e, Le, qe, Xe, De) {
       var Ae = e.codefix.moduleSpecifierToValidIdentifier(Le, 99), Ye = !1, Lr = [];
       if (e.FindAllReferences.Core.eachSymbolReferenceInFile(Xe, Ve, ve, function(Ke) {
-        !e.isPropertyAccessExpression(Ke.parent) || (Ye = Ye || !!Ve.resolveName(Ae, Ke, 67108863, !0), _e.has(Ve.getSymbolAtLocation(Ke.parent.name)) && Lr.push(Ke));
+        e.isPropertyAccessExpression(Ke.parent) && (Ye = Ye || !!Ve.resolveName(Ae, Ke, 67108863, !0), _e.has(Ve.getSymbolAtLocation(Ke.parent.name)) && Lr.push(Ke));
       }), Lr.length) {
         for (var Er = Ye ? e.getUniqueName(Ae, ve) : Ae, lr = 0, Cr = Lr; lr < Cr.length; lr++) {
           var Or = Cr[lr];
@@ -96700,7 +97475,7 @@ var gr;
       }
     }
     function Y(he, ve, Ve, _e) {
-      if (!!ve.importClause) {
+      if (ve.importClause) {
         var Le = ve.importClause, qe = Le.name, Xe = Le.namedBindings, De = !qe || _e(qe), Ae = !Xe || (Xe.kind === 267 ? _e(Xe.name) : Xe.elements.length !== 0 && Xe.elements.every(function(lr) {
           return _e(lr.name);
         }));
@@ -96749,12 +97524,12 @@ var gr;
       }
       var Er, lr = [], Cr = e.nodeSeenTracker();
       return Ve.forEach(function(Or) {
-        if (!!Or.declarations)
+        if (Or.declarations)
           for (var Ke = 0, Me = Or.declarations; Ke < Me.length; Ke++) {
             var Hr = Me[Ke];
-            if (!!ue(Hr)) {
+            if (ue(Hr)) {
               var ur = Q(Hr);
-              if (!!ur) {
+              if (ur) {
                 var vr = V(Hr);
                 Cr(vr) && z(he, vr, ur, _e, qe), e.hasSyntacticModifier(Hr, 512) ? Er = ur : lr.push(ur.text);
               }
@@ -96787,7 +97562,7 @@ var gr;
       for (var Er = 0, lr = ve; Er < lr.length; Er++) {
         var Lr = lr[Er];
         F(Lr, Ve, function(vr) {
-          if (!!vr.declarations)
+          if (vr.declarations)
             for (var de = 0, Fe = vr.declarations; de < Fe.length; de++) {
               var $e = Fe[de];
               D($e) ? Le.add(vr) : ue($e) && X($e) === he && !_e.has(vr) && qe.add(vr);
@@ -96796,7 +97571,7 @@ var gr;
       }
       for (var Cr = Le.clone(), Or = new te(), Ke = 0, Me = he.statements; Ke < Me.length; Ke++) {
         var Lr = Me[Ke];
-        e.contains(ve, Lr) || (De && !!(Lr.transformFlags & 2) && Cr.delete(De), F(Lr, Ve, function(vr) {
+        e.contains(ve, Lr) || (De && Lr.transformFlags & 2 && Cr.delete(De), F(Lr, Ve, function(vr) {
           _e.has(vr) && Or.add(vr), Cr.delete(vr);
         }));
       }
@@ -96804,7 +97579,7 @@ var gr;
       function Hr(ur) {
         if (ur !== void 0) {
           var vr = Ve.getJsxNamespace(ur), de = Ve.resolveName(vr, ur, 1920, !0);
-          return !!de && e.some(de.declarations, D) ? de : void 0;
+          return de && e.some(de.declarations, D) ? de : void 0;
         }
       }
     }
@@ -96979,7 +97754,7 @@ var gr;
     }
     function Te(he, ve, Ve, _e) {
       var Le;
-      return Ve ? !e.isExpressionStatement(ve) && e.hasSyntacticModifier(ve, 1) || !!(_e && ((Le = he.symbol.exports) === null || Le === void 0 ? void 0 : Le.has(_e.escapedText))) : Ie(ve).some(function(qe) {
+      return Ve ? !e.isExpressionStatement(ve) && e.hasSyntacticModifier(ve, 1) || !!(_e && (!((Le = he.symbol.exports) === null || Le === void 0) && Le.has(_e.escapedText))) : Ie(ve).some(function(qe) {
         return he.symbol.exports.has(e.escapeLeadingUnderscores(qe));
       });
     }
@@ -97703,7 +98478,7 @@ var gr;
       }
       function v(w, K) {
         var Z = w.file, ne = w.startPosition, R = w.program, Y = q(Z, ne, R);
-        if (!!Y) {
+        if (Y) {
           var U = Y.func, $ = [];
           switch (K) {
             case p.name:
@@ -97748,7 +98523,7 @@ var gr;
         return e.isVariableDeclaration(w) || e.isVariableDeclarationList(w) && w.declarations.length === 1;
       }
       function b(w, K, Z) {
-        if (!!ie(Z)) {
+        if (ie(Z)) {
           var ne = e.isVariableDeclaration(Z) ? Z : e.first(Z.declarations), R = ne.initializer;
           if (R && (e.isArrowFunction(R) || e.isFunctionExpression(R) && !x(w, K, R)))
             return R;
@@ -97922,7 +98697,7 @@ var gr;
     }, Q.prototype.getFirstToken = function(V) {
       this.assertHasRealPosition();
       var z = this.getChildren(V);
-      if (!!z.length) {
+      if (z.length) {
         var Te = e.find(z, function(ge) {
           return ge.kind < 307 || ge.kind > 345;
         });
@@ -97931,7 +98706,7 @@ var gr;
     }, Q.prototype.getLastToken = function(V) {
       this.assertHasRealPosition();
       var z = this.getChildren(V), Te = e.lastOrUndefined(z);
-      if (!!Te)
+      if (Te)
         return Te.kind < 160 ? Te : Te.getLastToken(V);
     }, Q.prototype.forEachChild = function(V, z) {
       return e.forEachChild(this, V, z);
@@ -98185,7 +98960,7 @@ var gr;
   }
   function B(Q, V, z) {
     var Te, ge = ((Te = V.parent) === null || Te === void 0 ? void 0 : Te.kind) === 170 ? V.parent.parent : V.parent;
-    if (!!ge)
+    if (ge)
       return e.firstDefined(e.getAllSuperTypeNodes(ge), function(ke) {
         var Pe = Q.getPropertyOfType(Q.getTypeAtLocation(ke), V.symbol.name);
         return Pe ? z(Pe) : void 0;
@@ -98626,7 +99401,7 @@ var gr;
       }
       function Hi(za) {
         var hi = Yo(za, 100);
-        if (!!hi)
+        if (hi)
           return hi.path = e.toPath(za, ve, Le), hi.resolvedPath = hi.path, hi.originalFileName = hi.fileName, e.parseJsonSourceFileConfigFileContent(hi, ro, e.getNormalizedAbsolutePath(e.getDirectoryPath(za), ve), void 0, e.getNormalizedAbsolutePath(za, ve));
       }
       function to(za, hi, Zi) {
@@ -98654,7 +99429,7 @@ var gr;
       function co(za, hi, Zi, Mo, Po) {
         e.Debug.assert(Cn !== void 0, "getOrCreateSourceFileByPath called after typical CompilerHost lifetime, check the callstack something with a reference to an old host.");
         var Fo = Cn && Cn.getOrCreateEntryByPath(za, hi);
-        if (!!Fo) {
+        if (Fo) {
           if (!Po) {
             var zo = Pe && Pe.getSourceFileByPath(hi);
             if (zo) {
@@ -98800,7 +99575,7 @@ var gr;
     function ze(pt, _t, Mt, It, rt) {
       De();
       var Cn = Xe(pt), Qn = e.getAdjustedRenameLocation(e.getTouchingPropertyName(Cn, _t));
-      if (!!e.Rename.nodeIsEligibleForRename(Qn))
+      if (e.Rename.nodeIsEligibleForRename(Qn))
         if (e.isIdentifier(Qn) && (e.isJsxOpeningElement(Qn.parent) || e.isJsxClosingElement(Qn.parent)) && e.isIntrinsicJsxName(Qn.escapedText)) {
           var Ra = Qn.parent.parent, Ci = Ra.openingElement, _i = Ra.closingElement;
           return [Ci, _i].map(function(va) {
@@ -99009,7 +99784,7 @@ var gr;
     }
     function zr(pt, _t) {
       var Mt = ke.getCurrentSourceFile(pt), It = e.findPrecedingToken(_t, Mt);
-      if (!!It) {
+      if (It) {
         var rt = It.kind === 31 && e.isJsxOpeningElement(It.parent) ? It.parent.parent : e.isJsxText(It) && e.isJsxElement(It.parent) ? It.parent : void 0;
         if (rt && wt(rt))
           return { newText: "</".concat(rt.openingElement.tagName.getText(Mt), ">") };
@@ -99148,7 +99923,7 @@ var gr;
           var Ra = 3;
           e.Debug.assert(Qn.length === _t.length + Ra);
           var Ci = Qn[1], _i = Qn.index + Ci.length;
-          if (!!e.isInComment(Mt, _i)) {
+          if (e.isInComment(Mt, _i)) {
             for (var va = void 0, yi = 0; yi < _t.length; yi++)
               Qn[yi + Ra] && (va = _t[yi]);
             if (va === void 0)
@@ -99655,7 +100430,7 @@ var gr;
           return e.hasSyntacticModifier(O, 1) || O.parent.kind === 256 && O.kind !== 170;
         }
         function $(O) {
-          if (!!O.body)
+          if (O.body)
             return U(O) ? h(O) : M(O.body);
         }
         function T(O) {
@@ -99860,7 +100635,7 @@ var cT = function() {
     }, B.prototype.error = function(J) {
       this.shimHost.error(J);
     }, B.prototype.getProjectVersion = function() {
-      if (!!this.shimHost.getProjectVersion)
+      if (this.shimHost.getProjectVersion)
         return this.shimHost.getProjectVersion();
     }, B.prototype.getTypeRootsVersion = function() {
       return this.shimHost.getTypeRootsVersion ? this.shimHost.getTypeRootsVersion() : 0;
@@ -100332,7 +101107,7 @@ var cT = function() {
         return e.getAutomaticTypeDirectiveNames(x, P.host);
       });
     }, J.prototype.convertFileReferences = function(k) {
-      if (!!k) {
+      if (k) {
         for (var P = [], x = 0, w = k; x < w.length; x++) {
           var K = w[x];
           P.push({
@@ -103007,7 +103782,7 @@ declare var BroadcastChannel: {
     new(name: string): BroadcastChannel;
 };
 
-/** This Streams API interface provides\xA0a built-in byte length queuing strategy that can be used when constructing streams. */
+/** This Streams API interface provides a built-in byte length queuing strategy that can be used when constructing streams. */
 interface ByteLengthQueuingStrategy extends QueuingStrategy<ArrayBufferView> {
     readonly highWaterMark: number;
     readonly size: QueuingStrategySize<ArrayBufferView>;
@@ -103018,7 +103793,7 @@ declare var ByteLengthQueuingStrategy: {
     new(init: QueuingStrategyInit): ByteLengthQueuingStrategy;
 };
 
-/** A CDATA section that can be used within XML to include extended portions of unescaped text. The symbols < and & don\u2019t need escaping as they normally do when inside a CDATA section. */
+/** A CDATA section that can be used within XML to include extended portions of unescaped text. The symbols < and & don’t need escaping as they normally do when inside a CDATA section. */
 interface CDATASection extends Text {
 }
 
@@ -104136,7 +104911,7 @@ declare var ConvolverNode: {
     new(context: BaseAudioContext, options?: ConvolverOptions): ConvolverNode;
 };
 
-/** This Streams API interface provides\xA0a built-in byte length queuing strategy that can be used when constructing streams. */
+/** This Streams API interface provides a built-in byte length queuing strategy that can be used when constructing streams. */
 interface CountQueuingStrategy extends QueuingStrategy {
     readonly highWaterMark: number;
     readonly size: QueuingStrategySize;
@@ -104532,7 +105307,7 @@ declare var DOMStringList: {
     new(): DOMStringList;
 };
 
-/** Used by the dataset\xA0HTML\xA0attribute to represent data for custom attributes added to elements. */
+/** Used by the dataset HTML attribute to represent data for custom attributes added to elements. */
 interface DOMStringMap {
     [name: string]: string | undefined;
 }
@@ -105544,7 +106319,7 @@ interface EventTarget {
      *
      * When set to true, options's capture prevents callback from being invoked when the event's eventPhase attribute value is BUBBLING_PHASE. When false (or not present), callback will not be invoked when event's eventPhase attribute value is CAPTURING_PHASE. Either way, callback will be invoked if event's eventPhase attribute value is AT_TARGET.
      *
-     * When set to true, options's passive indicates that the callback will not cancel the event by invoking preventDefault(). This is used to enable performance optimizations described in \xA7 2.8 Observing event listeners.
+     * When set to true, options's passive indicates that the callback will not cancel the event by invoking preventDefault(). This is used to enable performance optimizations described in § 2.8 Observing event listeners.
      *
      * When set to true, options's once indicates that the callback will only be invoked once after which the event listener will be removed.
      *
@@ -106433,7 +107208,7 @@ declare var HTMLBRElement: {
     new(): HTMLBRElement;
 };
 
-/** Contains the base URI\xA0for a document. This object inherits all of the properties and methods as described in the HTMLElement interface. */
+/** Contains the base URI for a document. This object inherits all of the properties and methods as described in the HTMLElement interface. */
 interface HTMLBaseElement extends HTMLElement {
     /** Gets or sets the baseline URL on which relative links are based. */
     href: string;
@@ -107558,7 +108333,7 @@ interface HTMLMediaElementEventMap extends HTMLElementEventMap {
     "waitingforkey": Event;
 }
 
-/** Adds to HTMLElement the properties and methods needed to support basic media-related capabilities\xA0that are\xA0common to audio and video. */
+/** Adds to HTMLElement the properties and methods needed to support basic media-related capabilities that are common to audio and video. */
 interface HTMLMediaElement extends HTMLElement {
     /** Gets or sets a value that indicates whether to start playing the media automatically. */
     autoplay: boolean;
@@ -107666,7 +108441,7 @@ declare var HTMLMenuElement: {
     new(): HTMLMenuElement;
 };
 
-/** Contains descriptive metadata about a document. It\xA0inherits all of the properties and methods described in the HTMLElement interface. */
+/** Contains descriptive metadata about a document. It inherits all of the properties and methods described in the HTMLElement interface. */
 interface HTMLMetaElement extends HTMLElement {
     /** Gets or sets meta-information to associate with httpEquiv or name. */
     content: string;
@@ -107881,7 +108656,7 @@ interface HTMLOptionsCollection extends HTMLCollectionOf<HTMLOptionElement> {
      */
     length: number;
     /**
-     * Returns the index of the first selected item, if any, or \u22121 if there is no selected item.
+     * Returns the index of the first selected item, if any, or −1 if there is no selected item.
      *
      * Can be set, to change the selection.
      */
@@ -108757,7 +109532,7 @@ declare var HashChangeEvent: {
     new(type: string, eventInitDict?: HashChangeEventInit): HashChangeEvent;
 };
 
-/** This Fetch API interface allows you to perform various actions on HTTP request and response headers. These actions include retrieving, setting, adding to, and removing. A Headers object has an associated header list, which is initially empty and consists\xA0of zero or more name and value pairs. \xA0You can add to this using methods like append() (see Examples.)\xA0In all methods of this interface, header names are matched by case-insensitive byte sequence. */
+/** This Fetch API interface allows you to perform various actions on HTTP request and response headers. These actions include retrieving, setting, adding to, and removing. A Headers object has an associated header list, which is initially empty and consists of zero or more name and value pairs.  You can add to this using methods like append() (see Examples.) In all methods of this interface, header names are matched by case-insensitive byte sequence. */
 interface Headers {
     append(name: string, value: string): void;
     delete(name: string): void;
@@ -108772,7 +109547,7 @@ declare var Headers: {
     new(init?: HeadersInit): Headers;
 };
 
-/** Allows\xA0manipulation of\xA0the browser session history, that is the pages visited in the tab or frame that the current page is loaded in. */
+/** Allows manipulation of the browser session history, that is the pages visited in the tab or frame that the current page is loaded in. */
 interface History {
     readonly length: number;
     scrollRestoration: ScrollRestoration;
@@ -108989,7 +109764,7 @@ declare var IDBKeyRange: {
     upperBound(upper: any, open?: boolean): IDBKeyRange;
 };
 
-/** This example shows a variety of different uses of object stores, from updating the data structure with IDBObjectStore.createIndex\xA0inside an onupgradeneeded function, to adding a new item to our object store with IDBObjectStore.add. For a full working example, see our\xA0To-do Notifications\xA0app (view example live.) */
+/** This example shows a variety of different uses of object stores, from updating the data structure with IDBObjectStore.createIndex inside an onupgradeneeded function, to adding a new item to our object store with IDBObjectStore.add. For a full working example, see our To-do Notifications app (view example live.) */
 interface IDBObjectStore {
     /** Returns true if the store has a key generator, and false otherwise. */
     readonly autoIncrement: boolean;
@@ -109190,7 +109965,7 @@ declare var IDBVersionChangeEvent: {
     new(type: string, eventInitDict?: IDBVersionChangeEventInit): IDBVersionChangeEvent;
 };
 
-/** The\xA0IIRFilterNode\xA0interface of the\xA0Web Audio API\xA0is a AudioNode processor which implements a general infinite impulse response (IIR)\xA0 filter; this type of filter can be used to implement tone control devices and graphic equalizers as well. It lets the parameters of the filter response be specified, so that it can be tuned as needed. */
+/** The IIRFilterNode interface of the Web Audio API is a AudioNode processor which implements a general infinite impulse response (IIR)  filter; this type of filter can be used to implement tone control devices and graphic equalizers as well. It lets the parameters of the filter response be specified, so that it can be tuned as needed. */
 interface IIRFilterNode extends AudioNode {
     getFrequencyResponse(frequencyHz: Float32Array, magResponse: Float32Array, phaseResponse: Float32Array): void;
 }
@@ -109551,7 +110326,7 @@ interface MediaKeySessionEventMap {
 }
 
 /**
- * This EncryptedMediaExtensions API interface represents a\xA0context for message exchange with a content decryption module (CDM).
+ * This EncryptedMediaExtensions API interface represents a context for message exchange with a content decryption module (CDM).
  * Available only in secure contexts.
  */
 interface MediaKeySession extends EventTarget {
@@ -109779,7 +110554,7 @@ interface MediaStreamEventMap {
     "removetrack": MediaStreamTrackEvent;
 }
 
-/** A stream of media content. A stream consists of several tracks such as\xA0video or audio tracks. Each track is specified as an instance of MediaStreamTrack. */
+/** A stream of media content. A stream consists of several tracks such as video or audio tracks. Each track is specified as an instance of MediaStreamTrack. */
 interface MediaStream extends EventTarget {
     readonly active: boolean;
     readonly id: string;
@@ -109968,7 +110743,7 @@ declare var MimeType: {
 };
 
 /**
- * Returns an array of MimeType instances, each of which contains information\xA0about a supported browser plugins. This object is returned by NavigatorPlugins.mimeTypes.
+ * Returns an array of MimeType instances, each of which contains information about a supported browser plugins. This object is returned by NavigatorPlugins.mimeTypes.
  * @deprecated
  */
 interface MimeTypeArray {
@@ -110509,7 +111284,7 @@ declare var OfflineAudioContext: {
     new(numberOfChannels: number, length: number, sampleRate: number): OfflineAudioContext;
 };
 
-/** The OscillatorNode\xA0interface represents a periodic waveform, such as a sine wave. It is an AudioScheduledSourceNode audio-processing module that causes a specified frequency\xA0of a given wave to be created\u2014in effect, a constant tone. */
+/** The OscillatorNode interface represents a periodic waveform, such as a sine wave. It is an AudioScheduledSourceNode audio-processing module that causes a specified frequency of a given wave to be created—in effect, a constant tone. */
 interface OscillatorNode extends AudioScheduledSourceNode {
     readonly detune: AudioParam;
     readonly frequency: AudioParam;
@@ -110758,7 +111533,7 @@ declare var PerformanceEventTiming: {
     new(): PerformanceEventTiming;
 };
 
-/** PerformanceMark\xA0is an abstract interface for PerformanceEntry objects with an entryType of "mark". Entries of this type are created by calling performance.mark() to add a named DOMHighResTimeStamp (the mark) to the browser's performance timeline. */
+/** PerformanceMark is an abstract interface for PerformanceEntry objects with an entryType of "mark". Entries of this type are created by calling performance.mark() to add a named DOMHighResTimeStamp (the mark) to the browser's performance timeline. */
 interface PerformanceMark extends PerformanceEntry {
     readonly detail: any;
 }
@@ -111050,7 +111825,7 @@ declare var Plugin: {
 };
 
 /**
- * Used to store a list of Plugin objects describing the available plugins; it's returned by the window.navigator.plugins\xA0property. The PluginArray is not a JavaScript array, but has the length property and supports accessing individual items using bracket notation (plugins[2]), as well as via item(index) and namedItem("name") methods.
+ * Used to store a list of Plugin objects describing the available plugins; it's returned by the window.navigator.plugins property. The PluginArray is not a JavaScript array, but has the length property and supports accessing individual items using bracket notation (plugins[2]), as well as via item(index) and namedItem("name") methods.
  * @deprecated
  */
 interface PluginArray {
@@ -111302,7 +112077,7 @@ declare var RTCDtlsTransport: {
     new(): RTCDtlsTransport;
 };
 
-/** The RTCIceCandidate interface\u2014part of the WebRTC API\u2014represents a candidate Internet Connectivity Establishment (ICE) configuration which may be used to establish an RTCPeerConnection. */
+/** The RTCIceCandidate interface—part of the WebRTC API—represents a candidate Internet Connectivity Establishment (ICE) configuration which may be used to establish an RTCPeerConnection. */
 interface RTCIceCandidate {
     readonly address: string | null;
     readonly candidate: string;
@@ -111433,7 +112208,7 @@ declare var RTCPeerConnectionIceEvent: {
     new(type: string, eventInitDict?: RTCPeerConnectionIceEventInit): RTCPeerConnectionIceEvent;
 };
 
-/** This WebRTC API interface manages the reception and decoding of data for a\xA0MediaStreamTrack on an\xA0RTCPeerConnection. */
+/** This WebRTC API interface manages the reception and decoding of data for a MediaStreamTrack on an RTCPeerConnection. */
 interface RTCRtpReceiver {
     readonly track: MediaStreamTrack;
     readonly transport: RTCDtlsTransport | null;
@@ -111481,7 +112256,7 @@ declare var RTCRtpTransceiver: {
     new(): RTCRtpTransceiver;
 };
 
-/** One end of a connection\u2014or potential connection\u2014and how it's configured. Each RTCSessionDescription consists of a description type indicating which part of the offer/answer negotiation process it describes and of the SDP descriptor of the session. */
+/** One end of a connection—or potential connection—and how it's configured. Each RTCSessionDescription consists of a description type indicating which part of the offer/answer negotiation process it describes and of the SDP descriptor of the session. */
 interface RTCSessionDescription {
     readonly sdp: string;
     readonly type: RTCSdpType;
@@ -111531,7 +112306,7 @@ interface Range extends AbstractRange {
     cloneRange(): Range;
     collapse(toStart?: boolean): void;
     compareBoundaryPoints(how: number, sourceRange: Range): number;
-    /** Returns \u22121 if the point is before the range, 0 if the point is in the range, and 1 if the point is after the range. */
+    /** Returns −1 if the point is before the range, 0 if the point is in the range, and 1 if the point is after the range. */
     comparePoint(node: Node, offset: number): number;
     createContextualFragment(fragment: string): DocumentFragment;
     deleteContents(): void;
@@ -111916,7 +112691,7 @@ declare var SVGAnimatedRect: {
     new(): SVGAnimatedRect;
 };
 
-/** The SVGAnimatedString\xA0interface represents string attributes which can be animated from each SVG declaration. You need to create SVG attribute before doing anything else, everything should be declared\xA0inside this. */
+/** The SVGAnimatedString interface represents string attributes which can be animated from each SVG declaration. You need to create SVG attribute before doing anything else, everything should be declared inside this. */
 interface SVGAnimatedString {
     readonly animVal: string;
     baseVal: string;
@@ -113343,7 +114118,7 @@ declare var SVGTitleElement: {
     new(): SVGTitleElement;
 };
 
-/** SVGTransform is the interface for one of the component transformations within an SVGTransformList; thus, an SVGTransform object corresponds to a single component (e.g., scale(\u2026) or matrix(\u2026)) within a transform attribute. */
+/** SVGTransform is the interface for one of the component transformations within an SVGTransformList; thus, an SVGTransform object corresponds to a single component (e.g., scale(…) or matrix(…)) within a transform attribute. */
 interface SVGTransform {
     readonly angle: number;
     readonly matrix: DOMMatrix;
@@ -113528,7 +114303,7 @@ declare var SecurityPolicyViolationEvent: {
     new(type: string, eventInitDict?: SecurityPolicyViolationEventInit): SecurityPolicyViolationEvent;
 };
 
-/** A Selection object\xA0represents the range of text selected by the user or the current position of the caret. To obtain a Selection object for examination or\xA0modification, call Window.getSelection(). */
+/** A Selection object represents the range of text selected by the user or the current position of the caret. To obtain a Selection object for examination or modification, call Window.getSelection(). */
 interface Selection {
     readonly anchorNode: Node | null;
     readonly anchorOffset: number;
@@ -113592,7 +114367,7 @@ interface ServiceWorkerContainerEventMap {
 }
 
 /**
- * The\xA0ServiceWorkerContainer\xA0interface of the\xA0ServiceWorker API\xA0provides an object representing the service worker as an overall unit in the network ecosystem, including facilities to register, unregister and update service workers, and access the state of service workers and their registrations.
+ * The ServiceWorkerContainer interface of the ServiceWorker API provides an object representing the service worker as an overall unit in the network ecosystem, including facilities to register, unregister and update service workers, and access the state of service workers and their registrations.
  * Available only in secure contexts.
  */
 interface ServiceWorkerContainer extends EventTarget {
@@ -113685,7 +114460,7 @@ interface SourceBufferEventMap {
     "updatestart": Event;
 }
 
-/** A chunk of media to be passed into an HTMLMediaElement and played, via a MediaSource\xA0object. This can be made up of one or several media segments. */
+/** A chunk of media to be passed into an HTMLMediaElement and played, via a MediaSource object. This can be made up of one or several media segments. */
 interface SourceBuffer extends EventTarget {
     appendWindowEnd: number;
     appendWindowStart: number;
@@ -114038,7 +114813,7 @@ declare var Text: {
     new(data?: string): Text;
 };
 
-/** A decoder for a specific method, that is a specific character encoding, like utf-8, iso-8859-2, koi8, cp1261, gbk, etc.\xA0A decoder takes a stream of bytes as input and emits a stream of code points. For a more scalable, non-native library, see StringView \u2013 a C-like representation of strings based on typed arrays. */
+/** A decoder for a specific method, that is a specific character encoding, like utf-8, iso-8859-2, koi8, cp1261, gbk, etc. A decoder takes a stream of bytes as input and emits a stream of code points. For a more scalable, non-native library, see StringView – a C-like representation of strings based on typed arrays. */
 interface TextDecoder extends TextDecoderCommon {
     /**
      * Returns the result of running encoding's decoder. The method can be invoked zero or more times with options's stream set to true, and then once without options's stream (or set to false), to process a fragmented input. If the invocation without options's stream (or set to false) has no input, it's clearest to omit both arguments.
@@ -114080,7 +114855,7 @@ declare var TextDecoderStream: {
     new(label?: string, options?: TextDecoderOptions): TextDecoderStream;
 };
 
-/** TextEncoder takes a stream of code points as input and emits a stream of bytes. For a more scalable, non-native library, see StringView \u2013 a C-like representation of strings based on typed arrays. */
+/** TextEncoder takes a stream of code points as input and emits a stream of bytes. For a more scalable, non-native library, see StringView – a C-like representation of strings based on typed arrays. */
 interface TextEncoder extends TextEncoderCommon {
     /** Returns the result of running UTF-8's encoder. */
     encode(input?: string): Uint8Array;
@@ -114266,7 +115041,7 @@ declare var TextTrackList: {
     new(): TextTrackList;
 };
 
-/** Used to represent a set of time ranges, primarily for the purpose of tracking which portions of media have been buffered when loading it for use by the <audio> and <video>\xA0elements. */
+/** Used to represent a set of time ranges, primarily for the purpose of tracking which portions of media have been buffered when loading it for use by the <audio> and <video> elements. */
 interface TimeRanges {
     /** Returns the number of ranges in the object. */
     readonly length: number;
@@ -114418,7 +115193,7 @@ declare var UIEvent: {
     new(type: string, eventInitDict?: UIEventInit): UIEvent;
 };
 
-/** The URL\xA0interface represents an object providing static methods used for creating object URLs. */
+/** The URL interface represents an object providing static methods used for creating object URLs. */
 interface URL {
     hash: string;
     host: string;
@@ -116926,7 +117701,7 @@ declare var Worklet: {
     new(): Worklet;
 };
 
-/** This Streams API interface provides\xA0a standard abstraction for writing streaming data to a destination, known as a sink. This object comes with built-in backpressure and queuing. */
+/** This Streams API interface provides a standard abstraction for writing streaming data to a destination, known as a sink. This object comes with built-in backpressure and queuing. */
 interface WritableStream<W = any> {
     readonly locked: boolean;
     abort(reason?: any): Promise<void>;
@@ -116939,7 +117714,7 @@ declare var WritableStream: {
     new<W = any>(underlyingSink?: UnderlyingSink<W>, strategy?: QueuingStrategy<W>): WritableStream<W>;
 };
 
-/** This Streams API interface represents a controller allowing control of a\xA0WritableStream's state. When constructing a WritableStream, the underlying sink is given a corresponding WritableStreamDefaultController instance to manipulate. */
+/** This Streams API interface represents a controller allowing control of a WritableStream's state. When constructing a WritableStream, the underlying sink is given a corresponding WritableStreamDefaultController instance to manipulate. */
 interface WritableStreamDefaultController {
     error(e?: any): void;
 }
@@ -117137,7 +117912,7 @@ declare var XMLSerializer: {
     new(): XMLSerializer;
 };
 
-/** The\xA0XPathEvaluator interface allows to compile and evaluate XPath expressions. */
+/** The XPathEvaluator interface allows to compile and evaluate XPath expressions. */
 interface XPathEvaluator extends XPathEvaluatorBase {
 }
 
@@ -118966,7 +119741,7 @@ interface Math {
      *     If there is only one argument, the result is the absolute value.
      *     If any argument is +Infinity or -Infinity, the result is +Infinity.
      *     If any argument is NaN, the result is NaN.
-     *     If all arguments are either +0 or \u22120, the result is +0.
+     *     If all arguments are either +0 or −0, the result is +0.
      */
     hypot(...values: number[]): number;
 
@@ -118994,7 +119769,7 @@ interface NumberConstructor {
     /**
      * The value of Number.EPSILON is the difference between 1 and the smallest value greater than 1
      * that is representable as a Number value, which is approximately:
-     * 2.2204460492503130808472633361816 x 10\u200D\u2212\u200D16.
+     * 2.2204460492503130808472633361816 x 10‍−‍16.
      */
     readonly EPSILON: number;
 
@@ -119029,14 +119804,14 @@ interface NumberConstructor {
     /**
      * The value of the largest integer n such that n and n + 1 are both exactly representable as
      * a Number value.
-     * The value of Number.MAX_SAFE_INTEGER is 9007199254740991 2^53 \u2212 1.
+     * The value of Number.MAX_SAFE_INTEGER is 9007199254740991 2^53 − 1.
      */
     readonly MAX_SAFE_INTEGER: number;
 
     /**
-     * The value of the smallest integer n such that n and n \u2212 1 are both exactly representable as
+     * The value of the smallest integer n such that n and n − 1 are both exactly representable as
      * a Number value.
-     * The value of Number.MIN_SAFE_INTEGER is \u22129007199254740991 (\u2212(2^53 \u2212 1)).
+     * The value of Number.MIN_SAFE_INTEGER is −9007199254740991 (−(2^53 − 1)).
      */
     readonly MIN_SAFE_INTEGER: number;
 
@@ -119199,7 +119974,7 @@ interface String {
     /**
      * Returns true if the sequence of elements of searchString converted to a String is the
      * same as the corresponding elements of this object (converted to a String) starting at
-     * endPosition \u2013 length(this). Otherwise returns false.
+     * endPosition – length(this). Otherwise returns false.
      */
     endsWith(searchString: string, endPosition?: number): boolean;
 
@@ -120265,7 +121040,7 @@ and limitations under the License.
 interface SymbolConstructor {
     /**
      * A method that determines if a constructor object recognizes an object as one of the
-     * constructor\u2019s instances. Called by the semantics of the instanceof operator.
+     * constructor’s instances. Called by the semantics of the instanceof operator.
      */
     readonly hasInstance: unique symbol;
 
@@ -121715,14 +122490,14 @@ interface BigIntToLocaleStringOptions {
     unitDisplay?: string;
 
     /**
-     * The currency to use in currency formatting. Possible values are the ISO 4217 currency codes, such as "USD" for the US dollar, "EUR" for the euro, or "CNY" for the Chinese RMB \u2014 see the Current currency & funds code list. There is no default value; if the style is "currency", the currency property must be provided. It is only used when [[Style]] has the value "currency".
+     * The currency to use in currency formatting. Possible values are the ISO 4217 currency codes, such as "USD" for the US dollar, "EUR" for the euro, or "CNY" for the Chinese RMB — see the Current currency & funds code list. There is no default value; if the style is "currency", the currency property must be provided. It is only used when [[Style]] has the value "currency".
      */
     currency?: string;
 
     /**
      * How to display the currency in currency formatting. It is only used when [[Style]] has the value "currency". The default is "symbol".
      *
-     * "symbol" to use a localized currency symbol such as \u20AC,
+     * "symbol" to use a localized currency symbol such as €,
      *
      * "code" to use the ISO currency code,
      *
@@ -129146,7 +129921,7 @@ declare var BroadcastChannel: {
     new(name: string): BroadcastChannel;
 };
 
-/** This Streams API interface provides\xA0a built-in byte length queuing strategy that can be used when constructing streams. */
+/** This Streams API interface provides a built-in byte length queuing strategy that can be used when constructing streams. */
 interface ByteLengthQueuingStrategy extends QueuingStrategy<ArrayBufferView> {
     readonly highWaterMark: number;
     readonly size: QueuingStrategySize<ArrayBufferView>;
@@ -129231,7 +130006,7 @@ declare var CanvasPattern: {
     new(): CanvasPattern;
 };
 
-/** The Client\xA0interface represents an executable context such as a Worker, or a SharedWorker. Window clients are represented by the more-specific\xA0WindowClient. You can get\xA0Client/WindowClient\xA0objects from methods such as Clients.matchAll() and\xA0Clients.get(). */
+/** The Client interface represents an executable context such as a Worker, or a SharedWorker. Window clients are represented by the more-specific WindowClient. You can get Client/WindowClient objects from methods such as Clients.matchAll() and Clients.get(). */
 interface Client {
     readonly frameType: FrameType;
     readonly id: string;
@@ -129246,7 +130021,7 @@ declare var Client: {
     new(): Client;
 };
 
-/** Provides access to\xA0Client\xA0objects. Access it\xA0via self.clients\xA0within a\xA0service worker. */
+/** Provides access to Client objects. Access it via self.clients within a service worker. */
 interface Clients {
     claim(): Promise<void>;
     get(id: string): Promise<Client | undefined>;
@@ -129274,7 +130049,7 @@ declare var CloseEvent: {
     new(type: string, eventInitDict?: CloseEventInit): CloseEvent;
 };
 
-/** This Streams API interface provides\xA0a built-in byte length queuing strategy that can be used when constructing streams. */
+/** This Streams API interface provides a built-in byte length queuing strategy that can be used when constructing streams. */
 interface CountQueuingStrategy extends QueuingStrategy {
     readonly highWaterMark: number;
     readonly size: QueuingStrategySize;
@@ -129765,7 +130540,7 @@ interface EventTarget {
      *
      * When set to true, options's capture prevents callback from being invoked when the event's eventPhase attribute value is BUBBLING_PHASE. When false (or not present), callback will not be invoked when event's eventPhase attribute value is CAPTURING_PHASE. Either way, callback will be invoked if event's eventPhase attribute value is AT_TARGET.
      *
-     * When set to true, options's passive indicates that the callback will not cancel the event by invoking preventDefault(). This is used to enable performance optimizations described in \xA7 2.8 Observing event listeners.
+     * When set to true, options's passive indicates that the callback will not cancel the event by invoking preventDefault(). This is used to enable performance optimizations described in § 2.8 Observing event listeners.
      *
      * When set to true, options's once indicates that the callback will only be invoked once after which the event listener will be removed.
      *
@@ -129795,7 +130570,7 @@ declare var ExtendableEvent: {
     new(type: string, eventInitDict?: ExtendableEventInit): ExtendableEvent;
 };
 
-/** This ServiceWorker API interface represents the event object of a message event fired on a service worker (when a channel message is received on the ServiceWorkerGlobalScope from another context) \u2014 extends the lifetime of such events. */
+/** This ServiceWorker API interface represents the event object of a message event fired on a service worker (when a channel message is received on the ServiceWorkerGlobalScope from another context) — extends the lifetime of such events. */
 interface ExtendableMessageEvent extends ExtendableEvent {
     readonly data: any;
     readonly lastEventId: string;
@@ -129809,7 +130584,7 @@ declare var ExtendableMessageEvent: {
     new(type: string, eventInitDict?: ExtendableMessageEventInit): ExtendableMessageEvent;
 };
 
-/** This is the event type for fetch\xA0events dispatched on the\xA0service worker global scope. It contains information about the fetch, including the\xA0request and how the receiver will treat the response. It provides the event.respondWith() method, which allows us to provide a response to this fetch. */
+/** This is the event type for fetch events dispatched on the service worker global scope. It contains information about the fetch, including the request and how the receiver will treat the response. It provides the event.respondWith() method, which allows us to provide a response to this fetch. */
 interface FetchEvent extends ExtendableEvent {
     readonly clientId: string;
     readonly handled: Promise<undefined>;
@@ -129986,7 +130761,7 @@ interface GenericTransformStream {
     readonly writable: WritableStream;
 }
 
-/** This Fetch API interface allows you to perform various actions on HTTP request and response headers. These actions include retrieving, setting, adding to, and removing. A Headers object has an associated header list, which is initially empty and consists\xA0of zero or more name and value pairs. \xA0You can add to this using methods like append() (see Examples.)\xA0In all methods of this interface, header names are matched by case-insensitive byte sequence. */
+/** This Fetch API interface allows you to perform various actions on HTTP request and response headers. These actions include retrieving, setting, adding to, and removing. A Headers object has an associated header list, which is initially empty and consists of zero or more name and value pairs.  You can add to this using methods like append() (see Examples.) In all methods of this interface, header names are matched by case-insensitive byte sequence. */
 interface Headers {
     append(name: string, value: string): void;
     delete(name: string): void;
@@ -130201,7 +130976,7 @@ declare var IDBKeyRange: {
     upperBound(upper: any, open?: boolean): IDBKeyRange;
 };
 
-/** This example shows a variety of different uses of object stores, from updating the data structure with IDBObjectStore.createIndex\xA0inside an onupgradeneeded function, to adding a new item to our object store with IDBObjectStore.add. For a full working example, see our\xA0To-do Notifications\xA0app (view example live.) */
+/** This example shows a variety of different uses of object stores, from updating the data structure with IDBObjectStore.createIndex inside an onupgradeneeded function, to adding a new item to our object store with IDBObjectStore.add. For a full working example, see our To-do Notifications app (view example live.) */
 interface IDBObjectStore {
     /** Returns true if the store has a key generator, and false otherwise. */
     readonly autoIncrement: boolean;
@@ -130714,7 +131489,7 @@ declare var PerformanceEntry: {
     new(): PerformanceEntry;
 };
 
-/** PerformanceMark\xA0is an abstract interface for PerformanceEntry objects with an entryType of "mark". Entries of this type are created by calling performance.mark() to add a named DOMHighResTimeStamp (the mark) to the browser's performance timeline. */
+/** PerformanceMark is an abstract interface for PerformanceEntry objects with an entryType of "mark". Entries of this type are created by calling performance.mark() to add a named DOMHighResTimeStamp (the mark) to the browser's performance timeline. */
 interface PerformanceMark extends PerformanceEntry {
     readonly detail: any;
 }
@@ -131069,7 +131844,7 @@ interface ServiceWorkerContainerEventMap {
 }
 
 /**
- * The\xA0ServiceWorkerContainer\xA0interface of the\xA0ServiceWorker API\xA0provides an object representing the service worker as an overall unit in the network ecosystem, including facilities to register, unregister and update service workers, and access the state of service workers and their registrations.
+ * The ServiceWorkerContainer interface of the ServiceWorker API provides an object representing the service worker as an overall unit in the network ecosystem, including facilities to register, unregister and update service workers, and access the state of service workers and their registrations.
  * Available only in secure contexts.
  */
 interface ServiceWorkerContainer extends EventTarget {
@@ -131219,7 +131994,7 @@ declare var SubtleCrypto: {
     new(): SubtleCrypto;
 };
 
-/** A decoder for a specific method, that is a specific character encoding, like utf-8, iso-8859-2, koi8, cp1261, gbk, etc.\xA0A decoder takes a stream of bytes as input and emits a stream of code points. For a more scalable, non-native library, see StringView \u2013 a C-like representation of strings based on typed arrays. */
+/** A decoder for a specific method, that is a specific character encoding, like utf-8, iso-8859-2, koi8, cp1261, gbk, etc. A decoder takes a stream of bytes as input and emits a stream of code points. For a more scalable, non-native library, see StringView – a C-like representation of strings based on typed arrays. */
 interface TextDecoder extends TextDecoderCommon {
     /**
      * Returns the result of running encoding's decoder. The method can be invoked zero or more times with options's stream set to true, and then once without options's stream (or set to false), to process a fragmented input. If the invocation without options's stream (or set to false) has no input, it's clearest to omit both arguments.
@@ -131261,7 +132036,7 @@ declare var TextDecoderStream: {
     new(label?: string, options?: TextDecoderOptions): TextDecoderStream;
 };
 
-/** TextEncoder takes a stream of code points as input and emits a stream of bytes. For a more scalable, non-native library, see StringView \u2013 a C-like representation of strings based on typed arrays. */
+/** TextEncoder takes a stream of code points as input and emits a stream of bytes. For a more scalable, non-native library, see StringView – a C-like representation of strings based on typed arrays. */
 interface TextEncoder extends TextEncoderCommon {
     /** Returns the result of running UTF-8's encoder. */
     encode(input?: string): Uint8Array;
@@ -131334,7 +132109,7 @@ declare var TransformStreamDefaultController: {
     new(): TransformStreamDefaultController;
 };
 
-/** The URL\xA0interface represents an object providing static methods used for creating object URLs. */
+/** The URL interface represents an object providing static methods used for creating object URLs. */
 interface URL {
     hash: string;
     host: string;
@@ -133525,7 +134300,7 @@ interface WorkerGlobalScopeEventMap {
     "unhandledrejection": PromiseRejectionEvent;
 }
 
-/** This Web Workers API interface is an interface representing the scope of any worker. Workers have no browsing context; this scope contains the information usually conveyed by Window objects \u2014 in this case event handlers, the console or the associated WorkerNavigator object. Each WorkerGlobalScope has its own event loop. */
+/** This Web Workers API interface is an interface representing the scope of any worker. Workers have no browsing context; this scope contains the information usually conveyed by Window objects — in this case event handlers, the console or the associated WorkerNavigator object. Each WorkerGlobalScope has its own event loop. */
 interface WorkerGlobalScope extends EventTarget, FontFaceSource, WindowOrWorkerGlobalScope {
     /** Returns workerGlobal's WorkerLocation object. */
     readonly location: WorkerLocation;
@@ -133581,7 +134356,7 @@ declare var WorkerNavigator: {
     new(): WorkerNavigator;
 };
 
-/** This Streams API interface provides\xA0a standard abstraction for writing streaming data to a destination, known as a sink. This object comes with built-in backpressure and queuing. */
+/** This Streams API interface provides a standard abstraction for writing streaming data to a destination, known as a sink. This object comes with built-in backpressure and queuing. */
 interface WritableStream<W = any> {
     readonly locked: boolean;
     abort(reason?: any): Promise<void>;
@@ -133594,7 +134369,7 @@ declare var WritableStream: {
     new<W = any>(underlyingSink?: UnderlyingSink<W>, strategy?: QueuingStrategy<W>): WritableStream<W>;
 };
 
-/** This Streams API interface represents a controller allowing control of a\xA0WritableStream's state. When constructing a WritableStream, the underlying sink is given a corresponding WritableStreamDefaultController instance to manipulate. */
+/** This Streams API interface represents a controller allowing control of a WritableStream's state. When constructing a WritableStream, the underlying sink is given a corresponding WritableStreamDefaultController instance to manipulate. */
 interface WritableStreamDefaultController {
     error(e?: any): void;
 }
@@ -134521,10 +135296,9 @@ var Lv = class {
     this._extraLibs = e;
   }
   async provideInlayHints(e, n, f) {
-    var p;
     if (Cc(e))
       return [];
-    const d = (p = this._inlayHintsOptions) != null ? p : {}, a = {
+    const d = this._inlayHintsOptions ?? {}, a = {
       start: n,
       length: f - n
     };
