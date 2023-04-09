@@ -17,7 +17,7 @@ use windmill_api_client::Client;
 use windmill_parser_go::parse_go_imports;
 use std::{
     borrow::Borrow, collections::HashMap, io, os::unix::process::ExitStatusExt, panic,
-    process::Stdio, time::Duration, sync::atomic::Ordering,
+    process::Stdio, time::Duration, sync::{atomic::Ordering, Arc},
 };
 use tracing::{trace_span, Instrument};
 use uuid::Uuid;
@@ -38,9 +38,9 @@ use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     process::{Child, Command},
     sync::{
-        mpsc::{self, Sender},  watch, broadcast
+        mpsc::{self, Sender},  watch, broadcast, RwLock
     },
-    time::{interval, sleep, Instant, MissedTickBehavior},
+    time::{interval, sleep, Instant, MissedTickBehavior}
 };
 
 use futures::{
@@ -82,6 +82,31 @@ async fn move_tmp_cache_to_cache() -> Result<()> {
     tokio::fs::rename(ROOT_TMP_CACHE_DIR, ROOT_CACHE_DIR).await?;
     tracing::info!("Finished moving tmp cache to cache");
     Ok(())
+}
+
+pub async fn create_token_for_owner_in_bg(db: &Pool<Postgres>, job: &QueuedJob) -> Arc<RwLock<String>> {
+    let rw_lock = Arc::new(RwLock::new(String::new()));
+
+    let locked = rw_lock.write().await;
+    let db = db.clone();
+    let job = job.clone();
+    let rw_lock2 = rw_lock.clone();
+    tokio::spawn(async move {
+        let mut locked = rw_lock2.write().await;
+        let job = job.clone();
+        let token = create_token_for_owner(
+            &db.clone(),
+            &job.workspace_id,
+            &job.permissioned_as,
+            "ephemeral-script",
+            *SESSION_TOKEN_EXPIRY,
+            &job.email,
+        )
+        .await.expect("could not create job token");
+        *locked = token;
+    });
+    drop(locked);
+    return rw_lock;
 }
 
 #[tracing::instrument(level = "trace", skip_all)]
@@ -270,6 +295,26 @@ lazy_static::lazy_static! {
 //only matter if CLOUD_HOSTED
 const MAX_RESULT_SIZE: usize = 1024 * 1024 * 2; // 2MB
 
+pub struct AuthedClientBackgroundTask {
+    pub base_internal_url: String,
+    pub workspace: String,
+    pub token: Arc<RwLock<String>>,
+    pub client: OnceCell<Client>
+}
+
+impl AuthedClientBackgroundTask {
+    pub async fn get_authed(&self) -> AuthedClient {
+        return AuthedClient {
+            base_internal_url: self.base_internal_url.clone(),
+            workspace: self.workspace.clone(),
+            token: self.get_token().await,
+            client: self.client.clone()
+        }
+    }
+    pub async fn get_token(&self) -> String {
+        return self.token.read().await.clone();
+    }
+}
 #[derive(Clone)]
 pub struct AuthedClient {
     pub base_internal_url: String,
@@ -496,8 +541,8 @@ pub async fn run_worker(
             }
             match next_job {
                 Ok(Some(job)) => {
-                    let (token_tx, mut token_rx) = broadcast::channel::<()>(1);
 
+                    let token = create_token_for_owner_in_bg(&db, &job).await;
                     let label_values = [
                         &job.workspace_id,
                         job.language.as_ref().map(|l| l.as_str()).unwrap_or(""),
@@ -552,23 +597,14 @@ pub async fn run_worker(
                             .await
                             .expect("could not create shared dir");
                     }
-                    let token = create_token_for_owner(
-                        &db,
-                        &job.workspace_id,
-                        &job.permissioned_as,
-                        "ephemeral-script",
-                        *SESSION_TOKEN_EXPIRY,
-                        &job.email,
-                    )
-                    .await.expect("could not create job token");
-                    let authed_client = AuthedClient { base_internal_url: base_internal_url.to_string(), token: token.clone(), workspace: job.workspace_id.to_string(), client: OnceCell::new() };
+
+                    let authed_client = AuthedClientBackgroundTask { base_internal_url: base_internal_url.to_string(), token: token, workspace: job.workspace_id.to_string(), client: OnceCell::new() };
                     let is_flow = job.job_kind == JobKind::Flow || job.job_kind == JobKind::FlowPreview || job.job_kind == JobKind::FlowDependencies;
 
                     if let Some(err) = handle_queued_job(
                         job.clone(),
                         db,
                         &authed_client,
-                        token,
                         &worker_name,
                         &worker_dir,
                         &job_dir,
@@ -581,7 +617,7 @@ pub async fn run_worker(
                     {
                         handle_job_error(
                             db,
-                            &authed_client,
+                            &authed_client.get_authed().await,
                             job,
                             err,
                             Some(metrics),
@@ -725,8 +761,7 @@ fn extract_error_value(log_lines: &str, i: i32) -> serde_json::Value {
 async fn handle_queued_job(
     job: QueuedJob,
     db: &sqlx::Pool<sqlx::Postgres>,
-    client: &AuthedClient,
-    token: String,
+    client: &AuthedClientBackgroundTask,
     worker_name: &str,
     worker_dir: &str,
     job_dir: &str,
@@ -747,7 +782,7 @@ async fn handle_queued_job(
             handle_flow(
                 &job,
                 db,
-                client,
+                &client.get_authed().await,
                 args,
                 same_worker_tx,
                 worker_dir,
@@ -803,7 +838,6 @@ async fn handle_queued_job(
                         &job,
                         db,
                         client,
-                        token,
                         job_dir,
                         worker_dir,
                         &mut logs,
@@ -814,6 +848,7 @@ async fn handle_queued_job(
                 }
             };
 
+            let client = &client.get_authed().await;
             match result {
                 Ok(r) => {
                     add_completed_job(db, &job, true, false, r.clone(), logs).await?;
@@ -957,8 +992,7 @@ async fn transform_json_value(
 async fn handle_code_execution_job(
     job: &QueuedJob,
     db: &sqlx::Pool<sqlx::Postgres>,
-    client: &AuthedClient,
-    token: String,
+    client: &AuthedClientBackgroundTask,
     job_dir: &str,
     worker_dir: &str,
     logs: &mut String,
@@ -1032,7 +1066,6 @@ mount {{
                 logs,
                 db,
                 client,
-                token,
                 &inner_content,
                 &shared_mount,
                 base_internal_url,
@@ -1045,7 +1078,6 @@ mount {{
                 job,
                 db,
                 client,
-                token,
                 job_dir,
                 &inner_content,
                 base_internal_url,
@@ -1059,7 +1091,6 @@ mount {{
                 job,
                 db,
                 client,
-                token,
                 &inner_content,
                 job_dir,
                 requirements_o,
@@ -1074,7 +1105,7 @@ mount {{
                 logs,
                 job,
                 db,
-                token,
+                client,
                 &inner_content,
                 job_dir,
                 &shared_mount,
@@ -1115,8 +1146,7 @@ async fn handle_go_job(
     logs: &mut String,
     job: &QueuedJob,
     db: &sqlx::Pool<sqlx::Postgres>,
-    client: &AuthedClient,
-    token: String,
+    client: &AuthedClientBackgroundTask,
     inner_content: &str,
     job_dir: &str,
     requirements_o: Option<String>,
@@ -1150,6 +1180,7 @@ async fn handle_go_job(
 
     logs.push_str("\n\n--- GO CODE EXECUTION ---\n");
     set_logs(logs, &job.id, db).await;
+    let client = &client.get_authed().await;
     create_args_and_out_file(client, job, job_dir).await?;
     {
         let sig = windmill_parser_go::parse_go_sig(&inner_content)?;
@@ -1237,7 +1268,7 @@ func Run(req Req) (interface{{}}, error){{
             write_file(&format!("{job_dir}/inner"), "runner.go", &runner_content).await?;
         }
     }
-    let mut reserved_variables = get_reserved_variables(job, &token, db).await?;
+    let mut reserved_variables = get_reserved_variables(job, &client.token, db).await?;
     reserved_variables.insert("RUST_LOG".to_string(), "info".to_string());
 
     let child = if !*DISABLE_NSJAIL {
@@ -1297,7 +1328,7 @@ async fn handle_bash_job(
     logs: &mut String,
     job: &QueuedJob,
     db: &sqlx::Pool<sqlx::Postgres>,
-    token: String,
+    client: &AuthedClientBackgroundTask,
     content: &str,
     job_dir: &str,
     shared_mount: &str,
@@ -1307,7 +1338,7 @@ async fn handle_bash_job(
     logs.push_str("\n\n--- BASH CODE EXECUTION ---\n");
     set_logs(logs, &job.id, db).await;
     write_file(job_dir, "main.sh", &format!("{content}\necho \"\"\nsync\necho \"\"")).await?;
-
+    let token = client.get_token().await;
     let mut reserved_variables = get_reserved_variables(job, &token, db).await?;
     reserved_variables.insert("RUST_LOG".to_string(), "info".to_string());
 
@@ -1408,8 +1439,7 @@ async fn handle_deno_job(
     logs: &mut String,
     job: &QueuedJob,
     db: &sqlx::Pool<sqlx::Postgres>,
-    client: &AuthedClient,
-    token: String,
+    client: &AuthedClientBackgroundTask,
     job_dir: &str,
     inner_content: &String,
     base_internal_url: &str,
@@ -1425,8 +1455,8 @@ async fn handle_deno_job(
 
     let sig = trace_span!("parse_deno_signature")
         .in_scope(|| windmill_parser_ts::parse_deno_signature(inner_content, true))?;
-
-    create_args_and_out_file(client, job, job_dir).await?;
+    let client = client.get_authed().await;
+    create_args_and_out_file(&client, job, job_dir).await?;
 
     let spread = sig.args.into_iter().map(|x| x.name).join(",");
     let wrapper_content: String = format!(
@@ -1472,10 +1502,10 @@ run().catch(async (e) => {{
       }}"#,
     );
     write_file(job_dir, "import_map.json", &import_map).await?;
-    let mut reserved_variables = get_reserved_variables(job, &token, db).await?;
+    let mut reserved_variables = get_reserved_variables(job, &client.token, db).await?;
     reserved_variables.insert("RUST_LOG".to_string(), "info".to_string());
 
-    let common_deno_proc_envs = get_common_deno_proc_envs(&token, base_internal_url);
+    let common_deno_proc_envs = get_common_deno_proc_envs(&client.token, base_internal_url);
     //do not cache local dependencies
     let reload = format!("--reload={base_internal_url}");
     let child = async {
@@ -1553,8 +1583,7 @@ async fn handle_python_job(
     job: &QueuedJob,
     logs: &mut String,
     db: &sqlx::Pool<sqlx::Postgres>,
-    client: &AuthedClient,
-    token: String,
+    client: &AuthedClientBackgroundTask,
     inner_content: &String,
     shared_mount: &str,
     base_internal_url: &str
@@ -1647,7 +1676,8 @@ async fn handle_python_job(
         })
         .collect::<Vec<String>>()
         .join("");
-    create_args_and_out_file(client, job, job_dir).await?;
+    let client = client.get_authed().await;
+    create_args_and_out_file(&client, job, job_dir).await?;
 
     let import_loader = if relative_imports {
         "import loader"
@@ -1724,7 +1754,7 @@ except Exception as e:
     );
     write_file(job_dir, "wrapper.py", &wrapper_content).await?;
 
-    let mut reserved_variables = get_reserved_variables(job, &token, db).await?;
+    let mut reserved_variables = get_reserved_variables(job, &client.token, db).await?;
     let additional_python_paths_folders = additional_python_paths.iter().join(":");
     if !*DISABLE_NSJAIL {
         let shared_deps = additional_python_paths
@@ -2728,7 +2758,7 @@ async fn handle_zombie_jobs(db: &Pool<Postgres>, base_internal_url: &str) {
         .await
         .expect("could not create job token");
 
-        let client = AuthedClient { base_internal_url: base_internal_url.to_string(), token: token.clone(), workspace: job.workspace_id.to_string(), client: OnceCell::new() };
+        let client = AuthedClient { base_internal_url: base_internal_url.to_string(), token, workspace: job.workspace_id.to_string(), client: OnceCell::new() };
 
         let last_ping = job.last_ping.clone();
         let _ = handle_job_error(
