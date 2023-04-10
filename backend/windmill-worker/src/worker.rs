@@ -563,11 +563,13 @@ pub async fn run_worker(
                             .inc();
                     }
 
-                    let metrics = Metrics {
-                        worker_execution_failed: worker_execution_failed
-                            .get(&language)
-                            .expect("no timer found").clone(),
-                    };
+                    let metrics = if *METRICS_ENABLED {
+                        Some(Metrics {
+                            worker_execution_failed: worker_execution_failed
+                                .get(&language)
+                                .expect("no timer found").clone(),
+                        }) 
+                    } else { None };
 
                     let job_root = job.root_job.map(|x| x.to_string()).unwrap_or_else(|| "none".to_string());
                     tracing::info!(worker = %worker_name, id = %job.id, root_id = %job_root, "fetched job {}, root job: {}", job.id, job_root);
@@ -625,7 +627,7 @@ pub async fn run_worker(
                             &authed_client.get_authed().await,
                             job,
                             err,
-                            Some(metrics),
+                            metrics,
                             false,
                             same_worker_tx.clone(),
                             &worker_dir,
@@ -772,7 +774,7 @@ async fn handle_queued_job(
     worker_name: &str,
     worker_dir: &str,
     job_dir: &str,
-    metrics: Metrics,
+    metrics: Option<Metrics>,
     same_worker_tx: Sender<Uuid>,
     base_internal_url: &str,
 ) -> windmill_common::error::Result<()> {
@@ -871,7 +873,7 @@ async fn handle_queued_job(
                                 &job.workspace_id,
                                 true,
                                 r,
-                                Some(metrics.clone()),
+                                metrics.clone(),
                                 false,
                                 same_worker_tx.clone(),
                                 worker_dir,
@@ -912,7 +914,7 @@ async fn handle_queued_job(
                     };
 
                     let result =
-                        add_completed_job_error(db, &job, logs, error_value, Some(metrics.clone()))
+                        add_completed_job_error(db, &job, logs, error_value, metrics.clone())
                             .await?;
                     if job.is_flow_step {
                         if let Some(parent_job) = job.parent_job {
@@ -924,7 +926,7 @@ async fn handle_queued_job(
                                 &job.workspace_id,
                                 false,
                                 result,
-                                Some(metrics),
+                                metrics,
                                 false,
                                 same_worker_tx,
                                 worker_dir,
