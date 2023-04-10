@@ -12,10 +12,10 @@ use crate::{
     db::{UserDB, DB},
     folders::Folder,
     resources::{Resource, ResourceType},
-    users::{Authed, WorkspaceInvite, NEW_USER_WEBHOOK, VALID_USERNAME},
+    users::{Authed, WorkspaceInvite, VALID_USERNAME},
     utils::require_super_admin,
     variables::build_crypt,
-    HTTP_CLIENT,
+    webhook_util::{InstanceEvent, WebhookShared},
 };
 use axum::{
     body::StreamBody,
@@ -833,6 +833,7 @@ pub async fn invite_user_to_all_auto_invite_worspaces(db: &DB, email: &str) -> R
 async fn invite_user(
     Authed { username, is_admin, .. }: Authed,
     Extension(db): Extension<DB>,
+    Extension(webhook): Extension<WebhookShared>,
     Path(w_id): Path<String>,
     Json(mut nu): Json<NewWorkspaceInvite>,
 ) -> Result<(StatusCode, String)> {
@@ -856,14 +857,10 @@ async fn invite_user(
 
     tx.commit().await?;
 
-    if let Some(new_user_webhook) = NEW_USER_WEBHOOK.clone() {
-        let _ = &HTTP_CLIENT
-            .post(&new_user_webhook)
-            .json(&serde_json::json!({"email" : &nu.email, "event": "workspace_invite"}))
-            .send()
-            .await
-            .map_err(|e| tracing::error!("Error sending new user webhook: {}", e.to_string()));
-    }
+    webhook.send_instance_event(InstanceEvent::UserInvitedWorkspace {
+        email: nu.email.clone(),
+        workspace: w_id,
+    });
 
     Ok((
         StatusCode::CREATED,
@@ -874,6 +871,7 @@ async fn invite_user(
 async fn add_user(
     Authed { username, is_admin, .. }: Authed,
     Extension(db): Extension<DB>,
+    Extension(webhook): Extension<WebhookShared>,
     Path(w_id): Path<String>,
     Json(mut nu): Json<NewWorkspaceUser>,
 ) -> Result<(StatusCode, String)> {
@@ -912,14 +910,10 @@ async fn add_user(
 
     tx.commit().await?;
 
-    if let Some(new_user_webhook) = NEW_USER_WEBHOOK.clone() {
-        let _ = HTTP_CLIENT
-            .post(&new_user_webhook)
-            .json(&serde_json::json!({"email" : &nu.email, "event": "workspace_add"}))
-            .send()
-            .await
-            .map_err(|e| tracing::error!("Error sending new user webhook: {}", e.to_string()));
-    }
+    webhook.send_instance_event(InstanceEvent::UserAddedWorkspace {
+        workspace: w_id.clone(),
+        email: nu.email.clone(),
+    });
 
     Ok((
         StatusCode::CREATED,
