@@ -1534,6 +1534,7 @@ async fn handle_deno_job(
         let import_map = format!(
             r#"{{
             "imports": {{
+              "{base_internal_url}/api/w/{w_id}/scripts/raw/p/": "{base_internal_url}/api/w/{w_id}/scripts/raw/p/",
               "{base_internal_url}": "{base_internal_url}/api/w/{w_id}/scripts/raw/p/",
               "/": "{base_internal_url}/api/w/{w_id}/scripts/raw/p/",
               "./wrapper.ts": "./wrapper.ts",
