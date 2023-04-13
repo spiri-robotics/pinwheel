@@ -53,7 +53,7 @@ use crate::{
     jobs::{add_completed_job, add_completed_job_error},
     worker_flow::{
         handle_flow, update_flow_status_after_job_completion, update_flow_status_in_progress,
-    }, python_executor::{create_dependencies_dir, pip_compile, handle_python_job}, common::{read_result, set_logs}, global_cache::{move_tmp_cache_to_cache}, go_executor::{handle_go_job, install_go_dependencies},
+    }, python_executor::{create_dependencies_dir, pip_compile, handle_python_job, handle_python_reqs}, common::{read_result, set_logs}, global_cache::{move_tmp_cache_to_cache}, go_executor::{handle_go_job, install_go_dependencies},
 };
 
 
@@ -219,6 +219,12 @@ lazy_static::lazy_static! {
     static ref TIMEOUT_DURATION: Duration = Duration::from_secs(*TIMEOUT as u64);
 
     pub static ref SESSION_TOKEN_EXPIRY: i32 = (*TIMEOUT as i32) * 2;
+
+    pub static ref GLOBAL_CACHE_INTERVAL: u64 = std::env::var("GLOBAL_CACHE_INTERVAL")
+        .ok()
+        .and_then(|x| x.parse::<u64>().ok())
+        .unwrap_or(60 * 10);
+
 }
 
 //only matter if CLOUD_HOSTED
@@ -1539,7 +1545,24 @@ async fn capture_dependency_job(
     match job_language {
         ScriptLang::Python3 => {
             create_dependencies_dir(job_dir).await;
-            pip_compile(job_id, job_raw_code, logs, job_dir, db, worker_name, w_id).await
+            let req = pip_compile(job_id, job_raw_code, logs, job_dir, db, worker_name, w_id).await;
+            // install the dependencies to pre-fill the cache
+            if let Ok(req) = req.as_ref() {
+                handle_python_reqs(
+                    req
+                        .split("\n")
+                        .filter(|x| !x.starts_with("--"))
+                        .collect(),
+                    job_id,
+                    w_id,
+                    logs,
+                    db,
+                    worker_name,
+                    job_dir,
+                )
+                .await?;
+            }
+            req
         }
         ScriptLang::Go => {
             install_go_dependencies(
