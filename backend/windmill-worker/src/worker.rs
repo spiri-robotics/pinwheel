@@ -14,7 +14,7 @@ use sqlx::{Pool, Postgres};
 use windmill_api_client::Client;
 use std::{
     borrow::Borrow, collections::HashMap, io, os::unix::process::ExitStatusExt, panic,
-    process::Stdio, time::{Duration}, sync::atomic::Ordering,
+    process::Stdio, time::{Duration},
     sync::{Arc},
 };
 use tracing::{trace_span, Instrument};
@@ -25,7 +25,7 @@ use windmill_common::{
     flows::{FlowModuleValue, FlowValue},
     scripts::{ScriptHash, ScriptLang},
     utils::{rd_string},
-    variables, BASE_URL, users::SUPERADMIN_SECRET_EMAIL, IS_READY, METRICS_ENABLED, jobs::{JobKind, QueuedJob},
+    variables, BASE_URL, users::SUPERADMIN_SECRET_EMAIL, METRICS_ENABLED, jobs::{JobKind, QueuedJob},
 };
 use windmill_queue::{canceled_job_to_result, get_queued_job, pull, CLOUD_HOSTED};
 
@@ -36,7 +36,7 @@ use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{Child, Command},
     sync::{
-        mpsc::{self, Sender},  watch, broadcast, RwLock
+        mpsc::{self, Sender},  watch, broadcast, RwLock, Barrier
     },
     time::{interval, sleep, Instant, MissedTickBehavior}
 };
@@ -270,16 +270,17 @@ impl AuthedClient {
 }
 
 
-#[tracing::instrument(skip(rsmq), level = "trace")]
 pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 'static>(
     db: &Pool<Postgres>,
     worker_instance: &str,
     worker_name: String,
     i_worker: u64,
+    num_workers: u32,
     ip: &str,
     mut rx: tokio::sync::broadcast::Receiver<()>,
     base_internal_url: &str,
     rsmq: Option<R>,
+    sync_barrier: RwLock<Arc<Option<Barrier>>>,
 ) {
     if !*DISABLE_NSJAIL {
         tracing::warn!(
@@ -405,10 +406,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
 
     let mut copy_cache_from_bucket_handle: Option<tokio::task::JoinHandle<()>> = None;
 
-;
-
-    IS_READY.store(true, Ordering::Relaxed);
-
     tracing::info!(worker = %worker_name, "starting worker");
 
 
@@ -431,6 +428,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     
     let mut first_run = true;
 
+    // let mut barrier = Arc::new();
     loop {
         if *METRICS_ENABLED {
             worker_busy.set(0);
@@ -457,7 +455,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             }
 
 
-
+            
             let (do_break, next_job) = if first_run { 
                 (false, Ok(Some(QueuedJob::default())))
             } else {
@@ -474,6 +472,14 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                             (true, Ok(None))
                         },
                         _ = copy_to_bucket_rx.recv() => {
+                            if num_workers > 1 {
+                                let mut barrier = sync_barrier.write().await;
+                                let arc_barrier = Arc::new(Some(tokio::sync::Barrier::new(num_workers as usize)));
+                                *barrier = arc_barrier.clone();
+                                if let Some(b) = arc_barrier.as_ref() {
+                                    b.wait().await;
+                                };
+                            }
                         },
                         Some(job_id) = same_worker_rx.recv() => {
                             (false, sqlx::query_as::<_, QueuedJob>("SELECT * FROM queue WHERE id = $1")
