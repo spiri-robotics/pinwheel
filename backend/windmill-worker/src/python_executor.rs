@@ -45,11 +45,12 @@ const NSJAIL_CONFIG_DOWNLOAD_PY_CONTENT: &str = include_str!("../nsjail/download
 const NSJAIL_CONFIG_RUN_PYTHON3_CONTENT: &str = include_str!("../nsjail/run.python3.config.proto");
 const RELATIVE_PYTHON_LOADER: &str = include_str!("../loader.py");
 
+
 use crate::{
     common::{read_result, set_logs},
     create_args_and_out_file, get_reserved_variables, handle_child, write_file,
     AuthedClientBackgroundTask, DISABLE_NSJAIL, DISABLE_NUSER, NSJAIL_PATH, PATH_ENV,
-    PIP_CACHE_DIR,
+    PIP_CACHE_DIR, S3_CACHE_BUCKET,
 };
 
 pub async fn create_dependencies_dir(job_dir: &str) {
@@ -464,6 +465,7 @@ pub async fn handle_python_reqs(
             req_paths.push(venv_p);
             continue;
         }
+
 
         logs.push_str("\n--- PIP INSTALL ---\n");
         logs.push_str(&format!("\n{req} is being installed for the first time.\n It will be cached for all ulterior uses."));
