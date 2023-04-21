@@ -15,7 +15,7 @@ use windmill_api_client::Client;
 use std::{
     borrow::Borrow, collections::HashMap, io, os::unix::process::ExitStatusExt, panic,
     process::Stdio, time::{Duration},
-    sync::{Arc},
+    sync::{Arc, atomic::Ordering},
 };
 use tracing::{trace_span, Instrument};
 use uuid::Uuid;
@@ -25,7 +25,7 @@ use windmill_common::{
     flows::{FlowModuleValue, FlowValue},
     scripts::{ScriptHash, ScriptLang},
     utils::{rd_string},
-    variables, BASE_URL, users::SUPERADMIN_SECRET_EMAIL, METRICS_ENABLED, jobs::{JobKind, QueuedJob},
+    variables, BASE_URL, users::SUPERADMIN_SECRET_EMAIL, METRICS_ENABLED, jobs::{JobKind, QueuedJob}, IS_READY,
 };
 use windmill_queue::{canceled_job_to_result, get_queued_job, pull, CLOUD_HOSTED};
 
@@ -409,6 +409,8 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     tracing::info!(worker = %worker_name, "starting worker");
 
 
+
+
     let (same_worker_tx, mut same_worker_rx) = mpsc::channel::<Uuid>(5);
 
     let (job_completed_tx, mut job_completed_rx) = mpsc::channel::<JobCompleted>(10);
@@ -463,16 +465,10 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                     tokio::select! {
                         biased;
                         _ = rx.recv() => {
-                            if let Some(copy_cache_from_bucket_handle) = copy_cache_from_bucket_handle.as_ref() {
-                                if !copy_cache_from_bucket_handle.is_finished() {
-                                    copy_cache_from_bucket_handle.abort();
-                                }
-                            }
-                            println!("received killpill for worker {}", i_worker);
                             (true, Ok(None))
                         },
                         _ = copy_to_bucket_rx.recv() => {
-                            tracing::debug!("CAN PULL LOCK START");
+                            tracing::debug!("can_pull lock start");
                             let _lock = CAN_PULL.write().await;
                             if num_workers > 1 {
                                 create_barrier_for_all_workers(num_workers, sync_barrier.clone()).await;
@@ -501,6 +497,8 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             };
 
             first_run = false;
+            IS_READY.store(true, Ordering::Relaxed);
+
             if do_break {
                 return true;
             }
