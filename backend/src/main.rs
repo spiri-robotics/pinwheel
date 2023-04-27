@@ -102,7 +102,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let (tx, rx) = tokio::sync::broadcast::channel::<()>(3);
-    let shutdown_signal = windmill_common::shutdown_signal(tx);
+    let shutdown_signal = windmill_common::shutdown_signal(tx.clone(), rx.resubscribe());
 
 
     tracing::info!(
@@ -161,6 +161,7 @@ Windmill Community Edition {GIT_VERSION}
         "WAIT_RESULT_FAST_POLL_DURATION_SECS",
         "WAIT_RESULT_SLOW_POLL_INTERVAL_MS",
         "WAIT_RESULT_FAST_POLL_INTERVAL_MS",
+        "EXIT_AFTER_NO_JOB_FOR_SECS",
     ]);
 
     if server_mode || num_workers > 0 {
@@ -184,6 +185,8 @@ Windmill Community Edition {GIT_VERSION}
                     rsmq.clone(),
                 )
                 .await?;
+                tracing::info!("All workers exited.");
+                tx.send(())?; // signal server to shutdown
             }
             Ok(()) as anyhow::Result<()>
         };

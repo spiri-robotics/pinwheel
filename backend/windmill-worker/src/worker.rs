@@ -228,6 +228,11 @@ lazy_static::lazy_static! {
         .map(|e| Some(e))
         .unwrap_or(None);
 
+
+    pub static ref EXIT_AFTER_NO_JOB_FOR_SECS: Option<u64> = std::env::var("EXIT_AFTER_NO_JOB_FOR_SECS")
+        .ok()
+        .and_then(|x| x.parse::<u64>().ok());
+
     pub static ref CAN_PULL: Arc<RwLock<()>> = Arc::new(RwLock::new(()));
 }
 
@@ -429,7 +434,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     
     let mut first_run = true;
 
-    // let mut barrier = Arc::new();
+    let mut last_executed_job: Option<Instant> = None;
     loop {
         if *METRICS_ENABLED {
             worker_busy.set(0);
@@ -508,6 +513,8 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                 Ok(Some(job)) => {
                     // println!("{:?}",  SystemTime::now());
 
+                    last_executed_job = None;
+                    
                     let token = create_token_for_owner_in_bg(&db, &job).await;
                     let language = job.language.clone();
                     let _timer = worker_execution_duration
@@ -614,6 +621,16 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                     }
                 }
                 Ok(None) => {
+                    if let Some(secs) = *EXIT_AFTER_NO_JOB_FOR_SECS {
+                        if let Some(lj) = last_executed_job {
+                            if lj.elapsed().as_secs() > secs {
+                                tracing::info!(worker = %worker_name, "no job for {} seconds, exiting", secs);
+                                return true;
+                            }
+                        } else  {
+                            last_executed_job = Some(Instant::now());
+                        }
+                    }
                     let _timer =  if *METRICS_ENABLED { Some(Instant::now()) } else { None };
                     tokio::time::sleep(Duration::from_millis(*SLEEP_QUEUE)).await;
                     _timer.map(|timer| {
