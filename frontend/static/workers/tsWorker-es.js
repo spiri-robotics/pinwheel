@@ -21,7 +21,6 @@ class t8 {
   onUnexpectedError(n) {
     this.unexpectedErrorHandler(n), this.emit(n);
   }
-  // For external errors, we don't want the listeners to be called
   onUnexpectedExternalError(n) {
     this.unexpectedErrorHandler(n);
   }
@@ -225,23 +224,12 @@ class Tg {
   constructor() {
     this._toDispose = /* @__PURE__ */ new Set(), this._isDisposed = !1;
   }
-  /**
-   * Dispose of all registered disposables and mark this object as disposed.
-   *
-   * Any future disposables added to this object will be disposed of on `add`.
-   */
   dispose() {
     this._isDisposed || (this._isDisposed = !0, this.clear());
   }
-  /**
-   * Returns `true` if this object has been disposed
-   */
   get isDisposed() {
     return this._isDisposed;
   }
-  /**
-   * Dispose of all registered disposables but do not mark this object as disposed.
-   */
   clear() {
     try {
       _I(this._toDispose.values());
@@ -380,11 +368,7 @@ let xu;
 typeof Iu.vscode < "u" && typeof Iu.vscode.process < "u" ? xu = Iu.vscode.process : typeof process < "u" && (xu = process);
 const m8 = typeof ((iT = xu == null ? void 0 : xu.versions) === null || iT === void 0 ? void 0 : iT.electron) == "string", g8 = m8 && (xu == null ? void 0 : xu.type) === "renderer";
 if (typeof navigator == "object" && !g8)
-  Sm = navigator.userAgent, fT = Sm.indexOf("Windows") >= 0, dT = Sm.indexOf("Macintosh") >= 0, (Sm.indexOf("Macintosh") >= 0 || Sm.indexOf("iPad") >= 0 || Sm.indexOf("iPhone") >= 0) && navigator.maxTouchPoints && navigator.maxTouchPoints > 0, oT = Sm.indexOf("Linux") >= 0, mI = !0, // This call _must_ be done in the file that calls `nls.getConfiguredDefaultLocale`
-  // to ensure that the NLS AMD Loader plugin has been loaded and configured.
-  // This is because the loader plugin decides what the default locale is based on
-  // how it's able to resolve the strings.
-  p8({ key: "ensureLoaderPluginIsLoaded", comment: ["{Locked}"] }, "_"), Fb = Uh, sT = Fb;
+  Sm = navigator.userAgent, fT = Sm.indexOf("Windows") >= 0, dT = Sm.indexOf("Macintosh") >= 0, (Sm.indexOf("Macintosh") >= 0 || Sm.indexOf("iPad") >= 0 || Sm.indexOf("iPhone") >= 0) && navigator.maxTouchPoints && navigator.maxTouchPoints > 0, oT = Sm.indexOf("Linux") >= 0, mI = !0, p8({ key: "ensureLoaderPluginIsLoaded", comment: ["{Locked}"] }, "_"), Fb = Uh, sT = Fb;
 else if (typeof xu == "object") {
   fT = xu.platform === "win32", dT = xu.platform === "darwin", oT = xu.platform === "linux", oT && xu.env.SNAP && xu.env.SNAP_REVISION, xu.env.CI || xu.env.BUILD_ARTIFACTSTAGINGDIRECTORY, Fb = Uh, sT = Uh;
   const e = xu.env.VSCODE_NLS_CONFIG;
@@ -692,10 +676,6 @@ class D_ {
     var n, f, d, a;
     this._disposed || (this._disposed = !0, this._listeners && this._listeners.clear(), (n = this._deliveryQueue) === null || n === void 0 || n.clear(this), (d = (f = this._options) === null || f === void 0 ? void 0 : f.onLastListenerRemove) === null || d === void 0 || d.call(f), (a = this._leakageMon) === null || a === void 0 || a.dispose());
   }
-  /**
-   * For the public to allow to subscribe
-   * to events from this Emitter
-   */
   get event() {
     return this._event || (this._event = (n, f, d) => {
       var a, p, N;
@@ -712,10 +692,6 @@ class D_ {
       return d instanceof Tg ? d.add(ie) : Array.isArray(d) && d.push(ie), ie;
     }), this._event;
   }
-  /**
-   * To be kept private to fire an event to
-   * subscribers
-   */
   fire(n) {
     var f, d;
     if (this._listeners) {
@@ -800,18 +776,9 @@ class gI {
   constructor(n) {
     this.executor = n, this._didRun = !1;
   }
-  /**
-   * True if the lazy value has been resolved.
-   */
   hasValue() {
     return this._didRun;
   }
-  /**
-   * Get the wrapped value.
-   *
-   * This will force evaluation of the lazy value if it has not been resolved yet. Lazy values are only
-   * resolved once. `getValue` will re-throw exceptions that are hit while resolving the value
-   */
   getValue() {
     if (!this._didRun)
       try {
@@ -825,9 +792,6 @@ class gI {
       throw this._error;
     return this._value;
   }
-  /**
-   * Get the wrapped value without forcing evaluation.
-   */
   get rawValue() {
     return this._value;
   }
@@ -893,10 +857,6 @@ class vp {
   isAmbiguous(n) {
     return this.confusableDictionary.has(n);
   }
-  /**
-   * Returns the non basic ASCII code point that the given code point can be confused,
-   * or undefined if such code point does note exist.
-   */
   getPrimaryConfusable(n) {
     return this.confusableDictionary.get(n);
   }
@@ -1159,22 +1119,12 @@ class J8 {
   }
 }
 class Dm {
-  /**
-   * Constructs a new DiffChange with the given sequence information
-   * and content.
-   */
   constructor(n, f, d, a) {
     this.originalStart = n, this.originalLength = f, this.modifiedStart = d, this.modifiedLength = a;
   }
-  /**
-   * The end point (exclusive) of the change in the original sequence.
-   */
   getOriginalEnd() {
     return this.originalStart + this.originalLength;
   }
-  /**
-   * The end point (exclusive) of the change in the modified sequence.
-   */
   getModifiedEnd() {
     return this.modifiedStart + this.modifiedLength;
   }
@@ -1209,21 +1159,6 @@ class bv {
   }
 }
 class Ev {
-  /**
-   * Copies a range of elements from an Array starting at the specified source index and pastes
-   * them to another Array starting at the specified destination index. The length and the indexes
-   * are specified as 64-bit integers.
-   * sourceArray:
-   *		The Array that contains the data to copy.
-   * sourceIndex:
-   *		A 64-bit integer that represents the index in the sourceArray at which copying begins.
-   * destinationArray:
-   *		The Array that receives the data.
-   * destinationIndex:
-   *		A 64-bit integer that represents the index in the destinationArray at which storing begins.
-   * length:
-   *		A 64-bit integer that represents the number of elements to copy.
-   */
   static Copy(n, f, d, a, p) {
     for (let N = 0; N < p; N++)
       d[a + N] = n[f + N];
@@ -1234,55 +1169,26 @@ class Ev {
   }
 }
 class fx {
-  /**
-   * Constructs a new DiffChangeHelper for the given DiffSequences.
-   */
   constructor() {
     this.m_changes = [], this.m_originalStart = 1073741824, this.m_modifiedStart = 1073741824, this.m_originalCount = 0, this.m_modifiedCount = 0;
   }
-  /**
-   * Marks the beginning of the next change in the set of differences.
-   */
   MarkNextChange() {
     (this.m_originalCount > 0 || this.m_modifiedCount > 0) && this.m_changes.push(new Dm(this.m_originalStart, this.m_originalCount, this.m_modifiedStart, this.m_modifiedCount)), this.m_originalCount = 0, this.m_modifiedCount = 0, this.m_originalStart = 1073741824, this.m_modifiedStart = 1073741824;
   }
-  /**
-   * Adds the original element at the given position to the elements
-   * affected by the current change. The modified index gives context
-   * to the change position with respect to the original sequence.
-   * @param originalIndex The index of the original element to add.
-   * @param modifiedIndex The index of the modified element that provides corresponding position in the modified sequence.
-   */
   AddOriginalElement(n, f) {
     this.m_originalStart = Math.min(this.m_originalStart, n), this.m_modifiedStart = Math.min(this.m_modifiedStart, f), this.m_originalCount++;
   }
-  /**
-   * Adds the modified element at the given position to the elements
-   * affected by the current change. The original index gives context
-   * to the change position with respect to the modified sequence.
-   * @param originalIndex The index of the original element that provides corresponding position in the original sequence.
-   * @param modifiedIndex The index of the modified element to add.
-   */
   AddModifiedElement(n, f) {
     this.m_originalStart = Math.min(this.m_originalStart, n), this.m_modifiedStart = Math.min(this.m_modifiedStart, f), this.m_modifiedCount++;
   }
-  /**
-   * Retrieves all of the changes marked by the class.
-   */
   getChanges() {
     return (this.m_originalCount > 0 || this.m_modifiedCount > 0) && this.MarkNextChange(), this.m_changes;
   }
-  /**
-   * Retrieves all of the changes marked by the class in the reverse order
-   */
   getReverseChanges() {
     return (this.m_originalCount > 0 || this.m_modifiedCount > 0) && this.MarkNextChange(), this.m_changes.reverse(), this.m_changes;
   }
 }
 class Lm {
-  /**
-   * Constructs the DiffFinder
-   */
   constructor(n, f, d = null) {
     this.ContinueProcessingPredicate = d, this._originalSequence = n, this._modifiedSequence = f;
     const [a, p, N] = Lm._getElements(n), [H, h, v] = Lm._getElements(f);
@@ -1322,11 +1228,6 @@ class Lm {
   ComputeDiff(n) {
     return this._ComputeDiff(0, this._originalElementsOrHash.length - 1, 0, this._modifiedElementsOrHash.length - 1, n);
   }
-  /**
-   * Computes the differences between the original and modified input
-   * sequences on the bounded range.
-   * @returns An array of the differences between the two input sequences.
-   */
   _ComputeDiff(n, f, d, a, p) {
     const N = [!1];
     let H = this.ComputeDiffRecursive(n, f, d, a, N);
@@ -1335,11 +1236,6 @@ class Lm {
       changes: H
     };
   }
-  /**
-   * Private helper method which computes the differences on the bounded range
-   * recursively.
-   * @returns An array of the differences between the two input sequences.
-   */
   ComputeDiffRecursive(n, f, d, a, p) {
     for (p[0] = !1; n <= f && d <= a && this.ElementsAreEqual(n, d); )
       n++, d++;
@@ -1392,22 +1288,6 @@ class Lm {
     }
     return this.ConcatenateChanges(P, x);
   }
-  /**
-   * Given the range to compute the diff on, this method finds the point:
-   * (midOriginal, midModified)
-   * that exists in the middle of the LCS of the two sequences and
-   * is the point at which the LCS problem may be broken down recursively.
-   * This method will try to keep the LCS trace in memory. If the LCS recursion
-   * point is calculated and the full trace is available in memory, then this method
-   * will return the change list.
-   * @param originalStart The start bound of the original sequence range
-   * @param originalEnd The end bound of the original sequence range
-   * @param modifiedStart The start bound of the modified sequence range
-   * @param modifiedEnd The end bound of the modified sequence range
-   * @param midOriginal The middle point of the original sequence range
-   * @param midModified The middle point of the modified sequence range
-   * @returns The diff changes, if available, otherwise null
-   */
   ComputeRecursionPoint(n, f, d, a, p, N, H) {
     let h = 0, v = 0, A = 0, q = 0, ie = 0, b = 0;
     n--, d--, p[0] = 0, N[0] = 0, this.m_forwardHistory = [], this.m_reverseHistory = [];
@@ -1445,14 +1325,6 @@ class Lm {
     }
     return this.WALKTRACE(k, A, q, x, P, ie, b, w, B, J, h, f, p, v, a, N, Z, H);
   }
-  /**
-   * Shifts the given changes to provide a more intuitive diff.
-   * While the first element in a diff matches the first element after the diff,
-   * we shift the diff down.
-   *
-   * @param changes The list of changes to shift
-   * @returns The shifted changes
-   */
   PrettifyChanges(n) {
     for (let f = 0; f < n.length; f++) {
       const d = n[f], a = f < n.length - 1 ? n[f + 1].originalStart : this._originalElementsOrHash.length, p = f < n.length - 1 ? n[f + 1].modifiedStart : this._modifiedElementsOrHash.length, N = d.originalLength > 0, H = d.modifiedLength > 0;
@@ -1555,13 +1427,6 @@ class Lm {
     const p = this._OriginalRegionIsBoundary(n, f) ? 1 : 0, N = this._ModifiedRegionIsBoundary(d, a) ? 1 : 0;
     return p + N;
   }
-  /**
-   * Concatenates the two input DiffChange lists and returns the resulting
-   * list.
-   * @param The left changes
-   * @param The right changes
-   * @returns The concatenated list
-   */
   ConcatenateChanges(n, f) {
     const d = [];
     if (n.length === 0 || f.length === 0)
@@ -1574,14 +1439,6 @@ class Lm {
       return Ev.Copy(n, 0, a, 0, n.length), Ev.Copy(f, 0, a, n.length, f.length), a;
     }
   }
-  /**
-   * Returns true if the two changes overlap and can be merged into a single
-   * change
-   * @param left The left change
-   * @param right The right change
-   * @param mergedChange The merged change if the two overlap, null otherwise
-   * @returns True if the two changes overlap
-   */
   ChangesOverlap(n, f, d) {
     if (bv.Assert(n.originalStart <= f.originalStart, "Left change is not less than or equal to right change"), bv.Assert(n.modifiedStart <= f.modifiedStart, "Left change is not less than or equal to right change"), n.originalStart + n.originalLength >= f.originalStart || n.modifiedStart + n.modifiedLength >= f.modifiedStart) {
       const a = n.originalStart;
@@ -1592,18 +1449,6 @@ class Lm {
     } else
       return d[0] = null, !1;
   }
-  /**
-   * Helper method used to clip a diagonal index to the range of valid
-   * diagonals. This also decides whether or not the diagonal index,
-   * if it exceeds the boundary, should be clipped to the boundary or clipped
-   * one inside the boundary depending on the Even/Odd status of the boundary
-   * and numDifferences.
-   * @param diagonal The index of the diagonal to clip.
-   * @param numDifferences The current number of differences being iterated upon.
-   * @param diagonalBaseIndex The base reference diagonal.
-   * @param numDiagonals The total number of diagonals.
-   * @returns The clipped diagonal index.
-   */
   ClipDiagonalBound(n, f, d, a) {
     if (n >= 0 && n < a)
       return n;
@@ -1649,13 +1494,11 @@ if (typeof Iu.vscode < "u" && typeof Iu.vscode.process < "u") {
       return process.env.VSCODE_CWD || process.cwd();
     }
   } : Av = {
-    // Supported
     get platform() {
       return Wh ? "win32" : v8 ? "darwin" : "linux";
     },
     get arch() {
     },
-    // Unsupported
     get env() {
       return {};
     },
@@ -1725,7 +1568,6 @@ function TI(e, n) {
   return f ? f === n.root ? `${f}${d}` : `${f}${e}${d}` : d;
 }
 const df = {
-  // path.resolve([from ...], to)
   resolve(...e) {
     let n = "", f = "", d = !1;
     for (let a = e.length - 1; a >= -1; a--) {
@@ -1812,8 +1654,7 @@ const df = {
     if (n === 0)
       return !1;
     const f = e.charCodeAt(0);
-    return $o(f) || // Possible device root
-    n > 2 && Tm(f) && e.charCodeAt(1) === Em && $o(e.charCodeAt(2));
+    return $o(f) || n > 2 && Tm(f) && e.charCodeAt(1) === Em && $o(e.charCodeAt(2));
   },
   join(...e) {
     if (e.length === 0)
@@ -1838,10 +1679,6 @@ const df = {
     }
     return df.normalize(n);
   },
-  // It will solve the relative path from `from` to `to`, for instance:
-  //  from = 'C:\\orandea\\test\\aaa'
-  //  to = 'C:\\orandea\\impl\\bbb'
-  // The output of the function should be: '..\\..\\impl\\bbb'
   relative(e, n) {
     if (Yl(e, "from"), Yl(n, "to"), e === n)
       return "";
@@ -1992,9 +1829,7 @@ const df = {
       }
       a === -1 && (p = !1, a = H + 1), h === Cm ? f === -1 ? f = H : N !== 1 && (N = 1) : f !== -1 && (N = -1);
     }
-    return f === -1 || a === -1 || // We saw a non-dot character immediately before the dot
-    N === 0 || // The (right-most) trimmed path component is exactly '..'
-    N === 1 && f === a - 1 && f === d + 1 ? "" : e.slice(f, a);
+    return f === -1 || a === -1 || N === 0 || N === 1 && f === a - 1 && f === d + 1 ? "" : e.slice(f, a);
   },
   format: TI.bind(null, "\\"),
   parse(e) {
@@ -2042,16 +1877,13 @@ const df = {
       }
       H === -1 && (h = !1, H = v + 1), a === Cm ? p === -1 ? p = v : A !== 1 && (A = 1) : p !== -1 && (A = -1);
     }
-    return H !== -1 && (p === -1 || // We saw a non-dot character immediately before the dot
-    A === 0 || // The (right-most) trimmed path component is exactly '..'
-    A === 1 && p === H - 1 && p === N + 1 ? n.base = n.name = e.slice(N, H) : (n.name = e.slice(N, p), n.base = e.slice(N, H), n.ext = e.slice(p, H))), N > 0 && N !== d ? n.dir = e.slice(0, N - 1) : n.dir = n.root, n;
+    return H !== -1 && (p === -1 || A === 0 || A === 1 && p === H - 1 && p === N + 1 ? n.base = n.name = e.slice(N, H) : (n.name = e.slice(N, p), n.base = e.slice(N, H), n.ext = e.slice(p, H))), N > 0 && N !== d ? n.dir = e.slice(0, N - 1) : n.dir = n.root, n;
   },
   sep: "\\",
   delimiter: ";",
   win32: null,
   posix: null
 }, Yf = {
-  // path.resolve([from ...], to)
   resolve(...e) {
     let n = "", f = !1;
     for (let d = e.length - 1; d >= -1 && !f; d--) {
@@ -2164,9 +1996,7 @@ const df = {
       }
       d === -1 && (a = !1, d = N + 1), H === Cm ? n === -1 ? n = N : p !== 1 && (p = 1) : n !== -1 && (p = -1);
     }
-    return n === -1 || d === -1 || // We saw a non-dot character immediately before the dot
-    p === 0 || // The (right-most) trimmed path component is exactly '..'
-    p === 1 && n === d - 1 && n === f + 1 ? "" : e.slice(n, d);
+    return n === -1 || d === -1 || p === 0 || p === 1 && n === d - 1 && n === f + 1 ? "" : e.slice(n, d);
   },
   format: TI.bind(null, "/"),
   parse(e) {
@@ -2191,9 +2021,7 @@ const df = {
     }
     if (N !== -1) {
       const A = p === 0 && f ? 1 : p;
-      a === -1 || // We saw a non-dot character immediately before the dot
-      v === 0 || // The (right-most) trimmed path component is exactly '..'
-      v === 1 && a === N - 1 && a === p + 1 ? n.base = n.name = e.slice(A, N) : (n.name = e.slice(A, a), n.base = e.slice(A, N), n.ext = e.slice(a, N));
+      a === -1 || v === 0 || v === 1 && a === N - 1 && a === p + 1 ? n.base = n.name = e.slice(A, N) : (n.name = e.slice(A, a), n.base = e.slice(A, N), n.ext = e.slice(a, N));
     }
     return p > 0 ? n.dir = e.slice(0, p - 1) : f && (n.dir = "/"), n;
   },
@@ -2240,82 +2068,25 @@ function aF(e, n) {
 }
 const fl = "", Jp = "/", iF = /^(([^:/?#]+?):)?(\/\/([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/;
 class bg {
-  /**
-   * @internal
-   */
   constructor(n, f, d, a, p, N = !1) {
     typeof n == "object" ? (this.scheme = n.scheme || fl, this.authority = n.authority || fl, this.path = n.path || fl, this.query = n.query || fl, this.fragment = n.fragment || fl) : (this.scheme = nF(n, N), this.authority = f || fl, this.path = aF(this.scheme, d || fl), this.query = a || fl, this.fragment = p || fl, dx(this, N));
   }
   static isUri(n) {
     return n instanceof bg ? !0 : n ? typeof n.authority == "string" && typeof n.fragment == "string" && typeof n.path == "string" && typeof n.query == "string" && typeof n.scheme == "string" && typeof n.fsPath == "string" && typeof n.with == "function" && typeof n.toString == "function" : !1;
   }
-  // ---- filesystem path -----------------------
-  /**
-   * Returns a string representing the corresponding file system path of this URI.
-   * Will handle UNC paths, normalizes windows drive letters to lower-case, and uses the
-   * platform specific path separator.
-   *
-   * * Will *not* validate the path for invalid characters and semantics.
-   * * Will *not* look at the scheme of this URI.
-   * * The result shall *not* be used for display purposes but for accessing a file on disk.
-   *
-   *
-   * The *difference* to `URI#path` is the use of the platform specific separator and the handling
-   * of UNC paths. See the below sample of a file-uri with an authority (UNC path).
-   *
-   * ```ts
-      const u = URI.parse('file://server/c$/folder/file.txt')
-      u.authority === 'server'
-      u.path === '/shares/c$/file.txt'
-      u.fsPath === '\\server\c$\folder\file.txt'
-  ```
-   *
-   * Using `URI#path` to read a file (using fs-apis) would not be enough because parts of the path,
-   * namely the server name, would be missing. Therefore `URI#fsPath` exists - it's sugar to ease working
-   * with URIs that represent files on disk (`file` scheme).
-   */
   get fsPath() {
     return hT(this, !1);
   }
-  // ---- modify to new -------------------------
   with(n) {
     if (!n)
       return this;
     let { scheme: f, authority: d, path: a, query: p, fragment: N } = n;
     return f === void 0 ? f = this.scheme : f === null && (f = fl), d === void 0 ? d = this.authority : d === null && (d = fl), a === void 0 ? a = this.path : a === null && (a = fl), p === void 0 ? p = this.query : p === null && (p = fl), N === void 0 ? N = this.fragment : N === null && (N = fl), f === this.scheme && d === this.authority && a === this.path && p === this.query && N === this.fragment ? this : new Tv(f, d, a, p, N);
   }
-  // ---- parse & validate ------------------------
-  /**
-   * Creates a new URI from a string, e.g. `http://www.example.com/some/path`,
-   * `file:///usr/home`, or `scheme:with/path`.
-   *
-   * @param value A string which represents an URI (see `URI#toString`).
-   */
   static parse(n, f = !1) {
     const d = iF.exec(n);
     return d ? new Tv(d[2] || fl, Gb(d[4] || fl), Gb(d[5] || fl), Gb(d[7] || fl), Gb(d[9] || fl), f) : new Tv(fl, fl, fl, fl, fl);
   }
-  /**
-   * Creates a new URI from a file system path, e.g. `c:\my\files`,
-   * `/usr/home`, or `\\server\share\some\path`.
-   *
-   * The *difference* between `URI#parse` and `URI#file` is that the latter treats the argument
-   * as path, not as stringified-uri. E.g. `URI.file(path)` is **not the same as**
-   * `URI.parse('file://' + path)` because the path might contain characters that are
-   * interpreted (# and ?). See the following sample:
-   * ```ts
-  const good = URI.file('/coding/c#/project1');
-  good.scheme === 'file';
-  good.path === '/coding/c#/project1';
-  good.fragment === '';
-  const bad = URI.parse('file://' + '/coding/c#/project1');
-  bad.scheme === 'file';
-  bad.path === '/coding/c'; // path is now broken
-  bad.fragment === '/project1';
-  ```
-   *
-   * @param path A file system path (see `URI#fsPath`)
-   */
   static file(n) {
     let f = fl;
     if (Wh && (n = n.replace(/\\/g, Jp)), n[0] === Jp && n[1] === Jp) {
@@ -2328,31 +2099,12 @@ class bg {
     const f = new Tv(n.scheme, n.authority, n.path, n.query, n.fragment);
     return dx(f, !0), f;
   }
-  /**
-   * Join a URI path with path fragments and normalizes the resulting path.
-   *
-   * @param uri The input URI.
-   * @param pathFragment The path fragment to add to the URI path.
-   * @returns The resulting URI.
-   */
   static joinPath(n, ...f) {
     if (!n.path)
       throw new Error("[UriError]: cannot call joinPath on URI without path");
     let d;
     return Wh && n.scheme === "file" ? d = bg.file(df.join(hT(n, !0), ...f)).path : d = Yf.join(n.path, ...f), n.with({ path: d });
   }
-  // ---- printing/externalize ---------------------------
-  /**
-   * Creates a string representation for this URI. It's guaranteed that calling
-   * `URI.parse` with the result of this function creates an URI which is equal
-   * to this URI.
-   *
-   * * The result shall *not* be used for display purposes but for externalization or transport.
-   * * The result will be encoded using the percentage encoding and encoding happens mostly
-   * ignore the scheme-specific encoding rules.
-   *
-   * @param skipEncoding Do not encode the result, default is `false`
-   */
   toString(n = !1) {
     return yT(this, n);
   }
@@ -2385,88 +2137,30 @@ class Tv extends bg {
   toJSON() {
     const n = {
       $mid: 1
-      /* MarshalledId.Uri */
     };
     return this._fsPath && (n.fsPath = this._fsPath, n._sep = SI), this._formatted && (n.external = this._formatted), this.path && (n.path = this.path), this.scheme && (n.scheme = this.scheme), this.authority && (n.authority = this.authority), this.query && (n.query = this.query), this.fragment && (n.fragment = this.fragment), n;
   }
 }
 const DI = {
-  [
-    58
-    /* CharCode.Colon */
-  ]: "%3A",
-  [
-    47
-    /* CharCode.Slash */
-  ]: "%2F",
-  [
-    63
-    /* CharCode.QuestionMark */
-  ]: "%3F",
-  [
-    35
-    /* CharCode.Hash */
-  ]: "%23",
-  [
-    91
-    /* CharCode.OpenSquareBracket */
-  ]: "%5B",
-  [
-    93
-    /* CharCode.CloseSquareBracket */
-  ]: "%5D",
-  [
-    64
-    /* CharCode.AtSign */
-  ]: "%40",
-  [
-    33
-    /* CharCode.ExclamationMark */
-  ]: "%21",
-  [
-    36
-    /* CharCode.DollarSign */
-  ]: "%24",
-  [
-    38
-    /* CharCode.Ampersand */
-  ]: "%26",
-  [
-    39
-    /* CharCode.SingleQuote */
-  ]: "%27",
-  [
-    40
-    /* CharCode.OpenParen */
-  ]: "%28",
-  [
-    41
-    /* CharCode.CloseParen */
-  ]: "%29",
-  [
-    42
-    /* CharCode.Asterisk */
-  ]: "%2A",
-  [
-    43
-    /* CharCode.Plus */
-  ]: "%2B",
-  [
-    44
-    /* CharCode.Comma */
-  ]: "%2C",
-  [
-    59
-    /* CharCode.Semicolon */
-  ]: "%3B",
-  [
-    61
-    /* CharCode.Equals */
-  ]: "%3D",
-  [
-    32
-    /* CharCode.Space */
-  ]: "%20"
+  [58]: "%3A",
+  [47]: "%2F",
+  [63]: "%3F",
+  [35]: "%23",
+  [91]: "%5B",
+  [93]: "%5D",
+  [64]: "%40",
+  [33]: "%21",
+  [36]: "%24",
+  [38]: "%26",
+  [39]: "%27",
+  [40]: "%28",
+  [41]: "%29",
+  [42]: "%2A",
+  [43]: "%2B",
+  [44]: "%2C",
+  [59]: "%3B",
+  [61]: "%3D",
+  [32]: "%20"
 };
 function px(e, n) {
   let f, d = -1;
@@ -2532,67 +2226,30 @@ class Xf {
   constructor(n, f) {
     this.lineNumber = n, this.column = f;
   }
-  /**
-   * Create a new position from this position.
-   *
-   * @param newLineNumber new line number
-   * @param newColumn new column
-   */
   with(n = this.lineNumber, f = this.column) {
     return n === this.lineNumber && f === this.column ? this : new Xf(n, f);
   }
-  /**
-   * Derive a new position from this position.
-   *
-   * @param deltaLineNumber line number delta
-   * @param deltaColumn column delta
-   */
   delta(n = 0, f = 0) {
     return this.with(this.lineNumber + n, this.column + f);
   }
-  /**
-   * Test if this position equals other position
-   */
   equals(n) {
     return Xf.equals(this, n);
   }
-  /**
-   * Test if position `a` equals position `b`
-   */
   static equals(n, f) {
     return !n && !f ? !0 : !!n && !!f && n.lineNumber === f.lineNumber && n.column === f.column;
   }
-  /**
-   * Test if this position is before other position.
-   * If the two positions are equal, the result will be false.
-   */
   isBefore(n) {
     return Xf.isBefore(this, n);
   }
-  /**
-   * Test if position `a` is before position `b`.
-   * If the two positions are equal, the result will be false.
-   */
   static isBefore(n, f) {
     return n.lineNumber < f.lineNumber ? !0 : f.lineNumber < n.lineNumber ? !1 : n.column < f.column;
   }
-  /**
-   * Test if this position is before other position.
-   * If the two positions are equal, the result will be true.
-   */
   isBeforeOrEqual(n) {
     return Xf.isBeforeOrEqual(this, n);
   }
-  /**
-   * Test if position `a` is before position `b`.
-   * If the two positions are equal, the result will be true.
-   */
   static isBeforeOrEqual(n, f) {
     return n.lineNumber < f.lineNumber ? !0 : f.lineNumber < n.lineNumber ? !1 : n.column <= f.column;
   }
-  /**
-   * A function that compares positions, useful for sorting
-   */
   static compare(n, f) {
     const d = n.lineNumber | 0, a = f.lineNumber | 0;
     if (d === a) {
@@ -2601,28 +2258,15 @@ class Xf {
     }
     return d - a;
   }
-  /**
-   * Clone this position.
-   */
   clone() {
     return new Xf(this.lineNumber, this.column);
   }
-  /**
-   * Convert to a human-readable representation.
-   */
   toString() {
     return "(" + this.lineNumber + "," + this.column + ")";
   }
-  // ---
-  /**
-   * Create a `Position` from an `IPosition`.
-   */
   static lift(n) {
     return new Xf(n.lineNumber, n.column);
   }
-  /**
-   * Test if `obj` is an `IPosition`.
-   */
   static isIPosition(n) {
     return n && typeof n.lineNumber == "number" && typeof n.column == "number";
   }
@@ -2631,185 +2275,96 @@ class Tl {
   constructor(n, f, d, a) {
     n > d || n === d && f > a ? (this.startLineNumber = d, this.startColumn = a, this.endLineNumber = n, this.endColumn = f) : (this.startLineNumber = n, this.startColumn = f, this.endLineNumber = d, this.endColumn = a);
   }
-  /**
-   * Test if this range is empty.
-   */
   isEmpty() {
     return Tl.isEmpty(this);
   }
-  /**
-   * Test if `range` is empty.
-   */
   static isEmpty(n) {
     return n.startLineNumber === n.endLineNumber && n.startColumn === n.endColumn;
   }
-  /**
-   * Test if position is in this range. If the position is at the edges, will return true.
-   */
   containsPosition(n) {
     return Tl.containsPosition(this, n);
   }
-  /**
-   * Test if `position` is in `range`. If the position is at the edges, will return true.
-   */
   static containsPosition(n, f) {
     return !(f.lineNumber < n.startLineNumber || f.lineNumber > n.endLineNumber || f.lineNumber === n.startLineNumber && f.column < n.startColumn || f.lineNumber === n.endLineNumber && f.column > n.endColumn);
   }
-  /**
-   * Test if `position` is in `range`. If the position is at the edges, will return false.
-   * @internal
-   */
   static strictContainsPosition(n, f) {
     return !(f.lineNumber < n.startLineNumber || f.lineNumber > n.endLineNumber || f.lineNumber === n.startLineNumber && f.column <= n.startColumn || f.lineNumber === n.endLineNumber && f.column >= n.endColumn);
   }
-  /**
-   * Test if range is in this range. If the range is equal to this range, will return true.
-   */
   containsRange(n) {
     return Tl.containsRange(this, n);
   }
-  /**
-   * Test if `otherRange` is in `range`. If the ranges are equal, will return true.
-   */
   static containsRange(n, f) {
     return !(f.startLineNumber < n.startLineNumber || f.endLineNumber < n.startLineNumber || f.startLineNumber > n.endLineNumber || f.endLineNumber > n.endLineNumber || f.startLineNumber === n.startLineNumber && f.startColumn < n.startColumn || f.endLineNumber === n.endLineNumber && f.endColumn > n.endColumn);
   }
-  /**
-   * Test if `range` is strictly in this range. `range` must start after and end before this range for the result to be true.
-   */
   strictContainsRange(n) {
     return Tl.strictContainsRange(this, n);
   }
-  /**
-   * Test if `otherRange` is strictly in `range` (must start after, and end before). If the ranges are equal, will return false.
-   */
   static strictContainsRange(n, f) {
     return !(f.startLineNumber < n.startLineNumber || f.endLineNumber < n.startLineNumber || f.startLineNumber > n.endLineNumber || f.endLineNumber > n.endLineNumber || f.startLineNumber === n.startLineNumber && f.startColumn <= n.startColumn || f.endLineNumber === n.endLineNumber && f.endColumn >= n.endColumn);
   }
-  /**
-   * A reunion of the two ranges.
-   * The smallest position will be used as the start point, and the largest one as the end point.
-   */
   plusRange(n) {
     return Tl.plusRange(this, n);
   }
-  /**
-   * A reunion of the two ranges.
-   * The smallest position will be used as the start point, and the largest one as the end point.
-   */
   static plusRange(n, f) {
     let d, a, p, N;
     return f.startLineNumber < n.startLineNumber ? (d = f.startLineNumber, a = f.startColumn) : f.startLineNumber === n.startLineNumber ? (d = f.startLineNumber, a = Math.min(f.startColumn, n.startColumn)) : (d = n.startLineNumber, a = n.startColumn), f.endLineNumber > n.endLineNumber ? (p = f.endLineNumber, N = f.endColumn) : f.endLineNumber === n.endLineNumber ? (p = f.endLineNumber, N = Math.max(f.endColumn, n.endColumn)) : (p = n.endLineNumber, N = n.endColumn), new Tl(d, a, p, N);
   }
-  /**
-   * A intersection of the two ranges.
-   */
   intersectRanges(n) {
     return Tl.intersectRanges(this, n);
   }
-  /**
-   * A intersection of the two ranges.
-   */
   static intersectRanges(n, f) {
     let d = n.startLineNumber, a = n.startColumn, p = n.endLineNumber, N = n.endColumn;
     const H = f.startLineNumber, h = f.startColumn, v = f.endLineNumber, A = f.endColumn;
     return d < H ? (d = H, a = h) : d === H && (a = Math.max(a, h)), p > v ? (p = v, N = A) : p === v && (N = Math.min(N, A)), d > p || d === p && a > N ? null : new Tl(d, a, p, N);
   }
-  /**
-   * Test if this range equals other.
-   */
   equalsRange(n) {
     return Tl.equalsRange(this, n);
   }
-  /**
-   * Test if range `a` equals `b`.
-   */
   static equalsRange(n, f) {
     return !!n && !!f && n.startLineNumber === f.startLineNumber && n.startColumn === f.startColumn && n.endLineNumber === f.endLineNumber && n.endColumn === f.endColumn;
   }
-  /**
-   * Return the end position (which will be after or equal to the start position)
-   */
   getEndPosition() {
     return Tl.getEndPosition(this);
   }
-  /**
-   * Return the end position (which will be after or equal to the start position)
-   */
   static getEndPosition(n) {
     return new Xf(n.endLineNumber, n.endColumn);
   }
-  /**
-   * Return the start position (which will be before or equal to the end position)
-   */
   getStartPosition() {
     return Tl.getStartPosition(this);
   }
-  /**
-   * Return the start position (which will be before or equal to the end position)
-   */
   static getStartPosition(n) {
     return new Xf(n.startLineNumber, n.startColumn);
   }
-  /**
-   * Transform to a user presentable string representation.
-   */
   toString() {
     return "[" + this.startLineNumber + "," + this.startColumn + " -> " + this.endLineNumber + "," + this.endColumn + "]";
   }
-  /**
-   * Create a new range using this range's start position, and using endLineNumber and endColumn as the end position.
-   */
   setEndPosition(n, f) {
     return new Tl(this.startLineNumber, this.startColumn, n, f);
   }
-  /**
-   * Create a new range using this range's end position, and using startLineNumber and startColumn as the start position.
-   */
   setStartPosition(n, f) {
     return new Tl(n, f, this.endLineNumber, this.endColumn);
   }
-  /**
-   * Create a new empty range using this range's start position.
-   */
   collapseToStart() {
     return Tl.collapseToStart(this);
   }
-  /**
-   * Create a new empty range using this range's start position.
-   */
   static collapseToStart(n) {
     return new Tl(n.startLineNumber, n.startColumn, n.startLineNumber, n.startColumn);
   }
-  // ---
   static fromPositions(n, f = n) {
     return new Tl(n.lineNumber, n.column, f.lineNumber, f.column);
   }
   static lift(n) {
     return n ? new Tl(n.startLineNumber, n.startColumn, n.endLineNumber, n.endColumn) : null;
   }
-  /**
-   * Test if `obj` is an `IRange`.
-   */
   static isIRange(n) {
     return n && typeof n.startLineNumber == "number" && typeof n.startColumn == "number" && typeof n.endLineNumber == "number" && typeof n.endColumn == "number";
   }
-  /**
-   * Test if the two ranges are touching in any way.
-   */
   static areIntersectingOrTouching(n, f) {
     return !(n.endLineNumber < f.startLineNumber || n.endLineNumber === f.startLineNumber && n.endColumn < f.startColumn || f.endLineNumber < n.startLineNumber || f.endLineNumber === n.startLineNumber && f.endColumn < n.startColumn);
   }
-  /**
-   * Test if the two ranges are intersecting. If the ranges are touching it returns true.
-   */
   static areIntersecting(n, f) {
     return !(n.endLineNumber < f.startLineNumber || n.endLineNumber === f.startLineNumber && n.endColumn <= f.startColumn || f.endLineNumber < n.startLineNumber || f.endLineNumber === n.startLineNumber && f.endColumn <= n.startColumn);
   }
-  /**
-   * A function that compares ranges, useful for sorting ranges
-   * It will first compare ranges on the startPosition and then on the endPosition
-   */
   static compareRangesUsingStarts(n, f) {
     if (n && f) {
       const p = n.startLineNumber | 0, N = f.startLineNumber | 0;
@@ -2829,16 +2384,9 @@ class Tl {
     }
     return (n ? 1 : 0) - (f ? 1 : 0);
   }
-  /**
-   * A function that compares ranges, useful for sorting ranges
-   * It will first compare ranges on the endPosition and then on the startPosition
-   */
   static compareRangesUsingEnds(n, f) {
     return n.endLineNumber === f.endLineNumber ? n.endColumn === f.endColumn ? n.startLineNumber === f.startLineNumber ? n.startColumn - f.startColumn : n.startLineNumber - f.startLineNumber : n.endColumn - f.endColumn : n.endLineNumber - f.endLineNumber;
   }
-  /**
-   * Test if the range spans multiple lines.
-   */
   static spansMultipleLines(n) {
     return n.endLineNumber > n.startLineNumber;
   }
@@ -3117,10 +2665,6 @@ class fF {
   getTotalSum() {
     return this.values.length === 0 ? 0 : this._getPrefixSum(this.values.length - 1);
   }
-  /**
-   * Returns the sum of the first `index + 1` many items.
-   * @returns `SUM(0 <= j <= index, values[j])`.
-   */
   getPrefixSum(n) {
     return n < 0 ? 0 : (n = Sv(n), this._getPrefixSum(n));
   }
@@ -3179,9 +2723,6 @@ class pF {
       this._lineStarts = new fF(d);
     }
   }
-  /**
-   * All changes to a line's text go through this method
-   */
   _setLineText(n, f) {
     this._lines[n] = f, this._lineStarts && this._lineStarts.setValue(n, this._lines[n].length + this._eol.length);
   }
@@ -3311,12 +2852,7 @@ class yF {
       h > f && (f = h), H > d && (d = H), v > d && (d = v);
     }
     f++, d++;
-    const a = new hF(
-      d,
-      f,
-      0
-      /* State.Invalid */
-    );
+    const a = new hF(d, f, 0);
     for (let p = 0, N = n.length; p < N; p++) {
       const [H, h, v] = n[p];
       a.set(H, h, v);
@@ -3330,161 +2866,40 @@ class yF {
 let lT = null;
 function bF() {
   return lT === null && (lT = new yF([
-    [
-      1,
-      104,
-      2
-      /* State.H */
-    ],
-    [
-      1,
-      72,
-      2
-      /* State.H */
-    ],
-    [
-      1,
-      102,
-      6
-      /* State.F */
-    ],
-    [
-      1,
-      70,
-      6
-      /* State.F */
-    ],
-    [
-      2,
-      116,
-      3
-      /* State.HT */
-    ],
-    [
-      2,
-      84,
-      3
-      /* State.HT */
-    ],
-    [
-      3,
-      116,
-      4
-      /* State.HTT */
-    ],
-    [
-      3,
-      84,
-      4
-      /* State.HTT */
-    ],
-    [
-      4,
-      112,
-      5
-      /* State.HTTP */
-    ],
-    [
-      4,
-      80,
-      5
-      /* State.HTTP */
-    ],
-    [
-      5,
-      115,
-      9
-      /* State.BeforeColon */
-    ],
-    [
-      5,
-      83,
-      9
-      /* State.BeforeColon */
-    ],
-    [
-      5,
-      58,
-      10
-      /* State.AfterColon */
-    ],
-    [
-      6,
-      105,
-      7
-      /* State.FI */
-    ],
-    [
-      6,
-      73,
-      7
-      /* State.FI */
-    ],
-    [
-      7,
-      108,
-      8
-      /* State.FIL */
-    ],
-    [
-      7,
-      76,
-      8
-      /* State.FIL */
-    ],
-    [
-      8,
-      101,
-      9
-      /* State.BeforeColon */
-    ],
-    [
-      8,
-      69,
-      9
-      /* State.BeforeColon */
-    ],
-    [
-      9,
-      58,
-      10
-      /* State.AfterColon */
-    ],
-    [
-      10,
-      47,
-      11
-      /* State.AlmostThere */
-    ],
-    [
-      11,
-      47,
-      12
-      /* State.End */
-    ]
+    [1, 104, 2],
+    [1, 72, 2],
+    [1, 102, 6],
+    [1, 70, 6],
+    [2, 116, 3],
+    [2, 84, 3],
+    [3, 116, 4],
+    [3, 84, 4],
+    [4, 112, 5],
+    [4, 80, 5],
+    [5, 115, 9],
+    [5, 83, 9],
+    [5, 58, 10],
+    [6, 105, 7],
+    [6, 73, 7],
+    [7, 108, 8],
+    [7, 76, 8],
+    [8, 101, 9],
+    [8, 69, 9],
+    [9, 58, 10],
+    [10, 47, 11],
+    [11, 47, 12]
   ])), lT;
 }
 let Bh = null;
 function EF() {
   if (Bh === null) {
-    Bh = new wT(
-      0
-      /* CharacterClass.None */
-    );
+    Bh = new wT(0);
     const e = ` 	<>'"、。｡､，．：；‘〈「『〔（［｛｢｣｝］）〕』」〉’｀～…`;
     for (let f = 0; f < e.length; f++)
-      Bh.set(
-        e.charCodeAt(f),
-        1
-        /* CharacterClass.ForceTermination */
-      );
+      Bh.set(e.charCodeAt(f), 1);
     const n = ".,;:";
     for (let f = 0; f < n.length; f++)
-      Bh.set(
-        n.charCodeAt(f),
-        2
-        /* CharacterClass.CannotEndIn */
-      );
+      Bh.set(n.charCodeAt(f), 2);
   }
   return Bh;
 }
@@ -3697,7 +3112,6 @@ class MT {
 const Ub = new MT(), ST = new MT(), DT = new MT(), DF = new Array(230), LF = /* @__PURE__ */ Object.create(null), AF = /* @__PURE__ */ Object.create(null);
 (function() {
   const e = "", n = [
-    // keyCodeOrd, immutable, scanCode, scanCodeStr, keyCode, keyCodeStr, eventKeyCode, vkey, usUserSettingsLabel, generalUserSettingsLabel
     [0, 1, 0, "None", 0, "unknown", 0, "VK_UNKNOWN", e, e],
     [0, 1, 1, "Hyper", 0, e, 0, e, e, e],
     [0, 1, 2, "Super", 0, e, 0, e, e, e],
@@ -3895,8 +3309,6 @@ const Ub = new MT(), ST = new MT(), DT = new MT(), DF = new Array(230), LF = /* 
     [0, 1, 190, "MailReply", 0, e, 0, e, e, e],
     [0, 1, 191, "MailForward", 0, e, 0, e, e, e],
     [0, 1, 192, "MailSend", 0, e, 0, e, e, e],
-    // See https://lists.w3.org/Archives/Public/www-dom/2010JulSep/att-0182/keyCode-spec.html
-    // If an Input Method Editor is processing key input and the event is keydown, return 229.
     [109, 1, 0, e, 109, "KeyInComposition", 229, e, e, e],
     [111, 1, 0, e, 111, "ABNT_C2", 194, "VK_ABNT_C2", e, e],
     [91, 1, 0, e, 91, "OEM_8", 223, "VK_OEM_8", e, e],
@@ -3987,76 +3399,39 @@ class xd extends Tl {
   constructor(n, f, d, a) {
     super(n, f, d, a), this.selectionStartLineNumber = n, this.selectionStartColumn = f, this.positionLineNumber = d, this.positionColumn = a;
   }
-  /**
-   * Transform to a human-readable representation.
-   */
   toString() {
     return "[" + this.selectionStartLineNumber + "," + this.selectionStartColumn + " -> " + this.positionLineNumber + "," + this.positionColumn + "]";
   }
-  /**
-   * Test if equals other selection.
-   */
   equalsSelection(n) {
     return xd.selectionsEqual(this, n);
   }
-  /**
-   * Test if the two selections are equal.
-   */
   static selectionsEqual(n, f) {
     return n.selectionStartLineNumber === f.selectionStartLineNumber && n.selectionStartColumn === f.selectionStartColumn && n.positionLineNumber === f.positionLineNumber && n.positionColumn === f.positionColumn;
   }
-  /**
-   * Get directions (LTR or RTL).
-   */
   getDirection() {
     return this.selectionStartLineNumber === this.startLineNumber && this.selectionStartColumn === this.startColumn ? 0 : 1;
   }
-  /**
-   * Create a new selection with a different `positionLineNumber` and `positionColumn`.
-   */
   setEndPosition(n, f) {
     return this.getDirection() === 0 ? new xd(this.startLineNumber, this.startColumn, n, f) : new xd(n, f, this.startLineNumber, this.startColumn);
   }
-  /**
-   * Get the position at `positionLineNumber` and `positionColumn`.
-   */
   getPosition() {
     return new Xf(this.positionLineNumber, this.positionColumn);
   }
-  /**
-   * Get the position at the start of the selection.
-  */
   getSelectionStart() {
     return new Xf(this.selectionStartLineNumber, this.selectionStartColumn);
   }
-  /**
-   * Create a new selection with a different `selectionStartLineNumber` and `selectionStartColumn`.
-   */
   setStartPosition(n, f) {
     return this.getDirection() === 0 ? new xd(n, f, this.endLineNumber, this.endColumn) : new xd(this.endLineNumber, this.endColumn, n, f);
   }
-  // ----
-  /**
-   * Create a `Selection` from one or two positions
-   */
   static fromPositions(n, f = n) {
     return new xd(n.lineNumber, n.column, f.lineNumber, f.column);
   }
-  /**
-   * Creates a `Selection` from a range, given a direction.
-   */
   static fromRange(n, f) {
     return f === 0 ? new xd(n.startLineNumber, n.startColumn, n.endLineNumber, n.endColumn) : new xd(n.endLineNumber, n.endColumn, n.startLineNumber, n.startColumn);
   }
-  /**
-   * Create a `Selection` from an `ISelection`.
-   */
   static liftSelection(n) {
     return new xd(n.selectionStartLineNumber, n.selectionStartColumn, n.positionLineNumber, n.positionColumn);
   }
-  /**
-   * `a` equals `b`.
-   */
   static selectionsArrEqual(n, f) {
     if (n && !f || !n && f)
       return !1;
@@ -4069,15 +3444,9 @@ class xd extends Tl {
         return !1;
     return !0;
   }
-  /**
-   * Test if `obj` is an `ISelection`.
-   */
   static isISelection(n) {
     return n && typeof n.selectionStartLineNumber == "number" && typeof n.selectionStartColumn == "number" && typeof n.positionLineNumber == "number" && typeof n.positionColumn == "number";
   }
-  /**
-   * Create with a direction.
-   */
   static createWithDirection(n, f, d, a, p) {
     return p === 0 ? new xd(n, f, d, a) : new xd(d, a, n, f);
   }
@@ -4089,16 +3458,12 @@ class ae {
   get classNames() {
     return "codicon codicon-" + this.id;
   }
-  // classNamesArray is useful for migrating to ES6 classlist
   get classNamesArray() {
     return ["codicon", "codicon-" + this.id];
   }
   get cssSelector() {
     return ".codicon.codicon-" + this.id;
   }
-  /**
-   * @returns Returns all default icons covered by the codicon font. Only to be used by the icon registry in platform.
-   */
   static getAll() {
     return ae._allCodicons;
   }
@@ -4737,10 +4102,7 @@ class xF {
     return this._colorMap;
   }
   getDefaultBackground() {
-    return this._colorMap && this._colorMap.length > 2 ? this._colorMap[
-      2
-      /* ColorId.DefaultBackground */
-    ] : null;
+    return this._colorMap && this._colorMap.length > 2 ? this._colorMap[2] : null;
   }
 }
 class IF extends kT {
@@ -4783,127 +4145,7 @@ var Ex;
   }
   e.toIcon = f;
   const d = /* @__PURE__ */ new Map();
-  d.set(
-    "method",
-    0
-    /* CompletionItemKind.Method */
-  ), d.set(
-    "function",
-    1
-    /* CompletionItemKind.Function */
-  ), d.set(
-    "constructor",
-    2
-    /* CompletionItemKind.Constructor */
-  ), d.set(
-    "field",
-    3
-    /* CompletionItemKind.Field */
-  ), d.set(
-    "variable",
-    4
-    /* CompletionItemKind.Variable */
-  ), d.set(
-    "class",
-    5
-    /* CompletionItemKind.Class */
-  ), d.set(
-    "struct",
-    6
-    /* CompletionItemKind.Struct */
-  ), d.set(
-    "interface",
-    7
-    /* CompletionItemKind.Interface */
-  ), d.set(
-    "module",
-    8
-    /* CompletionItemKind.Module */
-  ), d.set(
-    "property",
-    9
-    /* CompletionItemKind.Property */
-  ), d.set(
-    "event",
-    10
-    /* CompletionItemKind.Event */
-  ), d.set(
-    "operator",
-    11
-    /* CompletionItemKind.Operator */
-  ), d.set(
-    "unit",
-    12
-    /* CompletionItemKind.Unit */
-  ), d.set(
-    "value",
-    13
-    /* CompletionItemKind.Value */
-  ), d.set(
-    "constant",
-    14
-    /* CompletionItemKind.Constant */
-  ), d.set(
-    "enum",
-    15
-    /* CompletionItemKind.Enum */
-  ), d.set(
-    "enum-member",
-    16
-    /* CompletionItemKind.EnumMember */
-  ), d.set(
-    "enumMember",
-    16
-    /* CompletionItemKind.EnumMember */
-  ), d.set(
-    "keyword",
-    17
-    /* CompletionItemKind.Keyword */
-  ), d.set(
-    "snippet",
-    27
-    /* CompletionItemKind.Snippet */
-  ), d.set(
-    "text",
-    18
-    /* CompletionItemKind.Text */
-  ), d.set(
-    "color",
-    19
-    /* CompletionItemKind.Color */
-  ), d.set(
-    "file",
-    20
-    /* CompletionItemKind.File */
-  ), d.set(
-    "reference",
-    21
-    /* CompletionItemKind.Reference */
-  ), d.set(
-    "customcolor",
-    22
-    /* CompletionItemKind.Customcolor */
-  ), d.set(
-    "folder",
-    23
-    /* CompletionItemKind.Folder */
-  ), d.set(
-    "type-parameter",
-    24
-    /* CompletionItemKind.TypeParameter */
-  ), d.set(
-    "typeParameter",
-    24
-    /* CompletionItemKind.TypeParameter */
-  ), d.set(
-    "account",
-    25
-    /* CompletionItemKind.User */
-  ), d.set(
-    "issue",
-    26
-    /* CompletionItemKind.Issue */
-  );
+  d.set("method", 0), d.set("function", 1), d.set("constructor", 2), d.set("field", 3), d.set("variable", 4), d.set("class", 5), d.set("struct", 6), d.set("interface", 7), d.set("module", 8), d.set("property", 9), d.set("event", 10), d.set("operator", 11), d.set("unit", 12), d.set("value", 13), d.set("constant", 14), d.set("enum", 15), d.set("enum-member", 16), d.set("enumMember", 16), d.set("keyword", 17), d.set("snippet", 27), d.set("text", 18), d.set("color", 19), d.set("file", 20), d.set("reference", 21), d.set("customcolor", 22), d.set("folder", 23), d.set("type-parameter", 24), d.set("typeParameter", 24), d.set("account", 25), d.set("issue", 26);
   function a(p, N) {
     let H = d.get(p);
     return typeof H > "u" && !N && (H = 9), H;
@@ -5240,19 +4482,13 @@ class PF {
       case 0:
         return null;
       case 2:
-        return {
-          kind: 1
-          /* UnicodeHighlighterReasonKind.Invisible */
-        };
+        return { kind: 1 };
       case 3: {
         const p = n.codePointAt(0), N = d.ambiguousCharacters.getPrimaryConfusable(p), H = vp.getLocales().filter((h) => !vp.getInstance(/* @__PURE__ */ new Set([...f.allowedLocales, h])).isAmbiguous(p));
         return { kind: 0, confusableWith: String.fromCodePoint(N), notAmbiguousInLocales: H };
       }
       case 1:
-        return {
-          kind: 2
-          /* UnicodeHighlighterReasonKind.NonBasicAscii */
-        };
+        return { kind: 2 };
     }
   }
 }
@@ -5289,11 +4525,7 @@ class fI {
         const H = N.codePointAt(0), h = F8(N);
         a = a || h, !h && !this.ambiguousCharacters.isAmbiguous(H) && !Am.isInvisibleCharacter(H) && (p = !0);
       }
-    return (
-      /* Don't allow mixing weird looking characters with ASCII */
-      !a && /* Is there an obviously weird looking character? */
-      p ? 0 : this.options.invisibleCharacters && !dI(n) && Am.isInvisibleCharacter(d) ? 2 : this.options.ambiguousCharacters && this.ambiguousCharacters.isAmbiguous(d) ? 3 : 0
-    );
+    return !a && p ? 0 : this.options.invisibleCharacters && !dI(n) && Am.isInvisibleCharacter(d) ? 2 : this.options.ambiguousCharacters && this.ambiguousCharacters.isAmbiguous(d) ? 3 : 0;
   }
 }
 function dI(e) {
@@ -5458,7 +4690,6 @@ class Eg {
       return a ? PF.computeUnicodeHighlights(a, f, d) : { ranges: [], hasMore: !1, ambiguousCharacterCount: 0, invisibleCharacterCount: 0, nonBasicAsciiCharacterCount: 0 };
     });
   }
-  // ---- BEGIN diff --------------------------------------------------------------------------
   computeDiff(n, f, d, a) {
     return vg(this, void 0, void 0, function* () {
       const p = this._getModel(n), N = this._getModel(f);
@@ -5525,7 +4756,6 @@ class Eg {
       return typeof p == "number" && a.push({ eol: p, text: "", range: { startLineNumber: 0, startColumn: 0, endLineNumber: 0, endColumn: 0 } }), a;
     });
   }
-  // ---- END minimal edits ---------------------------------------------------------------
   computeLinks(n) {
     return vg(this, void 0, void 0, function* () {
       const f = this._getModel(n);
@@ -5547,8 +4777,6 @@ class Eg {
       return { words: Array.from(H), duration: p.elapsed() };
     });
   }
-  // ---- END suggest --------------------------------------------------------------------------
-  //#region -- word ranges --
   computeWordRanges(n, f, d, a) {
     return vg(this, void 0, void 0, function* () {
       const p = this._getModel(n);
@@ -5572,7 +4800,6 @@ class Eg {
       return H;
     });
   }
-  //#endregion
   navigateValueSet(n, f, d, a, p) {
     return vg(this, void 0, void 0, function* () {
       const N = this._getModel(n);
@@ -5592,7 +4819,6 @@ class Eg {
       return TT.INSTANCE.navigateValueSet(f, h, v, A, d);
     });
   }
-  // ---- BEGIN foreign module support --------------------------------------------------------------------------
   loadForeignModule(n, f, d) {
     const N = {
       host: A8(d, (H, h) => this._host.fhr(H, h)),
@@ -5600,7 +4826,6 @@ class Eg {
     };
     return this._foreignModuleFactory ? (this._foreignModule = this._foreignModuleFactory(N, f), Promise.resolve(_T(this._foreignModule))) : Promise.reject(new Error("Unexpected usage"));
   }
-  // foreign method request
   fmr(n, f) {
     if (!this._foreignModule || typeof this._foreignModule[n] != "function")
       return Promise.reject(new Error("Missing requestHandler or method: " + n));
