@@ -19,6 +19,7 @@ use tokio::{
     join,
     sync::RwLock,
 };
+use windmill_api::LICENSE_KEY;
 use windmill_common::{utils::rd_string, METRICS_ADDR};
 use windmill_worker::{
     DENO_CACHE_DIR, DENO_TMP_CACHE_DIR, GO_CACHE_DIR, GO_TMP_CACHE_DIR, HUB_CACHE_DIR,
@@ -262,9 +263,8 @@ pub async fn run_workers<R: rsmq_async::RsmqConnection + Send + Sync + Clone + '
     base_internal_url: String,
     rsmq: Option<R>,
 ) -> anyhow::Result<()> {
-    let license_key = std::env::var("LICENSE_KEY").ok();
 
-    if license_key.is_some() {
+    if LICENSE_KEY.is_some() {
         panic!("License key is required ONLY for the enterprise edition");
     }
 
