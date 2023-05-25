@@ -215,16 +215,10 @@ async fn git_v() -> String {
     format!("CE {GIT_VERSION}")
 }
 
-
-async fn ee_license() -> String {
-    LICENSE_KEY
-        .as_ref()
-        .unwrap()
-        .split(".")
-        .next()
-        .unwrap()
-        .to_string()
+async fn ee_license() -> &'static str {
+    ""
 }
+
 
 async fn openapi() -> &'static str {
     include_str!("../openapi-deref.yaml")

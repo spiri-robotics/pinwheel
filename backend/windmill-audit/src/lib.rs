@@ -50,7 +50,10 @@ pub async fn audit_log<'c, E: sqlx::Executor<'c, Database = Postgres>>(
     resource: Option<&str>,
     parameters: Option<HashMap<&str, &str>>,
 ) -> Result<()> {
-    let p_json: serde_json::Value = serde_json::to_value(&parameters).unwrap();
+
+    let p_json: serde_json::Value = serde_json::json!({"redacted": "-"});
+
+    let resource: Option<&str> = Some("EE only");
 
     tracing::info!(
         operation = operation,
@@ -60,10 +63,11 @@ pub async fn audit_log<'c, E: sqlx::Executor<'c, Database = Postgres>>(
         workspace_id = w_id,
         username = username,
     );
+
     sqlx::query(
         "INSERT INTO audit
-            (workspace_id, username, operation, action_kind, resource, parameters)
-            VALUES ($1, $2, $3, $4, $5, $6)",
+        (workspace_id, username, operation, action_kind, resource, parameters)
+        VALUES ($1, $2, $3, $4, $5, $6)",
     )
     .bind(w_id)
     .bind(username)
@@ -73,6 +77,7 @@ pub async fn audit_log<'c, E: sqlx::Executor<'c, Database = Postgres>>(
     .bind(p_json)
     .execute(db)
     .await?;
+
     Ok(())
 }
 
