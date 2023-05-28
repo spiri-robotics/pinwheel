@@ -351,7 +351,6 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
         Ulid::new().into()
     };
 
-    {}
 
     let (script_hash, script_path, raw_code_tuple, job_kind, mut raw_flow, language) =
         match job_payload {
