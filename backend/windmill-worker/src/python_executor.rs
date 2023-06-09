@@ -50,8 +50,8 @@ const RELATIVE_PYTHON_LOADER: &str = include_str!("../loader.py");
 use crate::{
     common::{read_result, set_logs},
     create_args_and_out_file, get_reserved_variables, handle_child, write_file,
-    AuthedClientBackgroundTask, DISABLE_NSJAIL, DISABLE_NUSER, NSJAIL_PATH, PATH_ENV,
-    PIP_CACHE_DIR, S3_CACHE_BUCKET,
+    AuthedClientBackgroundTask, DISABLE_NSJAIL, DISABLE_NUSER, HTTPS_PROXY, HTTP_PROXY, NO_PROXY,
+    NSJAIL_PATH, PATH_ENV, PIP_CACHE_DIR, S3_CACHE_BUCKET,
 };
 
 pub async fn create_dependencies_dir(job_dir: &str) {
@@ -482,6 +482,16 @@ pub async fn handle_python_reqs(
         if let Some(host) = PIP_TRUSTED_HOST.as_ref() {
             vars.push(("TRUSTED_HOST", host));
         }
+        if let Some(http_proxy) = HTTP_PROXY.as_ref() {
+            vars.push(("HTTP_PROXY", http_proxy));
+        }
+        if let Some(https_proxy) = HTTPS_PROXY.as_ref() {
+            vars.push(("HTTPS_PROXY", https_proxy));
+        }
+        if let Some(no_proxy) = NO_PROXY.as_ref() {
+            vars.push(("NO_PROXY", no_proxy));
+        }
+
         let _ = write_file(
             job_dir,
             "download.config.proto",
