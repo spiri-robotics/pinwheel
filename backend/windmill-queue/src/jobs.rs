@@ -6,11 +6,7 @@
  * LICENSE-AGPL for a copy of the license.
  */
 
-use std::{
-    collections::HashMap,
-    time::{Instant, SystemTime},
-    vec,
-};
+use std::{collections::HashMap, vec};
 
 use async_recursion::async_recursion;
 use itertools::Itertools;
@@ -32,7 +28,6 @@ use windmill_common::{
     schedule::{schedule_to_user, Schedule},
     scripts::{ScriptHash, ScriptLang},
     users::username_to_permissioned_as,
-    utils::rd_string,
     METRICS_ENABLED,
 };
 
@@ -82,8 +77,7 @@ lazy_static::lazy_static! {
         ACCEPTED_TAGS.clone().into_iter().map(|x| format!("(tag = '{x}')")).join(" OR "));
 }
 
-const MAX_FREE_EXECS: i32 = 1000;
-const MAX_FREE_CONCURRENT_RUNS: i32 = 15;
+
 const RSMQ_MAIN_QUEUE: &'static str = "main_queue";
 
 #[async_recursion]
@@ -246,7 +240,7 @@ pub async fn add_completed_job<R: rsmq_async::RsmqConnection + Clone + Send>(
         .flatten();
     let mut tx: QueueTransaction<'_, R> = (rsmq, db.begin().await?).into();
     let job_id = queued_job.id.clone();
-    let duration = sqlx::query_scalar!(
+    let _duration = sqlx::query_scalar!(
         "INSERT INTO completed_job AS cj
                    ( workspace_id
                    , id

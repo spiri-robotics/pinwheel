@@ -121,10 +121,7 @@ struct EditCommandScript {
     slack_command_script: Option<String>,
 }
 
-#[derive(Deserialize)]
-struct EditDeployTo {
-    deploy_to: Option<String>,
-}
+
 
 #[derive(Deserialize)]
 struct EditAutoInvite {
@@ -391,48 +388,12 @@ async fn edit_slack_command(
     Ok(format!("Edit command script {}", &w_id))
 }
 
-async fn edit_deploy_to(
-    authed: Authed,
-    Extension(db): Extension<DB>,
-    Path(w_id): Path<String>,
-    Authed { is_admin, username, .. }: Authed,
-    Json(es): Json<EditDeployTo>,
-) -> Result<String> {
-    require_admin(is_admin, &username)?;
-    {
-        return Err(Error::BadRequest(
-            "Deploy to is only available on enterprise".to_string(),
-        ));
-    }
 
-    let mut tx = db.begin().await?;
-    sqlx::query!(
-        "UPDATE workspace_settings SET deploy_to = $1 WHERE workspace_id = $2",
-        es.deploy_to,
-        &w_id
-    )
-    .execute(&mut tx)
-    .await?;
 
-    audit_log(
-        &mut tx,
-        &authed.username,
-        "workspaces.edit_deploy_to",
-        ActionKind::Update,
-        &w_id,
-        Some(&authed.email),
-        Some(
-            [(
-                "script",
-                es.deploy_to.unwrap_or("NO_DEPLOY_TO".to_string()).as_str(),
-            )]
-            .into(),
-        ),
-    )
-    .await?;
-    tx.commit().await?;
-
-    Ok(format!("Edit deploy to for {}", &w_id))
+async fn edit_deploy_to() -> Result<String> {
+    return Err(Error::BadRequest(
+        "Deploy to is only available on enterprise".to_string(),
+    ));
 }
 
 const BANNED_DOMAINS: &str = include_str!("../banned_domains.txt");

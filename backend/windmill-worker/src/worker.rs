@@ -13,11 +13,11 @@ use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use sqlx::{Pool, Postgres};
 use tokio_postgres::NoTls;
-use windmill_api_client::{Client, types::CompletedJob};
+use windmill_api_client::{Client};
 use windmill_parser::Typ;
 use std::{
     borrow::Borrow, collections::HashMap, io, os::unix::process::ExitStatusExt, panic,
-    process::Stdio, time::{Duration, SystemTime},
+    process::Stdio, time::{Duration},
     sync::{Arc, atomic::Ordering},
     collections::hash_map::DefaultHasher,
     hash::{Hasher, Hash},
@@ -43,8 +43,9 @@ use tokio::{
     sync::{
         mpsc::{self, Sender},  watch, broadcast, RwLock, Barrier
     },
-    time::{interval, sleep, Instant, MissedTickBehavior}, join
+    time::{interval, sleep, Instant, MissedTickBehavior}
 };
+
 
 use futures::{
     future::{self, ready, FutureExt},
@@ -414,9 +415,8 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     }
 
 
-    let (copy_to_bucket_tx, mut copy_to_bucket_rx) = mpsc::channel::<()>(2);
+    let (_copy_to_bucket_tx, mut copy_to_bucket_rx) = mpsc::channel::<()>(2);
 
-    let mut copy_cache_from_bucket_handle: Option<tokio::task::JoinHandle<()>> = None;
 
     tracing::info!(worker = %worker_name, "starting worker");
 
