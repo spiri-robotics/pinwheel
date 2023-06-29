@@ -179,6 +179,7 @@ Windmill Community Edition {GIT_VERSION}
         "SMTP_USERNAME",
         "SMTP_PORT",
         "SMTP_TLS_IMPLICIT",
+        "CREATE_WORKSPACE_REQUIRE_SUPERADMIN",
     ]);
 
     tracing::info!("Loading OAuth providers...: {:#?}", *OAUTH_CLIENTS);
