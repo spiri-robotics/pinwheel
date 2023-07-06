@@ -1269,6 +1269,7 @@ async fn tarball_workspace(
                 ScriptLang::Go => "go",
                 ScriptLang::Bash => "sh",
                 ScriptLang::Postgresql => "pg.sql",
+                ScriptLang::Mysql => "my.sql",
                 ScriptLang::Nativets => "fetch.ts",
                 ScriptLang::Bun => "bun.ts",
             };
