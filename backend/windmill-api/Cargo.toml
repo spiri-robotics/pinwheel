@@ -9,6 +9,7 @@ name = "windmill_api"
 path = "src/lib.rs"
 
 [features]
+benchmark = []
 
 [dependencies]
 windmill-queue.workspace = true

@@ -56,16 +56,13 @@ use windmill_api_client::types::CreateResource;
 
 
 
-use windmill_queue::{add_completed_job, add_completed_job_error};
+use windmill_queue::{add_completed_job, add_completed_job_error,IDLE_WORKERS};
 
 use crate::{
     worker_flow::{
         handle_flow, update_flow_status_after_job_completion, update_flow_status_in_progress,
     }, python_executor::{create_dependencies_dir, pip_compile, handle_python_job, handle_python_reqs}, common::{read_result, set_logs}, go_executor::{handle_go_job, install_go_dependencies}, js_eval::{transpile_ts, eval_fetch_timeout}, pg_executor::do_postgresql,
 };
-
-
-
 
 pub async fn create_token_for_owner_in_bg(db: &Pool<Postgres>, job: &QueuedJob) -> Arc<RwLock<String>> {
     let rw_lock = Arc::new(RwLock::new(String::new()));
@@ -253,7 +250,6 @@ lazy_static::lazy_static! {
         .and_then(|x| x.parse::<u64>().ok());
 
     pub static ref CAN_PULL: Arc<RwLock<()>> = Arc::new(RwLock::new(()));
-
 }
 
 //only matter if CLOUD_HOSTED
@@ -491,6 +487,11 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             } else {
                 // println!("2: {:?}",  instant.elapsed());
                 async {
+                    if IDLE_WORKERS.load(Ordering::Relaxed) {
+                        // TODO: Need to sleep for a little time before re-checking, maybe?
+                        // tracing::warn!("Worker is marked as idle. Not pulling any job for now");
+                        return (false, Ok(None));
+                    }
                     tokio::select! {
                         biased;
                         _ = rx.recv() => {
