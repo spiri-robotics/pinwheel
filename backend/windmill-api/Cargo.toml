@@ -71,3 +71,4 @@ rsmq_async.workspace = true
 regex.workspace = true
 bytes.workspace = true
 mail-send.workspace = true
+samael = { workspace = true, optional = true }

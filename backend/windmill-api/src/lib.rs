@@ -7,6 +7,7 @@
  */
 
 use crate::oauth2::AllClients;
+use crate::saml::{SamlSsoLogin, ServiceProviderExt};
 use crate::{
     db::UserDB,
     oauth2::{build_oauth_clients, SlackVerifier},
@@ -49,7 +50,9 @@ mod oauth2;
 mod openai;
 mod raw_apps;
 mod resources;
+mod saml;
 mod schedule;
+mod scim;
 mod scripts;
 mod static_assets;
 mod tracing_init;
@@ -170,6 +173,9 @@ pub async fn run_server(
         .allow_methods([Method::GET, Method::POST])
         .allow_origin(Any);
 
+
+    let sp_extension = (ServiceProviderExt(), SamlSsoLogin(None));
+
     // build our application with a route
     let app = Router::new()
         .nest(
@@ -201,7 +207,8 @@ pub async fn run_server(
                         )
                         .nest("/variables", variables::workspaced_service())
                         .nest("/workspaces", workspaces::workspaced_service())
-                        .nest("/openai", openai::workspaced_service()),
+                        .nest("/openai", openai::workspaced_service())
+                        .nest("/scim", scim::workspaced_service()),
                 )
                 .nest("/workspaces", workspaces::global_service())
                 .nest(
@@ -215,6 +222,10 @@ pub async fn run_server(
                 .nest("/schedules", schedule::global_service())
                 .route_layer(from_extractor::<Authed>())
                 .route_layer(from_extractor::<users::Tokened>())
+                .nest(
+                    "/saml",
+                    saml::global_service().layer(Extension(Arc::new(sp_extension.0))),
+                )
                 .nest("/scripts_u", scripts::global_unauthed_service())
                 .nest(
                     "/w/:workspace_id/apps_u",
@@ -234,7 +245,10 @@ pub async fn run_server(
                     "/auth",
                     users::make_unauthed_service().layer(Extension(argon2)),
                 )
-                .nest("/oauth", oauth2::global_service())
+                .nest(
+                    "/oauth",
+                    oauth2::global_service().layer(Extension(Arc::new(sp_extension.1))),
+                )
                 .route("/version", get(git_v))
                 .route("/uptodate", get(is_up_to_date))
                 .route("/ee_license", get(ee_license))
