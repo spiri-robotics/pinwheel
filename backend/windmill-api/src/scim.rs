@@ -11,7 +11,7 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Extension, Router,
+    Extension, Json, Router,
 };
 use bytes::{BufMut, BytesMut};
 use hyper::{header, http::HeaderValue, Request, StatusCode};
@@ -19,7 +19,10 @@ use mime_guess::mime;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sql_builder::SqlBuilder;
-use windmill_common::error::{Error, Result};
+use windmill_common::{
+    error::{Error, Result},
+    utils::not_found_if_none,
+};
 
 use crate::db::DB;
 
@@ -28,10 +31,9 @@ lazy_static::lazy_static! {
         .ok();
 }
 
+
 pub fn global_service() -> Router {
     Router::new().route("/Users", get(get_users))
-    // .route("/Groups", get(get_groups).post(create_group))
-    // .route("/Groups/:id", get(get_group))
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -74,10 +76,11 @@ where
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 struct User {
     id: String,
     userName: String,
+    active: bool,
 }
 pub fn resource_response<S>(schema: &str, resources: Vec<S>) -> JsonScim<serde_json::Value>
 where
@@ -96,72 +99,107 @@ where
 pub struct ScimQuery {
     startIndex: Option<u32>,
     count: Option<u32>,
+    filter: Option<String>,
 }
 
 pub async fn get_users(
     Extension(db): Extension<DB>,
     Query(query): Query<ScimQuery>,
 ) -> Result<JsonScim<serde_json::Value>> {
-    let sqlb = SqlBuilder::select_from("usr")
+    let mut sqlb = SqlBuilder::select_from("usr")
         .fields(&["email"])
         .limit(query.count.unwrap_or(100000))
         .offset(query.startIndex.map(|x| x - 1).unwrap_or(0))
         .clone();
+
+    tracing::info!("SCIM filter: {:?}", query.filter);
+
+    if let Some(filter) = query.filter {
+        let filter = filter
+            .replace("userName", "email")
+            .replace("eq", "=")
+            .replace("\"", "'");
+        sqlb.and_where(&filter);
+    }
 
     let sql = sqlb.sql().map_err(|e| Error::InternalErr(e.to_string()))?;
     let users = sqlx::query_scalar(&sql)
         .fetch_all(&db)
         .await?
         .into_iter()
-        .map(|x: String| User { id: x.clone(), userName: x })
+        .map(|x: String| User { id: x.clone(), userName: x, active: true })
         .collect();
+    tracing::info!("SCIM users: {:?}", users);
     Ok(resource_response(
         "urn:ietf:params:scim:api:messages:2.0:ListResponse",
         users,
     ))
 }
 
-pub async fn get_groups(
+#[derive(Deserialize, Debug)]
+pub struct CreateUser {
+    userName: String,
+}
+// #[cfg(feature = "enterprise")]
+pub async fn create_user(
     Extension(db): Extension<DB>,
-    Query(query): Query<ScimQuery>,
+    Json(body): Json<CreateUser>,
 ) -> Result<JsonScim<serde_json::Value>> {
-    let sqlb = SqlBuilder::select_from("instance_group")
-        .fields(&["email"])
-        .limit(query.count.unwrap_or(100000))
-        .offset(query.startIndex.map(|x| x - 1).unwrap_or(0))
-        .clone();
-
-    let sql = sqlb.sql().map_err(|e| Error::InternalErr(e.to_string()))?;
-    let users = sqlx::query_scalar(&sql)
-        .fetch_all(&db)
-        .await?
-        .into_iter()
-        .map(|x: String| User { id: x.clone(), userName: x })
-        .collect();
-    Ok(resource_response(
-        "urn:ietf:params:scim:api:messages:2.0:ListResponse",
-        users,
-    ))
+    tracing::info!("SCIM creating user: {:?}", body);
+    sqlx::query!(
+        "INSERT INTO password (email, login_type, verified) VALUES ($1, 'saml', true) ON CONFLICT DO NOTHING",
+        body.userName,
+    ).execute(&db).await?;
+    Ok(JsonScim(json!({
+        "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+        "id": body.userName,
+        "userName": body.userName,
+        "active": true
+    })))
 }
 
-// pub async fn get_group(
-//     Extension(db): Extension<DB>,
-//     Query(query): Query<ScimQuery>,
-//     Path(id): Path<String>,
-// ) -> Result<JsonScim<serde_json::Value>> {
-//     let groups = sqlx::query_as!(
-//         IGroup,
-//         "SELECT igroup as name, array_agg(email_to_igroup.email) as emails FROM email_to_igroup GROUP BY igroup"
-//     )
-//     .fetch_all(&mut *tx)
-//     .await?;
-//     Ok(resource_response(
-//         "urn:ietf:params:scim:api:messages:2.0:ListResponse",
-//         groups,
-//     ))
+
+// {
+//     "schemas": [],
+//     "id": "abf4dd94-a4c0-4f67-89c9-76b03340cb9b",
+//     "displayName": "Test SCIMv2",
+//     "members": [],
+//     "meta": {
+//         "resourceType": "Group"
+//     }
 // }
-// pub async fn create_group(
-//     Extension(db): Extension<DB>,
-//     Query(query): Query<ScimQuery>,
-// ) -> Result<JsonScim<serde_json::Value>> {
+
+
+
+// {
+//     "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+//     "displayName": "Test SCIMv2",
+//     "members": []
 // }
+
+
+
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Operation {
+    pub op: String,
+    pub path: String,
+    pub value: Option<serde_json::Value>,
+}
+
+
+
+pub async fn delete_group(Extension(db): Extension<DB>, Path(id): Path<String>) -> Result<()> {
+    tracing::info!("SCIM delete group: {:?}", id);
+    sqlx::query!("DELETE FROM email_to_igroup WHERE igroup = $1", id)
+        .execute(&db)
+        .await?;
+    sqlx::query!("DELETE FROM instance_group WHERE name = $1", id)
+        .execute(&db)
+        .await?;
+    Ok(())
+}
+
+fn convert_name(name: &str) -> String {
+    name.replace(" ", "_").to_lowercase()
+}
