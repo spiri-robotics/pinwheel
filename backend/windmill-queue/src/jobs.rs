@@ -1202,9 +1202,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
 
     let flow_status = raw_flow.as_ref().map(FlowStatus::new);
 
-    let tag = if job_kind == JobKind::Dependencies || job_kind == JobKind::FlowDependencies {
-        "dependency".to_string()
-    } else if job_kind == JobKind::Script_Hub {
+    let tag = if job_kind == JobKind::Script_Hub {
         "hub".to_string()
     } else {
         if tag == Some("".to_string()) {
@@ -1216,6 +1214,8 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
             } else if job_kind == JobKind::Identity {
                 // identity is a light script, nativets is too
                 "nativets"
+            } else if job_kind == JobKind::Dependencies || job_kind == JobKind::FlowDependencies {
+                "dependency"
             } else {
                 "deno"
             }
