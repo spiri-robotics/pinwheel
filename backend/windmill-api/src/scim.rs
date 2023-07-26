@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 /*
  * Author: Ruben Fiszel
  * Copyright: Windmill Labs, Inc 2023
@@ -7,11 +9,11 @@
  */
 
 use axum::{
-    extract::{Path, Query},
+    extract::Query,
     middleware::Next,
     response::{IntoResponse, Response},
-    routing::{get, post},
-    Extension, Json, Router,
+    routing::get,
+    Extension, Router,
 };
 use bytes::{BufMut, BytesMut};
 use hyper::{header, http::HeaderValue, Request, StatusCode};
@@ -19,10 +21,10 @@ use mime_guess::mime;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sql_builder::SqlBuilder;
-use windmill_common::{
-    error::{Error, Result},
-    utils::not_found_if_none,
-};
+use windmill_common::error::{Error, Result};
+
+
+
 
 use crate::db::DB;
 
@@ -63,8 +65,6 @@ pub async fn has_scim_token<B>(request: Request<B>, next: Next<B>) -> Response {
     )
         .into_response();
 }
-
-pub type JsonScimResult<T> = std::result::Result<JsonScim<T>, Error>;
 
 impl<T> IntoResponse for JsonScim<T>
 where
@@ -156,27 +156,6 @@ pub async fn get_users(
     ))
 }
 
-#[derive(Deserialize, Debug)]
-pub struct CreateUser {
-    userName: String,
-}
-// #[cfg(feature = "enterprise")]
-pub async fn create_user(
-    Extension(db): Extension<DB>,
-    Json(body): Json<CreateUser>,
-) -> Result<JsonScim<serde_json::Value>> {
-    tracing::info!("SCIM creating user: {:?}", body);
-    sqlx::query!(
-        "INSERT INTO password (email, login_type, verified) VALUES ($1, 'saml', true) ON CONFLICT DO NOTHING",
-        body.userName,
-    ).execute(&db).await?;
-    Ok(JsonScim(json!({
-        "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
-        "id": body.userName,
-        "userName": body.userName,
-        "active": true
-    })))
-}
 
 
 // {
@@ -209,17 +188,4 @@ pub struct Operation {
 
 
 
-pub async fn delete_group(Extension(db): Extension<DB>, Path(id): Path<String>) -> Result<()> {
-    tracing::info!("SCIM delete group: {:?}", id);
-    sqlx::query!("DELETE FROM email_to_igroup WHERE igroup = $1", id)
-        .execute(&db)
-        .await?;
-    sqlx::query!("DELETE FROM instance_group WHERE name = $1", id)
-        .execute(&db)
-        .await?;
-    Ok(())
-}
 
-fn convert_name(name: &str) -> String {
-    name.replace(" ", "_").to_lowercase()
-}
