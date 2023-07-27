@@ -25,7 +25,6 @@ use windmill_common::error::{Error, Result};
 
 
 
-
 use crate::db::DB;
 
 lazy_static::lazy_static! {
