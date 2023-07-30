@@ -1165,8 +1165,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
                                 worker_dir,
                                 &mut logs,
                                 base_internal_url,
-                                worker_name
-                            )
+                                worker_name                            )
                             .await
                         }
                     }
@@ -1347,9 +1346,7 @@ async fn handle_code_execution_job(
     worker_dir: &str,
     logs: &mut String,
     base_internal_url: &str,
-    worker_name: &str
-
-) -> error::Result<serde_json::Value> {
+    worker_name: &str) -> error::Result<serde_json::Value> {
     let (inner_content, requirements_o, language, envs) = match job.job_kind {
         JobKind::Preview  => (
             job.raw_code
@@ -1626,7 +1623,7 @@ async fn handle_bash_job(
             .stderr(Stdio::piped())
             .spawn()?
     };
-    handle_child(&job.id, db, logs,  child, !*DISABLE_NSJAIL, worker_name, &job.workspace_id, "bash run").await?;
+    handle_child(&job.id, db, logs,  child, !*DISABLE_NSJAIL, worker_name, &job.workspace_id, "bash run", job.timeout).await?;
     //for now bash jobs have an empty result object
     Ok(serde_json::json!(logs
         .lines()
@@ -1829,7 +1826,7 @@ run().catch(async (e) => {{
     };
     // logs.push_str(format!("prepare: {:?}\n", start.elapsed().as_micros()).as_str());
     // start = Instant::now();
-    handle_child(&job.id, db, logs, child, false, worker_name, &job.workspace_id, "deno run").await?;
+    handle_child(&job.id, db, logs, child, false, worker_name, &job.workspace_id, "deno run", job.timeout).await?;
     // logs.push_str(format!("execute: {:?}\n", start.elapsed().as_millis()).as_str());
     if let Err(e) = tokio::fs::remove_dir_all(format!("{DENO_CACHE_DIR}/gen/file/{job_dir}")).await {
         tracing::error!("failed to remove deno gen tmp cache dir: {}", e);
@@ -1976,7 +1973,7 @@ let child = if !*DISABLE_NSJAIL {
 
     // logs.push_str(format!("prepare: {:?}\n", start.elapsed().as_micros()).as_str());
     // start = Instant::now();
-    handle_child(&job.id, db, logs, child, false, worker_name, &job.workspace_id, "bun run").await?;
+    handle_child(&job.id, db, logs, child, false, worker_name, &job.workspace_id, "bun run", job.timeout).await?;
     // logs.push_str(format!("execute: {:?}\n", start.elapsed().as_millis()).as_str());
     read_result(job_dir).await
 }
@@ -2351,6 +2348,7 @@ pub async fn handle_child(
     worker_name: &str,
     _w_id: &str,
     child_name: &str,
+    custom_timeout: Option<i32>,
 ) -> error::Result<()> {
     let start = Instant::now();
     let update_job_interval = Duration::from_millis(500);
@@ -2428,9 +2426,15 @@ pub async fn handle_child(
     let wait_on_child = async {
         let db = db.clone();
 
-        let timeout_duration = *TIMEOUT_DURATION;
+        let instance_timeout_duration = *TIMEOUT_DURATION;
 
         
+        
+        let timeout_duration = if let Some(custom_timeout) = custom_timeout {
+            Duration::min(instance_timeout_duration, Duration::from_secs(custom_timeout as u64))
+        } else {
+            instance_timeout_duration
+        };
 
         let kill_reason = tokio::select! {
             biased;
