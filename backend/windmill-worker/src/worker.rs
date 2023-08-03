@@ -342,6 +342,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         Some(ScriptLang::Postgresql),
         Some(ScriptLang::Mysql),
         Some(ScriptLang::Bigquery),
+        Some(ScriptLang::Snowflake),
         Some(ScriptLang::Bun)];
 
     let worker_execution_duration: HashMap<_, _>  = all_langs.clone().into_iter().map(|x| (x.clone(), prometheus::register_histogram!(
@@ -1237,6 +1238,11 @@ async fn handle_code_execution_job(
             return Err(Error::ExecutionErr("Bigquery is only available with an enterprise license".to_string()))
         }
 
+    } else if language == Some(ScriptLang::Snowflake) {
+        {
+            return Err(Error::ExecutionErr("Snowflake is only available with an enterprise license".to_string()))
+        }
+
     } else if language == Some(ScriptLang::Nativets) {
         logs.push_str("\n--- FETCH TS EXECUTION ---\n");
         let jc = do_nativets(job.clone(), logs.clone(), &client.get_authed().await, inner_content).await?; 
@@ -2112,6 +2118,7 @@ async fn capture_dependency_job(
         ScriptLang::Postgresql => Ok("".to_owned()),
         ScriptLang::Mysql => Ok("".to_owned()),
         ScriptLang::Bigquery => Ok("".to_owned()),
+        ScriptLang::Snowflake => Ok("".to_owned()),
         ScriptLang::Bash => Ok("".to_owned()),
         ScriptLang::Nativets => Ok("".to_owned()),
 

@@ -1346,6 +1346,7 @@ async fn tarball_workspace(
                 ScriptLang::Postgresql => "pg.sql",
                 ScriptLang::Mysql => "my.sql",
                 ScriptLang::Bigquery => "bq.sql",
+                ScriptLang::Snowflake => "sf.sql",
                 ScriptLang::Nativets => "fetch.ts",
                 ScriptLang::Bun => "bun.ts",
             };
