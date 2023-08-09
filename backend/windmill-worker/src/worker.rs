@@ -60,7 +60,7 @@ use windmill_queue::{add_completed_job, add_completed_job_error,IDLE_WORKERS};
 use crate::{
     worker_flow::{
         handle_flow, update_flow_status_after_job_completion, update_flow_status_in_progress,
-    }, python_executor::{create_dependencies_dir, pip_compile, handle_python_job, handle_python_reqs}, common::{read_result, set_logs}, go_executor::{handle_go_job, install_go_dependencies}, js_eval::{transpile_ts, eval_fetch_timeout}, pg_executor::do_postgresql, mysql_executor::do_mysql, 
+    }, python_executor::{create_dependencies_dir, pip_compile, handle_python_job, handle_python_reqs}, common::{read_result, set_logs}, go_executor::{handle_go_job, install_go_dependencies}, js_eval::{transpile_ts, eval_fetch_timeout}, pg_executor::do_postgresql, mysql_executor::do_mysql, graphql_executor::do_graphql, 
 };
 
 
@@ -352,6 +352,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         Some(ScriptLang::Mysql),
         Some(ScriptLang::Bigquery),
         Some(ScriptLang::Snowflake),
+        Some(ScriptLang::Graphql),
         Some(ScriptLang::Bun)];
 
     let worker_execution_duration: HashMap<_, _>  = all_langs.clone().into_iter().map(|x| (x.clone(), prometheus::register_histogram!(
@@ -1252,6 +1253,9 @@ async fn handle_code_execution_job(
             return Err(Error::ExecutionErr("Snowflake is only available with an enterprise license".to_string()))
         }
 
+    } else if language == Some(ScriptLang::Graphql) {
+        let jc = do_graphql(job.clone(), &client.get_authed().await, &inner_content).await?;
+        return Ok(jc.result)
     } else if language == Some(ScriptLang::Nativets) {
         logs.push_str("\n--- FETCH TS EXECUTION ---\n");
         let code = format!("const BASE_URL = '{base_internal_url}';\nconst WM_TOKEN = '{}';\n{}", &client.get_token().await, inner_content);
@@ -2139,6 +2143,7 @@ async fn capture_dependency_job(
         ScriptLang::Mysql => Ok("".to_owned()),
         ScriptLang::Bigquery => Ok("".to_owned()),
         ScriptLang::Snowflake => Ok("".to_owned()),
+        ScriptLang::Graphql => Ok("".to_owned()),
         ScriptLang::Bash => Ok("".to_owned()),
         ScriptLang::Nativets => Ok("".to_owned()),
 
