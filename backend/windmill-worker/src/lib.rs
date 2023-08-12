@@ -1,4 +1,5 @@
 
+mod bun_executor;
 mod common;
 mod global_cache;
 mod go_executor;
