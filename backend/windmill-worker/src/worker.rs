@@ -127,17 +127,22 @@ pub const ROOT_TMP_CACHE_DIR: &str = "/tmp/windmill/tmpcache/";
 pub const LOCK_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "lock");
 pub const PIP_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "pip");
 pub const DENO_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "deno");
+pub const DENO_CACHE_DIR_DEPS: &str = concatcp!(ROOT_CACHE_DIR, "deno/deps");
+pub const DENO_CACHE_DIR_NPM: &str = concatcp!(ROOT_CACHE_DIR, "deno/npm");
+
 pub const GO_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "go");
 pub const BUN_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "bun");
 pub const HUB_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "hub");
 pub const GO_BIN_CACHE_DIR: &str = concatcp!(ROOT_CACHE_DIR, "gobin");
+
 
 pub const TAR_PIP_TMP_CACHE_DIR: &str = concatcp!(ROOT_TMP_CACHE_DIR, "tar/pip");
 pub const DENO_TMP_CACHE_DIR: &str = concatcp!(ROOT_TMP_CACHE_DIR, "deno");
 pub const BUN_TMP_CACHE_DIR: &str = concatcp!(ROOT_TMP_CACHE_DIR, "bun");
 pub const GO_TMP_CACHE_DIR: &str = concatcp!(ROOT_TMP_CACHE_DIR, "go");
 pub const HUB_TMP_CACHE_DIR: &str = concatcp!(ROOT_TMP_CACHE_DIR, "hub");
-
+pub const DENO_TMP_CACHE_DIR_DEPS: &str = concatcp!(ROOT_TMP_CACHE_DIR, "deno/deps");
+pub const DENO_TMP_CACHE_DIR_NPM: &str = concatcp!(ROOT_TMP_CACHE_DIR, "deno/npm");
 const NUM_SECS_PING: u64 = 5;
 
 
@@ -300,12 +305,12 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     worker_instance: &str,
     worker_name: String,
     i_worker: u64,
-    num_workers: u32,
+    _num_workers: u32,
     ip: &str,
     mut rx: tokio::sync::broadcast::Receiver<()>,
     base_internal_url: &str,
     rsmq: Option<R>,
-    sync_barrier: Arc<RwLock<Option<Barrier>>>,
+    _sync_barrier: Arc<RwLock<Option<Barrier>>>,
 ) {
     if !*DISABLE_NSJAIL {
         tracing::warn!(
@@ -488,6 +493,22 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             }
 
 
+            // // The barrier is to avoid the sync to bucket syncing partial folders
+            // #[cfg(feature = "enterprise")]
+            // if num_workers > 1 && S3_CACHE_BUCKET.is_some()  {
+            //     let read_barrier = sync_barrier.read().await;
+            //     if let Some(b) = read_barrier.as_ref() {
+            //         tracing::debug!("worker #{i_worker} waiting for barrier");
+            //         b.wait().await;
+            //         tracing::debug!("worker #{i_worker} done waiting for barrier");
+            //         drop(read_barrier);
+            //         // wait for barrier to be reset
+            //         let _ = CAN_PULL.read().await;
+            //         tracing::debug!("worker #{i_worker} done waiting for lock");
+            //     } else {
+            //         tracing::debug!("worker #{i_worker} no barrier");
+            //     };
+            // }
             
             let (do_break, next_job) = if first_run { 
                 (false, Ok(Some(QueuedJob::default())))
@@ -507,9 +528,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                         _ = copy_to_bucket_rx.recv() => {
                             tracing::debug!("can_pull lock start");
                             let _lock = CAN_PULL.write().await;
-                            if num_workers > 1 {
-                                create_barrier_for_all_workers(num_workers, sync_barrier.clone()).await;
-                            }
                             (false, Ok(None))
                         },
                         Some(job_id) = same_worker_rx.recv() => {
@@ -694,21 +712,21 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
 
 }
 
-pub async fn create_barrier_for_all_workers(num_workers: u32, sync_barrier: Arc<RwLock<Option<tokio::sync::Barrier>>>) {
-    tracing::debug!("acquiring write lock");
-    let mut barrier = sync_barrier.write().await;
-    *barrier = Some(tokio::sync::Barrier::new(num_workers as usize));
-    drop(barrier);
-    tracing::debug!("dropped write lock");
-    if let Some(b) = sync_barrier.read().await.as_ref() {
-        tracing::debug!("leader worker waiting for barrier");
-        b.wait().await;
-        tracing::debug!("leader worker done waiting for barrier");
-    };
-    let mut barrier = sync_barrier.write().await;
-    *barrier = None;
-    tracing::debug!("leader worker done waiting for");
-}
+// pub async fn create_barrier_for_all_workers(num_workers: u32, sync_barrier: Arc<RwLock<Option<tokio::sync::Barrier>>>) {
+//     tracing::debug!("acquiring write lock");
+//     let mut barrier = sync_barrier.write().await;
+//     *barrier = Some(tokio::sync::Barrier::new(num_workers as usize));
+//     drop(barrier);
+//     tracing::debug!("dropped write lock");
+//     if let Some(b) = sync_barrier.read().await.as_ref() {
+//         tracing::debug!("leader worker waiting for barrier");
+//         b.wait().await;
+//         tracing::debug!("leader worker done waiting for barrier");
+//     };
+//     let mut barrier = sync_barrier.write().await;
+//     *barrier = None;
+//     tracing::debug!("leader worker done waiting for");
+// }
 pub async fn handle_job_error<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
     db: &Pool<Postgres>,
     client: &AuthedClient,
