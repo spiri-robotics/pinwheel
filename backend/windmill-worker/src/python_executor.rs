@@ -53,10 +53,10 @@ const RELATIVE_PYTHON_LOADER: &str = include_str!("../loader.py");
 
 
 use crate::{
-    common::{read_result, set_logs},
-    create_args_and_out_file, get_reserved_variables, handle_child, write_file,
-    AuthedClientBackgroundTask, DISABLE_NSJAIL, DISABLE_NUSER, HTTPS_PROXY, HTTP_PROXY,
-    LOCK_CACHE_DIR, NO_PROXY, NSJAIL_PATH, PATH_ENV, PIP_CACHE_DIR,
+    common::{get_reserved_variables, handle_child, read_result, set_logs},
+    create_args_and_out_file, write_file, AuthedClientBackgroundTask, DISABLE_NSJAIL,
+    DISABLE_NUSER, HTTPS_PROXY, HTTP_PROXY, LOCK_CACHE_DIR, NO_PROXY, NSJAIL_PATH, PATH_ENV,
+    PIP_CACHE_DIR,
 };
 
 pub async fn create_dependencies_dir(job_dir: &str) {
