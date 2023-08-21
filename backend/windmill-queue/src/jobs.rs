@@ -21,6 +21,7 @@ use ulid::Ulid;
 use uuid::Uuid;
 use windmill_audit::{audit_log, ActionKind};
 use windmill_common::{
+    db::{Authed, UserDB},
     error::{self, Error},
     flow_status::{
         FlowStatus, FlowStatusModule, JobResult, MAX_RETRY_ATTEMPTS, MAX_RETRY_INTERVAL,
@@ -33,7 +34,7 @@ use windmill_common::{
     schedule::{schedule_to_user, Schedule},
     scripts::{ScriptHash, ScriptLang},
     users::{username_to_permissioned_as, SUPERADMIN_SECRET_EMAIL},
-    METRICS_ENABLED,
+    DB, METRICS_ENABLED,
 };
 
 use crate::{
@@ -412,17 +413,17 @@ pub async fn run_error_handler<R: rsmq_async::RsmqConnection + Clone + Send>(
     let w_id = &queued_job.workspace_id;
     let script_w_id = if is_global { "admins" } else { w_id }; // script workspace id
     let job_id = queued_job.id;
-    let mut tx: QueueTransaction<'_, _> = (rsmq, db.begin().await?).into();
-    let (job_payload, tag) =
-        script_path_to_payload(&error_handler_path, tx.transaction_mut(), script_w_id).await?;
+    let (job_payload, tag) = script_path_to_payload(&error_handler_path, db, script_w_id).await?;
     let mut args = result.as_object().unwrap().clone();
     args.insert("workspace_id".to_string(), json!(w_id));
     args.insert("job_id".to_string(), json!(job_id));
     args.insert("path".to_string(), json!(queued_job.script_path));
     args.insert("is_flow".to_string(), json!(queued_job.raw_flow.is_some()));
     args.insert("email".to_string(), json!(queued_job.email));
+    let tx = PushIsolationLevel::IsolatedRoot(db.clone(), rsmq);
 
     let (uuid, tx) = push(
+        &db,
         tx,
         script_w_id,
         job_payload,
@@ -532,6 +533,7 @@ pub async fn handle_maybe_scheduled_job<'c, R: rsmq_async::RsmqConnection + Clon
         if !success {
             if let Some(on_failure_path) = schedule.on_failure.clone() {
                 let on_failure_result = handle_on_failure(
+                    db,
                     tx,
                     schedule_path,
                     script_path,
@@ -569,6 +571,7 @@ pub async fn handle_maybe_scheduled_job<'c, R: rsmq_async::RsmqConnection + Clon
         }
 
         let res = push_scheduled_job(
+            db,
             tx,
             Schedule {
                 workspace_id: w_id.to_owned(),
@@ -611,7 +614,8 @@ pub async fn handle_maybe_scheduled_job<'c, R: rsmq_async::RsmqConnection + Clon
 }
 
 async fn handle_on_failure<'c, R: rsmq_async::RsmqConnection + Clone + Send + 'c>(
-    mut tx: QueueTransaction<'c, R>,
+    db: &Pool<Postgres>,
+    tx: QueueTransaction<'c, R>,
     schedule_path: &str,
     script_path: &str,
     w_id: &str,
@@ -621,8 +625,7 @@ async fn handle_on_failure<'c, R: rsmq_async::RsmqConnection + Clone + Send + 'c
     email: &str,
     permissioned_as: String,
 ) -> windmill_common::error::Result<QueueTransaction<'c, R>> {
-    let (payload, tag) =
-        get_payload_tag_from_prefixed_path(on_failure_path, tx.transaction_mut(), w_id).await?;
+    let (payload, tag) = get_payload_tag_from_prefixed_path(on_failure_path, db, w_id).await?;
 
     let mut args = result
         .map(|x| x.clone())
@@ -632,7 +635,9 @@ async fn handle_on_failure<'c, R: rsmq_async::RsmqConnection + Clone + Send + 'c
         .clone();
     args.insert("schedule_path".to_string(), json!(schedule_path));
     args.insert("path".to_string(), json!(script_path));
+    let tx = PushIsolationLevel::Transaction(tx);
     let (uuid, tx) = push(
+        &db,
         tx,
         w_id,
         payload,
@@ -978,9 +983,16 @@ pub async fn get_queued_job<'c>(
     Ok(r)
 }
 
+pub enum PushIsolationLevel<'c, R: rsmq_async::RsmqConnection + Send + 'c> {
+    IsolatedRoot(DB, Option<R>),
+    Isolated(UserDB, Authed, Option<R>),
+    Transaction(QueueTransaction<'c, R>),
+}
+
 // #[instrument(level = "trace", skip_all)]
 pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
-    mut tx: QueueTransaction<'c, R>,
+    db: &Pool<Postgres>,
+    tx: PushIsolationLevel<'c, R>,
     workspace_id: &str,
     job_payload: JobPayload,
     args: serde_json::Map<String, serde_json::Value>,
@@ -1006,7 +1018,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
             "SELECT 1 FROM queue WHERE id = $1 UNION ALL select 1 FROM completed_job WHERE id = $1",
             job_id
         )
-        .fetch_optional(&mut tx)
+        .fetch_optional(db)
         .await?;
 
         if conflicting_id.is_some() {
@@ -1037,7 +1049,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                     hash.0,
                     workspace_id
                 )
-                .fetch_one(&mut tx)
+                .fetch_one(db)
                 .await
                 .map_err(|e| {
                     Error::InternalErr(format!(
@@ -1101,7 +1113,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 path,
                 workspace_id
             )
-            .fetch_optional(&mut tx)
+            .fetch_optional(db)
             .await?
             .ok_or_else(|| Error::InternalErr(format!("not found flow at path {:?}", path)))?;
             let value = serde_json::from_value::<FlowValue>(value_json).map_err(|err| {
@@ -1136,7 +1148,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 flow,
                 workspace_id
             )
-            .fetch_optional(&mut tx)
+            .fetch_optional(db)
             .await?
             .ok_or_else(|| Error::InternalErr(format!("not found flow at path {:?}", flow)))?;
             let value = serde_json::from_value::<FlowValue>(value_json).map_err(|err| {
@@ -1236,6 +1248,13 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
         })
     };
 
+    let mut tx = match tx {
+        PushIsolationLevel::Isolated(user_db, authed, rsmq) => {
+            (rsmq, user_db.begin(&authed).await?).into()
+        }
+        PushIsolationLevel::IsolatedRoot(db, rsmq) => (rsmq, db.begin().await?).into(),
+        PushIsolationLevel::Transaction(tx) => tx,
+    };
     let uuid = sqlx::query_scalar!(
         "INSERT INTO queue
             (workspace_id, id, running, parent_job, created_by, permissioned_as, scheduled_for, 
