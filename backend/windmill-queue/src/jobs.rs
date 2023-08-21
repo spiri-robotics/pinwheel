@@ -1033,6 +1033,14 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
     };
 
 
+    let mut tx = match tx {
+        PushIsolationLevel::Isolated(user_db, authed, rsmq) => {
+            (rsmq, user_db.begin(&authed).await?).into()
+        }
+        PushIsolationLevel::IsolatedRoot(db, rsmq) => (rsmq, db.begin().await?).into(),
+        PushIsolationLevel::Transaction(tx) => tx,
+    };
+
     let (
         script_hash,
         script_path,
@@ -1049,7 +1057,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                     hash.0,
                     workspace_id
                 )
-                .fetch_one(db)
+                .fetch_one(&mut tx)
                 .await
                 .map_err(|e| {
                     Error::InternalErr(format!(
@@ -1113,7 +1121,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 path,
                 workspace_id
             )
-            .fetch_optional(db)
+            .fetch_optional(&mut tx)
             .await?
             .ok_or_else(|| Error::InternalErr(format!("not found flow at path {:?}", path)))?;
             let value = serde_json::from_value::<FlowValue>(value_json).map_err(|err| {
@@ -1148,7 +1156,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 flow,
                 workspace_id
             )
-            .fetch_optional(db)
+            .fetch_optional(&mut tx)
             .await?
             .ok_or_else(|| Error::InternalErr(format!("not found flow at path {:?}", flow)))?;
             let value = serde_json::from_value::<FlowValue>(value_json).map_err(|err| {
@@ -1248,13 +1256,6 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
         })
     };
 
-    let mut tx = match tx {
-        PushIsolationLevel::Isolated(user_db, authed, rsmq) => {
-            (rsmq, user_db.begin(&authed).await?).into()
-        }
-        PushIsolationLevel::IsolatedRoot(db, rsmq) => (rsmq, db.begin().await?).into(),
-        PushIsolationLevel::Transaction(tx) => tx,
-    };
     let uuid = sqlx::query_scalar!(
         "INSERT INTO queue
             (workspace_id, id, running, parent_job, created_by, permissioned_as, scheduled_for, 
