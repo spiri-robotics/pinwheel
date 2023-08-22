@@ -989,10 +989,34 @@ pub enum PushIsolationLevel<'c, R: rsmq_async::RsmqConnection + Send + 'c> {
     Transaction(QueueTransaction<'c, R>),
 }
 
+#[macro_export]
+macro_rules! fetch_scalar_isolated {
+    ( $query:expr, $tx:expr) => {
+        match $tx {
+            PushIsolationLevel::IsolatedRoot(db, rmsq) => {
+                let r = $query.fetch_optional(&db).await;
+                $tx = PushIsolationLevel::IsolatedRoot(db, rmsq);
+                r
+            }
+            PushIsolationLevel::Isolated(db, user, rsmq) => {
+                let mut ntx = db.clone().begin(&user).await?;
+                let r = $query.fetch_optional(&mut *ntx).await;
+                $tx = PushIsolationLevel::Isolated(db, user, rsmq);
+                r
+            }
+            PushIsolationLevel::Transaction(mut tx) => {
+                let r = $query.fetch_optional(&mut tx).await;
+                $tx = PushIsolationLevel::Transaction(tx);
+                r
+            }
+        }
+    };
+}
+
 // #[instrument(level = "trace", skip_all)]
 pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
-    db: &Pool<Postgres>,
-    tx: PushIsolationLevel<'c, R>,
+    _db: &Pool<Postgres>,
+    mut tx: PushIsolationLevel<'c, R>,
     workspace_id: &str,
     job_payload: JobPayload,
     args: serde_json::Map<String, serde_json::Value>,
@@ -1013,33 +1037,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
     flow_step_id: Option<String>,
 ) -> Result<(Uuid, QueueTransaction<'c, R>), Error> {
     let args_json = serde_json::Value::Object(args);
-    let job_id: Uuid = if let Some(job_id) = job_id {
-        let conflicting_id = sqlx::query_scalar!(
-            "SELECT 1 FROM queue WHERE id = $1 UNION ALL select 1 FROM completed_job WHERE id = $1",
-            job_id
-        )
-        .fetch_optional(db)
-        .await?;
 
-        if conflicting_id.is_some() {
-            return Err(Error::BadRequest(format!(
-                "Job with id {job_id} already exists"
-            )));
-        }
-
-        job_id
-    } else {
-        Ulid::new().into()
-    };
-
-
-    let mut tx = match tx {
-        PushIsolationLevel::Isolated(user_db, authed, rsmq) => {
-            (rsmq, user_db.begin(&authed).await?).into()
-        }
-        PushIsolationLevel::IsolatedRoot(db, rsmq) => (rsmq, db.begin().await?).into(),
-        PushIsolationLevel::Transaction(tx) => tx,
-    };
 
     let (
         script_hash,
@@ -1052,16 +1050,15 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
         concurrency_time_window_s,
     ) = match job_payload {
         JobPayload::ScriptHash { hash, path, concurrent_limit, concurrency_time_window_s } => {
-            let language = sqlx::query_scalar!(
+            let language = fetch_scalar_isolated!(sqlx::query_scalar!(
                     "SELECT language as \"language: ScriptLang\" FROM script WHERE hash = $1 AND workspace_id = $2",
                     hash.0,
                     workspace_id
-                )
-                .fetch_one(&mut tx)
-                .await
-                .map_err(|e| {
+                ), tx)
+                .ok().flatten()
+                .ok_or_else(||{
                     Error::InternalErr(format!(
-                        "fetching language for hash {hash} in {workspace_id}: {e}"
+                        "fetching language for hash {hash} in {workspace_id}"
                     ))
                 })?;
             (
@@ -1116,13 +1113,14 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
             None,
         ),
         JobPayload::FlowDependencies { path } => {
-            let value_json = sqlx::query_scalar!(
-                "SELECT value FROM flow WHERE path = $1 AND workspace_id = $2",
-                path,
-                workspace_id
-            )
-            .fetch_optional(&mut tx)
-            .await?
+            let value_json = fetch_scalar_isolated!(
+                sqlx::query_scalar!(
+                    "SELECT value FROM flow WHERE path = $1 AND workspace_id = $2",
+                    path,
+                    workspace_id
+                ),
+                tx
+            )?
             .ok_or_else(|| Error::InternalErr(format!("not found flow at path {:?}", path)))?;
             let value = serde_json::from_value::<FlowValue>(value_json).map_err(|err| {
                 Error::InternalErr(format!(
@@ -1151,13 +1149,14 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
             None,
         ),
         JobPayload::Flow(flow) => {
-            let value_json = sqlx::query_scalar!(
-                "SELECT value FROM flow WHERE path = $1 AND workspace_id = $2",
-                flow,
-                workspace_id
-            )
-            .fetch_optional(&mut tx)
-            .await?
+            let value_json = fetch_scalar_isolated!(
+                sqlx::query_scalar!(
+                    "SELECT value FROM flow WHERE path = $1 AND workspace_id = $2",
+                    flow,
+                    workspace_id
+                ),
+                tx
+            )?
             .ok_or_else(|| Error::InternalErr(format!("not found flow at path {:?}", flow)))?;
             let value = serde_json::from_value::<FlowValue>(value_json).map_err(|err| {
                 Error::InternalErr(format!(
@@ -1254,6 +1253,33 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 .map(|x| x.as_str().replace("$workspace", workspace_id))
                 .unwrap_or_else(default)
         })
+    };
+
+    let mut tx = match tx {
+        PushIsolationLevel::Isolated(user_db, authed, rsmq) => {
+            (rsmq, user_db.begin(&authed).await?).into()
+        }
+        PushIsolationLevel::IsolatedRoot(db, rsmq) => (rsmq, db.begin().await?).into(),
+        PushIsolationLevel::Transaction(tx) => tx,
+    };
+
+    let job_id: Uuid = if let Some(job_id) = job_id {
+        let conflicting_id = sqlx::query_scalar!(
+            "SELECT 1 FROM queue WHERE id = $1 UNION ALL select 1 FROM completed_job WHERE id = $1",
+            job_id
+        )
+        .fetch_optional(&mut tx)
+        .await?;
+
+        if conflicting_id.is_some() {
+            return Err(Error::BadRequest(format!(
+                "Job with id {job_id} already exists"
+            )));
+        }
+
+        job_id
+    } else {
+        Ulid::new().into()
     };
 
     let uuid = sqlx::query_scalar!(
