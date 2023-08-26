@@ -55,6 +55,8 @@ pub async fn audit_log<'c, E: sqlx::Executor<'c, Database = Postgres>>(
 
     let _resource: Option<&str> = Some("EE only");
 
+    let username: &str = "redacted";
+
     tracing::info!(
         operation = operation,
         action_kind = ?action_kind,
