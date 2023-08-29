@@ -1297,8 +1297,15 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
         language,
         concurrent_limit,
         concurrency_time_window_s,
+        cache_ttl,
     ) = match job_payload {
-        JobPayload::ScriptHash { hash, path, concurrent_limit, concurrency_time_window_s } => {
+        JobPayload::ScriptHash {
+            hash,
+            path,
+            concurrent_limit,
+            concurrency_time_window_s,
+            cache_ttl,
+        } => {
             let language = fetch_scalar_isolated!(sqlx::query_scalar!(
                     "SELECT language as \"language: ScriptLang\" FROM script WHERE hash = $1 AND workspace_id = $2",
                     hash.0,
@@ -1319,6 +1326,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 Some(language),
                 concurrent_limit,
                 concurrency_time_window_s,
+                cache_ttl,
             )
         }
         JobPayload::ScriptHub { path } => {
@@ -1332,6 +1340,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 None,
                 None,
                 None,
+                None,
             )
         }
         JobPayload::Code(RawCode {
@@ -1341,6 +1350,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
             lock,
             concurrent_limit,
             concurrency_time_window_s,
+            cache_ttl,
         }) => (
             None,
             path,
@@ -1350,6 +1360,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
             Some(language),
             concurrent_limit,
             concurrency_time_window_s,
+            cache_ttl,
         ),
         JobPayload::Dependencies { hash, dependencies, language, path } => (
             Some(hash.0),
@@ -1358,6 +1369,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
             JobKind::Dependencies,
             None,
             Some(language),
+            None,
             None,
             None,
         ),
@@ -1385,6 +1397,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 None,
                 None,
                 None,
+                None,
             )
         }
         JobPayload::AppDependencies { path, version } => (
@@ -1392,6 +1405,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
             Some(path),
             None,
             JobKind::AppDependencies,
+            None,
             None,
             None,
             None,
@@ -1406,6 +1420,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
             None,
             value.concurrent_limit.clone(),
             value.concurrency_time_window_s,
+            value.cache_ttl.map(|x| x as i32),
         ),
         JobPayload::Flow(flow) => {
             let value_json = fetch_scalar_isolated!(
@@ -1431,10 +1446,31 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 None,
                 value.concurrent_limit.clone(),
                 value.concurrency_time_window_s,
+                value.cache_ttl.map(|x| x as i32),
             )
         }
-        JobPayload::Identity => (None, None, None, JobKind::Identity, None, None, None, None),
-        JobPayload::Noop => (None, None, None, JobKind::Noop, None, None, None, None),
+        JobPayload::Identity => (
+            None,
+            None,
+            None,
+            JobKind::Identity,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
+        JobPayload::Noop => (
+            None,
+            None,
+            None,
+            JobKind::Noop,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
     };
 
     let is_running = same_worker;
@@ -1545,8 +1581,8 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
         "INSERT INTO queue
             (workspace_id, id, running, parent_job, created_by, permissioned_as, scheduled_for, 
                 script_hash, script_path, raw_code, raw_lock, args, job_kind, schedule_path, raw_flow, \
-         flow_status, is_flow_step, language, started_at, same_worker, pre_run_error, email, visible_to_owner, root_job, tag, concurrent_limit, concurrency_time_window_s, timeout, flow_step_id)
-            VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, now()), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, CASE WHEN $3 THEN now() END, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28) \
+         flow_status, is_flow_step, language, started_at, same_worker, pre_run_error, email, visible_to_owner, root_job, tag, concurrent_limit, concurrency_time_window_s, timeout, flow_step_id, cache_ttl)
+            VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, now()), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, CASE WHEN $3 THEN now() END, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29) \
          RETURNING id",
         workspace_id,
         job_id,
@@ -1575,7 +1611,8 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
         concurrent_limit,
         concurrency_time_window_s,
         custom_timeout,
-        flow_step_id
+        flow_step_id,
+        cache_ttl
     )
     .fetch_one(&mut tx)
     .await
