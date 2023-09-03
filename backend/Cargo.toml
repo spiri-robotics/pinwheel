@@ -35,7 +35,8 @@ opt-level = 0
 incremental = true
 
 [features]
-benchmark = ["windmill-api/benchmark"]
+benchmark = ["windmill-api/benchmark", "windmill-worker/benchmark", "windmill-queue/benchmark"]
+flamegraph = ["windmill-common/flamegraph", "windmill-worker/flamegraph"]
 
 [dependencies]
 anyhow.workspace = true
