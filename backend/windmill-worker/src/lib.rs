@@ -2,6 +2,7 @@
 mod bash_executor;
 mod bun_executor;
 mod common;
+mod dedicated_worker;
 mod deno_executor;
 mod global_cache;
 mod go_executor;

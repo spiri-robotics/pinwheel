@@ -1,8 +1,11 @@
 use std::{collections::HashMap, process::Stdio};
 
+
+
 use base64::Engine;
 use itertools::Itertools;
 use uuid::Uuid;
+
 
 use crate::{
     common::{
@@ -12,10 +15,17 @@ use crate::{
     AuthedClientBackgroundTask, BUN_CACHE_DIR, BUN_PATH, DISABLE_NSJAIL, DISABLE_NUSER,
     NPM_CONFIG_REGISTRY, NSJAIL_PATH, PATH_ENV,
 };
-use tokio::{fs::File, io::AsyncReadExt, process::Command};
-use windmill_common::error::Result;
+
+
+use tokio::{fs::File, process::Command};
+
+
+use tokio::io::AsyncReadExt;
+
+
+
 use windmill_common::{
-    error::{self},
+    error::{self, Result},
     jobs::QueuedJob,
 };
 use windmill_parser::Typ;
@@ -26,8 +36,8 @@ const RELATIVE_BUN_BUILDER: &str = include_str!("../loader_builder.bun.ts");
 
 const NSJAIL_CONFIG_RUN_BUN_CONTENT: &str = include_str!("../nsjail/run.bun.config.proto");
 
-const BUN_LOCKB_SPLIT: &str = "\n//bun.lockb\n";
-const EMPTY_FILE: &str = "<empty>";
+pub const BUN_LOCKB_SPLIT: &str = "\n//bun.lockb\n";
+pub const EMPTY_FILE: &str = "<empty>";
 
 pub async fn gen_lockfile(
     logs: &mut String,
@@ -391,7 +401,7 @@ plugin(p)
     read_result(job_dir).await
 }
 
-fn get_common_bun_proc_envs(base_internal_url: &str) -> HashMap<String, String> {
+pub fn get_common_bun_proc_envs(base_internal_url: &str) -> HashMap<String, String> {
     let mut deno_envs: HashMap<String, String> = HashMap::from([
         (String::from("PATH"), PATH_ENV.clone()),
         (String::from("DISABLE_COLORS"), "0".to_string()),
@@ -413,3 +423,5 @@ fn get_common_bun_proc_envs(base_internal_url: &str) -> HashMap<String, String> 
     }
     return deno_envs;
 }
+
+

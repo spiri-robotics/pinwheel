@@ -31,8 +31,8 @@ use windmill_common::{
     DB, IS_READY, METRICS_ENABLED,
 };
 use windmill_queue::{
-    canceled_job_to_result, get_queued_job, pull, ACCEPTED_TAGS, CLOUD_HOSTED, HTTP_CLIENT,
-    IS_WORKER_TAGS_DEFINED,
+    canceled_job_to_result, get_queued_job, pull, ACCEPTED_TAGS, CLOUD_HOSTED, DEDICATED_WORKER,
+    HTTP_CLIENT, IS_WORKER_TAGS_DEFINED,
 };
 
 use serde_json::{json, Value};
@@ -43,6 +43,7 @@ use tokio::{
         mpsc::{self, Sender},
         Barrier, RwLock,
     },
+    task::JoinHandle,
     time::Instant,
 };
 
@@ -51,6 +52,7 @@ use futures::future::FutureExt;
 use async_recursion::async_recursion;
 
 use rand::Rng;
+
 
 
 use windmill_queue::{add_completed_job, add_completed_job_error};
@@ -174,6 +176,8 @@ pub const DEFAULT_NATIVE_JOBS: usize = 1;
 
 const VACUUM_PERIOD: u32 = 10000;
 
+pub const MAX_BUFFERED_DEDICATED_JOBS: usize = 3;
+
 lazy_static::lazy_static! {
 
     static ref SLEEP_QUEUE: u64 = std::env::var("SLEEP_QUEUE")
@@ -263,6 +267,8 @@ lazy_static::lazy_static! {
 
     pub static ref CAN_PULL: Arc<RwLock<()>> = Arc::new(RwLock::new(()));
 
+
+
 }
 //only matter if CLOUD_HOSTED
 pub const MAX_RESULT_SIZE: usize = 1024 * 1024 * 2; // 2MB
@@ -328,7 +334,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     i_worker: u64,
     _num_workers: u32,
     ip: &str,
-    mut rx: tokio::sync::broadcast::Receiver<()>,
+    mut killpill_rx: tokio::sync::broadcast::Receiver<()>,
     base_internal_url: &str,
     rsmq: Option<R>,
     _sync_barrier: Arc<RwLock<Option<Barrier>>>,
@@ -551,8 +557,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         // }
     });
 
-    let mut first_run = true;
-
     let mut last_executed_job: Option<Instant> = None;
     let mut last_checked_suspended = Instant::now();
 
@@ -566,6 +570,15 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
 
     IS_READY.store(true, Ordering::Relaxed);
     tracing::info!(worker = %worker_name, "listening for jobs");
+
+    let (dedicated_worker_tx, dedicated_worker_handle) = if let Some((_workspace, _script_path)) =
+        DEDICATED_WORKER.clone()
+    {
+        panic!("Dedicated worker is an enterprise feature");
+
+    } else {
+        (None, None) as (Option<Sender<QueuedJob>>, Option<JoinHandle<()>>)
+    };
 
     loop {
         #[cfg(feature = "benchmark")]
@@ -622,9 +635,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         //     };
         // }
 
-        let next_job = if first_run {
-            Ok(Some(QueuedJob::default()))
-        } else {
+        let next_job = {
             // println!("2: {:?}",  instant.elapsed());
             let _wait_signal = false;
 
@@ -643,7 +654,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
 
                 tokio::select! {
                     biased;
-                    _ = rx.recv() => {
+                    _ = killpill_rx.recv() => {
                         break
                     },
                     _ = copy_to_bucket_rx.recv() => {
@@ -679,10 +690,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             }
         };
 
-        if first_run {
-            first_run = false;
-        }
-
         if *METRICS_ENABLED {
             worker_busy.set(1);
         }
@@ -692,7 +699,12 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                 last_executed_job = None;
                 jobs_executed += 1;
 
-                if matches!(job.job_kind, JobKind::Noop) {
+                if let Some(dedicated_worker_tx) = dedicated_worker_tx.clone() {
+                    if let Err(e) = dedicated_worker_tx.send(job.clone()).await {
+                        tracing::info!("failed to send jobs to dedicated workers. Likely dedicated worker has been shut down. This is normal: {e:?}");
+                    }
+                    continue;
+                } else if matches!(job.job_kind, JobKind::Noop) {
                     job_completed_tx
                         .send(JobCompleted {
                             job,
@@ -706,6 +718,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                         .expect("send job completed");
                 } else {
                     let token = create_token_for_owner_in_bg(&db, &job).await;
+
                     let language = job.language.clone();
                     let _timer = worker_execution_duration
                         .get(&language)
@@ -769,10 +782,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                         client: OnceCell::new(),
                     };
 
-                    let is_flow = job.job_kind == JobKind::Flow
-                        || job.job_kind == JobKind::FlowPreview
-                        || job.job_kind == JobKind::FlowDependencies;
-
                     if let Some(err) = handle_queued_job(
                         job.clone(),
                         db,
@@ -810,7 +819,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                         .expect("no timer found")
                         .inc_by(duration);
 
-                    if !*KEEP_JOB_DIR && !(is_flow && same_worker) {
+                    if !*KEEP_JOB_DIR && !(job.is_flow() && same_worker) {
                         let _ = tokio::fs::remove_dir_all(job_dir).await;
                     }
                 }
@@ -867,7 +876,14 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     //     .expect("write profiling");
     // }
 
+    drop(dedicated_worker_tx);
+
+    if let Some(handle) = dedicated_worker_handle {
+        handle.await.expect("dedicated worker failed");
+    }
+
     drop(job_completed_tx);
+
     send_result.await.expect("send result failed");
     println!("worker {} exited", i_worker);
 }
@@ -1450,6 +1466,37 @@ async fn process_result(
     Ok(())
 }
 
+fn build_envs(
+    envs: Option<Vec<String>>,
+) -> windmill_common::error::Result<HashMap<String, String>> {
+    let mut envs = if *CLOUD_HOSTED || envs.is_none() {
+        HashMap::new()
+    } else {
+        let mut hm = HashMap::new();
+        for s in envs.unwrap() {
+            let (k, v) = s.split_once('=').ok_or_else(|| {
+                Error::BadRequest(format!(
+                    "Invalid env var: {}. Must be in the form of KEY=VALUE",
+                    s
+                ))
+            })?;
+            hm.insert(k.to_string(), v.to_string());
+        }
+        hm
+    };
+
+    if let Some(ref env) = *HTTPS_PROXY {
+        envs.insert("HTTPS_PROXY".to_string(), env.to_string());
+    }
+    if let Some(ref env) = *HTTP_PROXY {
+        envs.insert("HTTP_PROXY".to_string(), env.to_string());
+    }
+    if let Some(ref env) = *NO_PROXY {
+        envs.insert("NO_PROXY".to_string(), env.to_string());
+    }
+    Ok(envs)
+}
+
 #[tracing::instrument(level = "trace", skip_all)]
 async fn handle_code_execution_job(
     job: &QueuedJob,
@@ -1569,31 +1616,8 @@ mount {{
     };
 
     // println!("handle lang job {:?}",  SystemTime::now());
-    let mut envs = if *CLOUD_HOSTED || envs.is_none() {
-        HashMap::new()
-    } else {
-        let mut hm = HashMap::new();
-        for s in envs.unwrap() {
-            let (k, v) = s.split_once('=').ok_or_else(|| {
-                Error::BadRequest(format!(
-                    "Invalid env var: {}. Must be in the form of KEY=VALUE",
-                    s
-                ))
-            })?;
-            hm.insert(k.to_string(), v.to_string());
-        }
-        hm
-    };
 
-    if let Some(ref env) = *HTTPS_PROXY {
-        envs.insert("HTTPS_PROXY".to_string(), env.to_string());
-    }
-    if let Some(ref env) = *HTTP_PROXY {
-        envs.insert("HTTP_PROXY".to_string(), env.to_string());
-    }
-    if let Some(ref env) = *NO_PROXY {
-        envs.insert("NO_PROXY".to_string(), env.to_string());
-    }
+    let envs = build_envs(envs)?;
 
     let result: error::Result<serde_json::Value> = match language {
         None => {
