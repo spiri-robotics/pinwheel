@@ -139,6 +139,7 @@ pub async fn pip_compile(
         &w_id,
         "pip-compile",
         None,
+        false,
     )
     .await
     .map_err(|e| Error::ExecutionErr(format!("Lock file generation failed: {e:?}")))?;
@@ -474,6 +475,7 @@ mount {{
         &job.workspace_id,
         "python run",
         job.timeout,
+        false,
     )
     .await?;
     read_result(job_dir).await
@@ -623,6 +625,7 @@ pub async fn handle_python_reqs(
             &w_id,
             &format!("pip install {req}"),
             None,
+            false,
         )
         .await;
         tracing::info!(

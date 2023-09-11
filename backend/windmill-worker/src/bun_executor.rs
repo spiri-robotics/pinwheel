@@ -91,6 +91,7 @@ pub async fn gen_lockfile(
         w_id,
         "bun build",
         None,
+        false,
     )
     .await?;
 
@@ -157,6 +158,7 @@ pub async fn install_lockfile(
         w_id,
         "bun install",
         None,
+        false,
     )
     .await?;
     Ok(())
@@ -396,6 +398,7 @@ plugin(p)
         &job.workspace_id,
         "bun run",
         job.timeout,
+        false,
     )
     .await?;
     read_result(job_dir).await
