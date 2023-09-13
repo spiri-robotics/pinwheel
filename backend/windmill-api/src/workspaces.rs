@@ -68,7 +68,6 @@ pub fn workspaced_service() -> Router {
         .route("/edit_error_handler", post(edit_error_handler));
 
 
-
     router
 }
 pub fn global_service() -> Router {

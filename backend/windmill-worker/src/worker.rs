@@ -28,12 +28,10 @@ use windmill_common::{
     scripts::{get_full_hub_script_by_path, ScriptHash, ScriptLang},
     users::SUPERADMIN_SECRET_EMAIL,
     utils::{rd_string, StripPath},
+    worker::{update_ping, CLOUD_HOSTED, WORKER_CONFIG},
     DB, IS_READY, METRICS_ENABLED,
 };
-use windmill_queue::{
-    canceled_job_to_result, get_queued_job, pull, ACCEPTED_TAGS, CLOUD_HOSTED, DEDICATED_WORKER,
-    HTTP_CLIENT, IS_WORKER_TAGS_DEFINED,
-};
+use windmill_queue::{canceled_job_to_result, get_queued_job, pull, HTTP_CLIENT};
 
 use serde_json::{json, Value};
 
@@ -341,6 +339,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     _num_workers: u32,
     ip: &str,
     mut killpill_rx: tokio::sync::broadcast::Receiver<()>,
+    killpill_tx: tokio::sync::broadcast::Sender<()>,
     base_internal_url: &str,
     rsmq: Option<R>,
     _sync_barrier: Arc<RwLock<Option<Barrier>>>,
@@ -378,7 +377,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
 
     let mut last_ping = Instant::now() - Duration::from_secs(NUM_SECS_PING + 1);
 
-    insert_initial_ping(worker_instance, &worker_name, ip, db).await;
+    update_ping(worker_instance, &worker_name, ip, db).await;
 
     let uptime_metric =
         prometheus::register_counter!(WORKER_UPTIME_OPTS.clone().const_label("name", &worker_name))
@@ -577,10 +576,14 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     IS_READY.store(true, Ordering::Relaxed);
     tracing::info!(worker = %worker_name, "listening for jobs");
 
-    let (dedicated_worker_tx, dedicated_worker_handle) = if let Some((_workspace, _script_path)) =
-        DEDICATED_WORKER.clone()
+    let (dedicated_worker_tx, dedicated_worker_handle) = if let Some(_wp) =
+        WORKER_CONFIG.read().await.dedicated_worker.clone()
     {
-        panic!("Dedicated worker is an enterprise feature");
+        {
+            tracing::error!("Dedicated worker is an enterprise feature");
+            killpill_tx.send(()).expect("send");
+            return;
+        }
 
     } else {
         (None, None) as (Option<Sender<QueuedJob>>, Option<JoinHandle<()>>)
@@ -604,9 +607,13 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
 
 
         if last_ping.elapsed().as_secs() > NUM_SECS_PING {
+            let wc = WORKER_CONFIG.read().await;
+            let tags = wc.worker_tags.as_slice();
+
             sqlx::query!(
-                "UPDATE worker_ping SET ping_at = now(), jobs_executed = $1 WHERE worker = $2",
+                "UPDATE worker_ping SET ping_at = now(), jobs_executed = $1, custom_tags = $2 WHERE worker = $3",
                 jobs_executed,
+                tags,
                 &worker_name
             )
             .execute(db)
@@ -1109,25 +1116,6 @@ pub async fn handle_job_error<R: rsmq_async::RsmqConnection + Send + Sync + Clon
         let _ = f().await;
     }
     tracing::error!(job_id = %job.id, "error handling job: {err:?} {} {} {}", job.id, job.workspace_id, job.created_by);
-}
-
-async fn insert_initial_ping(
-    worker_instance: &str,
-    worker_name: &str,
-    ip: &str,
-    db: &Pool<Postgres>,
-) {
-    let tags = ACCEPTED_TAGS.clone();
-    sqlx::query!(
-        "INSERT INTO worker_ping (worker_instance, worker, ip, custom_tags) VALUES ($1, $2, $3, $4) ON CONFLICT (worker) DO NOTHING",
-        worker_instance,
-        worker_name,
-        ip,
-        if *IS_WORKER_TAGS_DEFINED { Some(tags.as_slice()) } else { None }
-    )
-    .execute(db)
-    .await
-    .expect("insert worker_ping initial value");
 }
 
 fn extract_error_value(log_lines: &str, i: i32) -> serde_json::Value {
