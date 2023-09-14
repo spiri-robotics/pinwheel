@@ -246,7 +246,7 @@ pub async fn add_completed_job<R: rsmq_async::RsmqConnection + Clone + Send>(
         .flatten();
     let mut tx: QueueTransaction<'_, R> = (rsmq.clone(), db.begin().await?).into();
     let job_id = queued_job.id.clone();
-    let _duration = sqlx::query_scalar!(
+    let _duration: i64 = sqlx::query_scalar!(
         "INSERT INTO completed_job AS cj
                    ( workspace_id
                    , id
