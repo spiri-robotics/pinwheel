@@ -212,6 +212,7 @@ async fn _check_nb_of_groups(db: &DB) -> Result<()> {
     }
     return Ok(());
 }
+
 async fn create_group(
     authed: ApiAuthed,
     Extension(_db): Extension<DB>,
