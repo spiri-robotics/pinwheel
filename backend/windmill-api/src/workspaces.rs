@@ -735,7 +735,7 @@ async fn create_workspace(
         require_super_admin(&db, &authed.email).await?;
     }
 
-    _check_nb_of_workspace(&db).await?;
+    _check_nb_of_workspaces(&db).await?;
 
     let mut tx: Transaction<'_, Postgres> = db.begin().await?;
 
