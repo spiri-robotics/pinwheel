@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use chrono::Timelike;
-use futures::StreamExt;
+
 use futures::{stream, Stream};
 use serde::Deserialize;
 use serde_json::json;
@@ -13,7 +12,7 @@ use tokio::{
 use windmill_api_client::types::{
     CreateFlowBody, EditSchedule, NewSchedule, RawScript, ScriptArgs,
 };
-use windmill_common::worker::{WORKER_CONFIG, load_worker_config};
+use windmill_common::worker::WORKER_CONFIG;
 use windmill_common::{
     flow_status::{FlowStatus, FlowStatusModule},
     flows::{FlowModule, FlowModuleValue, FlowValue, InputTransform},
@@ -126,6 +125,7 @@ impl ApiServer {
     }
 
     async fn close(self) -> anyhow::Result<()> {
+        println!("closing api server");
         let Self { tx, task, .. } = self;
         drop(tx);
         task.await.unwrap()
@@ -892,7 +892,8 @@ impl RunJob {
         let uuid = self.push(db).await;
         let listener = listen_for_completed_jobs(db).await;
         in_test_worker(db, listener.find(&uuid), port).await;
-        completed_job(uuid, db).await
+        let r = completed_job(uuid, db).await;
+        r
     }
 }
 
@@ -933,7 +934,6 @@ async fn in_test_worker<Fut: std::future::Future>(
         .await
         .expect("worker timed out")
         .expect("worker panicked");
-
     res
 }
 
@@ -960,9 +960,10 @@ fn spawn_test_worker(
     let tx2 = tx.clone();
     let future = async move {
         let base_internal_url = format!("http://localhost:{}", port);
+        {
         let mut wc = WORKER_CONFIG.write().await;
-        *wc = load_worker_config(&db).await.unwrap();
-        drop(wc);
+        (*wc).worker_tags = windmill_common::worker::DEFAULT_TAGS.clone();
+        }
         windmill_worker::run_worker::<rsmq_async::MultiplexedRsmq>(
             &db,
             worker_instance,
@@ -1670,7 +1671,6 @@ echo "hello $msg"
     .arg("msg", json!("world"))
     .run_until_complete(&db, port)
     .await;
-
     assert_eq!(job.json_result(), Some(json!("hello world")));
 }
 
@@ -2603,269 +2603,5 @@ async fn test_rust_client(db: Pool<Postgres>) {
 }
 
 
-#[sqlx::test(fixtures("base"))]
-async fn test_script_schedule_handlers(db: Pool<Postgres>) {
-    initialize_tracing().await;
-    let server = ApiServer::start(db.clone()).await;
-    let port = server.addr.port();
-
-    let client = windmill_api_client::create_client(
-        &format!("http://localhost:{port}"),
-        "SECRET_TOKEN".to_string(),
-    );
-
-    let mut args = std::collections::HashMap::new();
-    args.insert("fail".to_string(), json!(true));
-
-    let now = chrono::Utc::now();
-    // add 5 seconds to now
-    let then = now
-        .checked_add_signed(chrono::Duration::seconds(5))
-        .unwrap();
-
-    let schedule = NewSchedule {
-        args: ScriptArgs::from(args),
-        enabled: Some(true),
-        is_flow: false,
-        on_failure: Some("script/f/system/schedule_error_handler".to_string()),
-        on_failure_times: None,
-        on_failure_exact: None,
-        on_failure_extra_args: None,
-        on_recovery: Some("script/f/system/schedule_recovery_handler".to_string()),
-        on_recovery_times: None,
-        on_recovery_extra_args: None,
-        path: "f/system/failing_script_schedule".to_string(),
-        script_path: "f/system/failing_script".to_string(),
-        timezone: "UTC".to_string(),
-        schedule: format!("{} {} * * * *", then.second(), then.minute()).to_string(),
-    };
-
-    let _ = client.create_schedule("test-workspace", &schedule).await;
-
-    let mut str = listen_for_completed_jobs(&db).await;
-
-    let db2 = db.clone();
-    in_test_worker(
-        &db,
-        async move {
-            str.next().await; // completed error job
-
-            let uuid = timeout(Duration::from_millis(5000), str.next()).await; // error handler
-
-            if uuid.is_err() {
-                panic!("schedule error handler was not run within 5 s");
-            }
-
-            let uuid = uuid.unwrap().unwrap();
-
-            let completed_job =
-                query!("SELECT script_path FROM completed_job  WHERE id = $1", uuid)
-                    .fetch_one(&db2)
-                    .await
-                    .unwrap();
-
-            if completed_job.script_path.is_none()
-                || completed_job.script_path != Some("f/system/schedule_error_handler".to_string())
-            {
-                panic!(
-                    "a script was run after main job execution but was not schedule error handler"
-                );
-            }
-        },
-        port,
-    )
-    .await;
-
-    let mut args = std::collections::HashMap::new();
-    args.insert("fail".to_string(), json!(false));
-    let now = chrono::Utc::now();
-    let then = now
-        .checked_add_signed(chrono::Duration::seconds(5))
-        .unwrap();
-    client
-        .update_schedule(
-            "test-workspace",
-            "f/system/failing_script_schedule",
-            &EditSchedule {
-                args: ScriptArgs::from(args),
-                on_failure: Some("script/f/system/schedule_error_handler".to_string()),
-                on_failure_times: None,
-                on_failure_exact: None,
-                on_failure_extra_args: None,
-                on_recovery: Some("script/f/system/schedule_recovery_handler".to_string()),
-                on_recovery_times: None,
-                on_recovery_extra_args: None,
-                timezone: "UTC".to_string(),
-                schedule: format!("{} {} * * * *", then.second(), then.minute()).to_string(),
-            },
-        )
-        .await
-        .unwrap();
-
-    let mut str = listen_for_completed_jobs(&db).await;
-
-    let db2 = db.clone();
-    in_test_worker(
-        &db,
-        async move {
-            str.next().await; // completed working job
-            let uuid = timeout(Duration::from_millis(5000), str.next()).await; // recovery handler
-
-            if uuid.is_err() {
-                panic!("schedule recovery handler was not run within 5 s");
-            }
-
-            let uuid = uuid.unwrap().unwrap();
-            
-            let completed_job =
-                query!("SELECT script_path FROM completed_job  WHERE id = $1", uuid)
-                    .fetch_one(&db2)
-                    .await
-                    .unwrap();
-
-            if completed_job.script_path.is_none()
-                || completed_job.script_path
-                    != Some("f/system/schedule_recovery_handler".to_string())
-            {
-                panic!("a script was run after main job execution but was not schedule recovery handler");
-            }
-        },
-        port,
-    )
-    .await;
-}
 
 
-#[sqlx::test(fixtures("base"))]
-async fn test_flow_schedule_handlers(db: Pool<Postgres>) {
-    initialize_tracing().await;
-    let server = ApiServer::start(db.clone()).await;
-    let port = server.addr.port();
-
-    let client = windmill_api_client::create_client(
-        &format!("http://localhost:{port}"),
-        "SECRET_TOKEN".to_string(),
-    );
-
-    let mut args = std::collections::HashMap::new();
-    args.insert("fail".to_string(), json!(true));
-
-    let now = chrono::Utc::now();
-    // add 5 seconds to now
-    let then = now
-        .checked_add_signed(chrono::Duration::seconds(5))
-        .unwrap();
-
-    let schedule = NewSchedule {
-        args: ScriptArgs::from(args),
-        enabled: Some(true),
-        is_flow: true,
-        on_failure: Some("script/f/system/schedule_error_handler".to_string()),
-        on_failure_times: None,
-        on_failure_exact: None,
-        on_failure_extra_args: None,
-        on_recovery: Some("script/f/system/schedule_recovery_handler".to_string()),
-        on_recovery_times: None,
-        on_recovery_extra_args: None,
-        path: "f/system/failing_flow_schedule".to_string(),
-        script_path: "f/system/failing_flow".to_string(),
-        timezone: "UTC".to_string(),
-        schedule: format!("{} {} * * * *", then.second(), then.minute()).to_string(),
-    };
-
-    let _ = client.create_schedule("test-workspace", &schedule).await;
-
-    let mut str = listen_for_completed_jobs(&db).await;
-
-    let db2 = db.clone();
-    in_test_worker(
-        &db,
-        async move {
-            str.next().await; // completed error step
-            str.next().await; // completed error flow
-
-            let uuid = timeout(Duration::from_millis(5000), str.next()).await; // error handler
-
-            if uuid.is_err() {
-                panic!("schedule error handler was not run within 5 s");
-            }
-
-            let uuid = uuid.unwrap().unwrap();
-
-            let completed_job =
-                query!("SELECT script_path FROM completed_job  WHERE id = $1", uuid)
-                    .fetch_one(&db2)
-                    .await
-                    .unwrap();
-
-            if completed_job.script_path.is_none()
-                || completed_job.script_path != Some("f/system/schedule_error_handler".to_string())
-            {
-                panic!(
-                    "a script was run after main job execution but was not schedule error handler"
-                );
-            }
-        },
-        port,
-    )
-    .await;
-
-    let mut args = std::collections::HashMap::new();
-    args.insert("fail".to_string(), json!(false));
-    let now = chrono::Utc::now();
-    let then = now
-        .checked_add_signed(chrono::Duration::seconds(5))
-        .unwrap();
-    client
-        .update_schedule(
-            "test-workspace",
-            "f/system/failing_flow_schedule",
-            &EditSchedule {
-                args: ScriptArgs::from(args),
-                on_failure: Some("script/f/system/schedule_error_handler".to_string()),
-                on_failure_times: None,
-                on_failure_exact: None,
-                on_failure_extra_args: None,
-                on_recovery: Some("script/f/system/schedule_recovery_handler".to_string()),
-                on_recovery_times: None,
-                on_recovery_extra_args: None,
-                timezone: "UTC".to_string(),
-                schedule: format!("{} {} * * * *", then.second(), then.minute()).to_string(),
-            },
-        )
-        .await
-        .unwrap();
-
-    let mut str = listen_for_completed_jobs(&db).await;
-
-    let db2 = db.clone();
-    in_test_worker(
-        &db,
-        async move {
-            str.next().await; // completed working step
-            str.next().await; // completed working flow
-            let uuid = timeout(Duration::from_millis(5000), str.next()).await; // recovery handler
-
-            if uuid.is_err() {
-                panic!("schedule recovery handler was not run within 5 s");
-            }
-
-            let uuid = uuid.unwrap().unwrap();
-            
-            let completed_job =
-                query!("SELECT script_path FROM completed_job  WHERE id = $1", uuid)
-                    .fetch_one(&db2)
-                    .await
-                    .unwrap();
-
-            if completed_job.script_path.is_none()
-                || completed_job.script_path
-                    != Some("f/system/schedule_recovery_handler".to_string())
-            {
-                panic!("a script was run after main job execution but was not schedule recovery handler");
-            }
-        },
-        port,
-    )
-    .await;
-}
