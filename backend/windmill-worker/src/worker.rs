@@ -55,9 +55,6 @@ use rand::Rng;
 
 use windmill_queue::{add_completed_job, add_completed_job_error};
 
-#[cfg(feature = "benchmark")]
-use windmill_queue::IDLE_WORKERS;
-
 use crate::{
     bash_executor::{handle_bash_job, handle_powershell_job, ANSI_ESCAPE_RE},
     bun_executor::{gen_lockfile, handle_bun_job},
@@ -649,56 +646,45 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
 
         let next_job = {
             // println!("2: {:?}",  instant.elapsed());
-            let _wait_signal = false;
-
             #[cfg(feature = "benchmark")]
-            let _wait_signal = IDLE_WORKERS.load(Ordering::Relaxed);
+            if !started {
+                started = true
+            }
 
-            if _wait_signal {
-                // tracing::warn!("Worker is marked as idle. Not pulling any job for now");
-                tokio::time::sleep(Duration::from_millis(*SLEEP_QUEUE)).await;
-                Ok(None)
-            } else {
-                #[cfg(feature = "benchmark")]
-                if !started {
-                    started = true
-                }
+            tokio::select! {
+                biased;
+                _ = killpill_rx.recv() => {
+                    break
+                },
+                _ = copy_to_bucket_rx.recv() => {
+                    tracing::debug!("can_pull lock start");
+                    let _lock = CAN_PULL.write().await;
+                    Ok(None)
+                },
+                Some(job_id) = same_worker_rx.recv() => {
+                    sqlx::query_as::<_, QueuedJob>("SELECT * FROM queue WHERE id = $1")
+                    .bind(job_id)
+                    .fetch_optional(db)
+                    .await
+                    .map_err(|_| Error::InternalErr("Impossible to fetch same_worker job".to_string()))
+                },
+                (job, timer) = {
+                    let timer = if *METRICS_ENABLED { Some(worker_pull_duration.start_timer()) } else { None };
+                    let suspend_first = if last_checked_suspended.elapsed().as_secs() > 3 {
+                        last_checked_suspended = Instant::now();
+                        true
+                    } else { false };
+                    pull(&db, rsmq.clone(), suspend_first).map(|x| (x, timer))
+                } => {
+                    add_time!(timing, loop_start, "post pull");
 
-                tokio::select! {
-                    biased;
-                    _ = killpill_rx.recv() => {
-                        break
-                    },
-                    _ = copy_to_bucket_rx.recv() => {
-                        tracing::debug!("can_pull lock start");
-                        let _lock = CAN_PULL.write().await;
-                        Ok(None)
-                    },
-                    Some(job_id) = same_worker_rx.recv() => {
-                        sqlx::query_as::<_, QueuedJob>("SELECT * FROM queue WHERE id = $1")
-                        .bind(job_id)
-                        .fetch_optional(db)
-                        .await
-                        .map_err(|_| Error::InternalErr("Impossible to fetch same_worker job".to_string()))
-                    },
-                    (job, timer) = {
-                        let timer = if *METRICS_ENABLED { Some(worker_pull_duration.start_timer()) } else { None };
-                        let suspend_first = if last_checked_suspended.elapsed().as_secs() > 3 {
-                            last_checked_suspended = Instant::now();
-                            true
-                        } else { false };
-                        pull(&db, rsmq.clone(), suspend_first).map(|x| (x, timer))
-                    } => {
-                        add_time!(timing, loop_start, "post pull");
+                    timer.map(|timer| {
+                        let duration_pull_s = timer.stop_and_record();
+                        worker_pull_duration_counter.inc_by(duration_pull_s);
+                    });
+                    job
 
-                        timer.map(|timer| {
-                            let duration_pull_s = timer.stop_and_record();
-                            worker_pull_duration_counter.inc_by(duration_pull_s);
-                        });
-                        job
-
-                    },
-                }
+                },
             }
         };
 
