@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
+use futures::StreamExt;
 
-use futures::{stream, Stream, StreamExt};
+use futures::{stream, Stream};
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::{postgres::PgListener, types::Uuid, Pool, Postgres};
@@ -9,10 +10,13 @@ use tokio::sync::RwLock;
 
 
 use windmill_api_client::types::{
-    CreateFlowBody, RawScript, NewScript, NewScriptLanguage
+    CreateFlowBody, RawScript
 };
 
+use sqlx::query;
 
+
+use windmill_api_client::types::{NewScript, NewScriptLanguage};
 
 use windmill_common::worker::WORKER_CONFIG;
 use windmill_common::{
@@ -2649,7 +2653,7 @@ async fn run_deployed_relative_imports(db: &Pool<Postgres>, script_content: Stri
         completed.next().await; // deployed script
 
         let script =
-            sqlx::query!("SELECT hash FROM script WHERE path = $1", "f/system/test_import".to_string())
+            query!("SELECT hash FROM script WHERE path = $1", "f/system/test_import".to_string())
                 .fetch_one(&db2)
                 .await
                 .unwrap();
