@@ -1650,6 +1650,7 @@ async fn check_tag_available_for_workspace(w_id: &str, tag: &Option<String>) -> 
     }
 }
 
+
 pub async fn run_flow_by_path(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
@@ -1713,7 +1714,9 @@ pub async fn run_job_by_path(
     headers: HeaderMap,
     JsonOrForm(args, raw_string): JsonOrForm,
 ) -> error::Result<(StatusCode, String)> {
+
     let script_path = script_path.to_path();
+
     check_scopes(&authed, || format!("run:script/{script_path}"))?;
 
     let (job_payload, tag) = script_path_to_payload(script_path, &db, &w_id).await?;
@@ -1901,6 +1904,7 @@ pub async fn run_wait_result_job_by_path_get(
     Path((w_id, script_path)): Path<(String, StripPath)>,
     Query(run_query): Query<RunJobQuery>,
 ) -> error::JsonResult<serde_json::Value> {
+
     if method == http::Method::HEAD {
         return Ok(Json(serde_json::json!("")));
     }
@@ -1961,6 +1965,7 @@ pub async fn run_wait_result_flow_by_path_get(
     headers: HeaderMap,
     Query(run_query): Query<RunJobQuery>,
 ) -> error::JsonResult<serde_json::Value> {
+
     if method == http::Method::HEAD {
         return Ok(Json(serde_json::json!("")));
     }
@@ -2000,6 +2005,7 @@ pub async fn run_wait_result_script_by_path(
     headers: HeaderMap,
     JsonOrForm(args, raw_string): JsonOrForm,
 ) -> error::JsonResult<serde_json::Value> {
+
     run_wait_result_script_by_path_internal(
         db,
         run_query,
@@ -2125,6 +2131,7 @@ pub async fn run_wait_result_script_by_hash(
     headers: HeaderMap,
     JsonOrForm(args, raw_string): JsonOrForm,
 ) -> error::JsonResult<serde_json::Value> {
+
     check_queue_too_long(&db, run_query.queue_limit).await?;
 
     let hash = script_hash.0;
@@ -2215,6 +2222,7 @@ pub async fn run_wait_result_flow_by_path(
     headers: HeaderMap,
     JsonOrForm(args, raw_string): JsonOrForm,
 ) -> error::JsonResult<serde_json::Value> {
+
     run_wait_result_flow_by_path_internal(
         db, run_query, flow_path, authed, rsmq, user_db, headers, args, raw_string, w_id,
     )
@@ -2290,6 +2298,7 @@ async fn run_preview_job(
     headers: HeaderMap,
     Json(preview): Json<Preview>,
 ) -> error::Result<(StatusCode, String)> {
+
     check_scopes(&authed, || format!("runscript"))?;
     if authed.is_operator {
         return Err(error::Error::NotAuthorized(
@@ -2532,6 +2541,7 @@ pub async fn run_job_by_hash(
     headers: HeaderMap,
     JsonOrForm(args, raw_string): JsonOrForm,
 ) -> error::Result<(StatusCode, String)> {
+
     let hash = script_hash.0;
     let (
         path,
