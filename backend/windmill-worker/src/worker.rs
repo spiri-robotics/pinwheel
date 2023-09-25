@@ -550,8 +550,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     let (_copy_to_bucket_tx, mut copy_to_bucket_rx) = mpsc::channel::<()>(2);
 
 
-    tracing::info!(worker = %worker_name, "starting worker");
-
 
 
 
