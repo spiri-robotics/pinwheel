@@ -79,7 +79,7 @@ pub async fn gen_lockfile(
     .await?;
 
     let common_bun_proc_envs: HashMap<String, String> =
-        get_common_bun_proc_envs(&base_internal_url);
+        get_common_bun_proc_envs(&base_internal_url).await;
 
     let child = Command::new(&*BUN_PATH)
         .current_dir(job_dir)
@@ -238,7 +238,7 @@ pub async fn handle_bun_job(
     let _ = write_file(job_dir, "main.ts", inner_content).await?;
 
     let common_bun_proc_envs: HashMap<String, String> =
-        get_common_bun_proc_envs(&base_internal_url);
+        get_common_bun_proc_envs(&base_internal_url).await;
 
     if let Some(reqs) = requirements_o {
         let splitted = reqs.split(BUN_LOCKB_SPLIT).collect::<Vec<&str>>();
@@ -283,7 +283,8 @@ pub async fn handle_bun_job(
         // TODO: remove once bun implement a reasonable set of trusted deps
         let trusted_deps = get_trusted_deps(inner_content);
         let empty_trusted_deps = trusted_deps.len() == 0;
-        if !*DISABLE_NSJAIL || !empty_trusted_deps {
+        let has_custom_config_registry = common_bun_proc_envs.contains_key("NPM_CONFIG_REGISTRY");
+        if !*DISABLE_NSJAIL || !empty_trusted_deps || has_custom_config_registry {
             logs.push_str("\n\n--- BUN INSTALL ---\n");
             set_logs(&logs, &job.id, &db).await;
             let _ = gen_lockfile(
@@ -302,7 +303,7 @@ pub async fn handle_bun_job(
             .await?;
         }
 
-        if empty_trusted_deps {
+        if empty_trusted_deps && !has_custom_config_registry {
             let node_modules_path = format!("{}/node_modules", job_dir);
             let node_modules_exists = tokio::fs::metadata(&node_modules_path).await.is_ok();
             if node_modules_exists {
@@ -484,8 +485,8 @@ plugin(p)
     read_result(job_dir).await
 }
 
-pub fn get_common_bun_proc_envs(base_internal_url: &str) -> HashMap<String, String> {
-    let mut deno_envs: HashMap<String, String> = HashMap::from([
+pub async fn get_common_bun_proc_envs(base_internal_url: &str) -> HashMap<String, String> {
+    let mut bun_envs: HashMap<String, String> = HashMap::from([
         (String::from("PATH"), PATH_ENV.clone()),
         (String::from("HOME"), HOME_ENV.clone()),
         (String::from("TZ"), TZ_ENV.clone()),
@@ -503,10 +504,10 @@ pub fn get_common_bun_proc_envs(base_internal_url: &str) -> HashMap<String, Stri
         ),
     ]);
 
-    if let Some(ref s) = *NPM_CONFIG_REGISTRY {
-        deno_envs.insert(String::from("NPM_CONFIG_REGISTRY"), s.clone());
+    if let Some(ref s) = NPM_CONFIG_REGISTRY.read().await.clone() {
+        bun_envs.insert(String::from("NPM_CONFIG_REGISTRY"), s.clone());
     }
-    return deno_envs;
+    return bun_envs;
 }
 
 
