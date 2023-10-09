@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     common::{
         create_args_and_out_file, get_reserved_variables, handle_child, read_result, set_logs,
-        write_file, write_file_binary,
+        start_child_process, write_file, write_file_binary,
     },
     AuthedClientBackgroundTask, BUN_CACHE_DIR, BUN_PATH, DISABLE_NSJAIL, DISABLE_NUSER, HOME_ENV,
     NPM_CONFIG_REGISTRY, NSJAIL_PATH, PATH_ENV, TZ_ENV,
@@ -81,20 +81,21 @@ pub async fn gen_lockfile(
     let common_bun_proc_envs: HashMap<String, String> =
         get_common_bun_proc_envs(&base_internal_url).await;
 
-    let child = Command::new(&*BUN_PATH)
+    let mut child_cmd = Command::new(&*BUN_PATH);
+    child_cmd
         .current_dir(job_dir)
         .env_clear()
         .envs(common_bun_proc_envs.clone())
         .args(vec!["run", "build.ts"])
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
+        .stderr(Stdio::piped());
+    let child_process = start_child_process(child_cmd, &*BUN_PATH).await?;
 
     handle_child(
         job_id,
         db,
         logs,
-        child,
+        child_process,
         false,
         worker_name,
         w_id,
@@ -179,20 +180,21 @@ pub async fn install_lockfile(
     worker_name: &str,
     common_bun_proc_envs: HashMap<String, String>,
 ) -> Result<()> {
-    let child = Command::new(&*BUN_PATH)
+    let mut child_cmd = Command::new(&*BUN_PATH);
+    child_cmd
         .current_dir(job_dir)
         .env_clear()
         .envs(common_bun_proc_envs)
         .args(vec!["install"])
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
+        .stderr(Stdio::piped());
+    let child_process = start_child_process(child_cmd, &*BUN_PATH).await?;
 
     handle_child(
         job_id,
         db,
         logs,
-        child,
+        child_process,
         false,
         worker_name,
         w_id,
@@ -425,7 +427,8 @@ plugin(p)
         )
         .await?;
 
-        Command::new(NSJAIL_PATH.as_str())
+        let mut nsjail_cmd = Command::new(NSJAIL_PATH.as_str());
+        nsjail_cmd
             .current_dir(job_dir)
             .env_clear()
             .envs(envs)
@@ -445,8 +448,8 @@ plugin(p)
                 "/tmp/bun/wrapper.ts",
             ])
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?
+            .stderr(Stdio::piped());
+        start_child_process(nsjail_cmd, NSJAIL_PATH.as_str()).await?
     } else {
         let script_path = format!("{job_dir}/wrapper.ts");
         let args = vec![
@@ -457,7 +460,8 @@ plugin(p)
             "./loader.bun.ts",
             &script_path,
         ];
-        Command::new(&*BUN_PATH)
+        let mut bun_cmd = Command::new(&*BUN_PATH);
+        bun_cmd
             .current_dir(job_dir)
             .env_clear()
             .envs(envs)
@@ -465,8 +469,8 @@ plugin(p)
             .envs(common_bun_proc_envs)
             .args(args)
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?
+            .stderr(Stdio::piped());
+        start_child_process(bun_cmd, &*BUN_PATH).await?
     };
 
     handle_child(
