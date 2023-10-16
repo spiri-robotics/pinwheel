@@ -1,10 +1,13 @@
 use std::sync::Arc;
+use windmill_api_client::types::{NewScript, NewScriptLanguage};
+use std::str::FromStr;
 
 use futures::StreamExt;
 
 use futures::{stream, Stream};
 use serde::Deserialize;
 use serde_json::json;
+use sqlx::types::Json;
 use sqlx::{postgres::PgListener, types::Uuid, Pool, Postgres};
 use tokio::sync::RwLock;
 
@@ -16,7 +19,6 @@ use windmill_api_client::types::{
 use sqlx::query;
 
 
-use windmill_api_client::types::{NewScript, NewScriptLanguage};
 
 use windmill_common::worker::WORKER_CONFIG;
 use windmill_common::{
@@ -28,7 +30,6 @@ use windmill_common::{
 use windmill_queue::PushIsolationLevel;
 use serde::Serialize;
 
-use std::str::FromStr;
 
 #[derive(Debug, sqlx::FromRow, Serialize)]
 pub struct CompletedJob {
@@ -866,12 +867,12 @@ impl RunJob {
     async fn push(self, db: &Pool<Postgres>) -> Uuid {
         let RunJob { payload, args } = self;
         let tx = PushIsolationLevel::IsolatedRoot(db.clone(), None);
-        let (uuid, tx) = windmill_queue::push::<rsmq_async::MultiplexedRsmq>(
+        let (uuid, tx) = windmill_queue::push::<_, rsmq_async::MultiplexedRsmq>(
             &db,
             tx,
             "test-workspace",
             payload,
-            args,
+            Json(args),
             /* user */ "test-user",
             /* email  */ "test@windmill.dev",
             /* permissioned_as */ "u/test-user".to_string(),
@@ -1868,7 +1869,7 @@ async fn test_invalid_first_step(db: Pool<Postgres>) {
 
     assert_eq!(
         job.json_result().unwrap(),
-        serde_json::json!( {"error":  {"name": "InternalErr", "message": "Expected an array value, found: {}"}})
+        serde_json::json!( {"error":  {"name": "InternalErr", "message": "Expected an array value, found: invalid type: map, expected a sequence at line 1 column 0"}})
     );
 }
 
