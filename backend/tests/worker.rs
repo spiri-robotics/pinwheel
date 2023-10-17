@@ -2558,6 +2558,7 @@ async fn test_flow_lock_all(db: Pool<Postgres>) {
                     open_flow: flow,
                     path: "g/all/flow_lock_all".to_owned(),
                     tag: None,
+                    ws_error_handler_muted: None,
                 },
                 draft_only: None,
             },
@@ -2645,6 +2646,7 @@ async fn run_deployed_relative_imports(db: &Pool<Postgres>, script_content: Stri
             summary: "".to_string(),
             tag: None,
             schema: std::collections::HashMap::new(),
+            ws_error_handler_muted: Some(false),
         },
     ).await.unwrap();
 
