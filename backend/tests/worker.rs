@@ -888,6 +888,7 @@ impl RunJob {
             None,
             None,
             None,
+            None,
         )
         .await
         .expect("push has to succeed");
@@ -1074,6 +1075,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
                     cache_ttl: None,
                     mock: None,
                     timeout: None,
+                    priority: None,
                 },
                 FlowModule {
                     id: "b".to_string(),
@@ -1108,6 +1110,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
                             cache_ttl: None,
                             mock: None,
                             timeout: None,
+                            priority: None,
                         }],
                     },
                     stop_after_if: Default::default(),
@@ -1118,6 +1121,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
                     cache_ttl: None,
                     mock: None,
                     timeout: None,
+                    priority: None,
                 },
             ],
             same_worker: false,
@@ -1217,7 +1221,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                     cache_ttl: None,
                     mock: None,
                     timeout: None,
-
+                    priority: None,
                 },
                 FlowModule {
                     id: "b".to_string(),
@@ -1263,6 +1267,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                                 cache_ttl: None,
                                 mock: None,
                                 timeout: None,
+                                priority: None,
                             },
                             FlowModule {
                                 id: "e".to_string(),
@@ -1294,7 +1299,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                                 cache_ttl: None,
                                 mock: None,
                                 timeout: None,
-
+                                priority: None,
                             },
                         ],
                     },
@@ -1306,7 +1311,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                     cache_ttl: None,
                     mock: None,
                     timeout: None,
-
+                    priority: None,
                 },
                 FlowModule {
                     id: "c".to_string(),
@@ -1346,7 +1351,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                     cache_ttl: None,
                     mock: None,
                     timeout: None,
-
+                    priority: None,
                 },
             ],
             same_worker: true,
@@ -2559,6 +2564,7 @@ async fn test_flow_lock_all(db: Pool<Postgres>) {
                     path: "g/all/flow_lock_all".to_owned(),
                     tag: None,
                     ws_error_handler_muted: None,
+                    priority: None,
                 },
                 draft_only: None,
             },
@@ -2647,6 +2653,7 @@ async fn run_deployed_relative_imports(db: &Pool<Postgres>, script_content: Stri
             tag: None,
             schema: std::collections::HashMap::new(),
             ws_error_handler_muted: Some(false),
+            priority: None,
         },
     ).await.unwrap();
 
@@ -2669,6 +2676,7 @@ async fn run_deployed_relative_imports(db: &Pool<Postgres>, script_content: Stri
             cache_ttl: None,
             dedicated_worker: None,
             language,
+            priority: None,
         }).push(&db2).await;
 
 

@@ -315,9 +315,10 @@ pub async fn get_path_tag_limits_cache_for_hash(
     Option<i32>,
     ScriptLang,
     Option<bool>,
+    Option<i16>,
 )> {
     let script = sqlx::query!(
-        "select path, tag, concurrent_limit, concurrency_time_window_s, cache_ttl, language as \"language: ScriptLang\", dedicated_worker from script where hash = $1 AND workspace_id = $2",
+        "select path, tag, concurrent_limit, concurrency_time_window_s, cache_ttl, language as \"language: ScriptLang\", dedicated_worker, priority from script where hash = $1 AND workspace_id = $2",
         hash,
         w_id
     )
@@ -336,6 +337,7 @@ pub async fn get_path_tag_limits_cache_for_hash(
         script.cache_ttl,
         script.language,
         script.dedicated_worker,
+        script.priority,
     ))
 }
 
@@ -352,7 +354,7 @@ async fn get_job_internal(db: &DB, workspace_id: &str, job_id: Uuid) -> error::R
         id, workspace_id, parent_job, created_by, created_at, duration_ms, success, script_hash, script_path, 
         CASE WHEN pg_column_size(args) < 2000000 THEN args ELSE '{\"reason\": \"WINDMILL_TOO_BIG\"}'::jsonb END as args, CASE WHEN pg_column_size(result) < 2000000 THEN result ELSE '\"WINDMILL_TOO_BIG\"'::jsonb END as result, logs, deleted, raw_code, canceled, canceled_by, canceled_reason, job_kind, env_id,
         schedule_path, permissioned_as, flow_status, raw_flow, is_flow_step, language, started_at, is_skipped,
-        raw_lock, email, visible_to_owner, mem_peak, tag 
+        raw_lock, email, visible_to_owner, mem_peak, tag, priority
         FROM completed_job WHERE id = $1 AND workspace_id = $2")
             .bind(job_id)
             .bind(workspace_id)
@@ -367,7 +369,7 @@ async fn get_job_internal(db: &DB, workspace_id: &str, job_id: Uuid) -> error::R
                 script_hash, script_path, CASE WHEN pg_column_size(args) < 2000000 THEN args ELSE '{\"reason\": \"WINDMILL_TOO_BIG\"}'::jsonb END as args, logs, raw_code, canceled, canceled_by, canceled_reason, last_ping, 
                 job_kind, env_id, schedule_path, permissioned_as, flow_status, raw_flow, is_flow_step, language,
                  suspend, suspend_until, same_worker, raw_lock, pre_run_error, email, visible_to_owner, mem_peak, 
-                root_job, leaf_jobs, tag, concurrent_limit, concurrency_time_window_s, timeout, flow_step_id, cache_ttl
+                root_job, leaf_jobs, tag, concurrent_limit, concurrency_time_window_s, timeout, flow_step_id, cache_ttl, priority
                 FROM queue WHERE id = $1 AND workspace_id = $2",
         )
         .bind(job_id)
@@ -441,6 +443,8 @@ pub struct CompletedJob {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mem_peak: Option<i32>,
     pub tag: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<i16>,
 }
 
 impl CompletedJob {
@@ -493,6 +497,8 @@ pub struct ListableCompletedJob {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mem_peak: Option<i32>,
     pub tag: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<i16>,
 }
 
 impl<'a> IntoResponse for CompletedJob {
@@ -646,6 +652,7 @@ struct ListableQueuedJob {
     pub email: String,
     pub suspend: Option<i32>,
     pub tag: String,
+    pub priority: Option<i16>,
 }
 
 async fn list_queue_jobs(
@@ -789,6 +796,7 @@ async fn list_jobs(
                 "tag",
                 "null as concurrent_limit",
                 "null as concurrency_time_window_s",
+                "priority",
             ],
         ))
     } else {
@@ -849,6 +857,7 @@ async fn list_jobs(
                 "tag",
                 "concurrent_limit",
                 "concurrency_time_window_s",
+                "priority",
             ],
         );
 
@@ -1388,6 +1397,7 @@ struct UnifiedJob {
     tag: String,
     concurrent_limit: Option<i32>,
     concurrency_time_window_s: Option<i32>,
+    priority: Option<i16>,
 }
 
 impl<'a> From<UnifiedJob> for Job {
@@ -1424,6 +1434,7 @@ impl<'a> From<UnifiedJob> for Job {
                 visible_to_owner: uj.visible_to_owner,
                 mem_peak: uj.mem_peak,
                 tag: uj.tag,
+                priority: uj.priority,
             }),
             "QueuedJob" => Job::QueuedJob(QueuedJob {
                 workspace_id: uj.workspace_id,
@@ -1465,6 +1476,7 @@ impl<'a> From<UnifiedJob> for Job {
                 timeout: None,
                 flow_step_id: None,
                 cache_ttl: None,
+                priority: uj.priority,
             }),
             t => panic!("job type {} not valid", t),
         }
@@ -1633,6 +1645,7 @@ pub async fn run_flow_by_path(
         tag,
         None,
         None,
+        None,
     )
     .await?;
     tx.commit().await?;
@@ -1678,6 +1691,7 @@ pub async fn run_job_by_path(
         None,
         !run_query.invisible_to_owner.unwrap_or(false),
         tag,
+        None,
         None,
         None,
     )
@@ -1891,6 +1905,7 @@ pub async fn run_wait_result_job_by_path_get(
         tag,
         None,
         None,
+        None,
     )
     .await?;
     tx.commit().await?;
@@ -1995,6 +2010,7 @@ async fn run_wait_result_script_by_path_internal(
         tag,
         None,
         None,
+        None,
     )
     .await?;
     tx.commit().await?;
@@ -2023,6 +2039,7 @@ pub async fn run_wait_result_script_by_hash(
         cache_ttl,
         language,
         dedicated_worker,
+        priority,
     ) = get_path_tag_limits_cache_for_hash(&db, &w_id, hash).await?;
     check_scopes(&authed, || format!("run:script/{path}"))?;
 
@@ -2041,6 +2058,7 @@ pub async fn run_wait_result_script_by_hash(
             cache_ttl,
             language,
             dedicated_worker,
+            priority,
         },
         args,
         &authed.username,
@@ -2056,6 +2074,7 @@ pub async fn run_wait_result_script_by_hash(
         None,
         !run_query.invisible_to_owner.unwrap_or(false),
         tag,
+        None,
         None,
         None,
     )
@@ -2130,6 +2149,7 @@ async fn run_wait_result_flow_by_path_internal(
         tag,
         None,
         None,
+        None,
     )
     .await?;
     tx.commit().await?;
@@ -2188,6 +2208,7 @@ async fn run_preview_job(
         None,
         true,
         preview.tag,
+        None,
         None,
         None,
     )
@@ -2265,6 +2286,7 @@ async fn add_batch_jobs(
                     false,
                     None,
                     true,
+                    None,
                     None,
                     None,
                     None,
@@ -2368,6 +2390,7 @@ async fn run_preview_flow_job(
         raw_flow.tag,
         None,
         None,
+        None,
     )
     .await?;
     tx.commit().await?;
@@ -2395,6 +2418,7 @@ pub async fn run_job_by_hash(
         cache_ttl,
         language,
         dedicated_worker,
+        priority,
     ) = get_path_tag_limits_cache_for_hash(&db, &w_id, hash).await?;
     check_scopes(&authed, || format!("run:script/{path}"))?;
 
@@ -2415,6 +2439,7 @@ pub async fn run_job_by_hash(
             cache_ttl,
             language,
             dedicated_worker,
+            priority,
         },
         args,
         &authed.username,
@@ -2430,6 +2455,7 @@ pub async fn run_job_by_hash(
         None,
         !run_query.invisible_to_owner.unwrap_or(false),
         tag,
+        None,
         None,
         None,
     )
@@ -2647,6 +2673,7 @@ async fn list_completed_jobs(
             "visible_to_owner",
             "mem_peak",
             "tag",
+            "priority",
             "'CompletedJob' as type",
         ],
     )
@@ -2664,7 +2691,7 @@ async fn get_completed_job<'a>(
     let job_o = sqlx::query("SELECT id, workspace_id, parent_job, created_by, created_at, duration_ms, success, script_hash, script_path, 
     CASE WHEN pg_column_size(args) < 2000000 THEN args ELSE '\"WINDMILL_TOO_BIG\"'::jsonb END as args, CASE WHEN pg_column_size(result) < 2000000 THEN result ELSE '\"WINDMILL_TOO_BIG\"'::jsonb END as result, logs, deleted, raw_code, canceled, canceled_by, canceled_reason, job_kind, env_id,
     schedule_path, permissioned_as, flow_status, raw_flow, is_flow_step, language, started_at, is_skipped,
-    raw_lock, email, visible_to_owner, mem_peak, tag FROM completed_job WHERE id = $1 AND workspace_id = $2")
+    raw_lock, email, visible_to_owner, mem_peak, tag, priority FROM completed_job WHERE id = $1 AND workspace_id = $2")
         .bind(id)
         .bind(w_id)
         .fetch_optional(&db)
