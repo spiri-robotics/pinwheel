@@ -15,6 +15,7 @@ use windmill_common::{
     jobs::QueuedJob,
     utils::calculate_hash,
     worker::WORKER_CONFIG,
+    DB,
 };
 
 lazy_static::lazy_static! {
@@ -171,168 +172,38 @@ pub async fn handle_python_job(
     base_internal_url: &str,
     envs: HashMap<String, String>,
 ) -> windmill_common::error::Result<Box<RawValue>> {
-    create_dependencies_dir(job_dir).await;
+    let script_path = job.script_path();
+    let additional_python_paths = handle_python_deps(
+        job_dir,
+        requirements_o,
+        inner_content,
+        &job.workspace_id,
+        script_path,
+        &job.id,
+        db,
+        worker_name,
+        worker_dir,
+        logs,
+        mem_peak,
+    )
+    .await?;
 
-    let mut additional_python_paths: Vec<String> = WORKER_CONFIG
-        .read()
-        .await
-        .additional_python_paths
-        .clone()
-        .unwrap_or_else(|| vec![])
-        .clone();
-
-    let requirements = match requirements_o {
-        Some(r) => r,
-        None => {
-            let requirements = windmill_parser_py_imports::parse_python_imports(
-                &inner_content,
-                &job.workspace_id,
-                &job.script_path(),
-                &db,
-            )
-            .await?
-            .join("\n");
-            if requirements.is_empty() {
-                "".to_string()
-            } else {
-                pip_compile(
-                    &job.id,
-                    &requirements,
-                    logs,
-                    mem_peak,
-                    job_dir,
-                    db,
-                    worker_name,
-                    &job.workspace_id,
-                )
-                .await
-                .map_err(|e| {
-                    Error::ExecutionErr(format!("pip compile failed: {}", e.to_string()))
-                })?
-            }
-        }
-    };
-
-    if requirements.len() > 0 {
-        additional_python_paths = handle_python_reqs(
-            requirements
-                .split("\n")
-                .filter(|x| !x.starts_with("--"))
-                .collect(),
-            &job.id,
-            &job.workspace_id,
-            logs,
-            mem_peak,
-            db,
-            worker_name,
-            job_dir,
-            worker_dir,
-        )
-        .await?;
-    }
     logs.push_str("\n\n--- PYTHON CODE EXECUTION ---\n");
     set_logs(logs, &job.id, db).await;
 
-    let relative_imports = RELATIVE_IMPORT_REGEX.is_match(&inner_content);
+    let (
+        import_loader,
+        import_base64,
+        import_datetime,
+        module_dir_dot,
+        dirs,
+        last,
+        transforms,
+        spread,
+    ) = prepare_wrapper(job_dir, inner_content, script_path).await?;
 
-    let script_path_splitted = &job.script_path().split("/");
-    let dirs_full = script_path_splitted
-        .clone()
-        .take(script_path_splitted.clone().count() - 1)
-        .join("/")
-        .replace("-", "_")
-        .replace("@", ".");
-    let dirs = if dirs_full.len() > 0 {
-        dirs_full
-            .strip_prefix("/")
-            .unwrap_or(&dirs_full)
-            .to_string()
-    } else {
-        "tmp".to_string()
-    };
-    let last = script_path_splitted
-        .clone()
-        .last()
-        .unwrap()
-        .replace("-", "_")
-        .replace(" ", "_")
-        .to_lowercase();
-    let module_dir = format!("{}/{}", job_dir, dirs);
-    tokio::fs::create_dir_all(format!("{module_dir}/")).await?;
-    let _ = write_file(&module_dir, &format!("{last}.py"), inner_content).await?;
-    if relative_imports {
-        let _ = write_file(&job_dir, "loader.py", RELATIVE_PYTHON_LOADER).await?;
-    }
-
-    let sig = windmill_parser_py::parse_python_signature(inner_content)?;
-    let transforms = sig
-        .args
-        .iter()
-        .map(|x| match x.typ {
-            windmill_parser::Typ::Bytes => {
-                let name = &x.name;
-                format!(
-                    "if \"{name}\" in kwargs and kwargs[\"{name}\"] is not None:\n    \
-                                     kwargs[\"{name}\"] = base64.b64decode(kwargs[\"{name}\"])\n",
-                )
-            }
-            windmill_parser::Typ::Datetime => {
-                let name = &x.name;
-                format!(
-                    "if \"{name}\" in kwargs and kwargs[\"{name}\"] is not None:\n    \
-                                     kwargs[\"{name}\"] = datetime.fromisoformat(kwargs[\"{name}\"])\n",
-                )
-            }
-            _ => "".to_string(),
-        })
-        .collect::<Vec<String>>()
-        .join("");
     create_args_and_out_file(&client, job, job_dir, db).await?;
 
-    let import_loader = if relative_imports {
-        "import loader"
-    } else {
-        ""
-    };
-    let import_base64 = if sig
-        .args
-        .iter()
-        .any(|x| x.typ == windmill_parser::Typ::Bytes)
-    {
-        "import base64"
-    } else {
-        ""
-    };
-    let import_datetime = if sig
-        .args
-        .iter()
-        .any(|x| x.typ == windmill_parser::Typ::Datetime)
-    {
-        "from datetime import datetime"
-    } else {
-        ""
-    };
-    let spread = if sig.star_kwargs {
-        "args = kwargs".to_string()
-    } else {
-        sig.args
-            .into_iter()
-            .map(|x| {
-                let name = &x.name;
-                if x.default.is_none() {
-                    format!("args[\"{name}\"] = kwargs.get(\"{name}\")")
-                } else {
-                    format!(
-                        r#"args["{name}"] = kwargs.get("{name}")
-if args["{name}"] is None:
-    del args["{name}"]"#
-                    )
-                }
-            })
-            .join("\n")
-    };
-
-    let module_dir_dot = dirs.replace("/", ".").replace("-", "_");
     let wrapper_content: String = format!(
         r#"
 import json
@@ -390,6 +261,7 @@ except Exception as e:
     let client = client.get_authed().await;
     let mut reserved_variables = get_reserved_variables(job, &client.token, db).await?;
     let additional_python_paths_folders = additional_python_paths.iter().join(":");
+
     if !*DISABLE_NSJAIL {
         let shared_deps = additional_python_paths
             .into_iter()
@@ -442,6 +314,7 @@ mount {{
             .env("PATH", PATH_ENV.as_str())
             .env("TZ", TZ_ENV.as_str())
             .env("BASE_INTERNAL_URL", base_internal_url)
+            .env("BASE_URL", base_internal_url)
             .args(vec![
                 "--config",
                 "run.config.proto",
@@ -485,6 +358,207 @@ mount {{
     )
     .await?;
     read_result(job_dir).await
+}
+
+async fn prepare_wrapper(
+    job_dir: &str,
+    inner_content: &str,
+    script_path: &str,
+) -> error::Result<(
+    &'static str,
+    &'static str,
+    &'static str,
+    String,
+    String,
+    String,
+    String,
+    String,
+)> {
+    let relative_imports = RELATIVE_IMPORT_REGEX.is_match(&inner_content);
+
+    let script_path_splitted = script_path.split("/");
+    let dirs_full = script_path_splitted
+        .clone()
+        .take(script_path_splitted.clone().count() - 1)
+        .join("/")
+        .replace("-", "_")
+        .replace("@", ".");
+    let dirs = if dirs_full.len() > 0 {
+        dirs_full
+            .strip_prefix("/")
+            .unwrap_or(&dirs_full)
+            .to_string()
+    } else {
+        "tmp".to_string()
+    };
+    let last = script_path_splitted
+        .clone()
+        .last()
+        .unwrap()
+        .replace("-", "_")
+        .replace(" ", "_")
+        .to_lowercase();
+    let module_dir = format!("{}/{}", job_dir, dirs);
+    tokio::fs::create_dir_all(format!("{module_dir}/")).await?;
+    let _ = write_file(&module_dir, &format!("{last}.py"), inner_content).await?;
+    if relative_imports {
+        let _ = write_file(job_dir, "loader.py", RELATIVE_PYTHON_LOADER).await?;
+    }
+
+    let sig = windmill_parser_py::parse_python_signature(inner_content)?;
+    let transforms = sig
+        .args
+        .iter()
+        .map(|x| match x.typ {
+            windmill_parser::Typ::Bytes => {
+                let name = &x.name;
+                format!(
+                    "if \"{name}\" in kwargs and kwargs[\"{name}\"] is not None:\n    \
+                                     kwargs[\"{name}\"] = base64.b64decode(kwargs[\"{name}\"])\n",
+                )
+            }
+            windmill_parser::Typ::Datetime => {
+                let name = &x.name;
+                format!(
+                    "if \"{name}\" in kwargs and kwargs[\"{name}\"] is not None:\n    \
+                                     kwargs[\"{name}\"] = datetime.fromisoformat(kwargs[\"{name}\"])\n",
+                )
+            }
+            _ => "".to_string(),
+        })
+        .collect::<Vec<String>>()
+        .join("");
+
+    let import_loader = if relative_imports {
+        "import loader"
+    } else {
+        ""
+    };
+    let import_base64 = if sig
+        .args
+        .iter()
+        .any(|x| x.typ == windmill_parser::Typ::Bytes)
+    {
+        "import base64"
+    } else {
+        ""
+    };
+    let import_datetime = if sig
+        .args
+        .iter()
+        .any(|x| x.typ == windmill_parser::Typ::Datetime)
+    {
+        "from datetime import datetime"
+    } else {
+        ""
+    };
+    let spread = if sig.star_kwargs {
+        "args = kwargs".to_string()
+    } else {
+        sig.args
+            .into_iter()
+            .map(|x| {
+                let name = &x.name;
+                if x.default.is_none() {
+                    format!("args[\"{name}\"] = kwargs.get(\"{name}\")")
+                } else {
+                    format!(
+                        r#"args["{name}"] = kwargs.get("{name}")
+if args["{name}"] is None:
+    del args["{name}"]"#
+                    )
+                }
+            })
+            .join("\n")
+    };
+
+    let module_dir_dot = dirs.replace("/", ".").replace("-", "_");
+
+    Ok((
+        import_loader,
+        import_base64,
+        import_datetime,
+        module_dir_dot,
+        dirs,
+        last,
+        transforms,
+        spread,
+    ))
+}
+
+async fn handle_python_deps(
+    job_dir: &str,
+    requirements_o: Option<String>,
+    inner_content: &str,
+    w_id: &str,
+    script_path: &str,
+    job_id: &Uuid,
+    db: &DB,
+    worker_name: &str,
+    worker_dir: &str,
+    logs: &mut String,
+    mem_peak: &mut i32,
+) -> error::Result<Vec<String>> {
+    create_dependencies_dir(job_dir).await;
+
+    let mut additional_python_paths: Vec<String> = WORKER_CONFIG
+        .read()
+        .await
+        .additional_python_paths
+        .clone()
+        .unwrap_or_else(|| vec![])
+        .clone();
+
+    let requirements = match requirements_o {
+        Some(r) => r,
+        None => {
+            let requirements = windmill_parser_py_imports::parse_python_imports(
+                inner_content,
+                w_id,
+                script_path,
+                db,
+            )
+            .await?
+            .join("\n");
+            if requirements.is_empty() {
+                "".to_string()
+            } else {
+                pip_compile(
+                    job_id,
+                    &requirements,
+                    logs,
+                    mem_peak,
+                    job_dir,
+                    db,
+                    worker_name,
+                    w_id,
+                )
+                .await
+                .map_err(|e| {
+                    Error::ExecutionErr(format!("pip compile failed: {}", e.to_string()))
+                })?
+            }
+        }
+    };
+
+    if requirements.len() > 0 {
+        additional_python_paths = handle_python_reqs(
+            requirements
+                .split("\n")
+                .filter(|x| !x.starts_with("--"))
+                .collect(),
+            job_id,
+            w_id,
+            logs,
+            mem_peak,
+            db,
+            worker_name,
+            job_dir,
+            worker_dir,
+        )
+        .await?;
+    }
+    Ok(additional_python_paths)
 }
 
 pub async fn handle_python_reqs(
@@ -656,3 +730,6 @@ pub async fn handle_python_reqs(
     }
     Ok(req_paths)
 }
+
+
+

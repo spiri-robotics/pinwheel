@@ -30,7 +30,9 @@ use windmill_common::{
     scripts::{get_full_hub_script_by_path, ScriptHash, ScriptLang},
     users::SUPERADMIN_SECRET_EMAIL,
     utils::{rd_string, StripPath},
-    worker::{to_raw_value, to_raw_value_owned, update_ping, CLOUD_HOSTED, WORKER_CONFIG},
+    worker::{
+        to_raw_value, to_raw_value_owned, update_ping, CLOUD_HOSTED, WORKER_CONFIG, WORKER_GROUP,
+    },
     DB, IS_READY, METRICS_ENABLED,
 };
 use windmill_queue::{
@@ -55,7 +57,6 @@ use futures::future::FutureExt;
 use async_recursion::async_recursion;
 
 use rand::Rng;
-
 
 
 use windmill_queue::{add_completed_job, add_completed_job_error};
@@ -839,7 +840,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     let vacuum_shift = rand::thread_rng().gen_range(0..VACUUM_PERIOD);
 
     IS_READY.store(true, Ordering::Relaxed);
-    tracing::info!(worker = %worker_name, "listening for jobs, config: {:?}", WORKER_CONFIG.read().await);
+    tracing::info!(worker = %worker_name, "listening for jobs, WORKER_GROUP: {}, config: {:?}", *WORKER_GROUP, WORKER_CONFIG.read().await);
 
     let (dedicated_worker_tx, dedicated_worker_handle) = if let Some(_wp) =
         WORKER_CONFIG.read().await.dedicated_worker.clone()
