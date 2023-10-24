@@ -20,7 +20,7 @@ use sqlx::query;
 
 
 
-use windmill_common::worker::WORKER_CONFIG;
+use windmill_common::worker::{WORKER_CONFIG, PriorityTags};
 use windmill_common::{
     flow_status::{FlowStatus, FlowStatusModule},
     flows::{FlowModule, FlowModuleValue, FlowValue, InputTransform},
@@ -973,6 +973,7 @@ fn spawn_test_worker(
         {
         let mut wc = WORKER_CONFIG.write().await;
         (*wc).worker_tags = windmill_common::worker::DEFAULT_TAGS.clone();
+        (*wc).priority_tags_sorted = vec![PriorityTags { priority: 0, tags: (*wc).worker_tags.clone()} ]
         }
         windmill_worker::run_worker::<rsmq_async::MultiplexedRsmq>(
             &db,
