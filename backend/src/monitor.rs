@@ -414,7 +414,7 @@ pub async fn monitor_db<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
 ) {
     let zombie_jobs_f = async {
         if server_mode {
-            handle_zombie_jobs(db, base_internal_url, rsmq.clone()).await;
+            handle_zombie_jobs(db, base_internal_url, rsmq.clone(), "server").await;
         }
     };
     let expired_items_f = async {
@@ -588,6 +588,7 @@ async fn handle_zombie_jobs<R: rsmq_async::RsmqConnection + Send + Sync + Clone>
     db: &Pool<Postgres>,
     base_internal_url: &str,
     rsmq: Option<R>,
+    worker_name: &str,
 ) {
     if *RESTART_ZOMBIE_JOBS {
         let restarted = sqlx::query!(
@@ -668,11 +669,11 @@ async fn handle_zombie_jobs<R: rsmq_async::RsmqConnection + Send + Sync + Clone>
                     .unwrap_or_else(|| "no ping".to_string()),
                 *ZOMBIE_JOB_TIMEOUT
             )),
-            None,
             true,
             same_worker_tx_never_used,
             "",
             rsmq.clone(),
+            worker_name,
         )
         .await;
     }
