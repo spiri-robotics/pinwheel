@@ -7,6 +7,7 @@
  */
 
 use crate::db::ApiAuthed;
+use crate::embeddings::load_embeddings_db;
 use crate::oauth2::AllClients;
 use crate::saml::{SamlSsoLogin, ServiceProviderExt};
 use crate::scim::has_scim_token;
@@ -161,6 +162,8 @@ pub async fn run_server(
 
     let sp_extension = (ServiceProviderExt(), SamlSsoLogin(None));
 
+    let embeddings_db = load_embeddings_db(&db);
+
     // build our application with a route
     let app = Router::new()
         .nest(
@@ -192,7 +195,11 @@ pub async fn run_server(
                         )
                         .nest("/variables", variables::workspaced_service())
                         .nest("/workspaces", workspaces::workspaced_service())
-                        .nest("/openai", openai::workspaced_service()),
+                        .nest("/openai", openai::workspaced_service())
+                        .nest(
+                            "/embeddings",
+                            embeddings::workspaced_service(embeddings_db.clone()),
+                        ),
                 )
                 .nest("/workspaces", workspaces::global_service())
                 .nest(
@@ -208,7 +215,10 @@ pub async fn run_server(
                 .nest("/flows", flows::global_service())
                 .nest("/apps", apps::global_service().layer(cors.clone()))
                 .nest("/schedules", schedule::global_service())
-                .nest("/embeddings", embeddings::global_service(&db))
+                .nest(
+                    "/embeddings",
+                    embeddings::global_service(embeddings_db.clone()),
+                )
                 .route_layer(from_extractor::<ApiAuthed>())
                 .route_layer(from_extractor::<users::Tokened>())
                 .nest("/jobs", jobs::global_root_service())
