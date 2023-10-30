@@ -270,7 +270,7 @@ mod suspend_resume {
         let server = ApiServer::start(db.clone()).await;
         let port = server.addr.port();
 
-        let flow = RunJob::from(JobPayload::RawFlow { value: flow(), path: None })
+        let flow = RunJob::from(JobPayload::RawFlow { value: flow(), path: None, restarted_from: None })
             .arg("n", json!(1))
             .arg("port", json!(port))
             .push(&db)
@@ -351,7 +351,7 @@ mod suspend_resume {
         let server = ApiServer::start(db.clone()).await;
         let port = server.addr.port();
 
-        let result = RunJob::from(JobPayload::RawFlow { value: flow(), path: None })
+        let result = RunJob::from(JobPayload::RawFlow { value: flow(), path: None, restarted_from: None })
             .arg("n", json!(1))
             .arg("op", json!("cancel"))
             .arg("port", json!(port))
@@ -375,7 +375,7 @@ mod suspend_resume {
         let server = ApiServer::start(db.clone()).await;
         let port = server.addr.port();
 
-        let flow = RunJob::from(JobPayload::RawFlow { value: flow(), path: None })
+        let flow = RunJob::from(JobPayload::RawFlow { value: flow(), path: None, restarted_from: None })
             .arg("n", json!(1))
             .arg("port", json!(port))
             .push(&db)
@@ -570,7 +570,7 @@ def main(last, port):
         .into_iter()
         .unzip::<_, _, Vec<_>, Vec<_>>();
         let server = Server::start(responses).await;
-        let result = RunJob::from(JobPayload::RawFlow { value: flow_forloop_retry(), path: None })
+        let result = RunJob::from(JobPayload::RawFlow { value: flow_forloop_retry(), path: None, restarted_from: None })
             .arg("items", json!(["unused", "unused", "unused"]))
             .arg("port", json!(server.addr.port()))
             .run_until_complete(&db, server.addr.port())
@@ -599,7 +599,7 @@ def main(last, port):
         .into_iter()
         .unzip::<_, _, Vec<_>, Vec<_>>();
         let server = Server::start(responses).await;
-        let result = RunJob::from(JobPayload::RawFlow { value: flow_forloop_retry(), path: None })
+        let result = RunJob::from(JobPayload::RawFlow { value: flow_forloop_retry(), path: None, restarted_from: None })
             .arg("items", json!(["unused", "unused", "unused"]))
             .arg("port", json!(server.addr.port()))
             .run_until_complete(&db, server.addr.port())
@@ -640,7 +640,7 @@ def main(last, port):
         .into_iter()
         .unzip::<_, _, Vec<_>, Vec<_>>();
         let server = Server::start(responses).await;
-        let job = RunJob::from(JobPayload::RawFlow { value: flow_forloop_retry(), path: None })
+        let job = RunJob::from(JobPayload::RawFlow { value: flow_forloop_retry(), path: None, restarted_from: None })
             .arg("items", json!(["unused", "unused", "unused"]))
             .arg("port", json!(server.addr.port()))
             .run_until_complete(&db, server.addr.port())
@@ -706,7 +706,7 @@ def main(error, port):
         .into_iter()
         .unzip::<_, _, Vec<_>, Vec<_>>();
         let server = Server::start(responses).await;
-        let cjob = RunJob::from(JobPayload::RawFlow { value, path: None })
+        let cjob = RunJob::from(JobPayload::RawFlow { value, path: None, restarted_from: None })
             .arg("port", json!(server.addr.port()))
             .run_until_complete(&db, server.addr.port())
             .await;
@@ -764,7 +764,7 @@ async fn test_iteration(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None })
+    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None, restarted_from: None })
         .arg("items", json!([]))
         .run_until_complete(&db, server.addr.port())
         .await
@@ -773,7 +773,7 @@ async fn test_iteration(db: Pool<Postgres>) {
     assert_eq!(result, serde_json::json!([]));
 
     /* Don't actually test that this does 257 jobs or that will take forever. */
-    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None })
+    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None, restarted_from: None })
         .arg("items", json!((0..257).collect::<Vec<_>>()))
         .run_until_complete(&db, server.addr.port())
         .await
@@ -821,7 +821,7 @@ async fn test_iteration_parallel(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None })
+    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None, restarted_from: None })
         .arg("items", json!([]))
         .run_until_complete(&db, server.addr.port())
         .await
@@ -830,7 +830,7 @@ async fn test_iteration_parallel(db: Pool<Postgres>) {
     assert_eq!(result, serde_json::json!([]));
 
     /* Don't actually test that this does 257 jobs or that will take forever. */
-    let job = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None })
+    let job = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None, restarted_from: None })
         .arg("items", json!((0..50).collect::<Vec<_>>()))
         .run_until_complete(&db, server.addr.port())
         .await;
@@ -1130,7 +1130,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
         }
     };
 
-    let job = JobPayload::RawFlow { value: flow, path: None };
+    let job = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let port = server.addr.port();
 
     for i in 0..50 {
@@ -1170,7 +1170,7 @@ async fn test_identity(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None })
+    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None, restarted_from: None })
         .run_until_complete(&db, server.addr.port())
         .await
         .json_result()
@@ -1359,7 +1359,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
             ..Default::default()
         };
 
-    let job = JobPayload::RawFlow { value: flow, path: None };
+    let job = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
 
     let result = run_job_in_new_worker_until_complete(&db, job.clone(), server.addr.port())
         .await
@@ -1415,7 +1415,7 @@ async fn test_flow_result_by_id(db: Pool<Postgres>) {
         }))
         .unwrap();
 
-    let job = JobPayload::RawFlow { value: flow, path: None };
+    let job = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let result = run_job_in_new_worker_until_complete(&db, job.clone(), port)
         .await
         .json_result()
@@ -1457,7 +1457,7 @@ async fn test_stop_after_if(db: Pool<Postgres>) {
         ],
     }))
     .unwrap();
-    let job = JobPayload::RawFlow { value: flow, path: None };
+    let job = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
 
     let result = RunJob::from(job.clone())
         .arg("n", json!(123))
@@ -1515,7 +1515,7 @@ async fn test_stop_after_if_nested(db: Pool<Postgres>) {
         ],
     }))
     .unwrap();
-    let job = JobPayload::RawFlow { value: flow, path: None };
+    let job = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
 
     let result = RunJob::from(job.clone())
         .arg("n", json!(123))
@@ -1580,7 +1580,7 @@ async fn test_python_flow(db: Pool<Postgres>) {
         println!("python flow iteration: {}", i);
         let result = run_job_in_new_worker_until_complete(
             &db,
-            JobPayload::RawFlow { value: flow.clone(), path: None },
+            JobPayload::RawFlow { value: flow.clone(), path: None, restarted_from: None },
             port,
         )
         .await
@@ -1615,7 +1615,7 @@ async fn test_python_flow_2(db: Pool<Postgres>) {
         println!("python flow iteration: {}", i);
         let result = run_job_in_new_worker_until_complete(
             &db,
-            JobPayload::RawFlow { value: flow.clone(), path: None },
+            JobPayload::RawFlow { value: flow.clone(), path: None, restarted_from: None },
             port,
         )
         .await
@@ -1831,7 +1831,7 @@ async fn test_empty_loop(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let flow = JobPayload::RawFlow { value: flow, path: None };
+    let flow = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let result = run_job_in_new_worker_until_complete(&db, flow, port)
         .await
         .json_result()
@@ -1870,7 +1870,7 @@ async fn test_invalid_first_step(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let flow = JobPayload::RawFlow { value: flow, path: None };
+    let flow = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let job = run_job_in_new_worker_until_complete(&db, flow, port).await;
 
     assert_eq!(
@@ -1912,7 +1912,7 @@ async fn test_empty_loop_2(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let flow = JobPayload::RawFlow { value: flow, path: None };
+    let flow = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let result = run_job_in_new_worker_until_complete(&db, flow, port)
         .await
         .json_result()
@@ -1967,7 +1967,7 @@ async fn test_step_after_loop(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let flow = JobPayload::RawFlow { value: flow, path: None };
+    let flow = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let result = run_job_in_new_worker_until_complete(&db, flow, port)
         .await
         .json_result()
@@ -2035,7 +2035,7 @@ async fn test_branchone_simple(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let flow = JobPayload::RawFlow { value: flow, path: None };
+    let flow = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let result = run_job_in_new_worker_until_complete(&db, flow, port)
         .await
         .json_result()
@@ -2071,7 +2071,7 @@ async fn test_branchone_with_cond(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let flow = JobPayload::RawFlow { value: flow, path: None };
+    let flow = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let result = run_job_in_new_worker_until_complete(&db, flow, port)
         .await
         .json_result()
@@ -2109,7 +2109,7 @@ async fn test_branchall_sequential(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let flow = JobPayload::RawFlow { value: flow, path: None };
+    let flow = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let result = run_job_in_new_worker_until_complete(&db, flow, port)
         .await
         .json_result()
@@ -2146,7 +2146,7 @@ async fn test_branchall_simple(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let flow = JobPayload::RawFlow { value: flow, path: None };
+    let flow = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let result = run_job_in_new_worker_until_complete(&db, flow, port)
         .await
         .json_result()
@@ -2193,7 +2193,7 @@ async fn test_branchall_skip_failure(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let flow = JobPayload::RawFlow { value: flow, path: None };
+    let flow = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let result = run_job_in_new_worker_until_complete(&db, flow, port)
         .await
         .json_result()
@@ -2230,7 +2230,7 @@ async fn test_branchall_skip_failure(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let flow = JobPayload::RawFlow { value: flow, path: None };
+    let flow = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let result = run_job_in_new_worker_until_complete(&db, flow, port)
         .await
         .json_result()
@@ -2294,7 +2294,7 @@ async fn test_branchone_nested(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let flow = JobPayload::RawFlow { value: flow, path: None };
+    let flow = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let result = run_job_in_new_worker_until_complete(&db, flow, port)
         .await
         .json_result()
@@ -2351,7 +2351,7 @@ async fn test_branchall_nested(db: Pool<Postgres>) {
     }))
     .unwrap();
 
-    let flow = JobPayload::RawFlow { value: flow, path: None };
+    let flow = JobPayload::RawFlow { value: flow, path: None, restarted_from: None };
     let result = run_job_in_new_worker_until_complete(&db, flow, port)
         .await
         .json_result()
@@ -2415,7 +2415,7 @@ async fn test_failure_module(db: Pool<Postgres>) {
         }))
         .unwrap();
 
-    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None })
+    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None, restarted_from: None })
         .arg("n", json!(0))
         .run_until_complete(&db, port)
         .await
@@ -2431,7 +2431,7 @@ async fn test_failure_module(db: Pool<Postgres>) {
         .unwrap()
         .contains("[]"));
 
-    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None })
+    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None, restarted_from: None })
         .arg("n", json!(1))
         .run_until_complete(&db, port)
         .await
@@ -2447,7 +2447,7 @@ async fn test_failure_module(db: Pool<Postgres>) {
         .unwrap()
         .contains("[0]"));
 
-    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None })
+    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None, restarted_from: None })
         .arg("n", json!(2))
         .run_until_complete(&db, port)
         .await
@@ -2463,7 +2463,7 @@ async fn test_failure_module(db: Pool<Postgres>) {
         .unwrap()
         .contains("[0,1]"));
 
-    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None })
+    let result = RunJob::from(JobPayload::RawFlow { value: flow.clone(), path: None, restarted_from: None })
         .arg("n", json!(3))
         .run_until_complete(&db, port)
         .await
