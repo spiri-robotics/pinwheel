@@ -126,6 +126,7 @@ impl ApiServer {
             addr,
             rx,
             port_tx,
+            false,
         ));
 
         _port_rx.await.unwrap();
