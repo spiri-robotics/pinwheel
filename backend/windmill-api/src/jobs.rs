@@ -65,7 +65,11 @@ pub fn workspaced_service() -> Router {
                 .layer(cors.clone()),
         )
         .route(
-            "/restart/f/:job_id/from/*step_id",
+            "/restart/f/:job_id/from/:step_id",
+            post(restart_flow).head(|| async { "" }).layer(cors.clone()),
+        )
+        .route(
+            "/restart/f/:job_id/from/:step_id/:branch_of_iteration_n",
             post(restart_flow).head(|| async { "" }).layer(cors.clone()),
         )
         .route(
@@ -1600,7 +1604,12 @@ pub async fn restart_flow(
     Extension(db): Extension<DB>,
     Extension(user_db): Extension<UserDB>,
     Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
-    Path((w_id, job_id, step_id)): Path<(String, Uuid, String)>,
+    Path((w_id, job_id, step_id, branch_or_iteration_n)): Path<(
+        String,
+        Uuid,
+        String,
+        Option<usize>,
+    )>,
     Query(run_query): Query<RunJobQuery>,
 ) -> error::Result<(StatusCode, String)> {
     {
@@ -1635,7 +1644,11 @@ pub async fn restart_flow(
         &db,
         tx,
         &w_id,
-        JobPayload::RestartedFlow { completed_job_id: job_id, step_id: step_id },
+        JobPayload::RestartedFlow {
+            completed_job_id: job_id,
+            step_id: step_id,
+            branch_or_iteration_n: branch_or_iteration_n,
+        },
         push_args,
         &authed.username,
         &authed.email,
