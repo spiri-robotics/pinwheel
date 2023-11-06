@@ -5,6 +5,7 @@ use itertools::Itertools;
 use regex::Regex;
 use serde_json::value::RawValue;
 use uuid::Uuid;
+use windmill_queue::CanceledBy;
 
 
 use crate::{
@@ -47,6 +48,7 @@ lazy_static::lazy_static! {
 pub async fn gen_lockfile(
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     job_id: &Uuid,
     w_id: &str,
     db: &sqlx::Pool<sqlx::Postgres>,
@@ -94,6 +96,7 @@ pub async fn gen_lockfile(
         db,
         logs,
         mem_peak,
+        canceled_by,
         child_process,
         false,
         worker_name,
@@ -138,6 +141,7 @@ pub async fn gen_lockfile(
     install_lockfile(
         logs,
         mem_peak,
+        canceled_by,
         job_id,
         w_id,
         db,
@@ -174,6 +178,7 @@ pub async fn gen_lockfile(
 pub async fn install_lockfile(
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     job_id: &Uuid,
     w_id: &str,
     db: &sqlx::Pool<sqlx::Postgres>,
@@ -196,6 +201,7 @@ pub async fn install_lockfile(
         db,
         logs,
         mem_peak,
+        canceled_by,
         child_process,
         false,
         worker_name,
@@ -230,6 +236,7 @@ pub async fn handle_bun_job(
     requirements_o: Option<String>,
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     job: &QueuedJob,
     db: &sqlx::Pool<sqlx::Postgres>,
     client: &AuthedClientBackgroundTask,
@@ -273,6 +280,7 @@ pub async fn handle_bun_job(
             install_lockfile(
                 logs,
                 mem_peak,
+                canceled_by,
                 &job.id,
                 &job.workspace_id,
                 db,
@@ -296,6 +304,7 @@ pub async fn handle_bun_job(
             let _ = gen_lockfile(
                 logs,
                 mem_peak,
+                canceled_by,
                 &job.id,
                 &job.workspace_id,
                 db,
@@ -483,6 +492,7 @@ plugin(p)
         db,
         logs,
         mem_peak,
+        canceled_by,
         child,
         false,
         worker_name,

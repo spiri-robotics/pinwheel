@@ -41,8 +41,8 @@ use windmill_common::{
     DB, IS_READY, METRICS_DEBUG_ENABLED, METRICS_ENABLED,
 };
 use windmill_queue::{
-    canceled_job_to_result, empty_args, get_queued_job, pull, push, register_metric, PushArgs,
-    PushIsolationLevel, WrappedError, HTTP_CLIENT,
+    canceled_job_to_result, empty_args, get_queued_job, pull, push, register_metric, CanceledBy,
+    PushArgs, PushIsolationLevel, WrappedError, HTTP_CLIENT,
 };
 
 use serde_json::{json, value::RawValue, Value};
@@ -466,6 +466,7 @@ async fn handle_receive_completed_job<
     };
     let job = jc.job.clone();
     let mem_peak = jc.mem_peak.clone();
+    let canceled_by = jc.canceled_by.clone();
     if let Err(err) = process_completed_job(
         jc,
         &client,
@@ -484,6 +485,7 @@ async fn handle_receive_completed_job<
             &client,
             job.as_ref(),
             mem_peak,
+            canceled_by,
             err,
             false,
             same_worker_tx.clone(),
@@ -1287,6 +1289,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                             mem_peak: 0,
                             cached_res_path: None,
                             token: "".to_string(),
+                            canceled_by: None,
                         })
                         .await
                         .expect("send job completed");
@@ -1407,6 +1410,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                             &authed_client.get_authed().await,
                             arc_job.as_ref(),
                             0,
+                            None,
                             err,
                             false,
                             same_worker_tx.clone(),
@@ -1574,7 +1578,16 @@ async fn queue_init_bash_maybe<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
 // ) -> error::Result<()> {
 
 pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
-    JobCompleted { job, result, logs, mem_peak, success, cached_res_path, .. }: JobCompleted,
+    JobCompleted {
+        job,
+        result,
+        logs,
+        mem_peak,
+        success,
+        cached_res_path,
+        canceled_by,
+        ..
+    }: JobCompleted,
     client: &AuthedClient,
     db: &DB,
     worker_dir: &str,
@@ -1601,6 +1614,7 @@ pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync +
             Json(&result),
             logs,
             mem_peak.to_owned(),
+            canceled_by,
             rsmq.clone(),
         )
         .await?;
@@ -1636,6 +1650,7 @@ pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync +
             &job,
             logs.to_string(),
             mem_peak.to_owned(),
+            canceled_by,
             serde_json::from_str(result.get()).unwrap_or_else(
                 |_| json!({ "message": format!("Non serializable error: {}", result.get()) }),
             ),
@@ -1707,6 +1722,7 @@ pub async fn handle_job_error<R: rsmq_async::RsmqConnection + Send + Sync + Clon
     client: &AuthedClient,
     job: &QueuedJob,
     mem_peak: i32,
+    canceled_by: Option<CanceledBy>,
     err: Error,
     unrecoverable: bool,
     same_worker_tx: Sender<Uuid>,
@@ -1726,6 +1742,7 @@ pub async fn handle_job_error<R: rsmq_async::RsmqConnection + Send + Sync + Clon
             job,
             format!("Unexpected error during job execution:\n{err:#?}"),
             mem_peak,
+            canceled_by.clone(),
             err.clone(),
             rsmq_2,
             worker_name,
@@ -1774,6 +1791,7 @@ pub async fn handle_job_error<R: rsmq_async::RsmqConnection + Send + Sync + Clon
                             &parent_job,
                             format!("Unexpected error during flow job error handling:\n{err}"),
                             mem_peak,
+                            canceled_by.clone(),
                             e,
                             rsmq,
                             worker_name,
@@ -1809,6 +1827,7 @@ pub struct JobCompleted {
     pub success: bool,
     pub cached_res_path: Option<String>,
     pub token: String,
+    pub canceled_by: Option<CanceledBy>,
 }
 
 pub async fn get_content(job: &QueuedJob, db: &Pool<Postgres>) -> Result<String, Error> {
@@ -1960,6 +1979,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
                         result,
                         logs,
                         mem_peak: 0,
+                        canceled_by: None,
                         success: true,
                         cached_res_path: None,
                         token: authed_client.token,
@@ -1990,6 +2010,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
         _ => {
             let mut logs = "".to_string();
             let mut mem_peak: i32 = 0;
+            let mut canceled_by: Option<CanceledBy> = None;
             // println!("handle queue {:?}",  SystemTime::now());
             if let Some(log_str) = &job.logs {
                 logs.push_str(&log_str);
@@ -2021,6 +2042,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
                         &job,
                         &mut logs,
                         &mut mem_peak,
+                        &mut canceled_by,
                         job_dir,
                         db,
                         worker_name,
@@ -2034,6 +2056,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
                     &job,
                     &mut logs,
                     &mut mem_peak,
+                    &mut canceled_by,
                     job_dir,
                     db,
                     worker_name,
@@ -2047,6 +2070,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
                     &job,
                     &mut logs,
                     &mut mem_peak,
+                    &mut canceled_by,
                     job_dir,
                     db,
                     worker_name,
@@ -2073,6 +2097,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
                         worker_dir,
                         &mut logs,
                         &mut mem_peak,
+                        &mut canceled_by,
                         base_internal_url,
                         worker_name,
                     )
@@ -2093,6 +2118,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
                 job_completed_tx,
                 logs,
                 mem_peak,
+                canceled_by,
                 cached_res_path,
                 client.get_token().await,
             )
@@ -2109,6 +2135,7 @@ async fn process_result(
     job_completed_tx: JobCompletedSender,
     logs: String,
     mem_peak: i32,
+    canceled_by: Option<CanceledBy>,
     cached_res_path: Option<String>,
     token: String,
 ) -> error::Result<()> {
@@ -2120,6 +2147,7 @@ async fn process_result(
                     result: r,
                     logs,
                     mem_peak,
+                    canceled_by,
                     success: true,
                     cached_res_path,
                     token: token,
@@ -2162,6 +2190,7 @@ async fn process_result(
                     result: to_raw_value(&error_value),
                     logs: logs,
                     mem_peak,
+                    canceled_by,
                     success: false,
                     cached_res_path,
                     token: token,
@@ -2213,6 +2242,7 @@ async fn handle_code_execution_job(
     worker_dir: &str,
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     base_internal_url: &str,
     worker_name: &str,
 ) -> error::Result<Box<RawValue>> {
@@ -2341,6 +2371,7 @@ mount {{
                 job,
                 logs,
                 mem_peak,
+                canceled_by,
                 db,
                 client,
                 &inner_content,
@@ -2355,6 +2386,7 @@ mount {{
                 requirements_o,
                 logs,
                 mem_peak,
+                canceled_by,
                 job,
                 db,
                 client,
@@ -2371,6 +2403,7 @@ mount {{
                 requirements_o,
                 logs,
                 mem_peak,
+                canceled_by,
                 job,
                 db,
                 client,
@@ -2387,6 +2420,7 @@ mount {{
             handle_go_job(
                 logs,
                 mem_peak,
+                canceled_by,
                 job,
                 db,
                 client,
@@ -2404,6 +2438,7 @@ mount {{
             handle_bash_job(
                 logs,
                 mem_peak,
+                canceled_by,
                 job,
                 db,
                 client,
@@ -2420,6 +2455,7 @@ mount {{
             handle_powershell_job(
                 logs,
                 mem_peak,
+                canceled_by,
                 job,
                 db,
                 client,
@@ -2453,6 +2489,7 @@ async fn handle_dependency_job(
     job: &QueuedJob,
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     job_dir: &str,
     db: &sqlx::Pool<sqlx::Postgres>,
     worker_name: &str,
@@ -2473,6 +2510,7 @@ async fn handle_dependency_job(
             .unwrap_or_else(|| "no raw code"),
         logs,
         mem_peak,
+        canceled_by,
         job_dir,
         db,
         worker_name,
@@ -2515,6 +2553,7 @@ async fn handle_flow_dependency_job(
     job: &QueuedJob,
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     job_dir: &str,
     db: &sqlx::Pool<sqlx::Postgres>,
     worker_name: &str,
@@ -2539,6 +2578,7 @@ async fn handle_flow_dependency_job(
         job,
         logs,
         mem_peak,
+        canceled_by,
         job_dir,
         db,
         worker_name,
@@ -2580,6 +2620,7 @@ async fn lock_modules(
     job: &QueuedJob,
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     job_dir: &str,
     db: &sqlx::Pool<sqlx::Postgres>,
     worker_name: &str,
@@ -2616,6 +2657,7 @@ async fn lock_modules(
                             job,
                             logs,
                             mem_peak,
+                            canceled_by,
                             job_dir,
                             db,
                             worker_name,
@@ -2638,6 +2680,7 @@ async fn lock_modules(
                             job,
                             logs,
                             mem_peak,
+                            canceled_by,
                             job_dir,
                             db,
                             worker_name,
@@ -2659,6 +2702,7 @@ async fn lock_modules(
                             job,
                             logs,
                             mem_peak,
+                            canceled_by,
                             job_dir,
                             db,
                             worker_name,
@@ -2675,6 +2719,7 @@ async fn lock_modules(
                         job,
                         logs,
                         mem_peak,
+                        canceled_by,
                         job_dir,
                         db,
                         worker_name,
@@ -2709,6 +2754,7 @@ async fn lock_modules(
             &dependencies,
             logs,
             mem_peak,
+            canceled_by,
             job_dir,
             db,
             worker_name,
@@ -2767,6 +2813,7 @@ async fn lock_modules_app(
     job: &QueuedJob,
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     job_dir: &str,
     db: &sqlx::Pool<sqlx::Postgres>,
     worker_name: &str,
@@ -2810,6 +2857,7 @@ async fn lock_modules_app(
                                 &dependencies,
                                 logs,
                                 mem_peak,
+                                canceled_by,
                                 job_dir,
                                 db,
                                 worker_name,
@@ -2850,6 +2898,7 @@ async fn lock_modules_app(
                         job,
                         logs,
                         mem_peak,
+                        canceled_by,
                         job_dir,
                         db,
                         worker_name,
@@ -2872,6 +2921,7 @@ async fn lock_modules_app(
                         job,
                         logs,
                         mem_peak,
+                        canceled_by,
                         job_dir,
                         db,
                         worker_name,
@@ -2893,6 +2943,7 @@ async fn handle_app_dependency_job(
     job: &QueuedJob,
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     job_dir: &str,
     db: &sqlx::Pool<sqlx::Postgres>,
     worker_name: &str,
@@ -2921,6 +2972,7 @@ async fn handle_app_dependency_job(
             job,
             logs,
             mem_peak,
+            canceled_by,
             job_dir,
             db,
             worker_name,
@@ -2959,6 +3011,7 @@ async fn capture_dependency_job(
     job_raw_code: &str,
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     job_dir: &str,
     db: &sqlx::Pool<sqlx::Postgres>,
     worker_name: &str,
@@ -2976,6 +3029,7 @@ async fn capture_dependency_job(
                 job_raw_code,
                 logs,
                 mem_peak,
+                canceled_by,
                 job_dir,
                 db,
                 worker_name,
@@ -2990,6 +3044,7 @@ async fn capture_dependency_job(
                     w_id,
                     logs,
                     mem_peak,
+                    canceled_by,
                     db,
                     worker_name,
                     job_dir,
@@ -3013,6 +3068,7 @@ async fn capture_dependency_job(
                 job_raw_code,
                 logs,
                 mem_peak,
+                canceled_by,
                 job_dir,
                 db,
                 false,
@@ -3029,6 +3085,7 @@ async fn capture_dependency_job(
                 job_raw_code,
                 logs,
                 mem_peak,
+                canceled_by,
                 job_dir,
                 db,
                 w_id,
@@ -3044,6 +3101,7 @@ async fn capture_dependency_job(
             let req = gen_lockfile(
                 logs,
                 mem_peak,
+                canceled_by,
                 job_id,
                 w_id,
                 db,

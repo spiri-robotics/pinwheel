@@ -17,6 +17,7 @@ use windmill_common::{
     worker::WORKER_CONFIG,
     DB,
 };
+use windmill_queue::CanceledBy;
 
 lazy_static::lazy_static! {
     static ref PYTHON_PATH: String =
@@ -63,6 +64,7 @@ pub async fn pip_compile(
     requirements: &str,
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     job_dir: &str,
     db: &Pool<Postgres>,
     worker_name: &str,
@@ -128,6 +130,7 @@ pub async fn pip_compile(
         db,
         logs,
         mem_peak,
+        canceled_by,
         child_process,
         false,
         worker_name,
@@ -165,6 +168,7 @@ pub async fn handle_python_job(
     job: &QueuedJob,
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     db: &sqlx::Pool<sqlx::Postgres>,
     client: &AuthedClientBackgroundTask,
     inner_content: &String,
@@ -185,6 +189,7 @@ pub async fn handle_python_job(
         worker_dir,
         logs,
         mem_peak,
+        canceled_by,
     )
     .await?;
 
@@ -348,6 +353,7 @@ mount {{
         db,
         logs,
         mem_peak,
+        canceled_by,
         child,
         !*DISABLE_NSJAIL,
         worker_name,
@@ -498,6 +504,7 @@ async fn handle_python_deps(
     worker_dir: &str,
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
 ) -> error::Result<Vec<String>> {
     create_dependencies_dir(job_dir).await;
 
@@ -528,6 +535,7 @@ async fn handle_python_deps(
                     &requirements,
                     logs,
                     mem_peak,
+                    canceled_by,
                     job_dir,
                     db,
                     worker_name,
@@ -551,6 +559,7 @@ async fn handle_python_deps(
             w_id,
             logs,
             mem_peak,
+            canceled_by,
             db,
             worker_name,
             job_dir,
@@ -567,6 +576,7 @@ pub async fn handle_python_reqs(
     w_id: &str,
     logs: &mut String,
     mem_peak: &mut i32,
+    canceled_by: &mut Option<CanceledBy>,
     db: &sqlx::Pool<sqlx::Postgres>,
     worker_name: &str,
     job_dir: &str,
@@ -707,6 +717,7 @@ pub async fn handle_python_reqs(
             db,
             logs,
             mem_peak,
+            canceled_by,
             child,
             false,
             worker_name,
