@@ -1323,6 +1323,13 @@ pub fn is_none_or_false(val: &Option<bool>) -> bool {
         None => true,
     }
 }
+
+pub fn is_none_or_empty(val: &Option<bool>) -> bool {
+    match val {
+        Some(val) => !val,
+        None => true,
+    }
+}
 enum ArchiveImpl {
     Zip(async_zip::write::ZipFileWriter<File>),
     Tar(tokio_tar::Builder<File>),
