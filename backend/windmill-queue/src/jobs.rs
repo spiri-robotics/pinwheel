@@ -1423,7 +1423,7 @@ async fn pull_single_job_and_mark_as_running_no_concurrency_limit<
                 LIMIT 1
             )
             RETURNING *")
-                .bind(tags.clone())
+                .bind(tags)
                 .fetch_optional(db)
                 .await?
         } else {
@@ -2090,6 +2090,7 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
             concurrent_limit,
             concurrency_time_window_s,
             cache_ttl,
+            dedicated_worker,
         }) => (
             None,
             path,
@@ -2101,7 +2102,7 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
             concurrent_limit,
             concurrency_time_window_s,
             cache_ttl,
-            None,
+            dedicated_worker,
             None,
         ),
         JobPayload::Dependencies { hash, dependencies, language, path } => (

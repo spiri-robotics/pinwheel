@@ -1652,7 +1652,8 @@ func main(derp string) (string, error) {
         language: ScriptLang::Go,
         concurrent_limit: None,
         concurrency_time_window_s: None,
-        cache_ttl: None
+        cache_ttl: None,
+        dedicated_worker: None
     }))
     .arg("derp", json!("world"))
     .run_until_complete(&db, port)
@@ -1682,7 +1683,8 @@ echo "hello $msg"
         language: ScriptLang::Bash,
         concurrent_limit: None,
         concurrency_time_window_s: None,
-        cache_ttl: None
+        cache_ttl: None,
+        dedicated_worker: None
     }))
     .arg("msg", json!("world"))
     .run_until_complete(&db, port)
@@ -1709,7 +1711,8 @@ def main():
         lock: None,
         concurrent_limit: None,
         concurrency_time_window_s: None,
-        cache_ttl: None
+        cache_ttl: None,
+        dedicated_worker: None
     });
 
     let result = run_job_in_new_worker_until_complete(&db, job, port)
@@ -1742,7 +1745,8 @@ def main():
         lock: None,
         concurrent_limit: None,
         concurrency_time_window_s: None,
-        cache_ttl: None
+        cache_ttl: None,
+        dedicated_worker: None
     });
 
     let result = run_job_in_new_worker_until_complete(&db, job, port)
@@ -1774,7 +1778,8 @@ def main():
         lock: None,
         concurrent_limit: None,
         concurrency_time_window_s: None,
-        cache_ttl: None
+        cache_ttl: None,
+        dedicated_worker: None
     });
 
     let result = run_job_in_new_worker_until_complete(&db, job, port)
@@ -2901,6 +2906,7 @@ async fn run_preview_relative_imports(db: &Pool<Postgres>, script_content: Strin
             concurrent_limit: None,
             concurrency_time_window_s: None,
             cache_ttl: None,
+            dedicated_worker: None
         })).push(&db2).await;
 
 
