@@ -104,10 +104,6 @@ lazy_static::lazy_static! {
         connects: HashMap::new(),
         slack: None
     }));
-
-    pub static ref LICENSE_KEY_VALID: Arc<RwLock<bool>> = Arc::new(RwLock::new(true));
-    pub static ref LICENSE_KEY_ID: Arc<RwLock<String>> = Arc::new(RwLock::new("".to_string()));
-    pub static ref LICENSE_KEY: Arc<RwLock<String>> = Arc::new(RwLock::new("".to_string()));
 }
 
 pub async fn run_server(

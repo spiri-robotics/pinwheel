@@ -1,6 +1,7 @@
 
 pub async fn set_license_key(license_key: String) -> anyhow::Result<()> {
-    use windmill_api::{ee::validate_license_key, LICENSE_KEY, LICENSE_KEY_ID, LICENSE_KEY_VALID};
+    use windmill_api::ee::validate_license_key;
+    use windmill_common::ee::{LICENSE_KEY, LICENSE_KEY_ID, LICENSE_KEY_VALID};
 
     let id = validate_license_key(license_key.clone()).await?;
     {
