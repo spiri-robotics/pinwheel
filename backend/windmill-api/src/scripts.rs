@@ -594,6 +594,11 @@ async fn create_script(
             }
             _ => ns.content,
         };
+        let tag = if ns.dedicated_worker.is_some_and(|x| x) {
+            Some(format!("{}:{}", &w_id, &ns.path,))
+        } else {
+            ns.tag
+        };
         let (_, new_tx) = windmill_queue::push(
             &db,
             tx,
@@ -612,7 +617,7 @@ async fn create_script(
             false,
             None,
             true,
-            ns.tag,
+            tag,
             None,
             None,
             None,
