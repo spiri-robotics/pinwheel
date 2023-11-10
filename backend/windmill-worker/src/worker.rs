@@ -958,10 +958,11 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                     #[cfg(feature = "benchmark")]
                     let process_start = Instant::now();
 
+                    let is_dependency_job = matches!(jc.job.job_kind, JobKind::Dependencies);
                     handle_receive_completed_job(
                         jc,
                         base_internal_url2,
-                        db2,
+                        db2.clone(),
                         worker_dir2,
                         same_worker_tx2,
                         rsmq2,
@@ -1006,6 +1007,13 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                     }
 
                     thread_count.fetch_sub(1, Ordering::SeqCst);
+                    if is_dependency_job && is_dedicated_worker {
+                        tracing::error!("Dedicated worker executed a dependency job, a new script has been deployed. Exiting expecting to be restarted.");
+                        sqlx::query!("UPDATE config SET config = config WHERE name = $1", format!("worker__{}", *WORKER_GROUP))
+                            .execute(&db2)
+                            .await
+                            .expect("update config to trigger restart of all dedicated workers at that config");
+                    }
                 });
             } else {
                 handle_receive_completed_job(
@@ -1028,12 +1036,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
         tracing::info!("finished processing all completed jobs");
-
-        // if let Err(e) =
-        //     add_completed_job(&db2, &job, success, false, result, logs, rsmq2.clone()).await
-        // {
-        //     tracing::error!(worker = %worker_name2, "failed to add completed job: {}", e);
-        // }
     });
 
     let mut last_executed_job: Option<Instant> = None;
