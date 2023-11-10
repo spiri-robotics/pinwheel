@@ -1651,9 +1651,9 @@ pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync +
             logs.to_string(),
             mem_peak.to_owned(),
             canceled_by,
-            serde_json::from_str(result.get()).unwrap_or_else(
-                |_| json!({ "message": format!("Non serializable error: {}", result.get()) }),
-            ),
+            serde_json::from_str(result.get()).unwrap_or_else(|_| {
+                json!({ "message": format!("Non serializable error: {}", result.get()) })
+            }),
             rsmq.clone(),
             worker_name,
         )
@@ -2305,6 +2305,13 @@ async fn handle_code_execution_job(
         {
             return Err(Error::ExecutionErr(
                 "Snowflake is only available with an enterprise license".to_string(),
+            ));
+        }
+
+    } else if language == Some(ScriptLang::Mssql) {
+        {
+            return Err(Error::ExecutionErr(
+                "Microsoft SQL server is only available with an enterprise license".to_string(),
             ));
         }
 
@@ -3120,6 +3127,7 @@ async fn capture_dependency_job(
         ScriptLang::Mysql => Ok("".to_owned()),
         ScriptLang::Bigquery => Ok("".to_owned()),
         ScriptLang::Snowflake => Ok("".to_owned()),
+        ScriptLang::Mssql => Ok("".to_owned()),
         ScriptLang::Graphql => Ok("".to_owned()),
         ScriptLang::Bash => Ok("".to_owned()),
         ScriptLang::Powershell => Ok("".to_owned()),

@@ -1493,6 +1493,7 @@ async fn tarball_workspace(
                 ScriptLang::Mysql => "my.sql",
                 ScriptLang::Bigquery => "bq.sql",
                 ScriptLang::Snowflake => "sf.sql",
+                ScriptLang::Mssql => "ms.sql",
                 ScriptLang::Graphql => "gql",
                 ScriptLang::Nativets => "fetch.ts",
                 ScriptLang::Bun => "bun.ts",
