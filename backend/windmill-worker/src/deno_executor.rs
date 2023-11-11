@@ -58,6 +58,8 @@ async fn get_common_deno_proc_envs(
         (String::from("PATH"), PATH_ENV.clone()),
         (String::from("HOME"), HOME_ENV.clone()),
         (String::from("TZ"), TZ_ENV.clone()),
+        (String::from("RUST_LOG"), "info".to_string()),
+        (String::from("DENO_DIR"), DENO_CACHE_DIR.to_string()),
         (String::from("DENO_AUTH_TOKENS"), deno_auth_tokens),
         (
             String::from("BASE_INTERNAL_URL"),
@@ -216,43 +218,12 @@ run().catch(async (e) => {{
         Ok(()) as error::Result<()>
     };
 
-    let write_import_map_f = async {
-        let w_id = job.workspace_id.clone();
-        let script_path_split = job.script_path().split("/");
-        let script_path_parts_len = script_path_split.clone().count();
-        let mut relative_mounts = "".to_string();
-        for c in 0..script_path_parts_len {
-            relative_mounts += ",\n          ";
-            relative_mounts += &format!(
-                "\"./{}\": \"{base_internal_url}/api/w/{w_id}/scripts/raw/p/{}{}\"",
-                (0..c).map(|_| "../").join(""),
-                &script_path_split
-                    .clone()
-                    .take(script_path_parts_len - c - 1)
-                    .join("/"),
-                if c == script_path_parts_len - 1 {
-                    ""
-                } else {
-                    "/"
-                },
-            );
-        }
-        let extra_import_map = DENO_EXTRA_IMPORT_MAP.as_str();
-        let import_map = format!(
-            r#"{{
-            "imports": {{
-              "{base_internal_url}/api/w/{w_id}/scripts/raw/p/": "{base_internal_url}/api/w/{w_id}/scripts/raw/p/",
-              "{base_internal_url}": "{base_internal_url}/api/w/{w_id}/scripts/raw/p/",
-              "/": "{base_internal_url}/api/w/{w_id}/scripts/raw/p/",
-              "./wrapper.ts": "./wrapper.ts",
-              "./main.ts": "./main.ts"{relative_mounts}
-              {extra_import_map}
-            }}
-          }}"#,
-        );
-        write_file(job_dir, "import_map.json", &import_map).await?;
-        Ok(()) as error::Result<()>
-    };
+    let write_import_map_f = build_import_map(
+        &job.workspace_id,
+        job.script_path(),
+        base_internal_url,
+        job_dir,
+    );
 
     let reserved_variables_args_out_f = async {
         let args_and_out_f = async {
@@ -261,8 +232,7 @@ run().catch(async (e) => {{
         };
         let reserved_variables_f = async {
             let client = client.get_authed().await;
-            let mut vars = get_reserved_variables(job, &client.token, db).await?;
-            vars.insert("RUST_LOG".to_string(), "info".to_string());
+            let vars = get_reserved_variables(job, &client.token, db).await?;
             Ok((vars, client.token)) as Result<(HashMap<String, String>, String)>
         };
         let (_, reserved_variables) = tokio::try_join!(args_and_out_f, reserved_variables_f)?;
@@ -283,8 +253,8 @@ run().catch(async (e) => {{
     }
 
     //do not cache local dependencies
-    let reload = format!("--reload={base_internal_url}");
     let child = {
+        let reload = format!("--reload={base_internal_url}");
         let script_path = format!("{job_dir}/wrapper.ts");
         let import_map_path = format!("{job_dir}/import_map.json");
         let mut args = Vec::with_capacity(12);
@@ -321,7 +291,6 @@ run().catch(async (e) => {{
             .envs(envs)
             .envs(reserved_variables)
             .envs(common_deno_proc_envs)
-            .env("DENO_DIR", DENO_CACHE_DIR)
             .args(args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -351,3 +320,47 @@ run().catch(async (e) => {{
     }
     read_result(job_dir).await
 }
+
+async fn build_import_map(
+    w_id: &str,
+    script_path: &str,
+    base_internal_url: &str,
+    job_dir: &str,
+) -> error::Result<()> {
+    let script_path_split = script_path.split("/");
+    let script_path_parts_len = script_path_split.clone().count();
+    let mut relative_mounts = "".to_string();
+    for c in 0..script_path_parts_len {
+        relative_mounts += ",\n          ";
+        relative_mounts += &format!(
+            "\"./{}\": \"{base_internal_url}/api/w/{w_id}/scripts/raw/p/{}{}\"",
+            (0..c).map(|_| "../").join(""),
+            &script_path_split
+                .clone()
+                .take(script_path_parts_len - c - 1)
+                .join("/"),
+            if c == script_path_parts_len - 1 {
+                ""
+            } else {
+                "/"
+            },
+        );
+    }
+    let extra_import_map = DENO_EXTRA_IMPORT_MAP.as_str();
+    let import_map = format!(
+        r#"{{
+            "imports": {{
+              "{base_internal_url}/api/w/{w_id}/scripts/raw/p/": "{base_internal_url}/api/w/{w_id}/scripts/raw/p/",
+              "{base_internal_url}": "{base_internal_url}/api/w/{w_id}/scripts/raw/p/",
+              "/": "{base_internal_url}/api/w/{w_id}/scripts/raw/p/",
+              "./wrapper.ts": "./wrapper.ts",
+              "./main.ts": "./main.ts"{relative_mounts}
+              {extra_import_map}
+            }}
+          }}"#,
+    );
+    write_file(job_dir, "import_map.json", &import_map).await?;
+    Ok(()) as error::Result<()>
+}
+
+
