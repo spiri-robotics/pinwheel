@@ -44,6 +44,7 @@ use windmill_common::{
 };
 use windmill_queue::QueueTransaction;
 
+
 use hyper::{header, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map};
@@ -51,7 +52,6 @@ use sqlx::{FromRow, Postgres, Transaction};
 use tempfile::TempDir;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
-use chrono::{TimeZone, Datelike};
 
 pub fn workspaced_service() -> Router {
     let router = Router::new()
@@ -92,9 +92,6 @@ pub fn global_service() -> Router {
         .route("/delete/:workspace", delete(delete_workspace))
 }
 
-lazy_static::lazy_static! {
-    pub static ref STRIPE_KEY: Option<String> = std::env::var("STRIPE_KEY").ok();
-}
 
 
 #[derive(FromRow, Serialize)]
@@ -310,27 +307,11 @@ async fn premium_info(
     .fetch_one(&mut *tx)
     .await?;
     tx.commit().await?;
-    let mut result = PremiumWorkspaceInfo {
+    let result = PremiumWorkspaceInfo {
         premium: row.premium,
         usage: row.usage,
         seats: None,
     };
-    if row.premium && row.plan == Some("team".to_string()) {
-        let customer_id = row.customer_id.ok_or(Error::InternalErr(format!("no customer id for workspace {}", w_id)))?;
-        let client = stripe::Client::new(STRIPE_KEY.clone().ok_or(Error::InternalErr(format!("stripe key not set")))?);
-        let customer_id = stripe::CustomerId::from_str(&customer_id).map_err(to_anyhow)?;
-        let subscriptions = stripe::Subscription::list(
-            &client,
-            &stripe::ListSubscriptions { customer: Some(customer_id.clone()), limit: Some(1), ..Default::default() },
-        ).await.map_err(to_anyhow)?;
-        if subscriptions.data.len() > 1 {
-            return Err(Error::InternalErr(format!("multiple subscriptions for customer {}, please contact us at ccontact@windmill.dev", customer_id)));
-        }
-        let subscription = subscriptions.data.get(0).ok_or_else(|| Error::InternalErr(format!("no subscription for customer {}", customer_id)))?;
-        result.seats = subscription.items.data.iter().filter_map(|item|{
-            item.price.clone().map(|p| p.metadata.map(|m| m.get("plan").filter(|plan| plan == &"team").map(|_| item.quantity.map(|x| x as i32)))).flatten().flatten().flatten()
-        }).collect::<Vec<_>>().get(0).copied();
-    }
     
     Ok(Json(result))
 }
