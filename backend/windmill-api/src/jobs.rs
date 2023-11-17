@@ -1598,14 +1598,16 @@ pub async fn run_flow_by_path(
     let flow_path = flow_path.to_path();
     check_scopes(&authed, || format!("run:flow/{flow_path}"))?;
 
-    let tag = sqlx::query_scalar!(
-        "SELECT tag from flow WHERE path = $1 and workspace_id = $2",
+    let (tag, dedicated_worker) = sqlx::query!(
+        "SELECT tag, dedicated_worker from flow WHERE path = $1 and workspace_id = $2",
         flow_path,
         w_id
     )
     .fetch_optional(&db)
     .await?
-    .flatten();
+    .map(|x| (x.tag, x.dedicated_worker))
+    .unwrap_or_else(|| (None, None));
+
     check_tag_available_for_workspace(&w_id, &tag).await?;
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
@@ -1613,7 +1615,7 @@ pub async fn run_flow_by_path(
         &db,
         tx,
         &w_id,
-        JobPayload::Flow(flow_path.to_string()),
+        JobPayload::Flow { path: flow_path.to_string(), dedicated_worker },
         args,
         &authed.username,
         &authed.email,
@@ -2175,14 +2177,16 @@ async fn run_wait_result_flow_by_path_internal(
 
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
 
-    let tag = sqlx::query_scalar!(
-        "SELECT tag from flow WHERE path = $1 and workspace_id = $2",
+    let (tag, dedicated_worker) = sqlx::query!(
+        "SELECT tag, dedicated_worker from flow WHERE path = $1 and workspace_id = $2",
         flow_path,
         w_id
     )
     .fetch_optional(&db)
     .await?
-    .flatten();
+    .map(|x| (x.tag, x.dedicated_worker))
+    .unwrap_or_else(|| (None, None));
+
     check_tag_available_for_workspace(&w_id, &tag).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
 
@@ -2190,7 +2194,7 @@ async fn run_wait_result_flow_by_path_internal(
         &db,
         tx,
         &w_id,
-        JobPayload::Flow(flow_path.to_string()),
+        JobPayload::Flow { path: flow_path.to_string(), dedicated_worker },
         args,
         &authed.username,
         &authed.email,
@@ -2338,7 +2342,7 @@ async fn add_batch_jobs(
                 JobPayload::RawFlow { value: fv.clone(), path: None, restarted_from: None }
             } else {
                 if let Some(path) = batch_info.path.as_ref() {
-                    JobPayload::Flow(path.to_string())
+                    JobPayload::Flow { path: path.to_string(), dedicated_worker: None }
                 } else {
                     Err(anyhow::anyhow!(
                         "Path is required if no value is not provided"
