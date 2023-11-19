@@ -123,6 +123,10 @@ pub async fn create_token_for_owner(
     email: &str,
 ) -> error::Result<String> {
     // TODO: Bad implementation. We should not have access to this DB here.
+    if let Some(token) = JOB_TOKEN.as_ref() {
+        return Ok(token.clone());
+    }
+
     let token: String = rd_string(30);
     let is_super_admin =
         sqlx::query_scalar!("SELECT super_admin FROM password WHERE email = $1", email)
@@ -185,6 +189,8 @@ const VACUUM_PERIOD: u32 = 10000;
 pub const MAX_BUFFERED_DEDICATED_JOBS: usize = 3;
 
 lazy_static::lazy_static! {
+
+    static ref JOB_TOKEN: Option<String> = std::env::var("JOB_TOKEN").ok();
 
     static ref SLEEP_QUEUE: u64 = std::env::var("SLEEP_QUEUE")
     .ok()
