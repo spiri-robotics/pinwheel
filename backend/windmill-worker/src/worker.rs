@@ -1071,79 +1071,71 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             let is_flow_worker;
             if let Some(flow_path) = _wp.path.strip_prefix("flow/") {
                 is_flow_worker = true;
-                loop {
-                    let value = sqlx::query_scalar!(
-                        "SELECT value FROM flow WHERE path = $1 AND workspace_id = $2",
-                        flow_path,
-                        _wp.workspace_id
-                    )
-                    .fetch_optional(db)
-                    .await;
-                    if let Ok(v) = value {
-                        if let Some(v) = v {
-                            let value = serde_json::from_value::<FlowValue>(v).map_err(|err| {
-                                Error::InternalErr(format!(
-                                    "could not convert json to flow for {flow_path}: {err:?}"
-                                ))
+                let value = sqlx::query_scalar!(
+                    "SELECT value FROM flow WHERE path = $1 AND workspace_id = $2",
+                    flow_path,
+                    _wp.workspace_id
+                )
+                .fetch_optional(db)
+                .await;
+                if let Ok(v) = value {
+                    if let Some(v) = v {
+                        let value = serde_json::from_value::<FlowValue>(v).map_err(|err| {
+                            Error::InternalErr(format!(
+                                "could not convert json to flow for {flow_path}: {err:?}"
+                            ))
+                        });
+                        if let Ok(flow) = value {
+                            let workers = spawn_dedicated_workers_for_flow(
+                                &flow.modules,
+                                &_wp.path,
+                                &_wp.workspace_id,
+                                killpill_tx.clone(),
+                                &killpill_rx,
+                                db,
+                                &worker_dir,
+                                base_internal_url,
+                                &worker_name,
+                                &job_completed_tx,
+                            )
+                            .await;
+                            workers.into_iter().for_each(|(path, sender, handle)| {
+                                dedicated_handles.push(handle);
+                                hm.insert(path, sender);
                             });
-                            if let Ok(flow) = value {
-                                let workers = spawn_dedicated_workers_for_flow(
-                                    &flow.modules,
-                                    &_wp.path,
-                                    &_wp.workspace_id,
-                                    killpill_tx.clone(),
-                                    &killpill_rx,
-                                    db,
-                                    &worker_dir,
-                                    base_internal_url,
-                                    &worker_name,
-                                    &job_completed_tx,
-                                )
-                                .await;
-                                workers.into_iter().for_each(|(path, sender, handle)| {
-                                    dedicated_handles.push(handle);
-                                    hm.insert(path, sender);
-                                });
-                                break;
-                            }
-                        } else {
-                            tracing::error!(
-                                "flow present but value not found for {}, waiting 10s",
-                                flow_path
-                            );
                         }
                     } else {
-                        tracing::error!("flow not found for {}, waiting 10s,", flow_path);
+                        tracing::error!(
+                            "flow present but value not found for dedicated worker. {}",
+                            flow_path
+                        );
                     }
-                    tokio::time::sleep(Duration::from_millis(10000)).await;
+                } else {
+                    tracing::error!("flow not found for dedicated worker: {}. Waiting for dependency job and expected to restart.", flow_path);
                 }
             } else {
                 is_flow_worker = false;
-                loop {
-                    if let Some((path, sender, handle)) = spawn_dedicated_worker(
-                        SpawnWorker::Script { path: _wp.path.clone(), hash: None },
-                        &_wp.workspace_id,
-                        killpill_tx.clone(),
-                        &killpill_rx,
-                        db,
-                        &worker_dir,
-                        base_internal_url,
-                        &worker_name,
-                        &job_completed_tx,
-                        None,
-                    )
-                    .await
-                    {
-                        dedicated_handles.push(handle);
-                        hm.insert(path, sender);
-                        break;
-                    } else {
-                        tracing::error!(
-                        "failed to spawn dedicated worker for {}, script found but not in a compatible language. Retrying 10s",
+                if let Some((path, sender, handle)) = spawn_dedicated_worker(
+                    SpawnWorker::Script { path: _wp.path.clone(), hash: None },
+                    &_wp.workspace_id,
+                    killpill_tx.clone(),
+                    &killpill_rx,
+                    db,
+                    &worker_dir,
+                    base_internal_url,
+                    &worker_name,
+                    &job_completed_tx,
+                    None,
+                )
+                .await
+                {
+                    dedicated_handles.push(handle);
+                    hm.insert(path, sender);
+                } else {
+                    tracing::error!(
+                        "failed to spawn dedicated worker for {}, script not found",
                         _wp.path
                     );
-                        tokio::time::sleep(Duration::from_millis(10000)).await;
-                    }
                 }
             }
             (hm, is_flow_worker)
