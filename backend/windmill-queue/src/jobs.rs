@@ -54,7 +54,7 @@ use windmill_common::{
     oauth2::WORKSPACE_SLACK_BOT_TOKEN_PATH,
     schedule::Schedule,
     scripts::{ScriptHash, ScriptLang},
-    users::SUPERADMIN_SECRET_EMAIL,
+    users::{SUPERADMIN_NOTIFICATION_EMAIL, SUPERADMIN_SECRET_EMAIL},
     worker::{to_raw_value, WORKER_CONFIG},
     DB, METRICS_ENABLED,
 };
@@ -2063,8 +2063,8 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
     job_payload: JobPayload,
     args: T,
     user: &str,
-    email: &str,
-    permissioned_as: String,
+    mut email: &str,
+    mut permissioned_as: String,
     scheduled_for_o: Option<chrono::DateTime<chrono::Utc>>,
     schedule_path: Option<String>,
     parent_job: Option<Uuid>,
@@ -2118,6 +2118,10 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
             priority,
         ),
         JobPayload::ScriptHub { path } => {
+            if path == "hub/7771/slack" {
+                permissioned_as = SUPERADMIN_NOTIFICATION_EMAIL.to_string();
+                email = SUPERADMIN_NOTIFICATION_EMAIL;
+            }
             (
                 None,
                 Some(path),
