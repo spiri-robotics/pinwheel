@@ -2573,6 +2573,7 @@ async fn test_flow_lock_all(db: Pool<Postgres>) {
                     ws_error_handler_muted: None,
                     priority: None,
                     dedicated_worker: None,
+                    timeout: None,
                 },
                 draft_only: None,
             },
@@ -2853,6 +2854,9 @@ async fn run_deployed_relative_imports(db: &Pool<Postgres>, script_content: Stri
             schema: std::collections::HashMap::new(),
             ws_error_handler_muted: Some(false),
             priority: None,
+            delete_after_use: None,
+            timeout: None,
+            restart_unless_cancelled: None,
         },
     ).await.unwrap();
 
