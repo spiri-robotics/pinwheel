@@ -2371,6 +2371,20 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
                 priority,
             )
         }
+        JobPayload::DeploymentCallback { path } => (
+            None,
+            Some(path),
+            None,
+            JobKind::DeploymentCallback,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
         JobPayload::Identity => (
             None,
             None,
@@ -2456,7 +2470,11 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
                 || job_kind == JobKind::Identity
             {
                 "flow".to_string()
-            } else if job_kind == JobKind::Dependencies || job_kind == JobKind::FlowDependencies {
+            } else if job_kind == JobKind::Dependencies
+                || job_kind == JobKind::FlowDependencies
+                || job_kind == JobKind::DeploymentCallback
+            {
+                // using the dependency tag for deployment callback for now. We can create a separate tag when we need
                 "dependency".to_string()
             } else {
                 "deno".to_string()
@@ -2568,6 +2586,7 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
             JobKind::Noop => "jobs.run.noop",
             JobKind::FlowDependencies => "jobs.run.flow_dependencies",
             JobKind::AppDependencies => "jobs.run.app_dependencies",
+            JobKind::DeploymentCallback => "jobs.run.deployment_callback",
         };
 
         audit_log(
