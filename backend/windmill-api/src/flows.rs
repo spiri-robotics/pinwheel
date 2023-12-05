@@ -7,7 +7,7 @@
  */
 
 use crate::db::ApiAuthed;
-use crate::git_sync_helpers;
+use crate::deployment_metadata_helpers;
 use crate::{
     db::DB,
     schedule::clear_schedule,
@@ -389,12 +389,13 @@ async fn create_flow(
     .await?;
 
     tx = PushIsolationLevel::Transaction(new_tx);
-    tx = git_sync_helpers::run_workspace_repo_git_callback(
+    tx = deployment_metadata_helpers::handle_deployment_metadata(
         tx,
         &authed,
         &db,
         &w_id,
-        git_sync_helpers::DeployedObject::Flow { path: nf.path.clone() },
+        deployment_metadata_helpers::DeployedObject::Flow { path: nf.path.clone() },
+        nf.deployment_message,
     )
     .await?;
 
@@ -625,12 +626,13 @@ async fn update_flow(
     }
 
     tx = PushIsolationLevel::Transaction(new_tx);
-    tx = git_sync_helpers::run_workspace_repo_git_callback(
+    tx = deployment_metadata_helpers::handle_deployment_metadata(
         tx,
         &authed,
         &db,
         &w_id,
-        git_sync_helpers::DeployedObject::Flow { path: nf.path.clone() },
+        deployment_metadata_helpers::DeployedObject::Flow { path: nf.path.clone() },
+        nf.deployment_message,
     )
     .await?;
 

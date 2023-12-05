@@ -2576,6 +2576,7 @@ async fn test_flow_lock_all(db: Pool<Postgres>) {
                     timeout: None,
                 },
                 draft_only: None,
+                deployment_message: None,
             },
         )
         .await
@@ -2857,6 +2858,7 @@ async fn run_deployed_relative_imports(db: &Pool<Postgres>, script_content: Stri
             delete_after_use: None,
             timeout: None,
             restart_unless_cancelled: None,
+            deployment_message: None,
         },
     ).await.unwrap();
 
