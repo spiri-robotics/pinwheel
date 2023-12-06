@@ -15,6 +15,7 @@ use windmill_common::{
     utils::Pagination,
 };
 
+
 use serde::{Deserialize, Serialize};
 use sql_builder::SqlBuilder;
 use sqlx::{FromRow, Postgres, Transaction};
@@ -44,18 +45,20 @@ pub struct AuditLog {
 pub async fn audit_log<'c, E: sqlx::Executor<'c, Database = Postgres>>(
     db: E,
     username: &str,
-    _operation: &str,
+    mut _operation: &str,
     action_kind: ActionKind,
     w_id: &str,
-    _resource: Option<&str>,
+    mut _resource: Option<&str>,
     _parameters: Option<HashMap<&str, &str>>,
 ) -> Result<()> {
 
     let p_json: serde_json::Value = serde_json::json!({"redacted": "-"});
 
-    let _resource: Option<&str> = Some("EE only");
 
-    let _operation: &str = "redacted";
+    {
+        _resource = Some("EE only");
+        _operation = "redacted";
+    }
 
     tracing::info!(
         operation = _operation,

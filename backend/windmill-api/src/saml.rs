@@ -16,6 +16,7 @@ use serde::Deserialize;
 
 pub struct ServiceProviderExt();
 
+
 pub struct SamlSsoLogin(pub Option<String>);
 
 
