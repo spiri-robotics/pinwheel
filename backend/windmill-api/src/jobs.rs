@@ -330,9 +330,10 @@ pub async fn get_path_tag_limits_cache_for_hash(
     Option<bool>,
     Option<i16>,
     Option<bool>,
+    Option<i32>,
 )> {
     let script = sqlx::query!(
-        "select path, tag, concurrent_limit, concurrency_time_window_s, cache_ttl, language as \"language: ScriptLang\", dedicated_worker, priority, delete_after_use from script where hash = $1 AND workspace_id = $2",
+        "select path, tag, concurrent_limit, concurrency_time_window_s, cache_ttl, language as \"language: ScriptLang\", dedicated_worker, priority, delete_after_use, timeout from script where hash = $1 AND workspace_id = $2",
         hash,
         w_id
     )
@@ -353,6 +354,7 @@ pub async fn get_path_tag_limits_cache_for_hash(
         script.dedicated_worker,
         script.priority,
         script.delete_after_use,
+        script.timeout,
     ))
 }
 
@@ -1776,7 +1778,7 @@ pub async fn run_job_by_path(
 
     check_scopes(&authed, || format!("run:script/{script_path}"))?;
 
-    let (job_payload, tag, _delete_after_use) =
+    let (job_payload, tag, _delete_after_use, timeout) =
         script_path_to_payload(script_path, &db, &w_id).await?;
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
 
@@ -1802,7 +1804,7 @@ pub async fn run_job_by_path(
         None,
         !run_query.invisible_to_owner.unwrap_or(false),
         tag,
-        None,
+        timeout,
         None,
         None,
     )
@@ -2048,7 +2050,7 @@ pub async fn run_wait_result_job_by_path_get(
     let script_path = script_path.to_path();
     check_scopes(&authed, || format!("run:script/{script_path}"))?;
 
-    let (job_payload, tag, delete_after_use) =
+    let (job_payload, tag, delete_after_use, timeout) =
         script_path_to_payload(script_path, &db, &w_id).await?;
     check_tag_available_for_workspace(&w_id, &tag).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
@@ -2072,7 +2074,7 @@ pub async fn run_wait_result_job_by_path_get(
         None,
         !run_query.invisible_to_owner.unwrap_or(false),
         tag,
-        None,
+        timeout,
         None,
         None,
     )
@@ -2161,7 +2163,7 @@ async fn run_wait_result_script_by_path_internal(
     let script_path = script_path.to_path();
     check_scopes(&authed, || format!("run:script/{script_path}"))?;
 
-    let (job_payload, tag, delete_after_use) =
+    let (job_payload, tag, delete_after_use, timeout) =
         script_path_to_payload(script_path, &db, &w_id).await?;
 
     check_tag_available_for_workspace(&w_id, &tag).await?;
@@ -2186,7 +2188,7 @@ async fn run_wait_result_script_by_path_internal(
         None,
         !run_query.invisible_to_owner.unwrap_or(false),
         tag,
-        None,
+        timeout,
         None,
         None,
     )
@@ -2223,6 +2225,7 @@ pub async fn run_wait_result_script_by_hash(
         dedicated_worker,
         priority,
         delete_after_use,
+        timeout,
     ) = get_path_tag_limits_cache_for_hash(&db, &w_id, hash).await?;
     check_scopes(&authed, || format!("run:script/{path}"))?;
 
@@ -2257,7 +2260,7 @@ pub async fn run_wait_result_script_by_hash(
         None,
         !run_query.invisible_to_owner.unwrap_or(false),
         tag,
-        None,
+        timeout,
         None,
         None,
     )
@@ -2433,6 +2436,7 @@ async fn add_batch_jobs(
         dedicated_worker,
         concurrent_limit,
         concurrent_time_window_s,
+        timeout,
     ) = match batch_info.kind.as_str() {
         "script" => {
             if let Some(path) = batch_info.path {
@@ -2446,6 +2450,7 @@ async fn add_batch_jobs(
                     dedicated_worker,
                     _priority,
                     _delete_after_use,
+                    timeout,
                 ) = get_latest_deployed_hash_for_path(&db, &w_id, &path).await?;
                 (
                     Some(script_hash),
@@ -2455,6 +2460,7 @@ async fn add_batch_jobs(
                     dedicated_worker,
                     concurrent_limit,
                     concurrency_time_window_s,
+                    timeout,
                 )
             } else {
                 Err(anyhow::anyhow!(
@@ -2513,7 +2519,7 @@ async fn add_batch_jobs(
             }
             return Ok(Json(uuids));
         }
-        "noop" => (None, None, JobKind::Noop, None, None, None, None),
+        "noop" => (None, None, JobKind::Noop, None, None, None, None, None),
         _ => {
             return Err(error::Error::BadRequest(format!(
                 "Invalid batch kind: {}",
@@ -2539,8 +2545,8 @@ async fn add_batch_jobs(
             select gen_random_uuid() as uuid from generate_series(1, $11)
         )
         INSERT INTO queue 
-            (id, script_hash, script_path, job_kind, language, args, tag, created_by, permissioned_as, email, scheduled_for, workspace_id, concurrent_limit, concurrency_time_window_s)
-            (SELECT uuid, $1, $2, $3, $4, ('{ "uuid": "' || uuid || '" }')::jsonb, $5, $6, $7, $8, $9, $10, $12, $13 FROM uuid_table) 
+            (id, script_hash, script_path, job_kind, language, args, tag, created_by, permissioned_as, email, scheduled_for, workspace_id, concurrent_limit, concurrency_time_window_s, timeout)
+            (SELECT uuid, $1, $2, $3, $4, ('{ "uuid": "' || uuid || '" }')::jsonb, $5, $6, $7, $8, $9, $10, $12, $13, $14 FROM uuid_table) 
         RETURNING id"#,
             hash.map(|h| h.0),
             path,
@@ -2554,7 +2560,8 @@ async fn add_batch_jobs(
             w_id,
             n,
             concurrent_limit,
-            concurrent_time_window_s
+            concurrent_time_window_s,
+            timeout
         )
         .fetch_all(&db)
         .await?;
@@ -2636,6 +2643,7 @@ pub async fn run_job_by_hash(
         dedicated_worker,
         priority,
         _delete_after_use, // not taken into account in async endpoints
+        timeout,
     ) = get_path_tag_limits_cache_for_hash(&db, &w_id, hash).await?;
     check_scopes(&authed, || format!("run:script/{path}"))?;
 
@@ -2672,7 +2680,7 @@ pub async fn run_job_by_hash(
         None,
         !run_query.invisible_to_owner.unwrap_or(false),
         tag,
-        None,
+        timeout,
         None,
         None,
     )
