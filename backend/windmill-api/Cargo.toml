@@ -9,7 +9,6 @@ name = "windmill_api"
 path = "src/lib.rs"
 
 [features]
-saml = ["samael"]
 benchmark = []
 
 [dependencies]

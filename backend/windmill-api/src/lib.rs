@@ -36,8 +36,6 @@ use tower_http::{
     trace::TraceLayer,
 };
 use windmill_common::db::UserDB;
-#[cfg(feature = "saml")]
-use windmill_common::ee::{get_license_plan, LicensePlan};
 use windmill_common::utils::rd_string;
 use windmill_common::worker::ALL_TAGS;
 use windmill_common::BASE_URL;
@@ -160,13 +158,7 @@ pub async fn run_server(
         .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION])
         .allow_origin(Any);
 
-    #[cfg(feature = "saml")]
-    let sp_extension: (ServiceProviderExt, SamlSsoLogin) = match get_license_plan().await {
-        LicensePlan::Enterprise => saml::build_sp_extension().await?,
-        LicensePlan::Pro => (ServiceProviderExt(None), SamlSsoLogin(None)),
-    };
 
-    #[cfg(not(feature = "saml"))]
     let sp_extension = (ServiceProviderExt(), SamlSsoLogin(None));
 
     let embeddings_db = if server_mode {
