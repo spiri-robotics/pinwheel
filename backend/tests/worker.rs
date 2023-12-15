@@ -988,6 +988,7 @@ fn spawn_test_worker(
             &base_internal_url,
             None,
             Arc::new(RwLock::new(None)),
+            false,
         )
         .await
     };
