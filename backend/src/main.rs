@@ -105,6 +105,11 @@ async fn main() -> anyhow::Result<()> {
                 if std::env::var("JOB_TOKEN").is_err() {
                     tracing::warn!("JOB_TOKEN is not passed, hence workers will still create one ephemeral token per job and the DATABASE_URL need to be of a role that can INSERT into the token table")
                 }
+
+                {
+                    panic!("Agent mode is only available in the EE, ignoring...");
+                }
+
                 Mode::Agent
             } else {
                 if &x != "standalone" {
