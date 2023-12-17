@@ -519,6 +519,7 @@ pub struct RunJobQuery {
     queue_limit: Option<i64>,
     payload: Option<String>,
     job_id: Option<Uuid>,
+    tag: Option<String>,
 }
 
 impl RunJobQuery {
@@ -558,6 +559,7 @@ pub struct ListQueueQuery {
     // filter by matching a subset of the args using base64 encoded json subset
     pub args: Option<String>,
     pub tag: Option<String>,
+    pub scheduled_for_before_now: Option<bool>,
 }
 
 fn list_queue_jobs_query(w_id: &str, lq: &ListQueueQuery, fields: &[&str]) -> SqlBuilder {
@@ -620,7 +622,7 @@ fn list_queue_jobs_query(w_id: &str, lq: &ListQueueQuery, fields: &[&str]) -> Sq
         if *s {
             sqlb.and_where_gt("suspend", 0);
         } else {
-            sqlb.and_where_eq("suspend", 0);
+            sqlb.and_where_is_null("suspend_until");
         }
     }
 
@@ -633,6 +635,10 @@ fn list_queue_jobs_query(w_id: &str, lq: &ListQueueQuery, fields: &[&str]) -> Sq
 
     if let Some(args) = &lq.args {
         sqlb.and_where("args @> ?".bind(&args.replace("'", "''")));
+    }
+
+    if lq.scheduled_for_before_now.is_some_and(|x| x) {
+        sqlb.and_where_le("scheduled_for", "now()");
     }
 
     sqlb
@@ -704,7 +710,7 @@ async fn cancel_all(
     require_admin(authed.is_admin, &authed.username)?;
 
     let mut jobs = sqlx::query!(
-        "UPDATE queue SET canceled = true,  canceled_by = $2, scheduled_for = now(), suspend = 0 WHERE workspace_id = $1 AND schedule_path IS NULL RETURNING id, running",
+        "UPDATE queue SET canceled = true,  canceled_by = $2, scheduled_for = now(), suspend = 0 WHERE scheduled_for < now() AND workspace_id = $1 AND schedule_path IS NULL RETURNING id, running",
         w_id,
         authed.username
     )
@@ -863,6 +869,7 @@ async fn list_jobs(
                 args: lq.args,
                 tag: lq.tag,
                 schedule_path: lq.schedule_path,
+                scheduled_for_before_now: lq.scheduled_for_before_now,
             },
             &[
                 "'QueuedJob' as typ",
@@ -1710,6 +1717,8 @@ pub async fn run_flow_by_path(
     .map(|x| (x.tag, x.dedicated_worker))
     .unwrap_or_else(|| (None, None));
 
+    let tag = run_query.tag.clone().or(tag);
+
     check_tag_available_for_workspace(&w_id, &tag).await?;
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
@@ -1832,6 +1841,7 @@ pub async fn run_job_by_path(
         script_path_to_payload(script_path, &db, &w_id).await?;
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
 
+    let tag = run_query.tag.clone().or(tag);
     check_tag_available_for_workspace(&w_id, &tag).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
 
@@ -2102,6 +2112,8 @@ pub async fn run_wait_result_job_by_path_get(
 
     let (job_payload, tag, delete_after_use, timeout) =
         script_path_to_payload(script_path, &db, &w_id).await?;
+
+    let tag = run_query.tag.clone().or(tag);
     check_tag_available_for_workspace(&w_id, &tag).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
 
@@ -2216,6 +2228,7 @@ async fn run_wait_result_script_by_path_internal(
     let (job_payload, tag, delete_after_use, timeout) =
         script_path_to_payload(script_path, &db, &w_id).await?;
 
+    let tag = run_query.tag.clone().or(tag);
     check_tag_available_for_workspace(&w_id, &tag).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
 
@@ -2279,6 +2292,7 @@ pub async fn run_wait_result_script_by_hash(
     ) = get_path_tag_limits_cache_for_hash(&db, &w_id, hash).await?;
     check_scopes(&authed, || format!("run:script/{path}"))?;
 
+    let tag = run_query.tag.clone().or(tag);
     check_tag_available_for_workspace(&w_id, &tag).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
 
@@ -2367,6 +2381,7 @@ async fn run_wait_result_flow_by_path_internal(
     .map(|x| (x.tag, x.dedicated_worker, x.early_return))
     .unwrap_or_else(|| (None, None, None));
 
+    let tag = run_query.tag.clone().or(tag);
     check_tag_available_for_workspace(&w_id, &tag).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
 
@@ -2416,7 +2431,8 @@ async fn run_preview_job(
         ));
     }
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
-    check_tag_available_for_workspace(&w_id, &preview.tag).await?;
+    let tag = run_query.tag.clone().or(preview.tag.clone());
+    check_tag_available_for_workspace(&w_id, &tag).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
 
     let (uuid, tx) = push(
@@ -2450,7 +2466,7 @@ async fn run_preview_job(
         false,
         None,
         true,
-        preview.tag,
+        tag,
         None,
         None,
         None,
@@ -2635,7 +2651,8 @@ async fn run_preview_flow_job(
         ));
     }
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
-    check_tag_available_for_workspace(&w_id, &raw_flow.tag).await?;
+    let tag = run_query.tag.clone().or(raw_flow.tag.clone());
+    check_tag_available_for_workspace(&w_id, &tag).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
 
     let (uuid, tx) = push(
@@ -2660,7 +2677,7 @@ async fn run_preview_flow_job(
         false,
         None,
         true,
-        raw_flow.tag,
+        tag,
         None,
         None,
         None,
@@ -2698,6 +2715,7 @@ pub async fn run_job_by_hash(
     check_scopes(&authed, || format!("run:script/{path}"))?;
 
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
+    let tag = run_query.tag.clone().or(tag);
 
     check_tag_available_for_workspace(&w_id, &tag).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
@@ -2902,6 +2920,7 @@ pub struct ListCompletedQuery {
     // filter by matching a subset of the result using base64 encoded json subset
     pub result: Option<String>,
     pub tag: Option<String>,
+    pub scheduled_for_before_now: Option<bool>,
 }
 
 async fn list_completed_jobs(
