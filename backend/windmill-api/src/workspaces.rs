@@ -32,6 +32,7 @@ use magic_crypt::MagicCryptTrait;
 use uuid::Uuid;
 use windmill_audit::{audit_log, ActionKind};
 use windmill_common::db::UserDB;
+use windmill_common::s3_helpers::LargeFileStorage;
 use windmill_common::schedule::Schedule;
 use windmill_common::users::username_to_permissioned_as;
 use windmill_common::worker::CLOUD_HOSTED;
@@ -249,18 +250,6 @@ pub struct EditErrorHandler {
     pub error_handler: Option<String>,
     pub error_handler_extra_args: Option<serde_json::Value>,
     pub error_handler_muted_on_cancel: Option<bool>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(tag = "type")]
-pub enum LargeFileStorage {
-    S3Storage(S3Storage),
-    // TODO: Add a filesystem type here in the future if needed
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct S3Storage {
-    pub s3_resource_path: String,
 }
 
 async fn list_pending_invites(
