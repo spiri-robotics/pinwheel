@@ -47,7 +47,6 @@ mod audit;
 mod capture;
 mod configs;
 mod db;
-mod deployment_metadata_helpers;
 mod drafts;
 pub mod ee;
 pub mod embeddings;

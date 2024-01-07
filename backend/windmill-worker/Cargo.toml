@@ -30,6 +30,7 @@ windmill-parser-py-imports.workspace = true
 windmill-parser-bash.workspace = true
 windmill-parser-sql.workspace = true
 windmill-parser-graphql.workspace = true
+windmill-git-sync.workspace = true
 sqlx.workspace = true
 uuid.workspace = true
 tracing.workspace = true
