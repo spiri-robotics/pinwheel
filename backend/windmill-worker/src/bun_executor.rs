@@ -290,6 +290,11 @@ pub async fn handle_bun_job(
 
     let nodejs_mode: bool = inner_content.starts_with("//nodejs");
 
+    if nodejs_mode {
+        return Err(error::Error::ExecutionErr(
+            "Nodejs mode is an EE feature".to_string(),
+        ));
+    }
 
     if let Some(reqs) = requirements_o {
         let splitted = reqs.split(BUN_LOCKB_SPLIT).collect::<Vec<&str>>();
