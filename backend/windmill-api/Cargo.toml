@@ -87,3 +87,4 @@ aws-sdk-s3.workspace = true
 polars.workspace = true
 polars-io.workspace = true
 object_store.workspace = true
+openidconnect = { workspace = true, optional = true}

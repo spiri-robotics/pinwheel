@@ -61,6 +61,8 @@ pub mod job_helpers;
 pub mod job_metrics;
 pub mod jobs;
 pub mod oauth2;
+
+mod oidc;
 mod openai;
 mod raw_apps;
 mod resources;
@@ -204,7 +206,8 @@ pub async fn run_server(
                             users::workspaced_service().layer(Extension(argon2.clone())),
                         )
                         .nest("/variables", variables::workspaced_service())
-                        .nest("/workspaces", workspaces::workspaced_service()),
+                        .nest("/workspaces", workspaces::workspaced_service())
+                        .nest("/oidc", oidc::workspaced_service()),
                 )
                 .nest("/workspaces", workspaces::global_service())
                 .nest(
@@ -227,6 +230,7 @@ pub async fn run_server(
                 .route_layer(from_extractor::<ApiAuthed>())
                 .route_layer(from_extractor::<users::Tokened>())
                 .nest("/jobs", jobs::global_root_service())
+                .nest("/oidc", oidc::global_service())
                 .nest(
                     "/saml",
                     saml::global_service().layer(Extension(Arc::new(sp_extension.0))),
