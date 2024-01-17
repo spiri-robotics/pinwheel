@@ -14,7 +14,7 @@ use anyhow;
 
 use crate::db::DB;
 use axum::extract::Path;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Extension;
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
