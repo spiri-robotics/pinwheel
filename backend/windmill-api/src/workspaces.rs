@@ -1844,7 +1844,7 @@ where
 
 async fn tarball_workspace(
     authed: ApiAuthed,
-    Extension(db): Extension<DB>,
+    Extension(user_db): Extension<UserDB>,
     Path(w_id): Path<String>,
     Query(ArchiveQueryParams {
         archive_type,
@@ -1856,7 +1856,9 @@ async fn tarball_workspace(
         include_schedules,
     }): Query<ArchiveQueryParams>,
 ) -> Result<([(headers::HeaderName, String); 2], impl IntoResponse)> {
-    require_admin(authed.is_admin, &authed.username)?;
+    // require_admin(authed.is_admin, &authed.username)?;
+
+    let mut tx = user_db.begin(&authed).await?;
 
     let tmp_dir = TempDir::new_in("/tmp/windmill/")?;
 
@@ -1875,7 +1877,7 @@ async fn tarball_workspace(
     {
         let folders = sqlx::query_as::<_, Folder>("SELECT * FROM folder WHERE workspace_id = $1")
             .bind(&w_id)
-            .fetch_all(&db)
+            .fetch_all(&mut *tx)
             .await?;
 
         for folder in folders {
@@ -1895,7 +1897,7 @@ async fn tarball_workspace(
              workspace_id = $1)",
         )
         .bind(&w_id)
-        .fetch_all(&db)
+        .fetch_all(&mut *tx)
         .await?;
 
         for script in scripts {
@@ -1950,7 +1952,7 @@ async fn tarball_workspace(
             "SELECT * FROM resource WHERE workspace_id = $1 AND resource_type != 'state' AND resource_type != 'cache'",
             &w_id
         )
-        .fetch_all(&db)
+        .fetch_all(&mut *tx)
         .await?;
 
         for resource in resources {
@@ -1967,7 +1969,7 @@ async fn tarball_workspace(
             "SELECT * FROM resource_type WHERE workspace_id = $1",
             &w_id
         )
-        .fetch_all(&db)
+        .fetch_all(&mut *tx)
         .await?;
 
         for resource_type in resource_types {
@@ -1986,7 +1988,7 @@ async fn tarball_workspace(
             "SELECT * FROM flow WHERE workspace_id = $1 AND archived = false",
         )
         .bind(&w_id)
-        .fetch_all(&db)
+        .fetch_all(&mut *tx)
         .await?;
 
         for flow in flows {
@@ -2005,7 +2007,7 @@ async fn tarball_workspace(
                 "SELECT * FROM variable WHERE workspace_id = $1 AND is_secret = false"
             })
             .bind(&w_id)
-            .fetch_all(&db)
+            .fetch_all(&mut *tx)
             .await?;
 
         let mc = build_crypt(&mut db.begin().await?, &w_id).await?;
@@ -2036,7 +2038,7 @@ async fn tarball_workspace(
             WHERE app.workspace_id = $1 AND app_version.id = app.versions[array_upper(app.versions, 1)]",
             &w_id
         )
-        .fetch_all(&db)
+        .fetch_all(&mut *tx)
         .await?;
 
         for app in apps {
@@ -2054,7 +2056,7 @@ async fn tarball_workspace(
             WHERE workspace_id = $1",
             &w_id
         )
-        .fetch_all(&db)
+        .fetch_all(&mut *tx)
         .await?;
 
         for schedule in schedules {
