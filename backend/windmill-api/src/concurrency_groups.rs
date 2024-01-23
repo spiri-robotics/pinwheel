@@ -10,6 +10,10 @@ use windmill_common::error::Error::{InternalErr, PermissionDenied};
 use windmill_common::error::JsonResult;
 
 
+pub fn global_service() -> Router {
+    Router::new()
+}
+
 #[derive(Serialize)]
 pub struct ConcurrencyGroups {
     concurrency_id: String,
