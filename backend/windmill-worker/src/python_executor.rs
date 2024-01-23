@@ -48,6 +48,7 @@ use crate::{
         create_args_and_out_file, get_reserved_variables, handle_child, read_result, set_logs,
         start_child_process, write_file,
     },
+    global_cache::build_tar_and_push,
     AuthedClientBackgroundTask, DISABLE_NSJAIL, DISABLE_NUSER, HTTPS_PROXY, HTTP_PROXY,
     LOCK_CACHE_DIR, NO_PROXY, NSJAIL_PATH, PATH_ENV, PIP_CACHE_DIR, PIP_EXTRA_INDEX_URL, TZ_ENV,
 };

@@ -295,7 +295,6 @@ lazy_static::lazy_static! {
         .ok()
         .and_then(|x| x.parse::<u64>().ok());
 
-    pub static ref CAN_PULL: Arc<RwLock<()>> = Arc::new(RwLock::new(()));
 
     pub static ref WORKER_EXECUTION_COUNT: Arc<RwLock<HashMap<String, IntCounter>>> = Arc::new(RwLock::new(HashMap::new()));
     pub static ref WORKER_EXECUTION_DURATION_COUNTER: Arc<RwLock<HashMap<String, prometheus::Counter>>> = Arc::new(RwLock::new(HashMap::new()));
@@ -843,11 +842,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         ws.inc();
     }
 
-    let (_copy_to_bucket_tx, mut copy_to_bucket_rx) = mpsc::channel::<()>(2);
-
-
-
-
 
     let (same_worker_tx, mut same_worker_rx) = mpsc::channel::<Uuid>(5);
 
@@ -1260,7 +1254,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             );
         }
 
-
         if last_ping.elapsed().as_secs() > NUM_SECS_PING {
             let tags = WORKER_CONFIG.read().await.worker_tags.clone();
 
@@ -1288,24 +1281,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             tracing::info!(worker = %worker_name, "vacuumed queue and completed_job");
         }
 
-
-        // // The barrier is to avoid the sync to bucket syncing partial folders
-        // #[cfg(feature = "enterprise")]
-        // if num_workers > 1 && S3_CACHE_BUCKET.is_some()  {
-        //     let read_barrier = sync_barrier.read().await;
-        //     if let Some(b) = read_barrier.as_ref() {
-        //         tracing::debug!("worker #{i_worker} waiting for barrier");
-        //         b.wait().await;
-        //         tracing::debug!("worker #{i_worker} done waiting for barrier");
-        //         drop(read_barrier);
-        //         // wait for barrier to be reset
-        //         let _ = CAN_PULL.read().await;
-        //         tracing::debug!("worker #{i_worker} done waiting for lock");
-        //     } else {
-        //         tracing::debug!("worker #{i_worker} no barrier");
-        //     };
-        // }
-
         let next_job = {
             // println!("2: {:?}",  instant.elapsed());
             #[cfg(feature = "benchmark")]
@@ -1316,13 +1291,9 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             tokio::select! {
                 biased;
                 _ = killpill_rx.recv() => {
+                    println!("received killpill for worker {}", i_worker);
                     job_completed_tx.0.send(SendResult::Kill).await.unwrap();
                     break
-                },
-                _ = copy_to_bucket_rx.recv() => {
-                    tracing::debug!("can_pull lock start");
-                    let _lock = CAN_PULL.write().await;
-                    Ok(None)
                 },
                 Some(job_id) = same_worker_rx.recv() => {
                     sqlx::query_as::<_, QueuedJob>("SELECT * FROM queue WHERE id = $1")
