@@ -1709,7 +1709,6 @@ struct ScriptMetadata {
     summary: String,
     description: String,
     schema: Option<Schema>,
-    is_template: bool,
     lock: Option<String>,
     kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1925,7 +1924,6 @@ async fn tarball_workspace(
                 summary: script.summary,
                 description: script.description,
                 schema: script.schema,
-                is_template: script.is_template,
                 kind: script.kind.to_string(),
                 lock: script.lock,
                 envs: script.envs,
