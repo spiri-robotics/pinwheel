@@ -1877,6 +1877,7 @@ struct ArchiveQueryParams {
     skip_variables: Option<bool>,
     skip_resources: Option<bool>,
     include_schedules: Option<bool>,
+    default_ts: Option<String>,
 }
 
 #[inline]
@@ -1934,6 +1935,7 @@ async fn tarball_workspace(
         skip_secrets,
         skip_variables,
         include_schedules,
+        default_ts,
     }): Query<ArchiveQueryParams>,
 ) -> Result<([(headers::HeaderName, String); 2], impl IntoResponse)> {
     // require_admin(authed.is_admin, &authed.username)?;
@@ -1983,7 +1985,13 @@ async fn tarball_workspace(
         for script in scripts {
             let ext = match script.language {
                 ScriptLang::Python3 => "py",
-                ScriptLang::Deno => "ts",
+                ScriptLang::Deno => {
+                    if default_ts.as_ref().is_some_and(|x| x == "bun") {
+                        "deno.ts"
+                    } else {
+                        "ts"
+                    }
+                }
                 ScriptLang::Go => "go",
                 ScriptLang::Bash => "sh",
                 ScriptLang::Powershell => "ps1",
@@ -1994,7 +2002,13 @@ async fn tarball_workspace(
                 ScriptLang::Mssql => "ms.sql",
                 ScriptLang::Graphql => "gql",
                 ScriptLang::Nativets => "fetch.ts",
-                ScriptLang::Bun => "bun.ts",
+                ScriptLang::Bun => {
+                    if default_ts.as_ref().is_some_and(|x| x == "bun") {
+                        "ts"
+                    } else {
+                        "bun.ts"
+                    }
+                }
             };
             archive
                 .write_to_archive(&script.content, &format!("{}.{}", script.path, ext))
