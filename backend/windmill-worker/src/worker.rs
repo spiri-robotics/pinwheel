@@ -3251,7 +3251,7 @@ async fn lock_modules(
     let mut new_flow_modules = Vec::new();
     for mut e in modules.into_iter() {
         let FlowModuleValue::RawScript {
-            lock: _,
+            lock,
             path,
             content,
             language,
@@ -3259,7 +3259,7 @@ async fn lock_modules(
             tag,
             concurrent_limit,
             concurrency_time_window_s,
-        } = e.value
+        } = e.value.clone()
         else {
             match e.value {
                 FlowModuleValue::ForloopFlow {
@@ -3355,7 +3355,10 @@ async fn lock_modules(
             new_flow_modules.push(e);
             continue;
         };
-
+        if lock.as_ref().is_some_and(|x| !x.trim().is_empty()) {
+            new_flow_modules.push(e);
+            continue;
+        }
         let new_lock = capture_dependency_job(
             &job.id,
             &language,
