@@ -157,6 +157,10 @@ pub async fn get_users(
 
 
 
+
+
+
+
 // {
 //     "schemas": [],
 //     "id": "abf4dd94-a4c0-4f67-89c9-76b03340cb9b",
@@ -183,6 +187,11 @@ pub struct Operation {
     pub op: String,
     pub path: String,
     pub value: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct UpdateMembersOperationValue {
+    pub value: String,
 }
 
 
