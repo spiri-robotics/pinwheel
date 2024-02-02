@@ -1013,7 +1013,12 @@ pub async fn resume_suspended_job(
     let flow_status = parent_flow
         .flow_status()
         .ok_or_else(|| anyhow::anyhow!("unable to find the flow status in the flow job"))?;
-    conditionally_require_authed_user(authed.clone(), flow_status)?;
+
+    let trigger_email = match &parent_flow {
+        Job::CompletedJob(job) => &job.email,
+        Job::QueuedJob(job) => &job.email,
+    };
+    conditionally_require_authed_user(authed.clone(), flow_status, trigger_email)?;
 
     let exists = sqlx::query_scalar!(
         r#"
@@ -1199,7 +1204,11 @@ pub async fn cancel_suspended_job(
     let flow_status = parent_flow
         .flow_status()
         .ok_or_else(|| anyhow::anyhow!("unable to find the flow status in the flow job"))?;
-    conditionally_require_authed_user(authed, flow_status)?;
+    let trigger_email = match &parent_flow {
+        Job::CompletedJob(job) => &job.email,
+        Job::QueuedJob(job) => &job.email,
+    };
+    conditionally_require_authed_user(authed, flow_status, trigger_email)?;
 
     let (mut tx, cjob) = windmill_queue::cancel_job(
         &whom,
@@ -1289,7 +1298,12 @@ pub async fn get_suspended_job_flow(
         .iter()
         .find(|p| p.job() == Some(job))
         .ok_or_else(|| anyhow::anyhow!("unable to find the module"))?;
-    conditionally_require_authed_user(authed, flow_status.clone())?;
+
+    let trigger_email = match &flow {
+        Job::CompletedJob(job) => &job.email,
+        Job::QueuedJob(job) => &job.email,
+    };
+    conditionally_require_authed_user(authed, flow_status.clone(), trigger_email)?;
 
     let approvers_from_status = match flow_module_status {
         FlowStatusModule::Success { approvers, .. } => approvers.to_owned(),
@@ -1322,6 +1336,7 @@ pub async fn get_suspended_job_flow(
 fn conditionally_require_authed_user(
     authed: Option<ApiAuthed>,
     flow_status: FlowStatus,
+    trigger_email: &str,
 ) -> error::Result<()> {
     let approval_conditions_opt = flow_status.approval_conditions;
 
@@ -1334,14 +1349,6 @@ fn conditionally_require_authed_user(
         return Err(Error::BadRequest(
             "Approvals for logged in users is an enterprise only feature".to_string(),
         ));
-    }
-    if authed.is_some() && !authed.as_ref().unwrap().username.eq("admin") {
-        if !approval_conditions.user_groups_required.is_empty() {
-            return Err(Error::BadRequest(
-                "Approvals for users in certain user groups is an enterprise only feature"
-                    .to_string(),
-            ));
-        }
     }
     Ok(())
 }
