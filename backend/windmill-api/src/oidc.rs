@@ -28,33 +28,7 @@ pub fn workspaced_service() -> Router {
 }
 
 
-#[derive(Debug, Clone, serde::Serialize)]
-struct Keys {
-    private_key: String,
-}
 
-async fn gen_pems(db: &DB) -> anyhow::Result<Keys> {
-    let private_key_cmd = Command::new("openssl")
-        .arg("genrsa")
-        .arg("--traditional")
-        .arg("2048")
-        .output()
-        .expect("failed to execute process");
-
-    let private_key = String::from_utf8(private_key_cmd.stdout).unwrap();
-
-    tracing::debug!("Generated private key: {}", private_key);
-    let keys = Keys { private_key };
-
-    sqlx::query!(
-        "INSERT INTO global_settings (name, value) VALUES ('rsa_keys', $1)",
-        serde_json::to_value(&keys).unwrap()
-    )
-    .execute(db)
-    .await?;
-
-    Ok(keys)
-}
 
 
 
