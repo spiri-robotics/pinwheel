@@ -78,10 +78,9 @@ async fn list_search_flows(
     Path(w_id): Path<String>,
     Extension(user_db): Extension<UserDB>,
 ) -> JsonResult<Vec<SearchFlow>> {
-    let mut tx = user_db.begin(&authed).await?;
-
 
     let n = 3;
+    let mut tx = user_db.begin(&authed).await?;
 
     let rows = sqlx::query_as!(
         SearchFlow,
