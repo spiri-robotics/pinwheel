@@ -9,7 +9,7 @@
 use crate::db::ApiAuthed;
 use crate::embeddings::load_embeddings_db;
 use crate::oauth2::AllClients;
-use crate::saml::{SamlSsoLogin, ServiceProviderExt};
+use crate::saml::ServiceProviderExt;
 use crate::scim::has_scim_token;
 use crate::tracing_init::MyOnFailure;
 use crate::{
@@ -162,7 +162,9 @@ pub async fn run_server(
         .allow_origin(Any);
 
 
-    let sp_extension = (ServiceProviderExt(), SamlSsoLogin(None));
+    let sp_extension = ServiceProviderExt();
+
+    let sp_extension_arc = Arc::new(sp_extension);
 
     let embeddings_db = if server_mode {
         Some(load_embeddings_db(&db))
@@ -234,7 +236,7 @@ pub async fn run_server(
                 .nest("/oidc", oidc::global_service())
                 .nest(
                     "/saml",
-                    saml::global_service().layer(Extension(Arc::new(sp_extension.0))),
+                    saml::global_service().layer(Extension(Arc::clone(&sp_extension_arc))),
                 )
                 .nest(
                     "/scim",
@@ -266,7 +268,7 @@ pub async fn run_server(
                 )
                 .nest(
                     "/oauth",
-                    oauth2::global_service().layer(Extension(Arc::new(sp_extension.1))),
+                    oauth2::global_service().layer(Extension(Arc::clone(&sp_extension_arc))),
                 )
                 .route("/version", get(git_v))
                 .route("/uptodate", get(is_up_to_date))

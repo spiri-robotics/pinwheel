@@ -8,6 +8,7 @@
 #![allow(non_snake_case)]
 
 use axum::{routing::post, Router};
+use std::sync::Arc;
 
 
 use serde::Deserialize;
@@ -17,7 +18,12 @@ use serde::Deserialize;
 pub struct ServiceProviderExt();
 
 
-pub struct SamlSsoLogin(pub Option<String>);
+
+pub async fn generate_redirect_url(
+    _service_provider: Arc<ServiceProviderExt>,
+) -> anyhow::Result<Option<String>> {
+    return Ok(None);
+}
 
 
 pub fn global_service() -> Router {
