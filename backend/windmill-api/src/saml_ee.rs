@@ -10,32 +10,24 @@
 use axum::{routing::post, Router};
 use std::sync::Arc;
 
-
-use serde::Deserialize;
-
-
-
 pub struct ServiceProviderExt();
 
-
+pub async fn build_sp_extension() -> anyhow::Result<ServiceProviderExt> {
+    return Ok(ServiceProviderExt());
+}
 
 pub async fn generate_redirect_url(
     _service_provider: Arc<ServiceProviderExt>,
 ) -> anyhow::Result<Option<String>> {
+    // Implementation is not open source as it is a Windmill Enterprise Edition feature
     return Ok(None);
 }
-
 
 pub fn global_service() -> Router {
     Router::new().route("/acs", post(acs))
 }
 
-#[derive(Deserialize)]
-pub struct SamlForm {
-    pub SAMLResponse: Option<String>,
-}
-
-
 pub async fn acs() -> String {
+    // Implementation is not open source as it is a Windmill Enterprise Edition feature
     "SAML available only in enterprise version".to_string()
 }
