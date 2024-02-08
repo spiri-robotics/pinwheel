@@ -123,6 +123,7 @@ pub async fn generate_deno_lock(
             "--unstable-ffi",
             "--unstable-fs",
             "--unstable-worker-options",
+            "--unstable-http",
             "--lock=lock.json",
             "--lock-write",
             "--import-map",
@@ -291,6 +292,7 @@ try {{
         args.push("--unstable-ffi");
         args.push("--unstable-fs");
         args.push("--unstable-worker-options");
+        args.push("--unstable-http");
         if let Some(reqs) = requirements_o {
             if !reqs.is_empty() {
                 let _ = write_file(job_dir, "lock.json", &reqs).await?;
