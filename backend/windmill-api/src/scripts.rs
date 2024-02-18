@@ -808,50 +808,19 @@ async fn list_paths(
 pub struct ToggleWorkspaceErrorHandler {
     pub muted: Option<bool>,
 }
+
 async fn toggle_workspace_error_handler(
-    authed: ApiAuthed,
-    Extension(user_db): Extension<UserDB>,
-    Path((w_id, path)): Path<(String, StripPath)>,
-    Json(req): Json<ToggleWorkspaceErrorHandler>,
+    _authed: ApiAuthed,
+    Extension(_user_db): Extension<UserDB>,
+    Path((_w_id, _path)): Path<(String, StripPath)>,
+    Json(_req): Json<ToggleWorkspaceErrorHandler>,
 ) -> Result<String> {
-    {
-        return Err(Error::BadRequest(
-            "Muting the error handler for certain script is only available in enterprise version"
-                .to_string(),
-        ));
-    }
-
-    let mut tx = user_db.begin(&authed).await?;
-
-    let error_handler_maybe: Option<String> = sqlx::query_scalar!(
-        "SELECT error_handler FROM workspace_settings WHERE workspace_id = $1",
-        w_id
-    )
-    .fetch_optional(&mut *tx)
-    .await?
-    .unwrap_or(None);
-
-    match error_handler_maybe {
-        Some(_) => {
-            sqlx::query_scalar!(
-                "UPDATE script SET ws_error_handler_muted = $3 WHERE workspace_id = $2 AND path = $1 AND created_at = (SELECT max(created_at) FROM script WHERE path = $1 AND workspace_id = $2)",
-                path.to_path(),
-                w_id,
-                req.muted,
-            )
-            .execute(&mut *tx)
-            .await?;
-            tx.commit().await?;
-            Ok("".to_string())
-        }
-        None => {
-            tx.commit().await?;
-            Err(Error::ExecutionErr(
-                "Workspace error handler needs to be defined".to_string(),
-            ))
-        }
-    }
+    return Err(Error::BadRequest(
+        "Muting the error handler for certain script is only available in enterprise version"
+            .to_string(),
+    ));
 }
+
 
 async fn get_tokened_raw_script_by_path(
     Extension(user_db): Extension<UserDB>,

@@ -1422,9 +1422,9 @@ pub async fn get_suspended_job_flow(
 }
 
 fn conditionally_require_authed_user(
-    authed: Option<ApiAuthed>,
+    _authed: Option<ApiAuthed>,
     flow_status: FlowStatus,
-    trigger_email: &str,
+    _trigger_email: &str,
 ) -> error::Result<()> {
     let approval_conditions_opt = flow_status.approval_conditions;
 
@@ -1434,9 +1434,12 @@ fn conditionally_require_authed_user(
     let approval_conditions = approval_conditions_opt.unwrap();
 
     if approval_conditions.user_auth_required {
-        return Err(Error::BadRequest(
-            "Approvals for logged in users is an enterprise only feature".to_string(),
-        ));
+        {
+            return Err(Error::BadRequest(
+                "Approvals for logged in users is an enterprise only feature".to_string(),
+            ));
+
+        }
     }
     Ok(())
 }
@@ -1916,77 +1919,23 @@ pub async fn run_flow_by_path(
 }
 
 pub async fn restart_flow(
-    authed: ApiAuthed,
-    Extension(db): Extension<DB>,
-    Extension(user_db): Extension<UserDB>,
-    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
-    Path((w_id, job_id, step_id, branch_or_iteration_n)): Path<(
+    _authed: ApiAuthed,
+    Extension(_db): Extension<DB>,
+    Extension(_user_db): Extension<UserDB>,
+    Extension(_rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
+    Path((_w_id, _job_id, _step_id, _branch_or_iteration_n)): Path<(
         String,
         Uuid,
         String,
         Option<usize>,
     )>,
-    Query(run_query): Query<RunJobQuery>,
+    Query(_run_query): Query<RunJobQuery>,
 ) -> error::Result<(StatusCode, String)> {
-    {
-        return Err(Error::BadRequest(
-            "Restarting a flow is a feature only available in enterprise version".to_string(),
-        ));
-    }
-
-
-    let completed_job = sqlx::query_as::<_, CompletedJob>(
-        "SELECT * from completed_job WHERE id = $1 and workspace_id = $2",
-    )
-    .bind(job_id)
-    .bind(&w_id)
-    .fetch_optional(&db)
-    .await?
-    .with_context(|| "Unable to find completed job with the given job UUID")?;
-
-    let flow_path = completed_job
-        .script_path
-        .with_context(|| "No flow path set for completed flow job")?;
-    check_scopes(&authed, || format!("run:flow/{flow_path}"))?;
-
-    let push_args = completed_job
-        .args
-        .map(|json| PushArgs { args: json.clone(), extra: json.0 });
-
-    let scheduled_for = run_query.get_scheduled_for(&db).await?;
-    let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into(), rsmq);
-
-    let (uuid, tx) = push(
-        &db,
-        tx,
-        &w_id,
-        JobPayload::RestartedFlow {
-            completed_job_id: job_id,
-            step_id: step_id,
-            branch_or_iteration_n: branch_or_iteration_n,
-        },
-        push_args,
-        &authed.username,
-        &authed.email,
-        username_to_permissioned_as(&authed.username),
-        scheduled_for,
-        None,
-        run_query.parent_job,
-        run_query.parent_job,
-        run_query.job_id,
-        false,
-        false,
-        None,
-        !run_query.invisible_to_owner.unwrap_or(false),
-        Some(completed_job.tag),
-        None,
-        None,
-        completed_job.priority,
-    )
-    .await?;
-    tx.commit().await?;
-    Ok((StatusCode::CREATED, uuid.to_string()))
+    return Err(Error::BadRequest(
+        "Restarting a flow is a feature only available in enterprise version".to_string(),
+    ));
 }
+
 
 pub async fn run_job_by_path(
     authed: ApiAuthed,

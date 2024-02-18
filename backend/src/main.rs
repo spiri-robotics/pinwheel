@@ -33,8 +33,10 @@ use windmill_common::{
     stats::schedule_stats,
     utils::{rd_string, Mode},
     worker::{reload_custom_tags_setting, WORKER_GROUP},
-    DB, METRICS_ADDR, METRICS_ENABLED,
+    DB, METRICS_ENABLED,
 };
+
+
 use windmill_worker::{
     BUN_CACHE_DIR, BUN_TMP_CACHE_DIR, DENO_CACHE_DIR, DENO_CACHE_DIR_DEPS, DENO_CACHE_DIR_NPM,
     DENO_TMP_CACHE_DIR, DENO_TMP_CACHE_DIR_DEPS, DENO_TMP_CACHE_DIR_NPM, GO_BIN_CACHE_DIR,
@@ -139,8 +141,6 @@ async fn windmill_main() -> anyhow::Result<()> {
                 {
                     panic!("Agent mode is only available in the EE, ignoring...");
                 }
-
-                Mode::Agent
             } else {
                 if &x != "standalone" {
                     tracing::error!("mode not recognized, defaulting to standalone: {x}");

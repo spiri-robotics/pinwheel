@@ -1798,33 +1798,28 @@ async fn spawn_dedicated_workers_for_flow(
     workers
 }
 
-enum SpawnWorker {
+pub enum SpawnWorker {
     Script { path: String, hash: Option<ScriptHash> },
     RawScript { path: String, content: String, lock: Option<String>, lang: ScriptLang },
 }
 
-// spawn one dedicated worker and return the key, the channel sender and the join handle
-// note that for it will return none for language that do not support dedicated workers
-// note that go using cache binary does not need dedicated workers so all languages are supported
 async fn spawn_dedicated_worker(
-    sw: SpawnWorker,
-    w_id: &str,
+    _sw: SpawnWorker,
+    _w_id: &str,
     killpill_tx: tokio::sync::broadcast::Sender<()>,
-    killpill_rx: &tokio::sync::broadcast::Receiver<()>,
-    db: &Pool<Postgres>,
-    worker_dir: &str,
-    base_internal_url: &str,
-    worker_name: &str,
-    job_completed_tx: &JobCompletedSender,
-    node_id: Option<String>,
+    _killpill_rx: &tokio::sync::broadcast::Receiver<()>,
+    _db: &Pool<Postgres>,
+    _worker_dir: &str,
+    _base_internal_url: &str,
+    _worker_name: &str,
+    _job_completed_tx: &JobCompletedSender,
+    _node_id: Option<String>,
 ) -> Option<DedicatedWorker> {
-    {
-        tracing::error!("Dedicated worker is an enterprise feature");
-        killpill_tx.send(()).expect("send");
-        return None;
-    }
-
+    tracing::error!("Dedicated worker is an enterprise feature");
+    killpill_tx.send(()).expect("send");
+    return None;
 }
+
 
 async fn queue_init_bash_maybe<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
     db: &Pool<Postgres>,

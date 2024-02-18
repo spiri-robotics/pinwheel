@@ -836,118 +836,39 @@ async fn edit_large_file_storage_config(
 }
 
 #[derive(Deserialize)]
-struct EditGitSyncConfig {
-    git_sync_settings: Option<WorkspaceGitSyncSettings>,
+pub struct EditGitSyncConfig {
+    pub git_sync_settings: Option<WorkspaceGitSyncSettings>,
 }
 
 async fn edit_git_sync_config(
-    authed: ApiAuthed,
-    Extension(db): Extension<DB>,
-    Path(w_id): Path<String>,
-    ApiAuthed { is_admin, username, .. }: ApiAuthed,
-    Json(new_config): Json<EditGitSyncConfig>,
+    _authed: ApiAuthed,
+    Extension(_db): Extension<DB>,
+    Path(_w_id): Path<String>,
+    Json(_new_config): Json<EditGitSyncConfig>,
 ) -> Result<String> {
-    {
-        return Err(Error::BadRequest(
-            "Git sync is only available on Windmill Enterprise Edition".to_string(),
-        ));
-    }
-
-    require_admin(is_admin, &username)?;
-
-    let mut tx = db.begin().await?;
-
-    let args_for_audit = format!("{:?}", new_config.git_sync_settings);
-    audit_log(
-        &mut *tx,
-        &authed.username,
-        "workspaces.edit_git_sync_config",
-        ActionKind::Update,
-        &w_id,
-        Some(&authed.email),
-        Some([("git_sync_settings", args_for_audit.as_str())].into()),
-    )
-    .await?;
-
-    if let Some(git_sync_settings) = new_config.git_sync_settings {
-        let serialized_config = serde_json::to_value::<WorkspaceGitSyncSettings>(git_sync_settings)
-            .map_err(|err| Error::InternalErr(err.to_string()))?;
-
-        sqlx::query!(
-            "UPDATE workspace_settings SET git_sync = $1 WHERE workspace_id = $2",
-            serialized_config,
-            &w_id
-        )
-        .execute(&mut *tx)
-        .await?;
-    } else {
-        sqlx::query!(
-            "UPDATE workspace_settings SET git_sync = NULL WHERE workspace_id = $1",
-            &w_id,
-        )
-        .execute(&mut *tx)
-        .await?;
-    }
-    tx.commit().await?;
-
-    Ok(format!("Edit git sync config for workspace {}", &w_id))
+    return Err(Error::BadRequest(
+        "Git sync is only available on Windmill Enterprise Edition".to_string(),
+    ));
 }
 
+
 #[derive(Deserialize)]
-struct EditDefaultApp {
-    default_app_path: Option<String>,
+pub struct EditDefaultApp {
+    pub default_app_path: Option<String>,
 }
 
 async fn edit_default_app(
-    authed: ApiAuthed,
-    Extension(db): Extension<DB>,
-    Path(w_id): Path<String>,
-    ApiAuthed { is_admin, username, .. }: ApiAuthed,
-    Json(new_config): Json<EditDefaultApp>,
+    _authed: ApiAuthed,
+    Extension(_db): Extension<DB>,
+    Path(_w_id): Path<String>,
+    Json(_new_config): Json<EditDefaultApp>,
 ) -> Result<String> {
-    {
-        return Err(Error::BadRequest(
-            "Setting a workspace default app is only available on Windmill Enterprise Edition"
-                .to_string(),
-        ));
-    }
-
-    require_admin(is_admin, &username)?;
-
-    let mut tx = db.begin().await?;
-
-    let args_for_audit = format!("{:?}", new_config.default_app_path);
-    audit_log(
-        &mut *tx,
-        &authed.username,
-        "workspaces.edit_default_app",
-        ActionKind::Update,
-        &w_id,
-        Some(&authed.email),
-        Some([("args_for_audit", args_for_audit.as_str())].into()),
-    )
-    .await?;
-
-    if let Some(default_app_path) = new_config.default_app_path {
-        sqlx::query!(
-            "UPDATE workspace_settings SET default_app = $1 WHERE workspace_id = $2",
-            default_app_path,
-            &w_id
-        )
-        .execute(&mut *tx)
-        .await?;
-    } else {
-        sqlx::query!(
-            "UPDATE workspace_settings SET default_app = NULL WHERE workspace_id = $1",
-            &w_id,
-        )
-        .execute(&mut *tx)
-        .await?;
-    }
-    tx.commit().await?;
-
-    Ok(format!("Edit default app for workspace {}", &w_id))
+    return Err(Error::BadRequest(
+        "Setting a workspace default app is only available on Windmill Enterprise Edition"
+            .to_string(),
+    ));
 }
+
 
 #[derive(Serialize)]
 struct WorkspaceDefaultApp {

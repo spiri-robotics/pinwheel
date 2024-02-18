@@ -2381,7 +2381,7 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
     mut tag: Option<String>,
     custom_timeout: Option<i32>,
     flow_step_id: Option<String>,
-    priority_override: Option<i16>,
+    _priority_override: Option<i16>,
 ) -> Result<(Uuid, QueueTransaction<'c, R>), Error> {
 
     let (
@@ -2396,7 +2396,7 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
         concurrency_time_window_s,
         cache_ttl,
         dedicated_worker,
-        low_level_priority,
+        _low_level_priority,
     ) = match job_payload {
         JobPayload::ScriptHash {
             hash,

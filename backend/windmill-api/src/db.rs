@@ -6,7 +6,8 @@
  * LICENSE-AGPL for a copy of the license.
  */
 
-use sqlx::{migrate::Migrate, pool::PoolConnection, Executor, Pool, Postgres};
+
+use sqlx::{migrate::Migrate, pool::PoolConnection, Pool, Postgres};
 use windmill_common::{
     db::{Authable, Authed},
     error::Error,
@@ -103,18 +104,10 @@ pub async fn migrate(db: &DB) -> Result<(), Error> {
         Err(err) => Err(err),
     }?;
 
-    if let Err(e) = windmill_migrations(&mut custom_migrator, db).await {
-        tracing::error!("Could not apply windmill custom migrations: {e}")
-    }
 
     Ok(())
 }
 
-async fn windmill_migrations(migrator: &mut CustomMigrator, db: &DB) -> Result<(), Error> {
-    if std::env::var("MIGRATION_NO_BYPASSRLS").is_ok() {
-    }
-    Ok(())
-}
 
 #[derive(Clone, Debug)]
 pub struct ApiAuthed {

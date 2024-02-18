@@ -180,7 +180,7 @@ pub async fn update_flow_status_after_job_completion_internal<
         skip_if_stop_early,
         nresult,
         is_failure_step,
-        cleanup_module,
+        _cleanup_module,
     ) = {
         // tracing::debug!("UPDATE FLOW STATUS: {flow:?} {success} {result:?} {w_id} {depth}");
 
