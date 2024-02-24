@@ -14,7 +14,7 @@ stripe = ["dep:async-stripe"]
 benchmark = []
 embedding = ["dep:tinyvector", "dep:hf-hub", "dep:tokenizers", "dep:candle-core", "dep:candle-transformers", "dep:candle-nn"]
 parquet = ["dep:polars", "dep:polars-io", "dep:object_store", "windmill-common/parquet"]
-
+prometheus = ["windmill-common/prometheus", "windmill-queue/prometheus", "dep:prometheus"]
 
 [dependencies]
 windmill-queue.workspace = true
@@ -64,7 +64,7 @@ sha2.workspace = true
 urlencoding.workspace = true
 async-stripe = { workspace = true, optional = true }
 lazy_static.workspace = true
-prometheus.workspace = true
+prometheus = { workspace = true, optional = true }
 async_zip.workspace = true
 rsmq_async.workspace = true
 regex.workspace = true
