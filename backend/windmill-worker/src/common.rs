@@ -15,6 +15,7 @@ use sqlx::{Pool, Postgres};
 use tokio::process::Command;
 use tokio::{fs::File, io::AsyncReadExt};
 use windmill_common::error::to_anyhow;
+#[cfg(feature = "parquet")]
 use windmill_common::s3_helpers::{
     get_etag_or_empty, AzureBlobResource, LargeFileStorage, ObjectStoreResource, S3Object,
     S3Resource,
@@ -964,11 +965,13 @@ fn append_with_limit(dst: &mut String, src: &str, limit: &mut usize) {
     }
 }
 
+
+
 pub async fn hash_args(
-    db: &DB,
-    client: &AuthedClient,
-    workspace_id: &str,
-    job_id: &Uuid,
+    _db: &DB,
+    _client: &AuthedClient,
+    _workspace_id: &str,
+    _job_id: &Uuid,
     v: &Option<sqlx::types::Json<HashMap<String, Box<RawValue>>>>,
 ) -> String {
     if let Some(vs) = v {
@@ -977,10 +980,12 @@ pub async fn hash_args(
         for k in hm.keys().sorted() {
             k.hash(&mut dh);
             let arg_value = hm.get(k).unwrap();
+            #[cfg(feature = "parquet")]
             let arg_additions =
-                arg_value_hash_additions(db, client, workspace_id, job_id, hm.get(k).unwrap())
+                arg_value_hash_additions(_db, _client, _workspace_id, _job_id, hm.get(k).unwrap())
                     .await;
             arg_value.get().hash(&mut dh);
+            #[cfg(feature = "parquet")]
             for (_, arg_addition) in arg_additions {
                 arg_addition.hash(&mut dh);
             }
@@ -991,6 +996,8 @@ pub async fn hash_args(
     }
 }
 
+
+#[cfg(feature = "polars")]
 async fn get_workspace_s3_resource_path(
     db: &DB,
     client: &AuthedClient,
@@ -1037,6 +1044,7 @@ async fn get_workspace_s3_resource_path(
     }
 }
 
+#[cfg(feature = "parquet")]
 async fn arg_value_hash_additions(
     db: &DB,
     client: &AuthedClient,
@@ -1064,6 +1072,7 @@ async fn arg_value_hash_additions(
     return result;
 }
 
+#[cfg(feature = "parquet")]
 fn extract_all_s3_object_from_raw_value(raw_value: &Box<RawValue>, result: &mut Vec<S3Object>) {
     let parsed_value = serde_json::from_str::<S3Object>(raw_value.get());
     if let Ok(parsed_value) = parsed_value {
@@ -1094,10 +1103,10 @@ struct CachedResource {
 }
 
 pub async fn get_cached_resource_value_if_valid(
-    db: &DB,
+    _db: &DB,
     client: &AuthedClient,
-    job_id: &Uuid,
-    workspace_id: &str,
+    _job_id: &Uuid,
+    _workspace_id: &str,
     cached_res_path: &str,
 ) -> Option<Box<RawValue>> {
     let resource_opt = client
@@ -1109,24 +1118,28 @@ pub async fn get_cached_resource_value_if_valid(
             // cache expired
             return None;
         }
-        let s3_etags = cached_resource.s3_etags.unwrap_or_default();
-        let object_store_resource_opt: Option<ObjectStoreResource> = if s3_etags.is_empty() {
-            None
-        } else {
-            get_workspace_s3_resource_path(db, &client, workspace_id, job_id).await
-        };
-        if !s3_etags.is_empty() && object_store_resource_opt.is_none() {
-            tracing::warn!("Cached result references s3 files that are not retrievable anymore because the workspace S3 resource can't be fetched. Cache will be invalidated");
-            return None;
-        }
-        for (s3_file_key, s3_file_etag) in s3_etags {
-            if let Some(object_store_resource) = object_store_resource_opt.clone() {
-                let etag =
-                    get_etag_or_empty(&object_store_resource, S3Object { s3: s3_file_key.clone() })
-                        .await;
-                if etag.is_none() || etag.clone().unwrap() != s3_file_etag {
-                    tracing::warn!("S3 file etag for '{}' has changed. Value from cache is {:?} while current value from S3 is {:?}. Cache will be invalidated", s3_file_key.clone(), s3_file_etag, etag);
-                    return None;
+        #[cfg(feature = "parquet")]
+        {
+            let s3_etags = cached_resource.s3_etags.unwrap_or_default();
+            let object_store_resource_opt: Option<ObjectStoreResource> = if s3_etags.is_empty() {
+                None
+            } else {
+                get_workspace_s3_resource_path(_db, &client, _workspace_id, _job_id).await
+            };
+            
+            if !s3_etags.is_empty() && object_store_resource_opt.is_none() {
+                tracing::warn!("Cached result references s3 files that are not retrievable anymore because the workspace S3 resource can't be fetched. Cache will be invalidated");
+                return None;
+            }
+            for (s3_file_key, s3_file_etag) in s3_etags {
+                if let Some(object_store_resource) = object_store_resource_opt.clone() {
+                    let etag =
+                        get_etag_or_empty(&object_store_resource, S3Object { s3: s3_file_key.clone() })
+                            .await;
+                    if etag.is_none() || etag.clone().unwrap() != s3_file_etag {
+                        tracing::warn!("S3 file etag for '{}' has changed. Value from cache is {:?} while current value from S3 is {:?}. Cache will be invalidated", s3_file_key.clone(), s3_file_etag, etag);
+                        return None;
+                    }
                 }
             }
         }
@@ -1137,23 +1150,31 @@ pub async fn get_cached_resource_value_if_valid(
 
 pub async fn save_in_cache(
     db: &Pool<Postgres>,
-    client: &AuthedClient,
+    _client: &AuthedClient,
     job: &QueuedJob,
     cached_path: String,
     r: &Box<RawValue>,
 ) {
     let expire = chrono::Utc::now().timestamp() + job.cache_ttl.unwrap() as i64;
 
+    #[cfg(feature = "parquet")]
     let s3_etags =
-        arg_value_hash_additions(db, client, job.workspace_id.as_str(), &job.id, r).await;
+        arg_value_hash_additions(db, _client, job.workspace_id.as_str(), &job.id, r).await;
 
+    #[cfg(feature = "parquet")]    
+    let s3_etags = if s3_etags.is_empty() {
+        None
+    } else {
+        Some(s3_etags)
+    };
+
+    #[cfg(not(feature = "parquet"))]
+    let s3_etags = None;
+
+    
     let store_cache_resource = CachedResource {
         expire,
-        s3_etags: if s3_etags.is_empty() {
-            None
-        } else {
-            Some(s3_etags)
-        },
+        s3_etags,
         value: r.clone(),
     };
     let raw_json = sqlx::types::Json(store_cache_resource);

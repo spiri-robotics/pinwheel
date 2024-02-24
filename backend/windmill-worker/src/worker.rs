@@ -9,6 +9,7 @@
 use anyhow::Result;
 use const_format::concatcp;
 use itertools::Itertools;
+#[cfg(feature = "prometheus")]
 use prometheus::{
     core::{AtomicI64, GenericGauge},
     IntCounter,
@@ -40,12 +41,22 @@ use windmill_common::{
     worker::{
         to_raw_value, to_raw_value_owned, update_ping, CLOUD_HOSTED, WORKER_CONFIG, WORKER_GROUP,
     },
-    DB, IS_READY, METRICS_DEBUG_ENABLED, METRICS_ENABLED,
+    DB, IS_READY,
 };
+
+
+
+#[cfg(feature = "prometheus")]
+use windmill_common::worker::METRICS_ENABLED;
+
 use windmill_queue::{
-    canceled_job_to_result, empty_result, get_queued_job, pull, push, register_metric, CanceledBy,
+    canceled_job_to_result, empty_result, get_queued_job, pull, push, CanceledBy,
     PushArgs, PushIsolationLevel, WrappedError, HTTP_CLIENT,
 };
+
+#[cfg(feature = "prometheus")]
+use windmill_queue::register_metric;
+
 
 use serde_json::{json, value::RawValue, Value};
 
@@ -207,6 +218,28 @@ const VACUUM_PERIOD: u32 = 10000;
 
 pub const MAX_BUFFERED_DEDICATED_JOBS: usize = 3;
 
+
+#[cfg(feature = "prometheus")]
+lazy_static::lazy_static! {
+
+    static ref WORKER_STARTED: Option<prometheus::IntGauge> = if METRICS_ENABLED.load(Ordering::Relaxed) { Some(prometheus::register_int_gauge!(
+        "worker_started",
+        "Total number of workers started."
+    )
+    .unwrap()) } else { None };
+
+    static ref WORKER_UPTIME_OPTS: prometheus::Opts = prometheus::opts!(
+        "worker_uptime",
+        "Total number of seconds since the worker has started"
+    );
+
+
+    pub static ref WORKER_EXECUTION_COUNT: Arc<RwLock<HashMap<String, IntCounter>>> = Arc::new(RwLock::new(HashMap::new()));
+    pub static ref WORKER_EXECUTION_DURATION_COUNTER: Arc<RwLock<HashMap<String, prometheus::Counter>>> = Arc::new(RwLock::new(HashMap::new()));
+
+    pub static ref WORKER_EXECUTION_DURATION: Arc<RwLock<HashMap<String, prometheus::Histogram>>> = Arc::new(RwLock::new(HashMap::new()));
+}
+
 lazy_static::lazy_static! {
 
     static ref JOB_TOKEN: Option<String> = std::env::var("JOB_TOKEN").ok();
@@ -261,16 +294,6 @@ lazy_static::lazy_static! {
         .and_then(|x| x.parse::<i32>().ok())
         .unwrap_or(100);
 
-    static ref WORKER_STARTED: Option<prometheus::IntGauge> = if METRICS_ENABLED.load(Ordering::Relaxed) { Some(prometheus::register_int_gauge!(
-        "worker_started",
-        "Total number of workers started."
-    )
-    .unwrap()) } else { None };
-
-    static ref WORKER_UPTIME_OPTS: prometheus::Opts = prometheus::opts!(
-        "worker_uptime",
-        "Total number of seconds since the worker has started"
-    );
 
     static ref MAX_TIMEOUT: u64 = std::env::var("TIMEOUT")
         .ok()
@@ -309,11 +332,6 @@ lazy_static::lazy_static! {
         .ok()
         .and_then(|x| x.parse::<u64>().ok());
 
-
-    pub static ref WORKER_EXECUTION_COUNT: Arc<RwLock<HashMap<String, IntCounter>>> = Arc::new(RwLock::new(HashMap::new()));
-    pub static ref WORKER_EXECUTION_DURATION_COUNTER: Arc<RwLock<HashMap<String, prometheus::Counter>>> = Arc::new(RwLock::new(HashMap::new()));
-
-    pub static ref WORKER_EXECUTION_DURATION: Arc<RwLock<HashMap<String, prometheus::Histogram>>> = Arc::new(RwLock::new(HashMap::new()));
 
 }
 //only matter if CLOUD_HOSTED
@@ -472,6 +490,17 @@ macro_rules! add_time {
     };
 }
 
+#[cfg(feature = "prometheus")]
+type Histo =Arc<prometheus::Histogram>;
+#[cfg(feature = "prometheus")]
+type GGauge = Arc<GenericGauge<AtomicI64>>;
+
+#[cfg(not(feature = "prometheus"))]
+type Histo = ();
+#[cfg(not(feature = "prometheus"))]
+type GGauge = ();
+
+
 async fn handle_receive_completed_job<
     R: rsmq_async::RsmqConnection + Send + Sync + Clone + 'static,
 >(
@@ -482,8 +511,8 @@ async fn handle_receive_completed_job<
     same_worker_tx: Sender<Uuid>,
     rsmq: Option<R>,
     worker_name: &str,
-    worker_save_completed_job_duration: Option<Arc<prometheus::Histogram>>,
-    worker_flow_transition_duration: Option<Arc<prometheus::Histogram>>,
+    worker_save_completed_job_duration: Option<Histo>,
+    worker_flow_transition_duration: Option<Histo>,
     job_completed_tx: Sender<SendResult>,
 ) {
     let token = jc.token.clone();
@@ -532,8 +561,8 @@ async fn handle_receive_completed_job<
 #[derive(Clone)]
 pub struct JobCompletedSender(
     Sender<SendResult>,
-    Option<Arc<GenericGauge<AtomicI64>>>,
-    Option<Arc<prometheus::Histogram>>,
+    Option<Histo>,
+    Option<GGauge>,
 );
 
 impl JobCompletedSender {
@@ -541,11 +570,15 @@ impl JobCompletedSender {
         &self,
         jc: JobCompleted,
     ) -> Result<(), tokio::sync::mpsc::error::SendError<SendResult>> {
+
+        #[cfg(feature = "prometheus")]
         if let Some(wj) = self.1.as_ref() {
             wj.inc()
         }
+        #[cfg(feature = "prometheus")]
         let timer = self.2.as_ref().map(|x| x.start_timer());
         let r = self.0.send(SendResult::JobCompleted(jc)).await;
+        #[cfg(feature = "prometheus")]
         timer.map(|x| x.stop_and_record());
         r
     }
@@ -571,6 +604,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         );
     }
 
+    #[cfg(feature = "prometheus")]
     let start_time = Instant::now();
 
     let worker_dir = format!("{TMP_DIR}/{worker_name}");
@@ -600,6 +634,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
 
     update_ping(worker_instance, &worker_name, ip, db).await;
 
+    #[cfg(feature = "prometheus")]
     let uptime_metric = if METRICS_ENABLED.load(Ordering::Relaxed) {
         Some(
             prometheus::register_counter!(WORKER_UPTIME_OPTS
@@ -611,6 +646,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         None
     };
 
+    #[cfg(feature = "prometheus")]
     let worker_sleep_duration_counter = if METRICS_ENABLED.load(Ordering::Relaxed) {
         Some(
             prometheus::register_counter!(prometheus::opts!(
@@ -624,6 +660,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         None
     };
 
+    #[cfg(feature = "prometheus")]
     let worker_pull_duration = if METRICS_ENABLED.load(Ordering::Relaxed) {
         Some(
             prometheus::register_histogram!(prometheus::HistogramOpts::new(
@@ -638,6 +675,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         None
     };
 
+    #[cfg(feature = "prometheus")]
     let worker_pull_duration_empty = if METRICS_ENABLED.load(Ordering::Relaxed) {
         Some(
             prometheus::register_histogram!(prometheus::HistogramOpts::new(
@@ -652,22 +690,31 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         None
     };
 
-    let worker_job_completed_channel_queue = if METRICS_DEBUG_ENABLED.load(Ordering::Relaxed)
-        && METRICS_ENABLED.load(Ordering::Relaxed)
-    {
-        Some(Arc::new(
-            prometheus::register_int_gauge!(prometheus::opts!(
-                "worker_job_completed_channel_queue_length",
-                "Queue length of the job completed channel queue",
-            )
-            .const_label("name", &worker_name),)
-            .expect("register prometheus metric"),
-        ))
-    } else {
+    let worker_job_completed_channel_queue = {
+            #[cfg(feature = "prometheus")]
+            if METRICS_DEBUG_ENABLED.load(Ordering::Relaxed)
+            && METRICS_ENABLED.load(Ordering::Relaxed)
+        {
+            Some(Arc::new(
+                prometheus::register_int_gauge!(prometheus::opts!(
+                    "worker_job_completed_channel_queue_length",
+                    "Queue length of the job completed channel queue",
+                )
+                .const_label("name", &worker_name),)
+                .expect("register prometheus metric"),
+            ))
+        } else {
+            None
+        }
+
+        #[cfg(not(feature = "prometheus"))]
         None
     };
 
-    let worker_completed_channel_queue_send_duration =
+
+
+    let worker_completed_channel_queue_send_duration = {
+        #[cfg(feature = "prometheus")]
         if METRICS_DEBUG_ENABLED.load(Ordering::Relaxed) && METRICS_ENABLED.load(Ordering::Relaxed)
         {
             Some(Arc::new(
@@ -680,8 +727,12 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             ))
         } else {
             None
-        };
+        }
+        #[cfg(not(feature = "prometheus"))]
+        None
+    };
 
+    #[cfg(feature = "prometheus")]
     let worker_save_completed_job_duration = if METRICS_DEBUG_ENABLED.load(Ordering::Relaxed)
         && METRICS_ENABLED.load(Ordering::Relaxed)
     {
@@ -697,36 +748,49 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         None
     };
 
-    let worker_code_execution_duration = if METRICS_DEBUG_ENABLED.load(Ordering::Relaxed)
-        && METRICS_ENABLED.load(Ordering::Relaxed)
-    {
-        Some(Arc::new(
-            prometheus::register_histogram!(prometheus::HistogramOpts::new(
-                "worker_code_execution_duration",
-                "Duration of executing the job itself without the saving or flow transition",
-            )
-            .const_label("name", &worker_name),)
-            .expect("register prometheus metric"),
-        ))
-    } else {
+    let worker_code_execution_duration = {
+        #[cfg(feature = "prometheus")]
+        if METRICS_DEBUG_ENABLED.load(Ordering::Relaxed)
+            && METRICS_ENABLED.load(Ordering::Relaxed)
+        {
+            Some(Arc::new(
+                prometheus::register_histogram!(prometheus::HistogramOpts::new(
+                    "worker_code_execution_duration",
+                    "Duration of executing the job itself without the saving or flow transition",
+                )
+                .const_label("name", &worker_name),)
+                .expect("register prometheus metric"),
+            ))
+        } else {
+            None
+        }
+
+        #[cfg(not(feature = "prometheus"))]
         None
     };
 
-    let worker_flow_initial_transition_duration = if METRICS_DEBUG_ENABLED.load(Ordering::Relaxed)
-        && METRICS_ENABLED.load(Ordering::Relaxed)
-    {
-        Some(Arc::new(
-            prometheus::register_histogram!(prometheus::HistogramOpts::new(
-                "worker_flow_initial_transition_duration",
-                "Duration sending job to completed job channel",
-            )
-            .const_label("name", &worker_name),)
-            .expect("register prometheus metric"),
-        ))
-    } else {
+    let worker_flow_initial_transition_duration =  {
+        #[cfg(feature = "prometheus")]
+        if METRICS_DEBUG_ENABLED.load(Ordering::Relaxed)
+            && METRICS_ENABLED.load(Ordering::Relaxed)
+        {
+            Some(Arc::new(
+                prometheus::register_histogram!(prometheus::HistogramOpts::new(
+                    "worker_flow_initial_transition_duration",
+                    "Duration sending job to completed job channel",
+                )
+                .const_label("name", &worker_name),)
+                .expect("register prometheus metric"),
+            ))
+        } else {
+            None
+        }
+        
+        #[cfg(not(feature = "prometheus"))]
         None
     };
 
+    #[cfg(feature = "prometheus")]
     let worker_flow_transition_duration = if METRICS_DEBUG_ENABLED.load(Ordering::Relaxed)
         && METRICS_ENABLED.load(Ordering::Relaxed)
     {
@@ -742,6 +806,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         None
     };
 
+    #[cfg(feature = "prometheus")]
     let worker_pull_duration_counter_empty =
         if METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed) {
             Some(
@@ -757,6 +822,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             None
         };
 
+    #[cfg(feature = "prometheus")]
     let worker_pull_duration_counter = if METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed)
     {
         Some(
@@ -772,6 +838,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         None
     };
 
+    #[cfg(feature = "prometheus")]
     let worker_pull_over_500_counter_empty =
         if METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed) {
             Some(
@@ -788,6 +855,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             None
         };
 
+    #[cfg(feature = "prometheus")]
     let worker_pull_over_500_counter = if METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed)
     {
         Some(
@@ -804,6 +872,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         None
     };
 
+    #[cfg(feature = "prometheus")]
     let worker_pull_over_100_counter_empty =
         if METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed) {
             Some(
@@ -820,6 +889,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             None
         };
 
+    #[cfg(feature = "prometheus")]
     let worker_pull_over_100_counter = if METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed)
     {
         Some(
@@ -836,6 +906,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         None
     };
 
+    #[cfg(feature = "prometheus")]
     let worker_busy: Option<prometheus::IntGauge> =
         if METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed) {
             Some(
@@ -852,6 +923,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
 
     let mut jobs_executed = 0;
 
+    #[cfg(feature = "prometheus")]
     if let Some(ws) = WORKER_STARTED.as_ref() {
         ws.inc();
     }
@@ -941,9 +1013,18 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     #[cfg(feature = "benchmark")]
     let send_duration2 = send_duration.clone();
 
+    #[cfg(feature = "prometheus")]
     let worker_job_completed_channel_queue2 = worker_job_completed_channel_queue.clone();
+    #[cfg(feature = "prometheus")]
     let worker_save_completed_job_duration2 = worker_save_completed_job_duration.clone();
+    #[cfg(feature = "prometheus")]
     let worker_flow_transition_duration2 = worker_flow_transition_duration.clone();
+
+    #[cfg(not(feature = "prometheus"))]
+    let worker_save_completed_job_duration2 = None;
+    #[cfg(not(feature = "prometheus"))]
+    let worker_flow_transition_duration2 = None;
+
 
     let worker_name2 = worker_name.clone();
     let killpill_tx2 = killpill_tx.clone();
@@ -952,6 +1033,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         while let Some(sr) = job_completed_rx.recv().await {
             match sr {
                 SendResult::JobCompleted(jc) => {
+                    #[cfg(feature = "prometheus")]
                     if let Some(wj) = worker_job_completed_channel_queue2.as_ref() {
                         wj.dec();
                     }
@@ -981,8 +1063,10 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                         #[cfg(feature = "benchmark")]
                         let main_duration = main_duration2.clone();
 
+                        #[cfg(feature = "prometheus")]
                         let worker_save_completed_job_duration2 =
                             worker_save_completed_job_duration.clone();
+                        #[cfg(feature = "prometheus")]
                         let worker_flow_transition_duration2 =
                             worker_flow_transition_duration.clone();
                         let killpill_tx = killpill_tx2.clone();
@@ -1234,20 +1318,23 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         }
     }
 
-    let worker_dedicated_channel_queue_send_duration = if is_dedicated_worker
-        && METRICS_DEBUG_ENABLED.load(Ordering::Relaxed)
-        && METRICS_ENABLED.load(Ordering::Relaxed)
-    {
-        Some(Arc::new(
-            prometheus::register_histogram!(prometheus::HistogramOpts::new(
-                "worker_dedicated_worker_channel_send_duration",
-                "Duration sending job to dedicated worker channel",
-            )
-            .const_label("name", &worker_name),)
-            .expect("register prometheus metric"),
-        ))
-    } else {
-        None
+    #[cfg(feature = "prometheus")]
+    let worker_dedicated_channel_queue_send_duration = {
+        if is_dedicated_worker
+            && METRICS_DEBUG_ENABLED.load(Ordering::Relaxed)
+            && METRICS_ENABLED.load(Ordering::Relaxed)
+        {
+            Some(Arc::new(
+                prometheus::register_histogram!(prometheus::HistogramOpts::new(
+                    "worker_dedicated_worker_channel_send_duration",
+                    "Duration sending job to dedicated worker channel",
+                )
+                .const_label("name", &worker_name),)
+                .expect("register prometheus metric"),
+            ))
+        } else {
+            None
+        }
     };
 
     loop {
@@ -1257,9 +1344,12 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         #[cfg(feature = "benchmark")]
         let mut timing = vec![];
 
+        #[cfg(feature = "prometheus")]
         if let Some(wk) = worker_busy.as_ref() {
             wk.set(0);
         }
+
+        #[cfg(feature = "prometheus")]
         if let Some(ref um) = uptime_metric {
             um.inc_by(
                 ((start_time.elapsed().as_millis() as f64) / 1000.0 - um.get())
@@ -1331,6 +1421,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                     let empty = job.as_ref().is_ok_and(|x| x.is_none());
                     if !agent_mode && duration_pull_s > 0.5 {
                         tracing::warn!("pull took more than 0.5s ({duration_pull_s}), this is a sign that the database is VERY undersized for this load. empty: {empty}, err: {err_pull}");
+                        #[cfg(feature = "prometheus")]
                         if empty {
                             if let Some(wp) = worker_pull_over_500_counter_empty.as_ref() {
                                 wp.inc();
@@ -1341,6 +1432,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
 
                     } else if !agent_mode && duration_pull_s > 0.1 {
                         tracing::warn!("pull took more than 0.1s ({duration_pull_s}) this is a sign that the database is undersized for this load. empty: {empty}, err: {err_pull}");
+                        #[cfg(feature = "prometheus")]
                         if empty {
                             if let Some(wp) = worker_pull_over_100_counter_empty.as_ref() {
                                 wp.inc();
@@ -1349,6 +1441,8 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                             wp.inc();
                         }
                     }
+
+                    #[cfg(feature = "prometheus")]
                     if let Ok(j) = job.as_ref() {
                         if j.is_some() {
                             if let Some(wp) = worker_pull_duration_counter.as_ref() {
@@ -1371,6 +1465,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             }
         };
 
+        #[cfg(feature = "prometheus")]
         if let Some(wb) = worker_busy.as_ref() {
             wb.set(1);
         }
@@ -1397,6 +1492,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                                 #[cfg(feature = "benchmark")]
                                 let send_start = Instant::now();
 
+                                #[cfg(feature = "prometheus")]
                                 let timer = worker_dedicated_channel_queue_send_duration
                                     .as_ref()
                                     .map(|x| x.start_timer());
@@ -1405,6 +1501,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                                     tracing::info!("failed to send jobs to dedicated workers. Likely dedicated worker has been shut down. This is normal: {e:?}");
                                 }
 
+                                #[cfg(feature = "prometheus")]
                                 timer.map(|x| x.stop_and_record());
 
                                 #[cfg(feature = "benchmark")]
@@ -1444,6 +1541,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                 } else {
                     let token = create_token_for_owner_in_bg(&db, &job).await;
 
+                    #[cfg(feature = "prometheus")]
                     register_metric(
                         &WORKER_EXECUTION_COUNT,
                         &job.tag,
@@ -1462,6 +1560,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                     )
                     .await;
 
+                    #[cfg(feature = "prometheus")]
                     let _timer = register_metric(
                         &WORKER_EXECUTION_DURATION,
                         &job.tag,
@@ -1532,7 +1631,9 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                         workspace: job.workspace_id.to_string(),
                     };
 
+                    #[cfg(feature = "prometheus")]
                     let tag = job.tag.clone();
+
                     let arc_job = Arc::new(job);
                     if let Some(err) = handle_queued_job(
                         arc_job.clone(),
@@ -1568,6 +1669,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                         .await;
                     };
 
+                    #[cfg(feature = "prometheus")]
                     if let Some(duration) = _timer.map(|x| x.stop_and_record()) {
                         register_metric(
                             &WORKER_EXECUTION_DURATION_COUNTER,
@@ -1613,6 +1715,8 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                         last_executed_job = Some(Instant::now());
                     }
                 }
+
+                #[cfg(feature = "prometheus")]
                 let _timer = if METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed) {
                     Some(Instant::now())
                 } else {
@@ -1623,6 +1727,8 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                 tracing::info!("no job found");
 
                 tokio::time::sleep(Duration::from_millis(*SLEEP_QUEUE)).await;
+
+                #[cfg(feature = "prometheus")]
                 _timer.map(|timer| {
                     let duration = timer.elapsed().as_secs_f64();
                     if let Some(ws) = worker_sleep_duration_counter.as_ref() {
@@ -1902,8 +2008,8 @@ pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync +
     same_worker_tx: Sender<Uuid>,
     rsmq: Option<R>,
     worker_name: &str,
-    worker_save_completed_job_duration: Option<Arc<prometheus::Histogram>>,
-    worker_flow_transition_duration: Option<Arc<prometheus::Histogram>>,
+    _worker_save_completed_job_duration: Option<Histo>,
+    _worker_flow_transition_duration: Option<Histo>,
     job_completed_tx: Sender<SendResult>,
 ) -> windmill_common::error::Result<()> {
     if success {
@@ -1912,7 +2018,8 @@ pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync +
             save_in_cache(db, client, &job, cached_path.to_string(), &result).await;
         }
 
-        let timer = worker_save_completed_job_duration
+        #[cfg(feature = "prometheus")]
+        let timer = _worker_save_completed_job_duration
             .as_ref()
             .map(|x| x.start_timer());
         add_completed_job(
@@ -1927,11 +2034,14 @@ pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync +
             rsmq.clone(),
         )
         .await?;
+
+        #[cfg(feature = "prometheus")]
         timer.map(|x| x.stop_and_record());
 
         if job.is_flow_step {
             if let Some(parent_job) = job.parent_job {
-                let timer = worker_flow_transition_duration
+                #[cfg(feature = "prometheus")]
+                let timer = _worker_flow_transition_duration
                     .as_ref()
                     .map(|x| x.start_timer());
                 update_flow_status_after_job_completion(
@@ -1951,6 +2061,7 @@ pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync +
                     job_completed_tx,
                 )
                 .await?;
+                #[cfg(feature = "prometheus")]
                 timer.map(|x| x.stop_and_record());
             }
         }
@@ -2217,8 +2328,8 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
     base_internal_url: &str,
     rsmq: Option<R>,
     job_completed_tx: JobCompletedSender,
-    worker_flow_initial_transition_duration: Option<Arc<prometheus::Histogram>>,
-    worker_code_execution_duration: Option<Arc<prometheus::Histogram>>,
+    _worker_flow_initial_transition_duration: Option<Histo>,
+    _worker_code_execution_duration: Option<Histo>,
 ) -> windmill_common::error::Result<()> {
     if job.canceled {
         return Err(Error::JsonErr(canceled_job_to_result(&job)));
@@ -2321,7 +2432,8 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
         }
     };
     if job.is_flow() {
-        let timer = worker_flow_initial_transition_duration.map(|x| x.start_timer());
+        #[cfg(feature = "prometheus")]
+        let timer = _worker_flow_initial_transition_duration.map(|x| x.start_timer());
         handle_flow(
             &job,
             db,
@@ -2333,6 +2445,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
             job_completed_tx.0.clone(),
         )
         .await?;
+        #[cfg(feature = "prometheus")]
         timer.map(|x| x.stop_and_record());
     } else {
         let mut logs = "".to_string();
@@ -2418,7 +2531,8 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
                 .map(|x| x.to_owned())
                 .unwrap_or_else(|| serde_json::from_str("{}").unwrap())),
             _ => {
-                let timer = worker_code_execution_duration.map(|x| x.start_timer());
+                #[cfg(feature = "prometheus")]
+                let timer = _worker_code_execution_duration.map(|x| x.start_timer());
                 let r = handle_code_execution_job(
                     job.as_ref(),
                     db,
@@ -2432,6 +2546,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
                     worker_name,
                 )
                 .await;
+                #[cfg(feature = "prometheus")]
                 timer.map(|x| x.stop_and_record());
                 r
             }
