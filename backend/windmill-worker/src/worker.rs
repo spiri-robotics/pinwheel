@@ -1348,6 +1348,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         #[cfg(feature = "prometheus")]
         if let Some(wk) = worker_busy.as_ref() {
             wk.set(0);
+            tracing::debug!("set worker busy to 0");
         }
 
         #[cfg(feature = "prometheus")]
@@ -1357,6 +1358,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                     .try_into()
                     .unwrap(),
             );
+            tracing::debug!("set uptime metric");
         }
 
         if last_ping.elapsed().as_secs() > NUM_SECS_PING {
@@ -1374,6 +1376,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                 tracing::error!("failed to update worker ping, exiting: {}", e);
                 killpill_tx.send(()).unwrap_or_default();
             }
+            tracing::debug!("set last ping");
 
             last_ping = Instant::now();
         }
@@ -1401,6 +1404,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                     break
                 },
                 Some(job_id) = same_worker_rx.recv() => {
+                    tracing::debug!("received {job_id} from same worker channel");
                     sqlx::query_as::<_, QueuedJob>("SELECT * FROM queue WHERE id = $1")
                     .bind(job_id)
                     .fetch_optional(db)
@@ -1469,12 +1473,16 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
         #[cfg(feature = "prometheus")]
         if let Some(wb) = worker_busy.as_ref() {
             wb.set(1);
+            tracing::debug!("set worker busy to 1");
         }
+
 
         match next_job {
             Ok(Some(job)) => {
                 last_executed_job = None;
                 jobs_executed += 1;
+
+                tracing::debug!(worker = %worker_name, "started handling of job {}", job.id);
 
                 if matches!(job.job_kind, JobKind::Script | JobKind::Preview) {
                     if !dedicated_workers.is_empty() {
