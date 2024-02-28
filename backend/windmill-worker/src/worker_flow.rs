@@ -385,6 +385,15 @@ pub async fn update_flow_status_after_job_completion_internal<
                         flow
                     ).execute(db).await?;
 
+                    let r = sqlx::query_scalar!(
+                        "DELETE FROM parallel_monitor_lock WHERE parent_flow_id = $1 and job_id = $2 RETURNING last_ping",
+                        flow,
+                        job_id_for_status
+                    ).fetch_optional(db).await?;
+                    if r.is_some() {
+                        tracing::info!("parallel flow has removed lock on its parent, last ping was {:?}", r.unwrap());
+                    }
+
                     return Ok(None);
                 }
             }
@@ -613,6 +622,7 @@ pub async fn update_flow_status_after_job_completion_internal<
                 canceled_job_to_result(&flow_job),
                 rsmq.clone(),
                 worker_name,
+                true,
             )
             .await?;
         } else {
@@ -648,6 +658,7 @@ pub async fn update_flow_status_after_job_completion_internal<
                     0,
                     None,
                     rsmq.clone(),
+                    true
                 )
                 .await?;
             } else {
@@ -665,6 +676,7 @@ pub async fn update_flow_status_after_job_completion_internal<
                     0,
                     None,
                     rsmq.clone(),
+                    true
                 )
                 .await?;
             }
@@ -695,6 +707,7 @@ pub async fn update_flow_status_after_job_completion_internal<
                     e,
                     rsmq.clone(),
                     worker_name,
+                    true,
                 )
                 .await;
                 true
@@ -1487,6 +1500,7 @@ async fn push_next_flow_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>
                     0,
                     canceled_by,
                     rsmq.clone(),
+                    false
                 )
                 .await?;
                 if flow_job.is_flow_step {
@@ -1987,6 +2001,19 @@ async fn push_next_flow_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>
     } else {
         Err(Error::BadRequest("Expected only one uuid".to_string()))
     };
+
+    if !is_one_uuid {
+        for uuid in &uuids {
+            sqlx::query!(
+                "INSERT INTO parallel_monitor_lock (parent_flow_id, job_id)
+                VALUES ($1, $2)",
+                flow_job.id,
+                uuid
+            )
+            .execute(&mut tx)
+            .await?;
+        }
+    }
     let first_uuid = uuids[0];
     let new_status = match next_status {
         NextStatus::NextLoopIteration {
