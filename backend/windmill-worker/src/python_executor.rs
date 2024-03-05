@@ -12,7 +12,7 @@ use tokio::{
 use uuid::Uuid;
 use windmill_common::{
     error::{self, Error},
-    jobs::{QueuedJob, ENTRYPOINT_OVERRIDE},
+    jobs::QueuedJob,
     utils::calculate_hash,
     worker::WORKER_CONFIG,
     DB,
@@ -47,8 +47,8 @@ const RELATIVE_PYTHON_LOADER: &str = include_str!("../loader.py");
 
 use crate::{
     common::{
-        create_args_and_out_file, get_reserved_variables, handle_child, read_result, set_logs,
-        start_child_process, write_file,
+        create_args_and_out_file, get_main_override, get_reserved_variables, handle_child,
+        read_result, set_logs, start_child_process, write_file,
     },
     AuthedClientBackgroundTask, DISABLE_NSJAIL, DISABLE_NUSER, HOME_ENV, HTTPS_PROXY, HTTP_PROXY,
     LOCK_CACHE_DIR, NO_PROXY, NSJAIL_PATH, PATH_ENV, PIP_CACHE_DIR, PIP_EXTRA_INDEX_URL,
@@ -437,12 +437,7 @@ async fn prepare_wrapper(
     String,
     Option<String>,
 )> {
-    let main_override = args
-        .map(|x| {
-            x.0.get(ENTRYPOINT_OVERRIDE)
-                .map(|x| x.get().to_string().replace("\"", ""))
-        })
-        .flatten();
+    let main_override = get_main_override(args);
 
     let relative_imports = RELATIVE_IMPORT_REGEX.is_match(&inner_content);
 

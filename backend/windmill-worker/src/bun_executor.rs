@@ -11,8 +11,9 @@ use windmill_queue::CanceledBy;
 
 use crate::{
     common::{
-        create_args_and_out_file, get_reserved_variables, handle_child, parse_npm_config,
-        read_result, set_logs, start_child_process, write_file, write_file_binary,
+        create_args_and_out_file, get_main_override, get_reserved_variables, handle_child,
+        parse_npm_config, read_result, set_logs, start_child_process, write_file,
+        write_file_binary,
     },
     AuthedClientBackgroundTask, BUNFIG_INSTALL_SCOPES, BUN_CACHE_DIR, BUN_PATH, DISABLE_NSJAIL,
     DISABLE_NUSER, HOME_ENV, NODE_PATH, NPM_CONFIG_REGISTRY, NPM_PATH, NSJAIL_PATH, PATH_ENV,
@@ -350,6 +351,8 @@ pub async fn handle_bun_job(
 
     let annotation = get_annotation(inner_content);
 
+    let main_override = get_main_override(job.args.as_ref());
+
     if annotation.nodejs_mode || annotation.npm_mode {
         return Err(error::Error::ExecutionErr(
             "Nodejs / npm mode is an EE feature".to_string(),
@@ -439,7 +442,9 @@ pub async fn handle_bun_job(
 
     let write_wrapper_f = async {
         // let mut start = Instant::now();
-        let args = windmill_parser_ts::parse_deno_signature(inner_content, true)?.args;
+        let args =
+            windmill_parser_ts::parse_deno_signature(inner_content, true, main_override.clone())?
+                .args;
         let dates = args
             .iter()
             .enumerate()
@@ -456,9 +461,11 @@ pub async fn handle_bun_job(
         let spread = args.into_iter().map(|x| x.name).join(",");
         // logs.push_str(format!("infer args: {:?}\n", start.elapsed().as_micros()).as_str());
         // we cannot use Bun.read and Bun.write because it results in an EBADF error on cloud
+        let main_name = main_override.unwrap_or("main".to_string());
+
         let wrapper_content: String = format!(
             r#"
-import {{ main }} from "./main.ts";
+import {{ {main_name} }} from "./main.ts";
 
 const fs = require('fs/promises');
 
@@ -471,7 +478,7 @@ BigInt.prototype.toJSON = function () {{
 
 {dates}
 async function run() {{
-    let res: any = await main(...args);
+    let res: any = await {main_name}(...args);
     const res_json = JSON.stringify(res ?? null, (key, value) => typeof value === 'undefined' ? null : value);
     await fs.writeFile("result.json", res_json);
     process.exit(0);
