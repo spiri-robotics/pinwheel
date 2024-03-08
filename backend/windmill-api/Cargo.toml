@@ -83,6 +83,6 @@ candle-nn = { workspace = true, optional = true}
 polars = { workspace = true, optional = true}
 polars-io = { workspace = true, optional = true}
 object_store = { workspace = true, optional = true}
-openidconnect = { workspace = true, optional = true}
+openidconnect = { workspace = true}
 pin-project.workspace = true
 
