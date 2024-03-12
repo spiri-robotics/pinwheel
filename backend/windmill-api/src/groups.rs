@@ -25,6 +25,7 @@ use windmill_common::{
 
 use serde::{Deserialize, Serialize};
 use sqlx::{query_scalar, FromRow, Postgres, Transaction};
+use windmill_git_sync::handle_deployment_metadata;
 
 pub fn workspaced_service() -> Router {
     Router::new()
@@ -219,6 +220,7 @@ async fn create_group(
     authed: ApiAuthed,
     Extension(_db): Extension<DB>,
     Extension(user_db): Extension<UserDB>,
+    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Path(w_id): Path<String>,
     Json(ng): Json<NewGroup>,
 ) -> Result<String> {
@@ -259,6 +261,19 @@ async fn create_group(
     .await?;
 
     tx.commit().await?;
+
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &_db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Group { name: ng.name.clone() },
+        Some(format!("Created group '{}'", &ng.name)),
+        rsmq,
+        true,
+    )
+    .await?;
+
     Ok(format!("Created group {}", ng.name))
 }
 
@@ -423,6 +438,7 @@ async fn delete_group(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
     Extension(user_db): Extension<UserDB>,
+    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Path((w_id, name)): Path<(String, String)>,
 ) -> Result<String> {
     let mut tx = user_db.begin(&authed).await?;
@@ -464,6 +480,19 @@ async fn delete_group(
     )
     .await?;
     tx.commit().await?;
+
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Group { name: name.clone() },
+        Some(format!("Deleted group '{}'", &name)),
+        rsmq,
+        true,
+    )
+    .await?;
+
     Ok(format!("delete group at name {}", name))
 }
 
@@ -471,6 +500,7 @@ async fn update_group(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
     Extension(user_db): Extension<UserDB>,
+    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Path((w_id, name)): Path<(String, String)>,
     Json(eg): Json<EditGroup>,
 ) -> Result<String> {
@@ -500,6 +530,19 @@ async fn update_group(
     )
     .await?;
     tx.commit().await?;
+
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Group { name: name.clone() },
+        Some(format!("Updated group '{}'", &name)),
+        rsmq,
+        true,
+    )
+    .await?;
+
     Ok(format!("Edited group {}", name))
 }
 
@@ -507,6 +550,7 @@ async fn add_user(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
     Extension(user_db): Extension<UserDB>,
+    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Path((w_id, name)): Path<(String, String)>,
     Json(Username { username: user_username }): Json<Username>,
 ) -> Result<String> {
@@ -537,6 +581,19 @@ async fn add_user(
     )
     .await?;
     tx.commit().await?;
+
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Group { name: name.clone() },
+        Some(format!("Added user to group '{}'", &name)),
+        rsmq,
+        true,
+    )
+    .await?;
+
     Ok(format!("Added {} to group {}", user_username, name))
 }
 
@@ -651,6 +708,7 @@ async fn remove_user(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
     Extension(user_db): Extension<UserDB>,
+    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Path((w_id, name)): Path<(String, String)>,
     Json(Username { username: user_username }): Json<Username>,
 ) -> Result<String> {
@@ -684,5 +742,18 @@ async fn remove_user(
     .await?;
 
     tx.commit().await?;
+
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Group { name: name.clone() },
+        Some(format!("Removed user from group '{}'", &name)),
+        rsmq,
+        true,
+    )
+    .await?;
+
     Ok(format!("Removed {} to group {}", user_username, name))
 }
