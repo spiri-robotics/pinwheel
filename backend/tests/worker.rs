@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use windmill_api_client::types::{NewScript, NewScriptLanguage};
 use std::str::FromStr;
 
@@ -9,7 +8,6 @@ use serde::Deserialize;
 use serde_json::json;
 use sqlx::types::Json;
 use sqlx::{postgres::PgListener, types::Uuid, Pool, Postgres};
-use tokio::sync::RwLock;
 
 
 use windmill_api_client::types::{
@@ -987,7 +985,6 @@ fn spawn_test_worker(
             tx2,
             &base_internal_url,
             None,
-            Arc::new(RwLock::new(None)),
             false,
         )
         .await
