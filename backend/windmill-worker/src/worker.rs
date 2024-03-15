@@ -57,6 +57,7 @@ use windmill_queue::{
 #[cfg(feature = "prometheus")]
 use windmill_queue::register_metric;
 
+
 use serde_json::{json, value::RawValue, Value};
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -319,11 +320,6 @@ lazy_static::lazy_static! {
         .ok()
         .and_then(|x| x.parse::<u64>().ok())
         .unwrap_or(60 * 10);
-
-    pub static ref S3_CACHE_BUCKET: Option<String> = std::env::var("S3_CACHE_BUCKET")
-        .ok()
-        .map(|e| Some(e))
-        .unwrap_or(None);
 
 
     pub static ref EXIT_AFTER_NO_JOB_FOR_SECS: Option<u64> = std::env::var("EXIT_AFTER_NO_JOB_FOR_SECS")
