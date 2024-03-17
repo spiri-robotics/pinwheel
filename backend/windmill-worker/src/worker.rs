@@ -34,6 +34,7 @@ use windmill_git_sync::{handle_deployment_metadata, DeployedObject};
 use windmill_parser_py_imports::parse_relative_imports;
 
 use uuid::Uuid;
+
 use windmill_common::{
     error::{self, to_anyhow, Error},
     flows::{FlowModule, FlowModuleValue, FlowValue},
@@ -56,7 +57,6 @@ use windmill_queue::{
 
 #[cfg(feature = "prometheus")]
 use windmill_queue::register_metric;
-
 
 use serde_json::{json, value::RawValue, Value};
 
@@ -81,7 +81,6 @@ use futures::future::FutureExt;
 use async_recursion::async_recursion;
 
 use rand::Rng;
-
 
 use windmill_queue::{add_completed_job, add_completed_job_error};
 
@@ -928,7 +927,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     if let Some(ws) = WORKER_STARTED.as_ref() {
         ws.inc();
     }
-
 
     let (same_worker_tx, mut same_worker_rx) = mpsc::channel::<SameWorkerPayload>(5);
 
