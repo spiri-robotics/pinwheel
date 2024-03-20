@@ -13,7 +13,7 @@ default = []
 prometheus = ["dep:prometheus", "windmill-common/prometheus"]
 benchmark = ["windmill-queue/benchmark"]
 flamegraph = []
-parquet = ["windmill-common/parquet", "dep:object_store"]
+parquet = ["windmill-common/parquet", "dep:object_store", "dep:tar"]
 flow_testing = []
 
 [dependencies]
@@ -77,7 +77,7 @@ hex.workspace = true
 tiberius = { workspace = true, optional = true }
 tokio-util = { workspace = true, optional = true }
 openidconnect = { workspace = true, optional = true}
-tar.workspace = true
+tar = { workspace = true, optional = true}
 object_store = { workspace = true, optional = true}
 
 [build-dependencies]
