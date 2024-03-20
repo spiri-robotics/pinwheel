@@ -126,7 +126,7 @@ pub async fn pip_compile(
 
     write_file(job_dir, file, &requirements).await?;
 
-    let mut args = vec!["-q", "--no-header", file, "--resolver=backtracking"];
+    let mut args = vec!["-q", "--no-header", file, "--resolver=backtracking", "--strip-extras"];
     let mut pip_args = vec![];
     let pip_extra_index_url = PIP_EXTRA_INDEX_URL
         .read()
@@ -707,16 +707,28 @@ pub async fn handle_python_reqs(
         .await?;
     };
 
+
+    let mut req_with_penv: Vec<(String, String)> = vec![];
+
     for req in requirements {
-        // todo: handle many reqs
         let venv_p = format!(
             "{PIP_CACHE_DIR}/{}",
             req.replace(' ', "").replace('/', "").replace(':', "")
         );
         if metadata(&venv_p).await.is_ok() {
             req_paths.push(venv_p);
-            continue;
+        } else {
+            req_with_penv.push((req.to_string(), venv_p));
         }
+    }
+
+    enum PullFromTar {
+        Pulled(String),
+        NotPulled(String, String),
+    }
+
+
+    for (req, venv_p) in req_with_penv {
 
 
         let mut logs1 = String::new();
