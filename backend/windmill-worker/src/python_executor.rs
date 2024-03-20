@@ -722,10 +722,6 @@ pub async fn handle_python_reqs(
         }
     }
 
-    enum PullFromTar {
-        Pulled(String),
-        NotPulled(String, String),
-    }
 
 
     for (req, venv_p) in req_with_penv {
