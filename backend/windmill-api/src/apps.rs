@@ -14,7 +14,6 @@ use crate::{
     HTTP_CLIENT,
 };
 use axum::{
-    body::StreamBody,
     extract::{Extension, Json, Path, Query},
     response::IntoResponse,
     routing::{delete, get, post},
@@ -629,7 +628,7 @@ async fn create_app(
 }
 
 async fn list_hub_apps(Extension(db): Extension<DB>) -> impl IntoResponse {
-    let (status_code, headers, response) = query_elems_from_hub(
+    let (status_code, headers, body) = query_elems_from_hub(
         &HTTP_CLIENT,
         "https://hub.windmill.dev/searchUiData?approved=true",
         None,
@@ -639,7 +638,7 @@ async fn list_hub_apps(Extension(db): Extension<DB>) -> impl IntoResponse {
     Ok::<_, Error>((
         status_code,
         headers,
-        StreamBody::new(response.bytes_stream()),
+        body
     ))
 }
 
