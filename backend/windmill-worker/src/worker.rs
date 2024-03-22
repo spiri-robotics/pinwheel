@@ -2539,6 +2539,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
         );
         append_logs(job.id, job.workspace_id.clone(), logs, db).await;
 
+        let mut column_order: Option<Vec<String>> = None;
         let result = match job.job_kind {
             JobKind::Dependencies => {
                 handle_dependency_job(
@@ -2603,6 +2604,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
                     &mut canceled_by,
                     base_internal_url,
                     worker_name,
+                    &mut column_order,
                 )
                 .await;
                 #[cfg(feature = "prometheus")]
@@ -2624,6 +2626,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
             canceled_by,
             cached_res_path,
             client.get_token().await,
+            column_order,
             db,
         )
         .await?;
@@ -2640,13 +2643,33 @@ async fn process_result(
     canceled_by: Option<CanceledBy>,
     cached_res_path: Option<String>,
     token: String,
+    column_order: Option<Vec<String>>,
     db: &DB,
 ) -> error::Result<()> {
     match result {
         Ok(r) => {
+            let job = if let Some(column_order) = column_order {
+                let mut job_with_column_order = (*job).clone();
+                match job_with_column_order.flow_status {
+                    Some(_) => {
+                        tracing::warn!("flow_status was expected to be none");
+                    }
+                    None => {
+                        job_with_column_order.flow_status =
+                            Some(sqlx::types::Json(to_raw_value(&serde_json::json!({
+                                "_metadata": {
+                                    "column_order": column_order
+                                }
+                            }))));
+                    }
+                }
+                Arc::new(job_with_column_order)
+            } else {
+                job
+            };
             job_completed_tx
                 .send(JobCompleted {
-                    job: job,
+                    job,
                     result: r,
                     mem_peak,
                     canceled_by,
@@ -2829,6 +2852,7 @@ async fn handle_code_execution_job(
     canceled_by: &mut Option<CanceledBy>,
     base_internal_url: &str,
     worker_name: &str,
+    column_order: &mut Option<Vec<String>>,
 ) -> error::Result<Box<RawValue>> {
     let ContentReqLangEnvs { content: inner_content, lockfile: requirements_o, language, envs } =
         match job.job_kind {
@@ -2869,6 +2893,7 @@ async fn handle_code_execution_job(
             mem_peak,
             canceled_by,
             worker_name,
+            column_order,
         )
         .await;
     } else if language == Some(ScriptLang::Mysql) {
@@ -2880,6 +2905,7 @@ async fn handle_code_execution_job(
             mem_peak,
             canceled_by,
             worker_name,
+            column_order,
         )
         .await;
     } else if language == Some(ScriptLang::Bigquery) {
