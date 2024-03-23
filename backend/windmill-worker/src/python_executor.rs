@@ -126,7 +126,13 @@ pub async fn pip_compile(
 
     write_file(job_dir, file, &requirements).await?;
 
-    let mut args = vec!["-q", "--no-header", file, "--resolver=backtracking", "--strip-extras"];
+    let mut args = vec![
+        "-q",
+        "--no-header",
+        file,
+        "--resolver=backtracking",
+        "--strip-extras",
+    ];
     let mut pip_args = vec![];
     let pip_extra_index_url = PIP_EXTRA_INDEX_URL
         .read()
@@ -707,7 +713,6 @@ pub async fn handle_python_reqs(
         .await?;
     };
 
-
     let mut req_with_penv: Vec<(String, String)> = vec![];
 
     for req in requirements {
@@ -725,8 +730,6 @@ pub async fn handle_python_reqs(
 
 
     for (req, venv_p) in req_with_penv {
-
-
         let mut logs1 = String::new();
         logs1.push_str("\n\n--- PIP INSTALL ---\n");
         logs1.push_str(&format!("\n{req} is being installed for the first time.\n It will be cached for all ulterior uses."));
