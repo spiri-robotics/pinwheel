@@ -2576,6 +2576,7 @@ async fn test_flow_lock_all(db: Pool<Postgres>) {
                     priority: None,
                     dedicated_worker: None,
                     timeout: None,
+                    visible_to_runner_only: None,
                 },
                 draft_only: None,
                 deployment_message: None,
@@ -2861,6 +2862,7 @@ async fn run_deployed_relative_imports(db: &Pool<Postgres>, script_content: Stri
             restart_unless_cancelled: None,
             deployment_message: None,
             concurrency_key: None,
+            visible_to_runner_only: None,
         },
     ).await.unwrap();
 
