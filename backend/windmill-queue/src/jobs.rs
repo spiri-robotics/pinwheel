@@ -2748,15 +2748,16 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
 
             let flow_status: FlowStatus = match restarted_from {
                 Some(restarted_from_val) => {
-                    let (_, _, step_n, truncated_modules, _) = restarted_flows_resolution(
-                        _db,
-                        workspace_id,
-                        Some(value.clone()),
-                        restarted_from_val.flow_job_id,
-                        restarted_from_val.step_id.as_str(),
-                        restarted_from_val.branch_or_iteration_n,
-                    )
-                    .await?;
+                    let (_, _, step_n, truncated_modules, _, user_states, cleanup_module) =
+                        restarted_flows_resolution(
+                            _db,
+                            workspace_id,
+                            Some(value.clone()),
+                            restarted_from_val.flow_job_id,
+                            restarted_from_val.step_id.as_str(),
+                            restarted_from_val.branch_or_iteration_n,
+                        )
+                        .await?;
                     FlowStatus {
                         step: step_n,
                         modules: truncated_modules,
@@ -2767,7 +2768,7 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
                                 id: "failure".to_string(),
                             },
                         },
-                        cleanup_module: FlowCleanupModule { flow_jobs_to_clean: vec![] },
+                        cleanup_module,
                         // retry status is reset
                         retry: RetryStatus { fail_count: 0, failed_jobs: vec![] },
                         // TODO: for now, flows with approval conditions aren't supported for restart
@@ -2777,6 +2778,7 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
                             step_id: restarted_from_val.step_id,
                             branch_or_iteration_n: restarted_from_val.branch_or_iteration_n,
                         }),
+                        user_states,
                     }
                 }
                 _ => FlowStatus::new(&value), // this is a new flow being pushed, flow_status is set to flow_value
@@ -2892,16 +2894,23 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
             )
         }
         JobPayload::RestartedFlow { completed_job_id, step_id, branch_or_iteration_n } => {
-            let (flow_path, raw_flow, step_n, truncated_modules, priority) =
-                restarted_flows_resolution(
-                    _db,
-                    workspace_id,
-                    None,
-                    completed_job_id,
-                    step_id.as_str(),
-                    branch_or_iteration_n,
-                )
-                .await?;
+            let (
+                flow_path,
+                raw_flow,
+                step_n,
+                truncated_modules,
+                priority,
+                user_states,
+                cleanup_module,
+            ) = restarted_flows_resolution(
+                _db,
+                workspace_id,
+                None,
+                completed_job_id,
+                step_id.as_str(),
+                branch_or_iteration_n,
+            )
+            .await?;
             let restarted_flow_status = FlowStatus {
                 step: step_n,
                 modules: truncated_modules,
@@ -2912,7 +2921,7 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
                         id: "failure".to_string(),
                     },
                 },
-                cleanup_module: FlowCleanupModule { flow_jobs_to_clean: vec![] },
+                cleanup_module,
                 // retry status is reset
                 retry: RetryStatus { fail_count: 0, failed_jobs: vec![] },
                 // TODO: for now, flows with approval conditions aren't supported for restart
@@ -2922,6 +2931,7 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
                     step_id,
                     branch_or_iteration_n,
                 }),
+                user_states,
             };
             (
                 None,
@@ -3239,6 +3249,8 @@ async fn restarted_flows_resolution(
         i32,
         Vec<FlowStatusModule>,
         Option<i16>,
+        HashMap<String, serde_json::Value>,
+        FlowCleanupModule,
     ),
     Error,
 > {
@@ -3397,6 +3409,7 @@ async fn restarted_flows_resolution(
             }?;
         }
     }
+
     if !dependent_module {
         // step not found in flow.
         return Err(Error::InternalErr(format!(
@@ -3411,5 +3424,7 @@ async fn restarted_flows_resolution(
         step_n,
         truncated_modules,
         completed_job.priority,
+        flow_status.user_states,
+        flow_status.cleanup_module,
     ));
 }
