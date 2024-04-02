@@ -1073,7 +1073,8 @@ async fn test_deno_flow(db: Pool<Postgres>) {
                     mock: None,
                     timeout: None,
                     priority: None,
-                    delete_after_use: None
+                    delete_after_use: None,
+                    continue_on_error: None,
                 },
                 FlowModule {
                     id: "b".to_string(),
@@ -1110,6 +1111,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
                             timeout: None,
                             priority: None,
                             delete_after_use: None,
+                            continue_on_error: None,
                         }],
                     },
                     stop_after_if: Default::default(),
@@ -1122,6 +1124,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
                     timeout: None,
                     priority: None,
                     delete_after_use: None,
+                    continue_on_error: None,
                 },
             ],
             same_worker: false,
@@ -1223,6 +1226,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                     timeout: None,
                     priority: None,
                     delete_after_use: None,
+                    continue_on_error: None,
                 },
                 FlowModule {
                     id: "b".to_string(),
@@ -1270,6 +1274,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                                 timeout: None,
                                 priority: None,
                                 delete_after_use: None,
+                                continue_on_error: None,
                             },
                             FlowModule {
                                 id: "e".to_string(),
@@ -1302,7 +1307,9 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                                 mock: None,
                                 timeout: None,
                                 priority: None,
-                                delete_after_use: None
+                                delete_after_use: None,
+                                continue_on_error: None,
+
                             },
                         ],
                     },
@@ -1315,7 +1322,8 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                     mock: None,
                     timeout: None,
                     priority: None,
-                    delete_after_use: None
+                    delete_after_use: None,
+                    continue_on_error: None,
                 },
                 FlowModule {
                     id: "c".to_string(),
@@ -1356,6 +1364,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                     timeout: None,
                     priority: None,
                     delete_after_use: None,
+                    continue_on_error: None,
                 },
             ],
             same_worker: true,
