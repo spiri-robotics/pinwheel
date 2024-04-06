@@ -1157,6 +1157,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                     token,
                 } => {
                     // let r;
+                    tracing::info!(parent_flow = %flow, "updating flow status");
                     if let Err(e) = update_flow_status_after_job_completion(
                         &db2,
                         &AuthedClient {
@@ -1180,7 +1181,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                     )
                     .await
                     {
-                        tracing::error!("Error updating flow status after job completion: {e}");
+                        tracing::error!("Error updating flow status after job completion for {flow} on {worker_name2}: {e}");
                     }
                 }
                 SendResult::Kill => {
@@ -2078,6 +2079,7 @@ pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync +
                 let timer = _worker_flow_transition_duration
                     .as_ref()
                     .map(|x| x.start_timer());
+                tracing::info!(parent_flow = %parent_job, subflow = %job.id, "updating flow status (2)");
                 update_flow_status_after_job_completion(
                     db,
                     client,
@@ -2115,6 +2117,7 @@ pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync +
         .await?;
         if job.is_flow_step {
             if let Some(parent_job) = job.parent_job {
+                tracing::error!(parent_flow = %parent_job, subflow = %job.id, "process completed job error, updating flow status");
                 update_flow_status_after_job_completion(
                     db,
                     client,
@@ -2228,6 +2231,7 @@ pub async fn handle_job_error<R: rsmq_async::RsmqConnection + Send + Sync + Clon
         };
 
         let wrapped_error = WrappedError { error: err.clone() };
+        tracing::error!(parent_flow = %flow, subflow = %job_status_to_update, "handle job error, updating flow status: {err:?}");
         let updated_flow = update_flow_status_after_job_completion(
             db,
             client,
