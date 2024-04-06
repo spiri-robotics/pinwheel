@@ -314,6 +314,7 @@ pub struct ListScheduleQuery {
     pub per_page: Option<usize>,
     pub path: Option<String>,
     pub is_flow: Option<bool>,
+    pub args: Option<String>,
 }
 
 async fn list_schedule(
@@ -336,6 +337,9 @@ async fn list_schedule(
     }
     if let Some(is_flow) = lsq.is_flow {
         sqlb.and_where_eq("is_flow", "?".bind(&is_flow));
+    }
+    if let Some(args) = &lsq.args {
+        sqlb.and_where("args @> ?".bind(&args.replace("'", "''")));
     }
     let sql = sqlb.sql().map_err(|e| Error::InternalErr(e.to_string()))?;
     let rows = sqlx::query_as::<_, Schedule>(&sql)
