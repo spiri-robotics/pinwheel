@@ -59,7 +59,7 @@ use windmill_common::{
     oauth2::WORKSPACE_SLACK_BOT_TOKEN_PATH,
     schedule::Schedule,
     scripts::{ScriptHash, ScriptLang},
-    users::{SUPERADMIN_NOTIFICATION_EMAIL, SUPERADMIN_SECRET_EMAIL},
+    users::{SUPERADMIN_NOTIFICATION_EMAIL, SUPERADMIN_SECRET_EMAIL, SUPERADMIN_SYNC_EMAIL},
     worker::{to_raw_value, DEFAULT_TAGS_PER_WORKSPACE, NO_LOGS, WORKER_CONFIG},
     DB, METRICS_ENABLED,
 };
@@ -605,8 +605,10 @@ pub async fn add_completed_job<
         }
     } else {
         if queued_job.schedule_path.is_some() && queued_job.script_path.is_some() {
-            (skip_downstream_error_handlers, tx) = apply_schedule_handlers(
-                tx,
+            let schedule_handlers_tx: QueueTransaction<'_, R> =
+                (rsmq.clone(), db.begin().await?).into();
+            match apply_schedule_handlers(
+                schedule_handlers_tx,
                 db,
                 queued_job.schedule_path.as_ref().unwrap(),
                 queued_job.script_path.as_ref().unwrap(),
@@ -617,21 +619,30 @@ pub async fn add_completed_job<
                 queued_job.started_at.unwrap_or(chrono::Utc::now()),
                 queued_job.priority,
             )
-            .await?;
-        }
-        if !queued_job.is_flow()
-            && queued_job.schedule_path.is_some()
-            && queued_job.script_path.is_some()
-        {
-            // script only
-            tx = handle_maybe_scheduled_job(
-                tx,
-                db,
-                queued_job.schedule_path.as_ref().unwrap(),
-                queued_job.script_path.as_ref().unwrap(),
-                &queued_job.workspace_id,
-            )
-            .await?;
+            .await
+            {
+                Ok((skip, mut schedule_handlers_tx)) => {
+                    skip_downstream_error_handlers = skip;
+
+                    if !queued_job.is_flow() {
+                        // script only
+                        schedule_handlers_tx = handle_maybe_scheduled_job(
+                            schedule_handlers_tx,
+                            db,
+                            queued_job.schedule_path.as_ref().unwrap(),
+                            queued_job.script_path.as_ref().unwrap(),
+                            &queued_job.workspace_id,
+                        )
+                        .await?;
+                    }
+
+                    schedule_handlers_tx.commit().await?;
+                }
+                Err(err) => {
+                    skip_downstream_error_handlers = true;
+                    tracing::error!("Could not apply schedule handlers with error: {}", err);
+                }
+            };
         }
     }
     if queued_job.concurrent_limit.is_some() {
@@ -1182,13 +1193,13 @@ async fn apply_schedule_handlers<
                 }
                 Err(err) => {
                     sqlx::query!(
-                    "UPDATE schedule SET enabled = false, error = $1 WHERE workspace_id = $2 AND path = $3",
-                    format!("Could not trigger error handler: {err}"),
-                    &schedule.workspace_id,
-                    &schedule.path
-                )
-                .execute(db)
-                .await?;
+                        "UPDATE schedule SET enabled = false, error = $1 WHERE workspace_id = $2 AND path = $3",
+                        format!("Could not trigger error handler: {err}"),
+                        &schedule.workspace_id,
+                        &schedule.path
+                    )
+                    .execute(db)
+                    .await?;
                     tracing::warn!(
                         "Could not trigger error handler for {}: {}",
                         schedule_path,
