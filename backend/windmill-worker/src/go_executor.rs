@@ -1,11 +1,10 @@
 use std::{collections::HashMap, process::Stdio};
 
-use bytes::Bytes;
 use itertools::Itertools;
 use serde_json::value::RawValue;
 use tokio::{
     fs::{create_dir, DirBuilder, File},
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::AsyncReadExt,
     process::Command,
 };
 use uuid::Uuid;
@@ -37,12 +36,12 @@ lazy_static::lazy_static! {
 pub async fn save_cache(
     bin_path: &str,
     job_dir: &str,
-    hash: &str,
+    _hash: &str,
     job: &QueuedJob,
     db: &sqlx::Pool<sqlx::Postgres>,
 ) -> windmill_common::error::Result<()> {
     let job_main_path = format!("{job_dir}/main");
-    let mut cached_to_s3 = false;
+    let mut _cached_to_s3 = false;
 
     if !*CLOUD_HOSTED {
         tokio::fs::copy(&job_main_path, bin_path).await?;
@@ -50,13 +49,13 @@ pub async fn save_cache(
             job.id.clone(),
             job.workspace_id.to_string(),
             format!(
-                "\nwrite cached binary: {} (backed by object store: {cached_to_s3})\n",
+                "\nwrite cached binary: {} (backed by object store: {_cached_to_s3})\n",
                 bin_path
             ),
             db,
         )
         .await;
-    } else if cached_to_s3 {
+    } else if _cached_to_s3 {
         append_logs(
             job.id.clone(),
             job.workspace_id.to_string(),
@@ -70,11 +69,8 @@ pub async fn save_cache(
 }
 
 
-fn hash_to_os_path(hash: &str) -> String {
-    format!("gobin/{hash}")
-}
 
-async fn load_cache(bin_path: &str, hash: &str) -> (bool, String) {
+async fn load_cache(bin_path: &str, _hash: &str) -> (bool, String) {
     if tokio::fs::metadata(&bin_path).await.is_ok() {
         (true, format!("loaded bin from local cache: {}\n", bin_path))
     } else {
