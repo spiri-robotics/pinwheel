@@ -1,8 +1,7 @@
 use std::{collections::HashMap, process::Stdio};
 
-use bytes::{Buf, Bytes};
+use bytes::Bytes;
 use itertools::Itertools;
-use object_store::path::Path;
 use serde_json::value::RawValue;
 use tokio::{
     fs::{create_dir, DirBuilder, File},
@@ -13,7 +12,6 @@ use uuid::Uuid;
 use windmill_common::{
     error::{self, Error},
     jobs::QueuedJob,
-    s3_helpers::OBJECT_STORE_CACHE_SETTINGS,
     utils::calculate_hash,
     worker::CLOUD_HOSTED,
 };
@@ -23,9 +21,8 @@ use windmill_queue::{append_logs, CanceledBy};
 use crate::{
     common::{
         capitalize, create_args_and_out_file, get_reserved_variables, handle_child, read_result,
-        start_child_process, write_file, write_file_binary,
+        start_child_process, write_file,
     },
-    global_cache::{attempt_fetch_bytes, pull_from_tar},
     AuthedClientBackgroundTask, DISABLE_NSJAIL, DISABLE_NUSER, GOPRIVATE, GOPROXY,
     GO_BIN_CACHE_DIR, GO_CACHE_DIR, HOME_ENV, NSJAIL_PATH, PATH_ENV, TZ_ENV,
 };
