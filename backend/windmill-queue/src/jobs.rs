@@ -693,42 +693,6 @@ pub async fn add_completed_job<
     );
 
 
-    if !skip_downstream_error_handlers
-        && matches!(queued_job.job_kind, JobKind::Flow | JobKind::Script)
-        && queued_job.parent_job.is_none()
-        && !success
-    {
-        let result = sanitize_result(result);
-        tracing::info!(
-            "Sending error of job {} to error handlers (if any)",
-            queued_job.id
-        );
-        if let Err(e) =
-            send_error_to_global_handler(rsmq.clone(), &queued_job, db, Json(&result)).await
-        {
-            tracing::error!(
-                "Could not run global error handler for job {}: {}",
-                &queued_job.id,
-                e
-            );
-        }
-
-        if let Err(e) = send_error_to_workspace_handler(
-            rsmq.clone(),
-            &queued_job,
-            canceled_by.is_some(),
-            db,
-            Json(&result),
-        )
-        .await
-        {
-            tracing::error!(
-                "Could not run workspace error handler for job {}: {}",
-                &queued_job.id,
-                e
-            );
-        }
-    }
 
     if !queued_job.is_flow_step && queued_job.job_kind == JobKind::Script && canceled_by.is_none() {
         if let Some(hash) = queued_job.script_hash {
@@ -922,7 +886,7 @@ pub async fn send_error_to_global_handler<
     rsmq: Option<R>,
     queued_job: &QueuedJob,
     db: &Pool<Postgres>,
-    result: Json<&'a T>,
+    result: Json<&T>,
 ) -> Result<(), Error> {
     if let Some(ref global_error_handler) = *GLOBAL_ERROR_HANDLER_PATH_IN_ADMINS_WORKSPACE {
         let prefixed_global_error_handler_path = if global_error_handler.starts_with("script/")
@@ -932,11 +896,12 @@ pub async fn send_error_to_global_handler<
         } else {
             format!("script/{}", global_error_handler)
         };
+        let result = sanitize_result(result);
         run_error_handler(
             rsmq,
             queued_job,
             db,
-            result,
+            Json(&result),
             &prefixed_global_error_handler_path,
             None,
             true,
@@ -998,12 +963,13 @@ pub async fn send_error_to_workspace_handler<
 
         let muted = ws_error_handler_muted.unwrap_or(false);
         if !muted {
+            let result = sanitize_result(result);
             tracing::info!("workspace error handled for job {}", &queued_job.id);
             run_error_handler(
                 rsmq,
                 queued_job,
                 db,
-                result,
+                Json(&result),
                 &error_handler,
                 error_handler_extra_args,
                 false,
@@ -1133,140 +1099,7 @@ async fn apply_schedule_handlers<
     let skip_downstream_error_handlers = schedule.ws_error_handler_muted;
 
     if !success {
-        if let Some(on_failure_path) = schedule.on_failure.clone() {
-            let times = schedule.on_failure_times.unwrap_or(1).max(1);
-            let exact = schedule.on_failure_exact.unwrap_or(false);
-            if times > 1 || exact {
-                let past_jobs = sqlx::query_as!(
-                    CompletedJobSubset,
-                    "SELECT success, result, started_at FROM completed_job WHERE workspace_id = $1 AND schedule_path = $2 AND script_path = $3 AND id != $4 ORDER BY created_at DESC LIMIT $5",
-                    &schedule.workspace_id,
-                    &schedule.path,
-                    &schedule.script_path,
-                    job_id,
-                    if exact { times } else { times - 1 } as i64,
-                ).fetch_all(&mut tx).await?;
-
-                let match_times = if exact {
-                    past_jobs.len() == times as usize
-                        && past_jobs[..(times - 1) as usize].iter().all(|j| !j.success)
-                        && past_jobs[(times - 1) as usize].success
-                } else {
-                    past_jobs.len() == ((times - 1) as usize)
-                        && past_jobs.iter().all(|j| !j.success)
-                };
-
-                if !match_times {
-                    return Ok((skip_downstream_error_handlers, tx));
-                }
-            }
-
-            let on_failure_result = handle_on_failure(
-                db,
-                tx,
-                job_id,
-                schedule_path,
-                script_path,
-                schedule.is_flow,
-                w_id,
-                &on_failure_path,
-                result,
-                times,
-                started_at,
-                schedule.on_failure_extra_args,
-                &schedule.email,
-                job_priority,
-            )
-            .await;
-
-            match on_failure_result {
-                Ok((_, ntx)) => {
-                    tx = ntx;
-                }
-                Err(err) => {
-                    sqlx::query!(
-                        "UPDATE schedule SET enabled = false, error = $1 WHERE workspace_id = $2 AND path = $3",
-                        format!("Could not trigger error handler: {err}"),
-                        &schedule.workspace_id,
-                        &schedule.path
-                    )
-                    .execute(db)
-                    .await?;
-                    tracing::warn!(
-                        "Could not trigger error handler for {}: {}",
-                        schedule_path,
-                        err
-                    );
-                    return Err(err);
-                }
-            }
-        }
     } else {
-        if let Some(on_recovery_path) = schedule.on_recovery.clone() {
-            let times = schedule.on_recovery_times.unwrap_or(1).max(1);
-            let past_jobs = sqlx::query_as!(
-                CompletedJobSubset,
-                "SELECT success, result, started_at FROM completed_job WHERE workspace_id = $1 AND schedule_path = $2 AND script_path = $3 AND id != $4 ORDER BY created_at DESC LIMIT $5",
-                &schedule.workspace_id,
-                &schedule.path,
-                &schedule.script_path,
-                job_id,
-                times as i64,
-            ).fetch_all(&mut tx).await?;
-
-            if past_jobs.len() < times as usize {
-                return Ok((skip_downstream_error_handlers, tx));
-            }
-
-            let n_times_successful = past_jobs[..(times - 1) as usize].iter().all(|j| j.success);
-
-            if !n_times_successful {
-                return Ok((skip_downstream_error_handlers, tx));
-            }
-
-            let failed_job = past_jobs[past_jobs.len() - 1].clone();
-
-            if !failed_job.success {
-                let on_recovery_result = handle_on_recovery(
-                    db,
-                    tx,
-                    job_id,
-                    schedule_path,
-                    script_path,
-                    schedule.is_flow,
-                    w_id,
-                    &on_recovery_path,
-                    failed_job,
-                    result,
-                    times,
-                    started_at,
-                    schedule.on_recovery_extra_args,
-                )
-                .await;
-
-                match on_recovery_result {
-                    Ok(ntx) => {
-                        tx = ntx;
-                    }
-                    Err(err) => {
-                        sqlx::query!(
-                            "UPDATE schedule SET enabled = false, error = $1 WHERE workspace_id = $2 AND path = $3",
-                            format!("Could not trigger recovery handler: {err}"),
-                            &schedule.workspace_id,
-                            &schedule.path
-                        )
-                        .execute(db)
-                        .await?;
-                        tracing::warn!(
-                            "Could not trigger recovery handler for {}: {}",
-                            schedule_path,
-                            err
-                        );
-                        return Err(err);
-                    }
-                }
-            }
-        }
     }
 
     Ok((skip_downstream_error_handlers, tx))
