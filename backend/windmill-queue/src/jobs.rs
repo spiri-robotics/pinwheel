@@ -692,6 +692,37 @@ pub async fn add_completed_job<
         queued_job.id
     );
 
+    #[cfg(feature = "cloud")]
+    if *CLOUD_HOSTED && !queued_job.is_flow() && _duration > 1000 {
+        let additional_usage = _duration / 1000;
+        let w_id = &queued_job.workspace_id;
+        let premium_workspace =
+            sqlx::query_scalar!("SELECT premium FROM workspace WHERE id = $1", w_id)
+                .fetch_one(db)
+                .await
+                .map_err(|e| Error::InternalErr(format!("fetching if {w_id} is premium: {e}")))?;
+        let _ = sqlx::query!(
+                "INSERT INTO usage (id, is_workspace, month_, usage) 
+                VALUES ($1, TRUE, EXTRACT(YEAR FROM current_date) * 12 + EXTRACT(MONTH FROM current_date), $2) 
+                ON CONFLICT (id, is_workspace, month_) DO UPDATE SET usage = usage.usage + $2",
+                w_id,
+                additional_usage as i32)
+                .execute(db)
+                .await
+                .map_err(|e| Error::InternalErr(format!("updating usage: {e}")));
+
+        if !premium_workspace {
+            let _ = sqlx::query!(
+                "INSERT INTO usage (id, is_workspace, month_, usage) 
+                VALUES ($1, FALSE, EXTRACT(YEAR FROM current_date) * 12 + EXTRACT(MONTH FROM current_date), $2) 
+                ON CONFLICT (id, is_workspace, month_) DO UPDATE SET usage = usage.usage + $2",
+                queued_job.email,
+                additional_usage as i32)
+                .execute(db)
+                .await
+                .map_err(|e| Error::InternalErr(format!("updating usage: {e}")));
+        }
+    }
 
 
     if !queued_job.is_flow_step && queued_job.job_kind == JobKind::Script && canceled_by.is_none() {
@@ -2412,6 +2443,178 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
     flow_step_id: Option<String>,
     _priority_override: Option<i16>,
 ) -> Result<(Uuid, QueueTransaction<'c, R>), Error> {
+    #[cfg(feature = "cloud")]
+    if *CLOUD_HOSTED {
+        let premium_workspace =
+            sqlx::query_scalar!("SELECT premium FROM workspace WHERE id = $1", workspace_id)
+                .fetch_one(_db)
+                .await
+                .map_err(|e| {
+                    Error::InternalErr(format!(
+                        "fetching if {workspace_id} is premium and overquota: {e}"
+                    ))
+                })?;
+
+        // we track only non flow steps
+        let (workspace_usage, user_usage) = if !matches!(
+            job_payload,
+            JobPayload::Flow { .. } | JobPayload::RawFlow { .. }
+        ) {
+            let workspace_usage = sqlx::query_scalar!(
+                    "INSERT INTO usage (id, is_workspace, month_, usage)
+                    VALUES ($1, TRUE, EXTRACT(YEAR FROM current_date) * 12 + EXTRACT(MONTH FROM current_date), 1)
+                    ON CONFLICT (id, is_workspace, month_) DO UPDATE SET usage = usage.usage + 1 
+                    RETURNING usage.usage",
+                    workspace_id
+                )
+                .fetch_one(_db)
+                .await
+                .map_err(|e| Error::InternalErr(format!("updating usage: {e}")))?;
+
+            let user_usage = if !premium_workspace {
+                Some(sqlx::query_scalar!(
+                    "INSERT INTO usage (id, is_workspace, month_, usage)
+                    VALUES ($1, FALSE, EXTRACT(YEAR FROM current_date) * 12 + EXTRACT(MONTH FROM current_date), 1)
+                    ON CONFLICT (id, is_workspace, month_) DO UPDATE SET usage = usage.usage + 1 
+                    RETURNING usage.usage",
+                    email
+                )
+                .fetch_one(_db)
+                .await
+                .map_err(|e| Error::InternalErr(format!("updating usage: {e}")))?)
+            } else {
+                None
+            };
+            (Some(workspace_usage), user_usage)
+        } else {
+            (None, None)
+        };
+
+        if !premium_workspace {
+            let is_super_admin =
+                sqlx::query_scalar!("SELECT super_admin FROM password WHERE email = $1", email)
+                    .fetch_optional(_db)
+                    .await?
+                    .unwrap_or(false);
+
+            if !is_super_admin {
+                if email != ERROR_HANDLER_USER_EMAIL
+                    && email != "worker@windmill.dev"
+                    && email != SUPERADMIN_SECRET_EMAIL
+                    && email != SUPERADMIN_SYNC_EMAIL
+                    && email != SUPERADMIN_NOTIFICATION_EMAIL
+                {
+                    let user_usage = if let Some(user_usage) = user_usage {
+                        user_usage
+                    } else {
+                        sqlx::query_scalar!(
+                            "SELECT usage.usage + 1 FROM usage 
+                            WHERE is_workspace IS FALSE AND
+                            month_ = EXTRACT(YEAR FROM current_date) * 12 + EXTRACT(MONTH FROM current_date)
+                            AND id = $1",
+                            email
+                        )
+                        .fetch_optional(_db)
+                        .await?
+                        .flatten()
+                        .unwrap_or(1)
+                    };
+
+                    if user_usage > MAX_FREE_EXECS
+                        && !matches!(job_payload, JobPayload::Dependencies { .. })
+                        && !matches!(job_payload, JobPayload::FlowDependencies { .. })
+                        && !matches!(job_payload, JobPayload::AppDependencies { .. })
+                    {
+                        return Err(error::Error::BadRequest(format!(
+                            "User {email} has exceeded the free usage limit of {MAX_FREE_EXECS} that applies outside of premium workspaces."
+                        )));
+                    }
+
+                    let in_queue =
+                        sqlx::query_scalar!("SELECT COUNT(id) FROM queue WHERE email = $1", email)
+                            .fetch_one(_db)
+                            .await?
+                            .unwrap_or(0);
+
+                    if in_queue > MAX_FREE_EXECS.into() {
+                        return Err(error::Error::BadRequest(format!(
+                            "User {email} has exceeded the jobs in queue limit of {MAX_FREE_EXECS} that applies outside of premium workspaces."
+                        )));
+                    }
+
+                    let concurrent_runs = sqlx::query_scalar!(
+                        "SELECT COUNT(id) FROM queue WHERE running = true AND email = $1",
+                        email
+                    )
+                    .fetch_one(_db)
+                    .await?
+                    .unwrap_or(0);
+
+                    if concurrent_runs > MAX_FREE_CONCURRENT_RUNS.into() {
+                        return Err(error::Error::BadRequest(format!(
+                            "User {email} has exceeded the concurrent runs limit of {MAX_FREE_CONCURRENT_RUNS} that applies outside of premium workspaces."
+                        )));
+                    }
+                }
+
+                if workspace_id != "demo" {
+                    let workspace_usage = if let Some(workspace_usage) = workspace_usage {
+                        workspace_usage
+                    } else {
+                        sqlx::query_scalar!(
+                        "SELECT usage.usage + 1 FROM usage 
+                        WHERE is_workspace IS TRUE AND
+                        month_ = EXTRACT(YEAR FROM current_date) * 12 + EXTRACT(MONTH FROM current_date)
+                        AND id = $1",
+                        workspace_id
+                    )
+                    .fetch_optional(_db)
+                    .await?
+                    .flatten()
+                    .unwrap_or(1)
+                    };
+
+                    if workspace_usage > MAX_FREE_EXECS
+                        && !matches!(job_payload, JobPayload::Dependencies { .. })
+                        && !matches!(job_payload, JobPayload::FlowDependencies { .. })
+                        && !matches!(job_payload, JobPayload::AppDependencies { .. })
+                    {
+                        return Err(error::Error::BadRequest(format!(
+                            "Workspace {workspace_id} has exceeded the free usage limit of {MAX_FREE_EXECS} that applies outside of premium workspaces."
+                        )));
+                    }
+
+                    let in_queue_workspace = sqlx::query_scalar!(
+                        "SELECT COUNT(id) FROM queue WHERE workspace_id = $1",
+                        workspace_id
+                    )
+                    .fetch_one(_db)
+                    .await?
+                    .unwrap_or(0);
+
+                    if in_queue_workspace > MAX_FREE_EXECS.into() {
+                        return Err(error::Error::BadRequest(format!(
+                            "Workspace {workspace_id} has exceeded the jobs in queue limit of {MAX_FREE_EXECS} that applies outside of premium workspaces."
+                        )));
+                    }
+
+                    let concurrent_runs_workspace = sqlx::query_scalar!(
+                        "SELECT COUNT(id) FROM queue WHERE running = true AND workspace_id = $1",
+                        workspace_id
+                    )
+                    .fetch_one(_db)
+                    .await?
+                    .unwrap_or(0);
+
+                    if concurrent_runs_workspace > MAX_FREE_CONCURRENT_RUNS.into() {
+                        return Err(error::Error::BadRequest(format!(
+                            "Workspace {workspace_id} has exceeded the concurrent runs limit of {MAX_FREE_CONCURRENT_RUNS} that applies outside of premium workspaces."
+                        )));
+                    }
+                }
+            }
+        }
+    }
 
     let (
         script_hash,

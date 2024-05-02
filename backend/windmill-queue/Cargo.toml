@@ -10,6 +10,7 @@ path = "src/lib.rs"
 
 [features]
 default = []
+cloud = []
 benchmark = []
 prometheus = ["dep:prometheus"]
 

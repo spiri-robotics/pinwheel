@@ -1091,6 +1091,16 @@ pub async fn resolve_job_timeout(
     custom_timeout_secs: Option<i32>,
 ) -> (Duration, Option<String>) {
     let mut warn_msg: Option<String> = None;
+    #[cfg(feature = "cloud")]
+    let cloud_premium_workspace = *CLOUD_HOSTED
+        && sqlx::query_scalar!("SELECT premium FROM workspace WHERE id = $1", _w_id)
+            .fetch_one(_db)
+            .await
+            .map_err(|e| {
+                tracing::error!(%e, "error getting premium workspace for job {_job_id}: {e}");
+            })
+            .unwrap_or(false);
+    #[cfg(not(feature = "cloud"))]
     let cloud_premium_workspace = false;
 
     // compute global max timeout
