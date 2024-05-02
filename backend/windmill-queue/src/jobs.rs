@@ -2788,12 +2788,12 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
                         step: step_n,
                         modules: truncated_modules,
                         // failure_module is reset
-                        failure_module: FlowStatusModuleWParent {
+                        failure_module: Box::new(FlowStatusModuleWParent {
                             parent_module: None,
                             module_status: FlowStatusModule::WaitingForPriorSteps {
                                 id: "failure".to_string(),
                             },
-                        },
+                        }),
                         cleanup_module,
                         // retry status is reset
                         retry: RetryStatus { fail_count: 0, failed_jobs: vec![] },
@@ -2943,12 +2943,12 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
                 step: step_n,
                 modules: truncated_modules,
                 // failure_module is reset
-                failure_module: FlowStatusModuleWParent {
+                failure_module: Box::new(FlowStatusModuleWParent {
                     parent_module: None,
                     module_status: FlowStatusModule::WaitingForPriorSteps {
                         id: "failure".to_string(),
                     },
-                },
+                }),
                 cleanup_module,
                 // retry status is reset
                 retry: RetryStatus { fail_count: 0, failed_jobs: vec![] },
