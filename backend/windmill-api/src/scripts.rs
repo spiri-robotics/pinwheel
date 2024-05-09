@@ -13,6 +13,7 @@ use crate::{
     webhook_util::{WebhookMessage, WebhookShared},
     HTTP_CLIENT,
 };
+
 use axum::{
     extract::{Extension, Path, Query},
     response::IntoResponse,
@@ -31,6 +32,8 @@ use std::{
 };
 use windmill_audit::audit_ee::audit_log;
 use windmill_audit::ActionKind;
+
+
 use windmill_common::{
     db::UserDB,
     error::{Error, JsonResult, Result},
@@ -116,6 +119,7 @@ pub fn workspaced_service() -> Router {
         .route("/list", get(list_scripts))
         .route("/list_search", get(list_search_scripts))
         .route("/create", post(create_script))
+        .route("/create_snapshot", post(create_snapshot_script))
         .route("/archive/p/*path", post(archive_script_by_path))
         .route("/get/draft/*path", get(get_script_by_path_w_draft))
         .route("/get/p/*path", get(get_script_by_path))
@@ -193,6 +197,7 @@ async fn list_scripts(
             "draft_only",
             "ws_error_handler_muted",
             "no_main_func",
+            "codebase IS NOT NULL as use_codebase"
         ])
         .left()
         .join("favorite")
@@ -309,6 +314,11 @@ fn hash_script(ns: &NewScript) -> i64 {
     dh.finish() as i64
 }
 
+async fn create_snapshot_script() -> Result<(StatusCode, String)> {
+    Err(Error::BadRequest("Upgrade to EE to use bundle".to_string()))
+}
+
+
 async fn create_script(
     authed: ApiAuthed,
     Extension(user_db): Extension<UserDB>,
@@ -318,18 +328,34 @@ async fn create_script(
     Path(w_id): Path<String>,
     Json(ns): Json<NewScript>,
 ) -> Result<(StatusCode, String)> {
+    let (hash, tx) = create_script_internal(ns, w_id, authed, db, rsmq, user_db, webhook).await?;
+    tx.commit().await?;
+    Ok((StatusCode::CREATED, format!("{}", hash)))
+}
+
+async fn create_script_internal<'c>(
+    ns: NewScript,
+    w_id: String,
+    authed: ApiAuthed,
+    db: sqlx::Pool<Postgres>,
+    rsmq: Option<rsmq_async::MultiplexedRsmq>,
+    user_db: UserDB,
+    webhook: WebhookShared,
+) -> Result<(
+    ScriptHash,
+    QueueTransaction<'c, rsmq_async::MultiplexedRsmq>,
+)> {
+    let codebase = ns.codebase.as_ref();
     if ns.ws_error_handler_muted.is_some_and(|val| val) {
         return Err(Error::BadRequest(
             "Muting the error handler for certain script is only available in enterprise version"
                 .to_string(),
         ));
     }
-
     let script_path = ns.path.clone();
     let hash = ScriptHash(hash_script(&ns));
     let authed = maybe_refresh_folders(&ns.path, &w_id, authed, &db).await;
     let mut tx: QueueTransaction<'_, _> = (rsmq.clone(), user_db.begin(&authed).await?).into();
-
     if sqlx::query_scalar!(
         "SELECT 1 FROM script WHERE hash = $1 AND workspace_id = $2",
         hash.0,
@@ -345,7 +371,6 @@ async fn create_script(
                 .to_owned(),
         ));
     };
-
     let clashing_script = sqlx::query_as::<_, Script>(
         "SELECT * FROM script WHERE path = $1 AND archived = false AND workspace_id = $2",
     )
@@ -353,7 +378,6 @@ async fn create_script(
     .bind(&w_id)
     .fetch_optional(&mut tx)
     .await?;
-
     struct ParentInfo {
         p_hashes: Vec<i64>,
         perms: serde_json::Value,
@@ -446,13 +470,11 @@ async fn create_script(
             r
         }
     }?;
-
     let p_hashes = parent_hashes_and_perms.as_ref().map(|v| &v.p_hashes[..]);
     let extra_perms = parent_hashes_and_perms
         .as_ref()
         .map(|v| v.perms.clone())
         .unwrap_or(json!({}));
-
     let lock = if !(ns.language == ScriptLang::Python3
         || ns.language == ScriptLang::Go
         || ns.language == ScriptLang::Bun
@@ -463,23 +485,20 @@ async fn create_script(
         ns.lock
             .and_then(|e| if e.is_empty() { None } else { Some(e) })
     };
-
     let needs_lock_gen = lock.is_none();
-
     let envs = ns.envs.as_ref().map(|x| x.as_slice());
     let envs = if ns.envs.is_none() || ns.envs.as_ref().unwrap().is_empty() {
         None
     } else {
         envs
     };
-    //::text::json is to ensure we use serde_json with preserve order
     sqlx::query!(
         "INSERT INTO script (workspace_id, hash, path, parent_hashes, summary, description, \
          content, created_by, schema, is_template, extra_perms, lock, language, kind, tag, \
          draft_only, envs, concurrent_limit, concurrency_time_window_s, cache_ttl, \
          dedicated_worker, ws_error_handler_muted, priority, restart_unless_cancelled, \
-         delete_after_use, timeout, concurrency_key, visible_to_runner_only, no_main_func) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::text::json, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)",
+         delete_after_use, timeout, concurrency_key, visible_to_runner_only, no_main_func, codebase) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::text::json, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)",
         &w_id,
         &hash.0,
         ns.path,
@@ -508,11 +527,11 @@ async fn create_script(
         ns.timeout,
         ns.concurrency_key,
         ns.visible_to_runner_only,
-        ns.no_main_func
+        ns.no_main_func,
+        codebase
     )
     .execute(&mut tx)
     .await?;
-
     let p_path_opt = parent_hashes_and_perms.as_ref().map(|x| x.p_path.clone());
     if let Some(ref p_path) = p_path_opt {
         sqlx::query!(
@@ -562,7 +581,6 @@ async fn create_script(
         .execute(&mut tx)
         .await?;
     }
-
     if p_hashes.is_some() && !p_hashes.unwrap().is_empty() {
         audit_log(
             &mut tx,
@@ -608,7 +626,6 @@ async fn create_script(
             },
         );
     }
-
     let permissioned_as = username_to_permissioned_as(&authed.username);
     if needs_lock_gen {
         let tag = if ns.dedicated_worker.is_some_and(|x| x) {
@@ -657,7 +674,7 @@ async fn create_script(
             None,
         )
         .await?;
-        new_tx.commit().await?;
+        Ok((hash, new_tx))
     } else {
         handle_deployment_metadata(
             &authed.email,
@@ -674,10 +691,8 @@ async fn create_script(
             false,
         )
         .await?;
-        tx.commit().await?;
+        Ok((hash, tx))
     }
-
-    Ok((StatusCode::CREATED, format!("{}", hash)))
 }
 
 pub async fn get_hub_script_by_path(

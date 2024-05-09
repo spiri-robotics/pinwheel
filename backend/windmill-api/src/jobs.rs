@@ -19,6 +19,7 @@ use windmill_common::jobs::{
     format_completed_job_result, format_result, CompletedJobWithFormattedResult, FormattedResult,
     ENTRYPOINT_OVERRIDE,
 };
+
 use windmill_common::variables::get_workspace_key;
 
 use crate::db::ApiAuthed;
@@ -161,6 +162,7 @@ pub fn workspaced_service() -> Router {
                 .layer(cors.clone()),
         )
         .route("/run/preview", post(run_preview_script))
+        .route("/run/preview_bundle", post(run_bundle_preview_script))
         .route("/add_batch_jobs/:n", post(add_batch_jobs))
         .route("/run/preview_flow", post(run_preview_flow_job))
         .route(
@@ -1997,7 +1999,9 @@ enum PreviewKind {
     Identity,
     Http,
     Noop,
+    Bundle,
 }
+
 #[derive(Deserialize)]
 struct Preview {
     content: Option<String>,
@@ -2252,6 +2256,7 @@ pub async fn run_workflow_as_code(
     let (job_payload, tag, _delete_after_use, timeout) = match job.job_kind {
         JobKind::Preview => (
             JobPayload::Code(RawCode {
+                hash: None,
                 content: job.raw_code.unwrap_or_default(),
                 path: job.script_path,
                 language: job.language.unwrap_or_else(|| ScriptLang::Deno),
@@ -2903,6 +2908,7 @@ async fn run_preview_script(
             Some(PreviewKind::Identity) => JobPayload::Identity,
             Some(PreviewKind::Noop) => JobPayload::Noop,
             _ => JobPayload::Code(RawCode {
+                hash: None,
                 content: preview.content.unwrap_or_default(),
                 path: preview.path,
                 language: preview.language.unwrap_or(ScriptLang::Deno),
@@ -2935,6 +2941,13 @@ async fn run_preview_script(
     tx.commit().await?;
 
     Ok((StatusCode::CREATED, uuid.to_string()))
+}
+
+
+async fn run_bundle_preview_script() -> error::Result<(StatusCode, String)> {
+    return Err(Error::BadRequest(
+        "bundle preview is an ee feature".to_string(),
+    ));
 }
 
 #[derive(Deserialize)]

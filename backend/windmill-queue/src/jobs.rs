@@ -103,11 +103,10 @@ lazy_static::lazy_static! {
 lazy_static::lazy_static! {
     pub static ref HTTP_CLIENT: Client = reqwest::ClientBuilder::new()
         .user_agent("windmill/beta")
+        .timeout(std::time::Duration::from_secs(20))
+        .connect_timeout(std::time::Duration::from_secs(10))
         .build().unwrap();
 
-    pub static ref HTTP_CLIENT_WORKER: Client = reqwest::ClientBuilder::new()
-        .user_agent("windmill/beta")
-        .build().unwrap();
 
 }
 
@@ -2755,6 +2754,7 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
         JobPayload::Code(RawCode {
             content,
             path,
+            hash,
             language,
             lock,
             concurrent_limit,
@@ -2762,7 +2762,7 @@ pub async fn push<'c, T: Serialize + Send + Sync, R: rsmq_async::RsmqConnection 
             cache_ttl,
             dedicated_worker,
         }) => (
-            None,
+            hash,
             path,
             Some((content, lock)),
             JobKind::Preview,

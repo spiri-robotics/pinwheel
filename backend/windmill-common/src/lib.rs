@@ -11,7 +11,6 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 
-use ee::CriticalErrorChannel;
 use error::Error;
 use scripts::ScriptLang;
 use sqlx::{Pool, Postgres};
