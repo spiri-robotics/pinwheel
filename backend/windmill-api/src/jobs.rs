@@ -2358,7 +2358,7 @@ async fn run_wait_result(
     w_id: String,
     node_id_for_empty_return: Option<String>,
 ) -> error::Result<Response> {
-    let mut result;
+    let mut result = None;
     let timeout = SERVER_CONFIG.read().await.timeout_wait_result.clone();
     let timeout_ms = if timeout <= 0 {
         2000
@@ -2382,7 +2382,9 @@ async fn run_wait_result(
             )
             .await
             .ok();
-        } else {
+        }
+
+        if result.is_none() {
             let row = sqlx::query(
                 "SELECT result, language, flow_status FROM completed_job WHERE id = $1 AND workspace_id = $2",
             )
@@ -2400,8 +2402,6 @@ async fn run_wait_result(
                     FormattedResult::RawValue(rv) => rv,
                     FormattedResult::Vec(v) => Some(to_raw_value(&v)),
                 };
-            } else {
-                result = None;
             }
         }
 
