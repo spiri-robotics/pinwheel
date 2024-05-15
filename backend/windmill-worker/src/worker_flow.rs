@@ -2485,6 +2485,7 @@ async fn compute_next_flow_transform(
             language,
             lock,
             tag,
+            custom_concurrency_key,
             concurrent_limit,
             concurrency_time_window_s,
             ..
@@ -2497,6 +2498,7 @@ async fn compute_next_flow_transform(
                 content,
                 language,
                 lock,
+                custom_concurrency_key,
                 concurrent_limit,
                 concurrency_time_window_s,
                 module,
@@ -3072,6 +3074,7 @@ async fn payload_from_simple_module(
             language,
             lock,
             tag,
+            custom_concurrency_key,
             concurrent_limit,
             concurrency_time_window_s,
             ..
@@ -3080,6 +3083,7 @@ async fn payload_from_simple_module(
             content,
             language,
             lock,
+            custom_concurrency_key,
             concurrent_limit,
             concurrency_time_window_s,
             module,
@@ -3095,6 +3099,7 @@ fn raw_script_to_payload(
     content: &String,
     language: &windmill_common::scripts::ScriptLang,
     lock: &Option<String>,
+    custom_concurrency_key: &Option<String>,
     concurrent_limit: &Option<i32>,
     concurrency_time_window_s: &Option<i32>,
     module: &FlowModule,
@@ -3108,6 +3113,7 @@ fn raw_script_to_payload(
             content: content.clone(),
             language: language.clone(),
             lock: lock.clone(),
+            custom_concurrency_key: custom_concurrency_key.clone(),
             concurrent_limit: *concurrent_limit,
             concurrency_time_window_s: *concurrency_time_window_s,
             cache_ttl: module.cache_ttl.map(|x| x as i32),
@@ -3139,6 +3145,7 @@ async fn script_to_payload(
         let mut tx: sqlx::Transaction<'_, sqlx::Postgres> = db.begin().await?;
         let (
             tag,
+            custom_concurrency_key,
             concurrent_limit,
             concurrency_time_window_s,
             cache_ttl,
@@ -3152,6 +3159,7 @@ async fn script_to_payload(
             JobPayload::ScriptHash {
                 hash,
                 path: script_path.to_owned(),
+                custom_concurrency_key,
                 concurrent_limit,
                 concurrency_time_window_s,
                 cache_ttl: module.cache_ttl.map(|x| x as i32).ok_or(cache_ttl).ok(),
