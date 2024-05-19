@@ -6,7 +6,6 @@ use futures::StreamExt;
 use futures::{stream, Stream};
 use serde::Deserialize;
 use serde_json::json;
-use sqlx::types::Json;
 use sqlx::{postgres::PgListener, types::Uuid, Pool, Postgres};
 
 
@@ -862,13 +861,17 @@ impl RunJob {
 
     async fn push(self, db: &Pool<Postgres>) -> Uuid {
         let RunJob { payload, args } = self;
+        let mut hm_args = std::collections::HashMap::new();
+        for (k, v) in args {
+            hm_args.insert(k, windmill_common::worker::to_raw_value(&v));
+        } 
         let tx = PushIsolationLevel::IsolatedRoot(db.clone(), None);
-        let (uuid, tx) = windmill_queue::push::<_, rsmq_async::MultiplexedRsmq>(
+        let (uuid, tx) = windmill_queue::push::<rsmq_async::MultiplexedRsmq>(
             &db,
             tx,
             "test-workspace",
             payload,
-            Json(args),
+            hm_args.into(),
             /* user */ "test-user",
             /* email  */ "test@windmill.dev",
             /* permissioned_as */ "u/test-user".to_string(),
@@ -1064,7 +1067,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
                         custom_concurrency_key: None,
                         concurrent_limit: None,
                         concurrency_time_window_s: None,
-                    },
+                    }.into(),
                     stop_after_if: Default::default(),
                     summary: Default::default(),
                     suspend: Default::default(),
@@ -1102,7 +1105,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
                                 custom_concurrency_key: None,
                                 concurrent_limit: None,
                                 concurrency_time_window_s: None,
-                            },
+                            }.into(),
                             stop_after_if: Default::default(),
                             summary: Default::default(),
                             suspend: Default::default(),
@@ -1115,7 +1118,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
                             delete_after_use: None,
                             continue_on_error: None,
                         }],
-                    },
+                    }.into(),
                     stop_after_if: Default::default(),
                     summary: Default::default(),
                     suspend: Default::default(),
@@ -1201,12 +1204,12 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                         input_transforms: [
                             (
                                 "loop".to_string(),
-                                InputTransform::Static { value: json!(false) },
+                                InputTransform::Static { value: windmill_common::worker::to_raw_value(&false) },
                             ),
-                            ("i".to_string(), InputTransform::Static { value: json!(1) }),
+                            ("i".to_string(), InputTransform::Static { value: windmill_common::worker::to_raw_value(&1) }),
                             (
                                 "path".to_string(),
-                                InputTransform::Static { value: json!("outer.txt") },
+                                InputTransform::Static { value: windmill_common::worker::to_raw_value(&"outer.txt") },
                             ),
                         ]
                         .into(),
@@ -1218,7 +1221,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                         custom_concurrency_key: None,
                         concurrent_limit: None,
                         concurrency_time_window_s: None,
-                    },
+                    }.into(),
                     stop_after_if: Default::default(),
                     summary: Default::default(),
                     suspend: Default::default(),
@@ -1234,7 +1237,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                 FlowModule {
                     id: "b".to_string(),
                     value: FlowModuleValue::ForloopFlow {
-                        iterator: InputTransform::Static { value: json!([1, 2, 3]) },
+                        iterator: InputTransform::Static { value: windmill_common::worker::to_raw_value(&[1, 2, 3]) },
                         skip_failures: false,
                         parallel: false,
                         parallelism: None,
@@ -1251,11 +1254,11 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                                         ),
                                         (
                                             "loop".to_string(),
-                                            InputTransform::Static { value: json!(true) },
+                                            InputTransform::Static { value: windmill_common::worker::to_raw_value(&true) },
                                         ),
                                         (
                                             "path".to_string(),
-                                            InputTransform::Static { value: json!("inner.txt") },
+                                            InputTransform::Static { value: windmill_common::worker::to_raw_value(&"inner.txt") },
                                         ),
                                     ]
                                     .into(),
@@ -1267,7 +1270,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                                     custom_concurrency_key: None,
                                     concurrent_limit: None,
                                     concurrency_time_window_s: None,
-                                },
+                                }.into(),
                                 stop_after_if: Default::default(),
                                 summary: Default::default(),
                                 suspend: Default::default(),
@@ -1285,10 +1288,10 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                                 value: FlowModuleValue::RawScript {
                                     input_transforms: [(
                                         "path".to_string(),
-                                        InputTransform::Static { value: json!("inner.txt") },
+                                        InputTransform::Static { value: windmill_common::worker::to_raw_value(&"inner.txt") },
                                     ), (
                                         "path2".to_string(),
-                                        InputTransform::Static { value: json!("outer.txt") },
+                                        InputTransform::Static { value: windmill_common::worker::to_raw_value(&"outer.txt") },
                                     )]
                                     .into(),
                                     language: ScriptLang::Deno,
@@ -1302,7 +1305,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                                     custom_concurrency_key: None,
                                     concurrent_limit: None,
                                     concurrency_time_window_s: None,
-                                },
+                                }.into(),
                                 stop_after_if: Default::default(),
                                 summary: Default::default(),
                                 suspend: Default::default(),
@@ -1317,7 +1320,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
 
                             },
                         ],
-                    },
+                    }.into(),
                     stop_after_if: Default::default(),
                     summary: Default::default(),
                     suspend: Default::default(),
@@ -1340,11 +1343,11 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                             ),
                             (
                                 "path".to_string(),
-                                InputTransform::Static { value: json!("outer.txt") },
+                                InputTransform::Static { value: windmill_common::worker::to_raw_value(&"outer.txt") },
                             ),
                             (
                                 "path2".to_string(),
-                                InputTransform::Static { value: json!("inner.txt") },
+                                InputTransform::Static { value: windmill_common::worker::to_raw_value(&"inner.txt") },
                             ),
                         ]
                         .into(),
@@ -1359,7 +1362,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                         custom_concurrency_key: None,
                         concurrent_limit: None,
                         concurrency_time_window_s: None,
-                    },
+                    }.into(),
                     stop_after_if: Default::default(),
                     summary: Default::default(),
                     suspend: Default::default(),
