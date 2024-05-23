@@ -34,7 +34,7 @@ use itertools::Itertools;
 use regex::Regex;
 
 use uuid::Uuid;
-use windmill_audit::audit_ee::{audit_log, AuditAuthor, AuditAuthorable};
+use windmill_audit::audit_ee::audit_log;
 use windmill_audit::ActionKind;
 use windmill_common::db::UserDB;
 use windmill_common::s3_helpers::LargeFileStorage;
@@ -443,7 +443,7 @@ async fn edit_slack_command(
 
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "workspaces.edit_command_script",
         ActionKind::Update,
         &w_id,
@@ -526,8 +526,7 @@ async fn auto_add_user(
     w_id: &str,
     operator: &bool,
     tx: &mut Transaction<'_, Postgres>,
-    authorable: &impl AuditAuthorable,
-) -> Result<String> {
+) -> Result<()> {
     let automate_username_creation = sqlx::query_scalar!(
         "SELECT value FROM global_settings WHERE name = $1",
         AUTOMATE_USERNAME_CREATION_SETTING,
@@ -601,24 +600,9 @@ async fn auto_add_user(
     )
     .execute(&mut **tx)
     .await?;
-    let audit_author = if authorable.username() == authorable.email() && authorable.email() == email
-    {
-        // if the user is auto adding themselves (e.g. by joining the instance), we use their newly created workspace username for audit logs
-        AuditAuthor {
-            username: username.clone(),
-            email: email.to_string(),
-            username_override: None,
-        }
-    } else {
-        AuditAuthor {
-            username: authorable.username().to_string(),
-            email: authorable.email().to_string(),
-            username_override: authorable.username_override().map(|x| x.to_string()),
-        }
-    };
     audit_log(
         &mut **tx,
-        &audit_author,
+        &username,
         "users.auto_invite_add",
         ActionKind::Create,
         &w_id,
@@ -626,7 +610,7 @@ async fn auto_add_user(
         None,
     )
     .await?;
-    Ok(username)
+    Ok(())
 }
 
 async fn edit_auto_invite(
@@ -691,7 +675,7 @@ async fn edit_auto_invite(
             .fetch_all(&mut *tx).await?);
 
             for user in users_to_auto_add.as_ref().unwrap() {
-                auto_add_user(&user.email, &w_id, &operator, &mut tx, &authed).await?;
+                auto_add_user(&user.email, &w_id, &operator, &mut tx).await?;
                 send_email_if_possible(
                     &format!("Added to Windmill's workspace: {w_id}"),
                     &format!(
@@ -728,7 +712,7 @@ async fn edit_auto_invite(
     }
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "workspaces.edit_auto_invite_domain",
         ActionKind::Update,
         &w_id,
@@ -789,7 +773,7 @@ async fn edit_webhook(
     }
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "workspaces.edit_webhook",
         ActionKind::Update,
         &w_id,
@@ -833,7 +817,7 @@ async fn edit_copilot_config(
     }
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "workspaces.edit_copilot_config",
         ActionKind::Update,
         &w_id,
@@ -897,7 +881,7 @@ async fn edit_large_file_storage_config(
     let args_for_audit = format!("{:?}", new_config.large_file_storage);
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "workspaces.edit_large_file_storage_config",
         ActionKind::Update,
         &w_id,
@@ -980,7 +964,7 @@ async fn edit_default_scripts(
 
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "workspaces.edit_default_scripts",
         ActionKind::Update,
         &w_id,
@@ -1091,7 +1075,7 @@ async fn edit_error_handler(
     }
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "workspaces.edit_error_handler",
         ActionKind::Update,
         &w_id,
@@ -1133,7 +1117,7 @@ async fn set_environment_variable(
 
             audit_log(
                 &mut *tx,
-                &authed,
+                &authed.username,
                 "workspace.set_environment_variable",
                 ActionKind::Create,
                 &w_id,
@@ -1155,7 +1139,7 @@ async fn set_environment_variable(
 
             audit_log(
                 &mut *tx,
-                &authed,
+                &authed.username,
                 "workspace.delete_environment_variable",
                 ActionKind::Delete,
                 &w_id,
@@ -1480,7 +1464,7 @@ async fn create_workspace(
 
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "workspaces.create",
         ActionKind::Create,
         &nw.id,
@@ -1512,7 +1496,7 @@ async fn edit_workspace(
 
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "workspaces.update",
         ActionKind::Update,
         &w_id,
@@ -1528,9 +1512,9 @@ async fn edit_workspace(
 async fn archive_workspace(
     Extension(db): Extension<DB>,
     Path(w_id): Path<String>,
-    authed: ApiAuthed,
+    ApiAuthed { is_admin, username, email, .. }: ApiAuthed,
 ) -> Result<String> {
-    require_admin(authed.is_admin, &authed.username)?;
+    require_admin(is_admin, &username)?;
     let mut tx = db.begin().await?;
     sqlx::query!("UPDATE workspace SET deleted = true WHERE id = $1", &w_id)
         .execute(&mut *tx)
@@ -1538,11 +1522,11 @@ async fn archive_workspace(
 
     audit_log(
         &mut *tx,
-        &authed,
+        &username,
         "workspaces.archive",
         ActionKind::Update,
         &w_id,
-        Some(&authed.email),
+        Some(&email),
         None,
     )
     .await?;
@@ -1554,24 +1538,24 @@ async fn archive_workspace(
 async fn leave_workspace(
     Extension(db): Extension<DB>,
     Path(w_id): Path<String>,
-    authed: ApiAuthed,
+    ApiAuthed { email, username, .. }: ApiAuthed,
 ) -> Result<String> {
     let mut tx = db.begin().await?;
     sqlx::query!(
         "DELETE FROM usr WHERE workspace_id = $1 AND email = $2",
         &w_id,
-        &authed.email
+        &email
     )
     .execute(&mut *tx)
     .await?;
 
     audit_log(
         &mut *tx,
-        &authed,
+        &username,
         "workspaces.leave",
         ActionKind::Delete,
         &w_id,
-        Some(&authed.email),
+        Some(&email),
         None,
     )
     .await?;
@@ -1583,9 +1567,9 @@ async fn leave_workspace(
 async fn unarchive_workspace(
     Extension(db): Extension<DB>,
     Path(w_id): Path<String>,
-    authed: ApiAuthed,
+    ApiAuthed { is_admin, username, email, .. }: ApiAuthed,
 ) -> Result<String> {
-    require_admin(authed.is_admin, &authed.username)?;
+    require_admin(is_admin, &username)?;
     let mut tx = db.begin().await?;
     sqlx::query!("UPDATE workspace SET deleted = false WHERE id = $1", &w_id)
         .execute(&mut *tx)
@@ -1593,11 +1577,11 @@ async fn unarchive_workspace(
 
     audit_log(
         &mut *tx,
-        &authed,
+        &username,
         "workspaces.unarchive",
         ActionKind::Update,
         &w_id,
-        Some(&authed.email),
+        Some(&email),
         None,
     )
     .await?;
@@ -1609,7 +1593,7 @@ async fn unarchive_workspace(
 async fn delete_workspace(
     Extension(db): Extension<DB>,
     Path(w_id): Path<String>,
-    authed: ApiAuthed,
+    ApiAuthed { username, email, .. }: ApiAuthed,
 ) -> Result<String> {
     let w_id = match w_id.as_str() {
         "starter" => Err(Error::BadRequest(
@@ -1621,7 +1605,7 @@ async fn delete_workspace(
         _ => Ok(w_id),
     }?;
     let mut tx = db.begin().await?;
-    require_super_admin(&db, &authed.email).await?;
+    require_super_admin(&db, &email).await?;
 
     sqlx::query!("DELETE FROM dependency_map WHERE workspace_id = $1", &w_id)
         .execute(&mut *tx)
@@ -1728,11 +1712,11 @@ async fn delete_workspace(
 
     audit_log(
         &mut *tx,
-        &authed,
+        &username,
         "workspaces.delete",
         ActionKind::Delete,
         &w_id,
-        Some(&authed.email),
+        Some(&email),
         None,
     )
     .await?;
@@ -1745,7 +1729,6 @@ pub async fn invite_user_to_all_auto_invite_worspaces(
     db: &DB,
     email: &str,
     rsmq: Option<rsmq_async::MultiplexedRsmq>,
-    authorable: &impl AuditAuthorable,
 ) -> Result<()> {
     let mut tx = db.begin().await?;
     let domain = email.split('@').last().unwrap();
@@ -1760,8 +1743,14 @@ pub async fn invite_user_to_all_auto_invite_worspaces(
     for r in workspaces {
         if r.auto_add.is_some() && r.auto_add.unwrap() {
             let operator = r.auto_invite_operator.unwrap_or(false);
-            let username =
-                auto_add_user(email, &r.workspace_id, &operator, &mut tx, authorable).await?;
+            auto_add_user(email, &r.workspace_id, &operator, &mut tx).await?;
+            let username = sqlx::query_scalar!(
+                "SELECT username FROM usr WHERE workspace_id = $1 AND email = $2",
+                r.workspace_id,
+                email
+            )
+            .fetch_one(&mut *tx)
+            .await?;
             auto_added_workspace_usernames.push((r.workspace_id, username));
         } else {
             sqlx::query!(
@@ -1863,14 +1852,14 @@ If you do not have an account on {}, login with SSO or ask an admin to create an
 }
 
 async fn add_user(
-    authed: ApiAuthed,
+    ApiAuthed { username, email, is_admin, .. }: ApiAuthed,
     Extension(db): Extension<DB>,
     Extension(webhook): Extension<WebhookShared>,
     Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Path(w_id): Path<String>,
     Json(mut nu): Json<NewWorkspaceUser>,
 ) -> Result<(StatusCode, String)> {
-    require_admin(authed.is_admin, &authed.username)?;
+    require_admin(is_admin, &username)?;
     nu.email = nu.email.to_lowercase();
 
     let mut tx = db.begin().await?;
@@ -1887,7 +1876,7 @@ async fn add_user(
     if already_exists_email {
         return Err(Error::BadRequest(format!(
             "user with email {} already exists in workspace {}",
-            nu.email, w_id
+            email, w_id
         )));
     }
 
@@ -1955,11 +1944,11 @@ async fn add_user(
 
     audit_log(
         &mut *tx,
-        &authed,
+        &username,
         "users.add_to_workspace",
         ActionKind::Create,
         &w_id,
-        Some(&nu.email),
+        Some(&email),
         None,
     )
     .await?;
@@ -1967,8 +1956,8 @@ async fn add_user(
     tx.commit().await?;
 
     handle_deployment_metadata(
-        &authed.email,
-        &authed.username,
+        &email,
+        &username,
         &db,
         &w_id,
         windmill_git_sync::DeployedObject::User { email: nu.email.clone() },
@@ -1981,10 +1970,9 @@ async fn add_user(
     send_email_if_possible(
         &format!("Added to Windmill's workspace: {w_id}"),
         &format!(
-            "You have been granted access to Windmill's workspace {w_id} by {}
+            "You have been granted access to Windmill's workspace {w_id} by {email}
 
 If you do not have an account on {}, login with SSO or ask an admin to create an account for you.",
-            authed.email,
             BASE_URL.read().await.clone()
         ),
         &nu.email,
@@ -2675,7 +2663,7 @@ async fn change_workspace_name(
 
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "workspace.change_workspace_name",
         ActionKind::Update,
         &w_id,
@@ -3000,7 +2988,7 @@ async fn change_workspace_id(
 
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "workspace.change_workspace_id",
         ActionKind::Update,
         &rw.new_id,

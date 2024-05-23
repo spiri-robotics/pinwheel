@@ -199,7 +199,7 @@ async fn create_schedule(
 
     audit_log(
         &mut tx,
-        &authed,
+        &authed.username,
         "schedule.create",
         ActionKind::Create,
         &w_id,
@@ -282,7 +282,7 @@ async fn edit_schedule(
 
     audit_log(
         &mut tx,
-        &authed,
+        &authed.username,
         "schedule.edit",
         ActionKind::Update,
         &w_id,
@@ -494,7 +494,7 @@ pub async fn set_enabled(
 
     audit_log(
         &mut tx,
-        &authed,
+        &authed.username,
         "schedule.setenabled",
         ActionKind::Update,
         &w_id,
@@ -542,7 +542,7 @@ pub async fn set_enabled(
 
 //     audit_log(
 //         &mut tx,
-//         &authed,
+//         &authed.username,
 //         "schedule.setenabled",
 //         ActionKind::Update,
 //         &w_id,
@@ -619,7 +619,7 @@ async fn delete_schedule(
 
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "schedule.delete",
         ActionKind::Delete,
         &w_id,

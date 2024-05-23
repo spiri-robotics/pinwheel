@@ -582,7 +582,7 @@ async fn create_app(
 
     audit_log(
         &mut tx,
-        &authed,
+        &authed.username,
         "apps.create",
         ActionKind::Create,
         &w_id,
@@ -698,7 +698,7 @@ async fn delete_app(
 
     audit_log(
         &mut *tx,
-        &authed,
+        &authed.username,
         "apps.delete",
         ActionKind::Delete,
         &w_id,
@@ -870,7 +870,7 @@ async fn update_app(
 
     audit_log(
         &mut tx,
-        &authed,
+        &authed.username,
         "apps.update",
         ActionKind::Update,
         &w_id,
