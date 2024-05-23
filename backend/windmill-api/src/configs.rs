@@ -121,7 +121,7 @@ async fn update_config(
 
     audit_log(
         &mut *tx,
-        &authed.username,
+        &authed,
         "worker_config.update",
         ActionKind::Update,
         "global",
@@ -148,7 +148,7 @@ async fn delete_config(
 
     audit_log(
         &mut *tx,
-        &authed.username,
+        &authed,
         "worker_config.delete",
         ActionKind::Delete,
         "global",
