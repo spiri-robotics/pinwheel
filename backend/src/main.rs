@@ -16,6 +16,8 @@ use std::{
 };
 use tokio::fs::DirBuilder;
 use windmill_api::HTTP_CLIENT;
+
+
 use windmill_common::{
     global_settings::{
         BASE_URL_SETTING, BUNFIG_INSTALL_SCOPES_SETTING, CRITICAL_ERROR_CHANNELS_SETTING,
@@ -561,6 +563,7 @@ Windmill Community Edition {GIT_VERSION}
         if mode == Mode::Server || mode == Mode::Standalone {
             schedule_stats(instance_name, &db, &HTTP_CLIENT).await;
         }
+
 
         futures::try_join!(shutdown_signal, workers_f, monitor_f, server_f, metrics_f)?;
     } else {
