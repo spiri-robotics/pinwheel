@@ -25,3 +25,4 @@ pub async fn get_license_plan() -> LicensePlan {
 pub enum CriticalErrorChannel {}
 
 pub async fn trigger_critical_error_channels(_error_message: String) {}
+
