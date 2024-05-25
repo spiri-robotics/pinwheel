@@ -1237,7 +1237,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                     )
                     .await
                     {
-                        tracing::error!("Error updating flow status after job completion for {flow} on {worker_name2}: {e}");
+                        tracing::error!("Error updating flow status after job completion for {flow} on {worker_name2}: {e:#}");
                     }
                 }
                 SendResult::Kill => {
@@ -1370,7 +1370,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
             queue_init_bash_maybe(db, same_worker_tx.clone(), &worker_name, rsmq.clone()).await
         {
             killpill_tx.send(()).unwrap_or_default();
-            tracing::error!("Error queuing init bash script for worker {worker_name}: {e}");
+            tracing::error!("Error queuing init bash script for worker {worker_name}: {e:#}");
             return;
         }
     }
@@ -2301,7 +2301,7 @@ pub async fn handle_job_error<R: rsmq_async::RsmqConnection + Send + Sync + Clon
         let (flow, job_status_to_update) = if let Some(parent_job_id) = job.parent_job {
             if let Err(e) = update_job_future().await {
                 tracing::error!(
-                    "error updating job future for job {} for handle_job_error: {e}",
+                    "error updating job future for job {} for handle_job_error: {e:#}",
                     job.id
                 );
             }
@@ -2536,7 +2536,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
             )
             .fetch_one(db)
             .await
-            .map_err(|e| Error::InternalErr(format!("fetching step flow status: {e}")))?
+            .map_err(|e| Error::InternalErr(format!("fetching step flow status: {e:#}")))?
             .ok_or_else(|| Error::InternalErr(format!("Expected script_path")))?;
             let step = step.unwrap_or(-1);
             Some(format!(

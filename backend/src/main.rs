@@ -342,7 +342,7 @@ Windmill Community Edition {GIT_VERSION}
                 base_internal_tx
                     .send(base_internal_url.clone())
                     .map_err(|e| {
-                        anyhow::anyhow!("Could not send base_internal_url to agent: {e}")
+                        anyhow::anyhow!("Could not send base_internal_url to agent: {e:#}")
                     })?;
             }
             Ok(()) as anyhow::Result<()>
@@ -442,7 +442,7 @@ Windmill Community Edition {GIT_VERSION}
                                                 },
                                                 DEFAULT_TAGS_PER_WORKSPACE_SETTING => {
                                                     if let Err(e) = load_tag_per_workspace_enabled(&db).await {
-                                                        tracing::error!("Error loading default tag per workpsace: {e}");
+                                                        tracing::error!("Error loading default tag per workpsace: {e:#}");
                                                     }
                                                 },
                                                 RETENTION_PERIOD_SECS_SETTING => {
@@ -546,7 +546,7 @@ Windmill Community Edition {GIT_VERSION}
             });
 
             if let Err(e) = h.await {
-                tracing::error!("Error waiting for monitor handle:{e}")
+                tracing::error!("Error waiting for monitor handle:{e:#}")
             }
             Ok(()) as anyhow::Result<()>
         };

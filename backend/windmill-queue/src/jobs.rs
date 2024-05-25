@@ -605,7 +605,7 @@ pub async fn add_completed_job<
     )
     .fetch_one(&mut tx)
     .await
-    .map_err(|e| Error::InternalErr(format!("Could not add completed job {job_id}: {e}")))?;
+    .map_err(|e| Error::InternalErr(format!("Could not add completed job {job_id}: {e:#}")))?;
     // tracing::error!("2 {:?}", start.elapsed());
 
     if !queued_job.is_flow_step {
@@ -790,7 +790,7 @@ pub async fn add_completed_job<
         .await
         .map_err(|e| {
             Error::InternalErr(format!(
-                "Error updating to add ended_at timestamp concurrency_key={concurrency_key}: {e}"
+                "Error updating to add ended_at timestamp concurrency_key={concurrency_key}: {e:#}"
             ))
         }) {
             tracing::error!("Could not update concurrency_key: {}", e);
@@ -824,7 +824,7 @@ pub async fn add_completed_job<
             sqlx::query_scalar!("SELECT premium FROM workspace WHERE id = $1", w_id)
                 .fetch_one(db)
                 .await
-                .map_err(|e| Error::InternalErr(format!("fetching if {w_id} is premium: {e}")))?;
+                .map_err(|e| Error::InternalErr(format!("fetching if {w_id} is premium: {e:#}")))?;
         let _ = sqlx::query!(
                 "INSERT INTO usage (id, is_workspace, month_, usage) 
                 VALUES ($1, TRUE, EXTRACT(YEAR FROM current_date) * 12 + EXTRACT(MONTH FROM current_date), $2) 
@@ -833,7 +833,7 @@ pub async fn add_completed_job<
                 additional_usage as i32)
                 .execute(db)
                 .await
-                .map_err(|e| Error::InternalErr(format!("updating usage: {e}")));
+                .map_err(|e| Error::InternalErr(format!("updating usage: {e:#}")));
 
         if !premium_workspace {
             let _ = sqlx::query!(
@@ -844,7 +844,7 @@ pub async fn add_completed_job<
                 additional_usage as i32)
                 .execute(db)
                 .await
-                .map_err(|e| Error::InternalErr(format!("updating usage: {e}")));
+                .map_err(|e| Error::InternalErr(format!("updating usage: {e:#}")));
         }
     }
 
@@ -1520,7 +1520,7 @@ pub async fn pull<R: rsmq_async::RsmqConnection + Send + Clone>(
         .await
         .map_err(|e| {
             Error::InternalErr(format!(
-                "Error getting concurrency count for script path {job_script_path}: {e}"
+                "Error getting concurrency count for script path {job_script_path}: {e:#}"
             ))
         })?;
         tracing::debug!("running_job: {}", running_job.unwrap_or(0));
@@ -1531,7 +1531,7 @@ pub async fn pull<R: rsmq_async::RsmqConnection + Send + Clone>(
             f64::from(job_custom_concurrency_time_window_s),
         ).fetch_one(&mut tx).await.map_err(|e| {
             Error::InternalErr(format!(
-                "Error getting completed count for key {job_concurrency_key}: {e}"
+                "Error getting completed count for key {job_concurrency_key}: {e:#}"
             ))
         })?;
 
@@ -1548,7 +1548,7 @@ pub async fn pull<R: rsmq_async::RsmqConnection + Send + Clone>(
         .await
         .map_err(|e| {
             Error::InternalErr(format!(
-                "Error getting concurrency count for script path {job_script_path}: {e}"
+                "Error getting concurrency count for script path {job_script_path}: {e:#}"
             ))
         })?;
 
@@ -1576,7 +1576,7 @@ pub async fn pull<R: rsmq_async::RsmqConnection + Send + Clone>(
         .await
         .map_err(|e| {
             Error::InternalErr(format!(
-                "Error decreasing concurrency count for script path {job_script_path}: {e}"
+                "Error decreasing concurrency count for script path {job_script_path}: {e:#}"
             ))
         })?;
 
@@ -1652,7 +1652,7 @@ pub async fn pull<R: rsmq_async::RsmqConnection + Send + Clone>(
             ))
             .fetch_one(&mut tx)
             .await
-            .map_err(|e| Error::InternalErr(format!("Could not update and re-queue job {job_uuid}. The job will be marked as running but it is not running: {e}")))?;
+            .map_err(|e| Error::InternalErr(format!("Could not update and re-queue job {job_uuid}. The job will be marked as running but it is not running: {e:#}")))?;
 
             if let Some(ref mut rsmq) = tx.rsmq {
                 rsmq.send_message(
@@ -1675,7 +1675,7 @@ pub async fn pull<R: rsmq_async::RsmqConnection + Send + Clone>(
             )
             .fetch_all(&mut tx)
             .await
-            .map_err(|e| Error::InternalErr(format!("Could not update and re-queue job {job_uuid}. The job will be marked as running but it is not running: {e}")))?;
+            .map_err(|e| Error::InternalErr(format!("Could not update and re-queue job {job_uuid}. The job will be marked as running but it is not running: {e:#}")))?;
             tx.commit().await?
         }
     }
@@ -2615,7 +2615,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 .await
                 .map_err(|e| {
                     Error::InternalErr(format!(
-                        "fetching if {workspace_id} is premium and overquota: {e}"
+                        "fetching if {workspace_id} is premium and overquota: {e:#}"
                     ))
                 })?;
 
@@ -2633,7 +2633,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 )
                 .fetch_one(_db)
                 .await
-                .map_err(|e| Error::InternalErr(format!("updating usage: {e}")))?;
+                .map_err(|e| Error::InternalErr(format!("updating usage: {e:#}")))?;
 
             let user_usage = if !premium_workspace {
                 Some(sqlx::query_scalar!(
@@ -2645,7 +2645,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 )
                 .fetch_one(_db)
                 .await
-                .map_err(|e| Error::InternalErr(format!("updating usage: {e}")))?)
+                .map_err(|e| Error::InternalErr(format!("updating usage: {e:#}")))?)
             } else {
                 None
             };
@@ -3343,7 +3343,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
         )
         .execute(&mut tx)
         .await
-        .map_err(|e| Error::InternalErr(format!("Could not insert concurrency_key={concurrency_key} for job_id={job_id} script_path={script_path:?} workspace_id={workspace_id}: {e}")))?;
+        .map_err(|e| Error::InternalErr(format!("Could not insert concurrency_key={concurrency_key} for job_id={job_id} script_path={script_path:?} workspace_id={workspace_id}: {e:#}")))?;
     }
 
     let uuid = sqlx::query_scalar!(
@@ -3388,7 +3388,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
     )
     .fetch_one(&mut tx)
     .await
-    .map_err(|e| Error::InternalErr(format!("Could not insert into queue {job_id} with tag {tag}, schedule_path {schedule_path:?}, script_path: {script_path:?}, email {email}, workspace_id {workspace_id}: {e}")))?;
+    .map_err(|e| Error::InternalErr(format!("Could not insert into queue {job_id} with tag {tag}, schedule_path {schedule_path:?}, script_path: {script_path:?}, email {email}, workspace_id {workspace_id}: {e:#}")))?;
 
     // TODO: technically the job isn't queued yet, as the transaction can be rolled back. Should be solved when moving these metrics to the queue abstraction.
     #[cfg(feature = "prometheus")]

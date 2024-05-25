@@ -84,7 +84,7 @@ impl Migrate for CustomMigrator {
                     .fetch_one(&mut *self.inner)
                     .await
                     .map_err(|e| {
-                        tracing::error!("Error acquiring lock: {e}");
+                        tracing::error!("Error acquiring lock: {e:#}");
                         sqlx::migrate::MigrateError::Execute(e)
                     })?
                     .unwrap_or(false);
@@ -173,7 +173,7 @@ pub async fn migrate(db: &DB) -> Result<(), Error> {
         Err(sqlx::migrate::MigrateError::VersionMissing(e)) => {
             tracing::error!("Database had been applied more migrations than this container. 
             This usually mean than another container on a more recent version migrated the database and this one is on an earlier version.
-            Please update the container to latest. Not critical, but may cause issues if migration introduced a breaking change. Version missing: {e}");
+            Please update the container to latest. Not critical, but may cause issues if migration introduced a breaking change. Version missing: {e:#}");
             custom_migrator.unlock().await?;
             Ok(())
         }
