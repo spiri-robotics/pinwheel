@@ -279,7 +279,7 @@ pub async fn monitor_mem() {
                     tracing::error!("Error advancing jemalloc epoch: {:?}", e);
                 }
             }
-            tokio::time::sleep(Duration::from_secs(10)).await;
+            tokio::time::sleep(Duration::from_secs(30)).await;
         }
     });
 }
