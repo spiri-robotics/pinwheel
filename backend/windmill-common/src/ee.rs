@@ -20,6 +20,7 @@ pub async fn get_license_plan() -> LicensePlan {
     return Community;
 }
 
+
 #[derive(Deserialize)]
 #[serde(untagged)]
 pub enum CriticalErrorChannel {}
