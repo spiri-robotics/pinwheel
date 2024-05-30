@@ -26,3 +26,4 @@ pub enum CriticalErrorChannel {}
 
 pub async fn trigger_critical_error_channels(_error_message: String) {}
 
+
