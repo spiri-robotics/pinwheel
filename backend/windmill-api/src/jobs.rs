@@ -973,7 +973,7 @@ pub fn filter_list_queue_query(
     }
 
     if let Some(ps) = &lq.script_path_start {
-        sqlb.and_where_like_left("script_path", "?".bind(ps));
+        sqlb.and_where_like_left("script_path", ps);
     }
     if let Some(p) = &lq.script_path_exact {
         sqlb.and_where_eq("script_path", "?".bind(p));
@@ -3779,7 +3779,7 @@ pub fn filter_list_completed_query(
     }
 
     if let Some(ps) = &lq.script_path_start {
-        sqlb.and_where_like_left("script_path", "?".bind(ps));
+        sqlb.and_where_like_left("script_path", ps);
     }
     if let Some(p) = &lq.script_path_exact {
         sqlb.and_where_eq("script_path", "?".bind(p));
