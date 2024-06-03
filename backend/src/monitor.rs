@@ -1236,6 +1236,7 @@ async fn cancel_zombie_flow_job(
         db,
         rsmq.clone(),
         false,
+        false
     )
     .await?;
     sqlx::query!(

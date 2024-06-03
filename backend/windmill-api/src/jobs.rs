@@ -270,11 +270,15 @@ pub fn global_root_service() -> Router {
 #[derive(Deserialize)]
 struct JsonPath {
     pub json_path: Option<String>,
+    pub suspended_job: Option<Uuid>,
+    pub resume_id: Option<u32>,
+    pub secret: Option<String>,
+    pub approver: Option<String>,
 }
 async fn get_result_by_id(
     Extension(db): Extension<DB>,
     Path((w_id, flow_id, node_id)): Path<(String, Uuid, String)>,
-    Query(JsonPath { json_path }): Query<JsonPath>,
+    Query(JsonPath { json_path, .. }): Query<JsonPath>,
 ) -> windmill_common::error::JsonResult<Box<JsonRawValue>> {
     let res = windmill_queue::get_result_by_id(db, w_id, flow_id, node_id, json_path).await?;
     Ok(Json(res))
@@ -313,12 +317,12 @@ async fn cancel_job_api(
 ) -> error::Result<String> {
     let tx = db.begin().await?;
 
-    let audit_author = match opt_authed {
-        Some(authed) => (&authed).into(),
+    let audit_author: AuditAuthor = match opt_authed.as_ref() {
+        Some(authed) => (authed).into(),
         None => AuditAuthor {
-            email: "anonymous".to_string(),
             username: "anonymous".to_string(),
             username_override: None,
+            email: "anonymous".to_string(),
         },
     };
 
@@ -331,6 +335,7 @@ async fn cancel_job_api(
         &db,
         rsmq,
         false,
+        opt_authed.is_none(),
     )
     .await?;
 
@@ -367,13 +372,13 @@ async fn cancel_persistent_script_api(
     Path((w_id, script_path)): Path<(String, StripPath)>,
     Json(CancelJob { reason }): Json<CancelJob>,
 ) -> error::Result<()> {
-    let audit_author = match opt_authed {
+    let audit_author: AuditAuthor = match opt_authed {
         Some(authed) => (&authed).into(),
-        None => AuditAuthor {
-            email: "anonymous".to_string(),
-            username: "anonymous".to_string(),
-            username_override: None,
-        },
+        None => {
+            return Err(Error::BadRequest(format!(
+                "Cancelling persistent script require to be logged in and member of {w_id}"
+            )))
+        }
     };
 
     let cancelled_job_ids = windmill_queue::cancel_persistent_script_jobs(
@@ -419,12 +424,12 @@ async fn force_cancel(
 ) -> error::Result<String> {
     let tx = db.begin().await?;
 
-    let audit_author = match opt_authed {
-        Some(authed) => (&authed).into(),
+    let audit_author: AuditAuthor = match opt_authed.as_ref() {
+        Some(authed) => (authed).into(),
         None => AuditAuthor {
-            email: "anonymous".to_string(),
             username: "anonymous".to_string(),
             username_override: None,
+            email: "anonymous".to_string(),
         },
     };
 
@@ -437,6 +442,7 @@ async fn force_cancel(
         &db,
         rsmq,
         true,
+        opt_authed.is_none(),
     )
     .await?;
 
@@ -531,6 +537,7 @@ pub async fn get_path_tag_limits_cache_for_hash(
 }
 
 async fn get_flow_job_debug_info(
+    OptAuthed(opt_authed): OptAuthed,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
 ) -> error::Result<Response> {
@@ -569,7 +576,7 @@ async fn get_flow_job_debug_info(
             }
         }
         for job_id in job_ids {
-            let job = get_job_internal(&db, w_id.as_str(), job_id, false).await;
+            let job = get_job_internal(&db, w_id.as_str(), job_id, false, Some(&opt_authed)).await;
             if let Ok(job) = job {
                 jobs.insert(job.id().to_string(), job);
             }
@@ -588,11 +595,19 @@ struct GetJobQuery {
     pub no_logs: Option<bool>,
 }
 async fn get_job(
+    OptAuthed(opt_authed): OptAuthed,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
     Query(GetJobQuery { no_logs }): Query<GetJobQuery>,
 ) -> error::Result<Response> {
-    let job = get_job_internal(&db, w_id.as_str(), id, no_logs.unwrap_or(false)).await?;
+    let job = get_job_internal(
+        &db,
+        w_id.as_str(),
+        id,
+        no_logs.unwrap_or(false),
+        Some(&opt_authed),
+    )
+    .await?;
     Ok(Json(job).into_response())
 }
 
@@ -656,6 +671,8 @@ pub async fn get_job_internal(
     workspace_id: &str,
     job_id: Uuid,
     no_logs: bool,
+    // first optional is if authed need to be checked, second is the opt_authed itself
+    opt_authed: Option<&Option<ApiAuthed>>,
 ) -> error::Result<Job> {
     let cjob_maybe = sqlx::query_as::<_, CompletedJob>(if no_logs {
         &*GET_COMPLETED_JOB_QUERY_NO_LOGS
@@ -671,6 +688,12 @@ pub async fn get_job_internal(
     if let Some(cjob) = cjob_maybe {
         Ok(match cjob {
             Job::CompletedJob(cjob) => {
+                if opt_authed.is_some_and(|x| x.is_none()) && cjob.created_by != "anonymous" {
+                    return Err(Error::BadRequest(
+                        "As a non logged in user, you can only see jobs ran by anonymous users"
+                            .to_string(),
+                    ));
+                }
                 Job::CompletedJobWithFormattedResult(format_completed_job_result(cjob))
             }
             cjob => cjob,
@@ -687,6 +710,11 @@ pub async fn get_job_internal(
         .await?
         .map(Job::QueuedJob);
         let job: Job = not_found_if_none(job_o, "Job", job_id.to_string())?;
+        if opt_authed.is_some_and(|x| x.is_none()) && job.created_by() != "anonymous" {
+            return Err(Error::BadRequest(
+                "As a non logged in user, you can only see jobs ran by anonymous users".to_string(),
+            ));
+        }
         Ok(job)
     }
 }
@@ -734,11 +762,21 @@ fn content_plain(body: Body) -> Response {
 }
 
 async fn get_job_logs(
+    OptAuthed(opt_authed): OptAuthed,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
 ) -> error::Result<Response> {
+    // let audit_author: AuditAuthor = match opt_authed {
+    //     Some(authed) => (&authed).into(),
+    //     None => {
+    //         return Err(Error::BadRequest(format!(
+    //             "Cancelling script require to be logged in and member of {w_id}"
+    //         )))
+    //     }
+    // };
+
     let record = sqlx::query!(
-        "SELECT CONCAT(coalesce(completed_job.logs, ''), coalesce(job_logs.logs, '')) as logs, job_logs.log_offset, job_logs.log_file_index
+        "SELECT created_by, CONCAT(coalesce(completed_job.logs, ''), coalesce(job_logs.logs, '')) as logs, job_logs.log_offset, job_logs.log_file_index
         FROM completed_job 
         LEFT JOIN job_logs ON job_logs.job_id = completed_job.id 
         WHERE completed_job.id = $1 AND completed_job.workspace_id = $2",
@@ -749,6 +787,11 @@ async fn get_job_logs(
     .await?;
 
     if let Some(record) = record {
+        if opt_authed.is_none() && record.created_by != "anonymous" {
+            return Err(Error::BadRequest(
+                "As a non logged in user, you can only see jobs ran by anonymous users".to_string(),
+            ));
+        }
         let logs = record.logs.unwrap_or_default();
         if let Some(r) = get_logs_from_disk(record.log_offset, &logs, &record.log_file_index).await
         {
@@ -757,7 +800,7 @@ async fn get_job_logs(
         Ok(content_plain(Body::from(logs)))
     } else {
         let text = sqlx::query!(
-            "SELECT CONCAT(coalesce(queue.logs, ''), coalesce(job_logs.logs, '')) as logs, job_logs.log_offset, job_logs.log_file_index
+            "SELECT created_by, CONCAT(coalesce(queue.logs, ''), coalesce(job_logs.logs, '')) as logs, job_logs.log_offset, job_logs.log_file_index
             FROM queue 
             LEFT JOIN job_logs ON job_logs.job_id = queue.id 
             WHERE queue.id = $1 AND queue.workspace_id = $2",
@@ -768,6 +811,11 @@ async fn get_job_logs(
         .await?;
         let text = not_found_if_none(text, "Job Logs", id.to_string())?;
 
+        if opt_authed.is_none() && text.created_by != "anonymous" {
+            return Err(Error::BadRequest(
+                "As a non logged in user, you can only see jobs ran by anonymous users".to_string(),
+            ));
+        }
         let logs = text.logs.unwrap_or_default();
         if let Some(r) = get_logs_from_disk(text.log_offset, &logs, &text.log_file_index).await {
             return r.map(content_plain);
@@ -1331,18 +1379,11 @@ async fn resume_suspended_job_internal(
     approved: bool,
 ) -> Result<StatusCode, Error> {
     let value = value.unwrap_or(serde_json::Value::Null);
-    let mut tx = db.begin().await?;
-    let key = get_workspace_key(&w_id, &mut tx).await?;
-    let mut mac = HmacSha256::new_from_slice(key.as_bytes()).map_err(to_anyhow)?;
-    mac.update(job_id.as_bytes());
-    mac.update(resume_id.to_be_bytes().as_ref());
-    if let Some(approver) = approver.approver.clone() {
-        mac.update(approver.as_bytes());
-    }
-    mac.verify_slice(hex::decode(secret)?.as_ref())
-        .map_err(|_| anyhow::anyhow!("Invalid signature"))?;
-    let parent_flow_info = get_suspended_parent_flow_info(job_id, &mut tx).await?;
-    let parent_flow = get_job_internal(&db, w_id.as_str(), parent_flow_info.id, false).await?;
+    verify_suspended_secret(&w_id, &db, job_id, resume_id, &approver, secret).await?;
+
+    let parent_flow_info = get_suspended_parent_flow_info(job_id, &db).await?;
+    let parent_flow =
+        get_job_internal(&db, w_id.as_str(), parent_flow_info.id, false, None).await?;
     let flow_status = parent_flow
         .flow_status()
         .ok_or_else(|| anyhow::anyhow!("unable to find the flow status in the flow job"))?;
@@ -1360,7 +1401,7 @@ async fn resume_suspended_job_internal(
         "#,
         Uuid::from_u128(job_id.as_u128() ^ resume_id as u128),
     )
-    .fetch_one(&mut *tx)
+    .fetch_one(&db)
     .await?
     .unwrap_or(false);
 
@@ -1378,6 +1419,8 @@ async fn resume_suspended_job_internal(
     } else {
         authed.as_ref().map(|x| x.username.clone())
     };
+    let mut tx: Transaction<'_, Postgres> = db.begin().await?;
+
     insert_resume_job(
         resume_id,
         job_id,
@@ -1419,6 +1462,26 @@ async fn resume_suspended_job_internal(
     .await?;
     tx.commit().await?;
     Ok(StatusCode::CREATED)
+}
+
+async fn verify_suspended_secret(
+    w_id: &String,
+    db: &DB,
+    job_id: Uuid,
+    resume_id: u32,
+    approver: &QueryApprover,
+    secret: String,
+) -> Result<(), Error> {
+    let key = get_workspace_key(w_id, db).await?;
+    let mut mac = HmacSha256::new_from_slice(key.as_bytes()).map_err(to_anyhow)?;
+    mac.update(job_id.as_bytes());
+    mac.update(resume_id.to_be_bytes().as_ref());
+    if let Some(approver) = approver.approver.clone() {
+        mac.update(approver.as_bytes());
+    }
+    mac.verify_slice(hex::decode(secret)?.as_ref())
+        .map_err(|_| anyhow::anyhow!("Invalid signature"))?;
+    Ok(())
 }
 
 /* If the flow is currently waiting to be resumed (`FlowStatusModule::WaitingForEvents`)
@@ -1490,10 +1553,7 @@ struct FlowInfo {
     script_path: Option<String>,
 }
 
-async fn get_suspended_parent_flow_info<'c>(
-    job_id: Uuid,
-    tx: &mut Transaction<'c, Postgres>,
-) -> error::Result<FlowInfo> {
+async fn get_suspended_parent_flow_info(job_id: Uuid, db: &DB) -> error::Result<FlowInfo> {
     let flow = sqlx::query_as!(
         FlowInfo,
         r#"
@@ -1504,7 +1564,7 @@ async fn get_suspended_parent_flow_info<'c>(
         "#,
         job_id,
     )
-    .fetch_optional(&mut **tx)
+    .fetch_optional(db)
     .await?
     .ok_or_else(|| anyhow::anyhow!("parent flow job not found"))?;
     Ok(flow)
@@ -1572,16 +1632,7 @@ pub async fn get_suspended_job_flow(
     Path((w_id, job, resume_id, secret)): Path<(String, Uuid, u32, String)>,
     Query(approver): Query<QueryApprover>,
 ) -> error::Result<Response> {
-    let mut tx = db.begin().await?;
-    let key = get_workspace_key(&w_id, &mut tx).await?;
-    let mut mac = HmacSha256::new_from_slice(key.as_bytes()).map_err(to_anyhow)?;
-    mac.update(job.as_bytes());
-    mac.update(resume_id.to_be_bytes().as_ref());
-    if let Some(approver) = approver.approver {
-        mac.update(approver.as_bytes());
-    }
-    mac.verify_slice(hex::decode(secret)?.as_ref())
-        .map_err(|_| anyhow::anyhow!("Invalid signature"))?;
+    verify_suspended_secret(&w_id, &db, job, resume_id, &approver, secret).await?;
 
     let flow_id = sqlx::query_scalar!(
         r#"
@@ -1596,12 +1647,12 @@ pub async fn get_suspended_job_flow(
         job,
         w_id
     )
-    .fetch_optional(&mut *tx)
+    .fetch_optional(&db)
     .await?
     .flatten()
     .ok_or_else(|| anyhow::anyhow!("parent flow job not found"))?;
 
-    let flow = get_job_internal(&db, w_id.as_str(), flow_id, true).await?;
+    let flow = get_job_internal(&db, w_id.as_str(), flow_id, true, None).await?;
 
     let flow_status = flow
         .flow_status()
@@ -1632,7 +1683,7 @@ pub async fn get_suspended_job_flow(
             "#,
             job,
         )
-        .fetch_all(&mut *tx)
+        .fetch_all(&db)
         .await?
         .into_iter()
         .map(|x| Approval {
@@ -1671,12 +1722,12 @@ fn conditionally_require_authed_user(
 }
 
 pub async fn create_job_signature(
-    authed: ApiAuthed,
-    Extension(user_db): Extension<UserDB>,
+    _authed: ApiAuthed,
+    Extension(db): Extension<DB>,
     Path((w_id, job_id, resume_id)): Path<(String, Uuid, u32)>,
     Query(approver): Query<QueryApprover>,
 ) -> error::Result<String> {
-    let key = get_workspace_key(&w_id, &mut user_db.begin(&authed).await?).await?;
+    let key = get_workspace_key(&w_id, &db).await?;
     create_signature(key, job_id, resume_id, approver.approver)
 }
 
@@ -1765,12 +1816,12 @@ fn build_resume_url(
 }
 
 pub async fn get_resume_urls(
-    authed: ApiAuthed,
-    Extension(user_db): Extension<UserDB>,
+    _authed: ApiAuthed,
+    Extension(db): Extension<DB>,
     Path((w_id, job_id, resume_id)): Path<(String, Uuid, u32)>,
     Query(approver): Query<QueryApprover>,
 ) -> error::JsonResult<ResumeUrls> {
-    let key = get_workspace_key(&w_id, &mut user_db.begin(&authed).await?).await?;
+    let key = get_workspace_key(&w_id, &db).await?;
     let signature = create_signature(key, job_id, resume_id, approver.approver.clone())?;
     let approver = approver
         .approver
@@ -1805,6 +1856,13 @@ pub enum Job {
 }
 
 impl Job {
+    pub fn created_by(&self) -> &str {
+        match self {
+            Job::QueuedJob(job) => &job.created_by,
+            Job::CompletedJob(job) => &job.created_by,
+            Job::CompletedJobWithFormattedResult(job) => &job.cj.created_by,
+        }
+    }
     pub fn raw_flow(&self) -> Option<FlowValue> {
         match self {
             Job::QueuedJob(job) => job
@@ -3569,8 +3627,10 @@ pub struct JobUpdateRow {
     pub mem_peak: Option<i32>,
     pub flow_status: Option<sqlx::types::Json<Box<serde_json::value::RawValue>>>,
     pub log_offset: Option<i32>,
+    pub created_by: String,
 }
 async fn get_job_update(
+    OptAuthed(opt_authed): OptAuthed,
     Extension(db): Extension<DB>,
     Path((w_id, job_id)): Path<(String, Uuid)>,
     Query(JobUpdateQuery { running, log_offset }): Query<JobUpdateQuery>,
@@ -3578,7 +3638,7 @@ async fn get_job_update(
     let record = sqlx::query_as::<_, JobUpdateRow>(
         "SELECT running, substr(concat(coalesce(queue.logs, ''), job_logs.logs), greatest($1 - job_logs.log_offset, 0)) as logs, mem_peak, 
         CASE WHEN is_flow_step is true then NULL else flow_status END as flow_status,
-        job_logs.log_offset + char_length(job_logs.logs) + 1 as log_offset
+        job_logs.log_offset + char_length(job_logs.logs) + 1 as log_offset, created_by
         FROM queue
         LEFT JOIN job_logs ON job_logs.job_id =  queue.id 
         WHERE queue.workspace_id = $2 AND queue.id = $3",
@@ -3590,6 +3650,11 @@ async fn get_job_update(
     .await?;
 
     if let Some(record) = record {
+        if opt_authed.is_none() && record.created_by != "anonymous" {
+            return Err(Error::BadRequest(
+                "As a non logged in user, you can only see jobs ran by anonymous users".to_string(),
+            ));
+        }
         Ok(Json(JobUpdate {
             running: if !running && record.running {
                 Some(true)
@@ -3608,7 +3673,7 @@ async fn get_job_update(
         let record = sqlx::query_as::<_, JobUpdateRow>(
             "SELECT false as running, substr(concat(coalesce(completed_job.logs, ''), job_logs.logs), greatest($1 - job_logs.log_offset, 0))  as logs, mem_peak, 
             CASE WHEN is_flow_step is true then NULL else flow_status END as flow_status,
-            job_logs.log_offset + char_length(job_logs.logs) + 1 as log_offset
+            job_logs.log_offset + char_length(job_logs.logs) + 1 as log_offset, created_by
             FROM completed_job 
             LEFT JOIN job_logs ON job_logs.job_id = completed_job.id 
             WHERE completed_job.workspace_id = $2 AND id = $3",
@@ -3619,6 +3684,12 @@ async fn get_job_update(
         .fetch_optional(&db)
         .await?;
         if let Some(record) = record {
+            if opt_authed.is_none() && record.created_by != "anonymous" {
+                return Err(Error::BadRequest(
+                    "As a non logged in user, you can only see jobs ran by anonymous users"
+                        .to_string(),
+                ));
+            }
             Ok(Json(JobUpdate {
                 running: Some(false),
                 completed: Some(true),
@@ -3843,6 +3914,7 @@ async fn list_completed_jobs(
 }
 
 async fn get_completed_job<'a>(
+    OptAuthed(opt_authed): OptAuthed,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
 ) -> error::Result<Response> {
@@ -3859,6 +3931,11 @@ async fn get_completed_job<'a>(
 
     let cj = CompletedJob::from_row(&job)?;
 
+    if opt_authed.is_none() && cj.created_by != "anonymous" {
+        return Err(Error::BadRequest(
+            "As a non logged in user, you can only see jobs ran by anonymous users".to_string(),
+        ));
+    }
     let cj = format_completed_job_result(cj);
 
     let response = Json(cj).into_response();
@@ -3878,6 +3955,7 @@ pub struct RawResult {
     pub result: Option<sqlx::types::Json<Box<RawValue>>>,
     pub flow_status: Option<sqlx::types::Json<Box<RawValue>>>,
     pub language: Option<ScriptLang>,
+    pub created_by: String,
 }
 
 #[derive(FromRow)]
@@ -3886,19 +3964,21 @@ pub struct RawResultWithSuccess {
     pub flow_status: Option<sqlx::types::Json<Box<RawValue>>>,
     pub language: Option<ScriptLang>,
     pub success: bool,
+    pub created_by: String,
 }
 
 async fn get_completed_job_result(
+    OptAuthed(opt_authed): OptAuthed,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
-    Query(JsonPath { json_path }): Query<JsonPath>,
+    Query(JsonPath { json_path, suspended_job, approver, resume_id, secret }): Query<JsonPath>,
 ) -> error::Result<Response> {
     let result_o = if let Some(json_path) = json_path {
         sqlx::query(
-            "SELECT result #> $3 as result, flow_status, language FROM completed_job WHERE id = $1 AND workspace_id = $2",
+            "SELECT result #> $3 as result, flow_status, language, created_by FROM completed_job WHERE id = $1 AND workspace_id = $2",
         )
         .bind(id)
-        .bind(w_id)
+        .bind(&w_id)
         .bind(
             json_path
                 .split(".")
@@ -3908,9 +3988,9 @@ async fn get_completed_job_result(
         .fetch_optional(&db)
         .await?
     } else {
-        sqlx::query("SELECT result, flow_status, language FROM completed_job WHERE id = $1 AND workspace_id = $2")
+        sqlx::query("SELECT result, flow_status, language, created_by FROM completed_job WHERE id = $1 AND workspace_id = $2")
             .bind(id)
-            .bind(w_id)
+            .bind(&w_id)
             .fetch_optional(&db)
             .await?
     };
@@ -3918,6 +3998,44 @@ async fn get_completed_job_result(
     let result = not_found_if_none(result_o, "Completed Job", id.to_string())?;
 
     let raw_result = RawResult::from_row(&result)?;
+
+    if opt_authed.is_none() && raw_result.created_by != "anonymous" {
+        match (suspended_job, resume_id, approver, secret) {
+            (Some(suspended_job), Some(resume_id), approver, Some(secret)) => {
+                let mut parent_job = id;
+                while parent_job != suspended_job {
+                    let p_job = sqlx::query_scalar!(
+                        "SELECT parent_job FROM queue WHERE id = $1 AND workspace_id = $2",
+                        parent_job,
+                        &w_id
+                    )
+                    .fetch_optional(&db)
+                    .await?
+                    .flatten();
+                    if let Some(p_job) = p_job {
+                        parent_job = p_job;
+                    } else {
+                        return Err(Error::BadRequest("Approval secret of suspended job is not a parent of the job whose id's is being searched not found".to_string()));
+                    }
+                }
+                verify_suspended_secret(
+                    &w_id,
+                    &db,
+                    suspended_job,
+                    resume_id,
+                    &QueryApprover { approver },
+                    secret,
+                )
+                .await?
+            }
+            _ => {
+                return Err(Error::BadRequest(
+                    "As a non logged in user, you can only see jobs ran by anonymous users"
+                        .to_string(),
+                ))
+            }
+        }
+    }
 
     let result = format_result(
         raw_result.language.as_ref(),
@@ -3942,12 +4060,13 @@ struct GetCompletedJobQuery {
 }
 
 async fn get_completed_job_result_maybe(
+    OptAuthed(opt_authed): OptAuthed,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
     Query(GetCompletedJobQuery { get_started }): Query<GetCompletedJobQuery>,
 ) -> error::Result<Response> {
     let result_o = sqlx::query(
-        "SELECT result, success, language, flow_status FROM completed_job WHERE id = $1 AND workspace_id = $2",
+        "SELECT result, success, language, flow_status, created_by FROM completed_job WHERE id = $1 AND workspace_id = $2",
     )
     .bind(id)
     .bind(&w_id)
@@ -3961,6 +4080,11 @@ async fn get_completed_job_result_maybe(
             res.flow_status.map(|x| x.0),
             res.result.map(|x| x.0),
         );
+        if opt_authed.is_none() && res.created_by != "anonymous" {
+            return Err(Error::BadRequest(
+                "As a non logged in user, you can only see jobs ran by anonymous users".to_string(),
+            ));
+        }
         Ok(Json(CompletedJobResult {
             started: Some(true),
             success: Some(res.success),
