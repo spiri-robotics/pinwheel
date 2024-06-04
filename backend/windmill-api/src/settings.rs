@@ -47,7 +47,8 @@ pub fn global_service() -> Router {
             "/latest_key_renewal_attempt",
             get(get_latest_key_renewal_attempt),
         )
-        .route("/renew_license_key", post(renew_license_key));
+        .route("/renew_license_key", post(renew_license_key))
+        .route("/customer_portal", post(create_customer_portal_session));
 
     #[cfg(feature = "parquet")]
     {
@@ -306,6 +307,13 @@ pub async fn get_latest_key_renewal_attempt(
 pub async fn renew_license_key() -> Result<String> {
     return Err(error::Error::BadRequest(
         "License key renewal not available on community edition".to_string(),
+    ));
+}
+
+
+pub async fn create_customer_portal_session() -> Result<String> {
+    return Err(error::Error::BadRequest(
+        "Customer portal is not available on community edition".to_string(),
     ));
 }
 
