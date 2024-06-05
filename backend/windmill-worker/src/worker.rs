@@ -164,7 +164,7 @@ pub async fn create_token_for_owner(
         return Ok(token.clone());
     }
 
-    let token: String = rd_string(30);
+    let token: String = rd_string(32);
     let is_super_admin =
         sqlx::query_scalar!("SELECT super_admin FROM password WHERE email = $1", email)
             .fetch_optional(db)
