@@ -683,10 +683,10 @@ fn add_outstanding_wait_time(
     }.in_current_span());
 }
 
-#[tracing::instrument(name = "worker", level = "info", skip_all, fields(worker = %worker_name))]
+#[tracing::instrument(name = "worker", level = "info", skip_all, fields(worker = %worker_name, hostname = %hostname))]
 pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 'static>(
     db: &Pool<Postgres>,
-    worker_instance: &str,
+    hostname: &str,
     worker_name: String,
     i_worker: u64,
     _num_workers: u32,
@@ -730,7 +730,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
 
     let mut last_ping = Instant::now() - Duration::from_secs(NUM_SECS_PING + 1);
 
-    update_ping(worker_instance, &worker_name, ip, db).await;
+    update_ping(hostname, &worker_name, ip, db).await;
 
     #[cfg(feature = "prometheus")]
     let uptime_metric = if METRICS_ENABLED.load(Ordering::Relaxed) {
@@ -1499,9 +1499,9 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                 killpill_tx.send(()).unwrap_or_default();
             }
             tracing::info!(
-                "ping update and worker memory snapshot {}kB/{}kB",
-                memory_usage.unwrap_or_default() / 1024,
-                wm_memory_usage.unwrap_or_default() / 1024
+                "ping update, memory: container={}MB, windmill={}MB",
+                memory_usage.unwrap_or_default() / (1024 * 1024),
+                wm_memory_usage.unwrap_or_default() / (1024 * 1024)
             );
 
             last_ping = Instant::now();
@@ -1800,6 +1800,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                         arc_job.clone(),
                         db,
                         &authed_client,
+                        &hostname,
                         &worker_name,
                         &worker_dir,
                         &job_dir,
@@ -2530,6 +2531,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
     job: Arc<QueuedJob>,
     db: &DB,
     client: &AuthedClientBackgroundTask,
+    hostname: &str,
     worker_name: &str,
     worker_dir: &str,
     job_dir: &str,
@@ -2679,8 +2681,8 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
         // println!("handle queue {:?}",  SystemTime::now());
 
         logs.push_str(&format!(
-            "job {} on worker {} (tag: {})\n",
-            &job.id, &worker_name, &job.tag
+            "job={} tag={} worker={} hostname={}\n",
+            &job.id, &job.tag, &worker_name, &hostname
         ));
 
         if *NO_LOGS_AT_ALL {
