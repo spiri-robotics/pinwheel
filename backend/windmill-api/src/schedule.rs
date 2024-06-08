@@ -807,8 +807,8 @@ pub struct SetEnabled {
     pub enabled: bool,
 }
 
-#[derive(Deserialize)]
-pub struct Catchup {
-    pub from: DateTime<Utc>,
-    pub to: Option<DateTime<Utc>>,
-}
+// #[derive(Deserialize)]
+// pub struct Catchup {
+//     pub from: DateTime<Utc>,
+//     pub to: Option<DateTime<Utc>>,
+// }
