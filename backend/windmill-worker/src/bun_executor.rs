@@ -184,7 +184,7 @@ pub async fn gen_lockfile(
 async fn gen_bunfig(job_dir: &str) -> Result<()> {
     let registry = NPM_CONFIG_REGISTRY.read().await.clone();
     let bunfig_install_scopes = BUNFIG_INSTALL_SCOPES.read().await.clone();
-    Ok(if registry.is_some() || bunfig_install_scopes.is_some() {
+    if registry.is_some() || bunfig_install_scopes.is_some() {
         let (url, token_opt) = if let Some(ref s) = registry {
             let url = s.trim();
             if url.is_empty() {
@@ -214,7 +214,8 @@ registry = {}
         );
         tracing::debug!("Writing following bunfig.toml: {bunfig_toml}");
         let _ = write_file(&job_dir, "bunfig.toml", &bunfig_toml).await?;
-    })
+    }
+    Ok(())
 }
 
 pub async fn install_lockfile(
