@@ -44,6 +44,7 @@ use windmill_audit::audit_ee::{audit_log, AuditAuthor};
 use windmill_audit::ActionKind;
 use windmill_common::worker::PriorityTags;
 use windmill_common::{
+    auth::{fetch_authed_from_permissioned_as, permissioned_as_to_username},
     db::{Authed, UserDB},
     error::{self, to_anyhow, Error},
     flow_status::{
@@ -108,6 +109,7 @@ lazy_static::lazy_static! {
         .build().unwrap();
 
 
+    pub static ref JOB_TOKEN: Option<String> = std::env::var("JOB_TOKEN").ok();
 }
 
 #[cfg(feature = "cloud")]
@@ -805,6 +807,12 @@ pub async fn add_completed_job<
         tracing::debug!("decremented concurrency counter");
     }
 
+    if JOB_TOKEN.is_none() {
+        sqlx::query!("DELETE FROM job_perms WHERE job_id = $1", job_id)
+            .execute(&mut tx)
+            .await?;
+    }
+
     tx.commit().await?;
     tracing::info!(
         %job_id,
@@ -925,6 +933,7 @@ pub async fn add_completed_job<
                     queued_job.timeout,
                     None,
                     queued_job.priority,
+                    None,
                 )
                 .await?;
                 if let Err(e) = tx.commit().await {
@@ -1130,7 +1139,7 @@ pub async fn handle_maybe_scheduled_job<'c, R: rsmq_async::RsmqConnection + Clon
     if schedule.enabled && script_path == schedule.script_path {
         let push_next_job_future = async {
             let mut tx: QueueTransaction<'_, _> = (rsmq.clone(), db.begin().await?).into();
-            tx = push_scheduled_job(db, tx, &schedule).await?;
+            tx = push_scheduled_job(db, tx, &schedule, None).await?;
             tx.commit().await?;
             Ok::<(), Error>(())
         };
@@ -1318,6 +1327,7 @@ pub async fn push_error_handler<
         None,
         None,
         priority,
+        None,
     )
     .await?;
     tx.commit().await?;
@@ -1424,6 +1434,7 @@ async fn handle_recovered_schedule<
         None,
         true,
         tag,
+        None,
         None,
         None,
         None,
@@ -2622,6 +2633,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
     custom_timeout: Option<i32>,
     flow_step_id: Option<String>,
     _priority_override: Option<i16>,
+    authed: Option<&Authed>,
 ) -> Result<(Uuid, QueueTransaction<'c, R>), Error> {
     #[cfg(feature = "cloud")]
     if *CLOUD_HOSTED {
@@ -2683,7 +2695,7 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                     && email != SCHEDULE_RECOVERY_HANDLER_USER_EMAIL
                     && email != "worker@windmill.dev"
                     && email != SUPERADMIN_SECRET_EMAIL
-                    && email != SUPERADMIN_SYNC_EMAIL
+                    && permissioned_as != SUPERADMIN_SYNC_EMAIL
                     && email != SUPERADMIN_NOTIFICATION_EMAIL
                 {
                     let user_usage = if let Some(user_usage) = user_usage {
@@ -3429,9 +3441,59 @@ pub async fn push<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
         QUEUE_PUSH_COUNT.inc();
     }
 
+    let job_authed = match authed {
+        Some(authed)
+            if authed.email == email
+                && authed.username == permissioned_as_to_username(&permissioned_as) =>
+        {
+            authed.clone()
+        }
+        _ => {
+            if authed.is_some() {
+                tracing::warn!("Authed passed to push is not the same as permissioned_as, refetching direclty permissions for job {job_id}...")
+            }
+            fetch_authed_from_permissioned_as(
+                permissioned_as.clone(),
+                email.to_string(),
+                workspace_id,
+                _db,
+            )
+            .await
+            .map_err(|e| {
+                Error::InternalErr(format!(
+                    "Could not get permissions directly for job {job_id}: {e:#}"
+                ))
+            })?
+        }
+    };
+
+    let folders = job_authed
+        .folders
+        .iter()
+        .filter_map(|x| serde_json::to_value(x).ok())
+        .collect::<Vec<_>>();
+
+    if JOB_TOKEN.is_none() {
+        if let Err(err) = sqlx::query!("INSERT INTO job_perms (job_id, email, username, is_admin, is_operator, folders, groups, workspace_id) 
+            values ($1, $2, $3, $4, $5, $6, $7, $8) 
+            ON CONFLICT (job_id) DO UPDATE SET email = $2, username = $3, is_admin = $4, is_operator = $5, folders = $6, groups = $7, workspace_id = $8",
+            job_id,
+            job_authed.email,
+            job_authed.username,
+            job_authed.is_admin,
+            job_authed.is_operator,
+            folders.as_slice(),
+            job_authed.groups.as_slice(),
+            workspace_id,
+        ).execute(&mut tx).await {
+            tracing::error!("Could not insert job_perms for job {job_id}: {err:#}");
+        }
+    }
+
     {
         let uuid_string = job_id.to_string();
         let uuid_str = uuid_string.as_str();
+
         let mut hm = HashMap::from([("uuid", uuid_str), ("permissioned_as", &permissioned_as)]);
 
         let s: String;

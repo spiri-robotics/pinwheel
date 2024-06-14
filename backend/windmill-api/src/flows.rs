@@ -350,6 +350,7 @@ async fn create_flow(
         None,
         None,
         None,
+        Some(&authed.clone().into()),
     )
     .await?;
 
@@ -495,7 +496,7 @@ async fn update_flow(
         clear_schedule(tx.transaction_mut(), &schedule.path, &w_id).await?;
 
         if schedule.enabled {
-            tx = push_scheduled_job(&db, tx, &schedule).await?;
+            tx = push_scheduled_job(&db, tx, &schedule, None).await?;
         }
     }
 
@@ -565,6 +566,7 @@ async fn update_flow(
         None,
         None,
         None,
+        Some(&authed.clone().into()),
     )
     .await?;
     sqlx::query!(

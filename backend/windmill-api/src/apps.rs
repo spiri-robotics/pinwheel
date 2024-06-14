@@ -645,6 +645,7 @@ async fn create_app(
         None,
         None,
         None,
+        Some(&authed.clone().into()),
     )
     .await?;
     tracing::info!("Pushed app dependency job {}", dependency_job_uuid);
@@ -935,6 +936,7 @@ async fn update_app(
         None,
         None,
         None,
+        Some(&authed.clone().into()),
     )
     .await?;
     tracing::info!("Pushed app dependency job {}", dependency_job_uuid);
@@ -1144,6 +1146,7 @@ async fn execute_component(
         None,
         true,
         tag,
+        None,
         None,
         None,
         None,
