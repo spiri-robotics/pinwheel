@@ -420,7 +420,10 @@ impl AuthedClient {
         );
         let response = self.get(&url, vec![]).await?;
         match response.status().as_u16() {
-            200u16 => Ok(response.json::<String>().await?),
+            200u16 => Ok(response
+                .json::<String>()
+                .await
+                .context("decoding oidc token as json string")?),
             _ => Err(anyhow::anyhow!(response.text().await.unwrap_or_default())),
         }
     }
@@ -432,7 +435,10 @@ impl AuthedClient {
         );
         let response = self.get(&url, vec![]).await?;
         match response.status().as_u16() {
-            200u16 => Ok(response.json::<T>().await?),
+            200u16 => Ok(response
+                .json::<T>()
+                .await
+                .context("decoding resource value as json")?),
             _ => Err(anyhow::anyhow!(response.text().await.unwrap_or_default())),
         }
     }
@@ -444,7 +450,10 @@ impl AuthedClient {
         );
         let response = self.get(&url, vec![]).await?;
         match response.status().as_u16() {
-            200u16 => Ok(response.json::<String>().await?),
+            200u16 => Ok(response
+                .json::<String>()
+                .await
+                .context("decoding variable value as json")?),
             _ => Err(anyhow::anyhow!(response.text().await.unwrap_or_default())),
         }
     }
@@ -464,7 +473,10 @@ impl AuthedClient {
         }
         let response = self.get(&url, query).await?;
         match response.status().as_u16() {
-            200u16 => Ok(response.json::<T>().await?),
+            200u16 => Ok(response
+                .json::<T>()
+                .await
+                .context("decoding interpolated resource value as json")?),
             _ => Err(anyhow::anyhow!(response.text().await.unwrap_or_default())),
         }
     }
@@ -485,7 +497,10 @@ impl AuthedClient {
         };
         let response = self.get(&url, query).await?;
         match response.status().as_u16() {
-            200u16 => Ok(response.json::<T>().await?),
+            200u16 => Ok(response
+                .json::<T>()
+                .await
+                .context("decoding completed job result as json")?),
             _ => Err(anyhow::anyhow!(response.text().await.unwrap_or_default())),
         }
     }
@@ -507,7 +522,10 @@ impl AuthedClient {
         };
         let response = self.get(&url, query).await?;
         match response.status().as_u16() {
-            200u16 => Ok(response.json::<T>().await?),
+            200u16 => Ok(response
+                .json::<T>()
+                .await
+                .context("decoding result by id as json")?),
             _ => Err(anyhow::anyhow!(response.text().await.unwrap_or_default())),
         }
     }
