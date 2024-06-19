@@ -1965,6 +1965,7 @@ async fn push_next_flow_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>
     let mut tx: QueueTransaction<'_, R> = (rsmq.clone(), db.begin().await?).into();
 
     for i in (0..len).into_iter() {
+        tracing::debug!(id = %flow_job.id, root_id = %job_root, "pushing job {i} of {len}");
         let payload_tag = match &job_payloads {
             ContinuePayload::SingleJob(payload) => payload.clone(),
             ContinuePayload::BranchAllJobs(payloads) => payloads[i].clone(),
@@ -2064,6 +2065,8 @@ async fn push_next_flow_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>
             Err(e) => (None, Some(e)),
         };
 
+        tracing::debug!(id = %flow_job.id, root_id = %job_root, "computed args for job {i} of {len}");
+
         let value_with_parallel = module.get_value_with_parallel()?;
 
         let root_job = if {
@@ -2094,6 +2097,8 @@ async fn push_next_flow_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>
         } else {
             None
         };
+
+        tracing::debug!(id = %flow_job.id, root_id = %job_root, "computed perms for job {i} of {len}");
 
         let tx2 = PushIsolationLevel::Transaction(tx);
         let (uuid, mut inner_tx) = push(
@@ -2133,6 +2138,8 @@ async fn push_next_flow_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>
 
         if value_with_parallel.type_ == "forloopflow" {
             if let Some(p) = value_with_parallel.parallelism {
+                tracing::debug!(id = %flow_job.id, root_id = %job_root, "updating suspend for forloopflow job {uuid}");
+
                 if i as u16 >= p {
                     sqlx::query!(
                         "UPDATE queue
@@ -2144,6 +2151,7 @@ async fn push_next_flow_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>
                     .execute(&mut inner_tx)
                     .await?;
                 }
+                tracing::debug!(id = %flow_job.id, root_id = %job_root, "updated suspend for {uuid}");
             }
         }
 
@@ -2185,6 +2193,7 @@ async fn push_next_flow_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>
             )
             .execute(&mut tx)
             .await?;
+            tracing::debug!(id = %flow_job.id, root_id = %job_root, "updated parallel monitor lock for {uuid}");
         }
     }
     let first_uuid = uuids[0];
