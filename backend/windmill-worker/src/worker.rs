@@ -1337,7 +1337,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                         &Uuid::nil(),
                         &w_id,
                         success,
-                        &result,
+                        Arc::new(result),
                         true,
                         same_worker_tx2.clone(),
                         &worker_dir,
@@ -1653,7 +1653,7 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                         .send(JobCompleted {
                             job: Arc::new(job),
                             success: true,
-                            result: empty_result(),
+                            result: Arc::new(empty_result()),
                             mem_peak: 0,
                             cached_res_path: None,
                             token: "".to_string(),
@@ -1913,6 +1913,7 @@ async fn queue_init_bash_maybe<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
 ) -> error::Result<()> {
     if let Some(content) = WORKER_CONFIG.read().await.init_bash.clone() {
         let tx = PushIsolationLevel::IsolatedRoot(db.clone(), rsmq);
+        let ehm = HashMap::new();
         let (uuid, inner_tx) = push(
             &db,
             tx,
@@ -1929,7 +1930,7 @@ async fn queue_init_bash_maybe<'c, R: rsmq_async::RsmqConnection + Send + 'c>(
                 cache_ttl: None,
                 dedicated_worker: None,
             }),
-            PushArgs::empty(),
+            PushArgs::from(&ehm),
             worker_name,
             "worker@windmill.dev",
             SUPERADMIN_SECRET_EMAIL.to_string(),
@@ -1994,6 +1995,10 @@ pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync +
             save_in_cache(db, client, &job, cached_path.to_string(), &result).await;
         }
 
+        let is_flow_step = job.is_flow_step;
+        let parent_job = job.parent_job.clone();
+        let job_id = job.id.clone();
+        let workspace_id = job.workspace_id.clone();
         #[cfg(feature = "prometheus")]
         let timer = _worker_save_completed_job_duration
             .as_ref()
@@ -2010,25 +2015,26 @@ pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync +
             false,
         )
         .await?;
+        drop(job);
 
         #[cfg(feature = "prometheus")]
         timer.map(|x| x.stop_and_record());
 
-        if job.is_flow_step {
-            if let Some(parent_job) = job.parent_job {
+        if is_flow_step {
+            if let Some(parent_job) = parent_job {
                 #[cfg(feature = "prometheus")]
                 let timer = _worker_flow_transition_duration
                     .as_ref()
                     .map(|x| x.start_timer());
-                tracing::info!(parent_flow = %parent_job, subflow = %job.id, "updating flow status (2)");
+                tracing::info!(parent_flow = %parent_job, subflow = %job_id, "updating flow status (2)");
                 update_flow_status_after_job_completion(
                     db,
                     client,
                     parent_job,
-                    &job.id,
-                    &job.workspace_id,
+                    &job_id,
+                    &workspace_id,
                     true,
-                    &result,
+                    result,
                     false,
                     same_worker_tx.clone(),
                     &worker_dir,
@@ -2066,7 +2072,7 @@ pub async fn process_completed_job<R: rsmq_async::RsmqConnection + Send + Sync +
                     &job.id,
                     &job.workspace_id,
                     false,
-                    &serde_json::value::to_raw_value(&result).unwrap(),
+                    Arc::new(serde_json::value::to_raw_value(&result).unwrap()),
                     false,
                     same_worker_tx,
                     &worker_dir,
@@ -2182,7 +2188,7 @@ pub async fn handle_job_error<R: rsmq_async::RsmqConnection + Send + Sync + Clon
             &job_status_to_update,
             &job.workspace_id,
             false,
-            &serde_json::value::to_raw_value(&wrapped_error).unwrap(),
+            Arc::new(serde_json::value::to_raw_value(&wrapped_error).unwrap()),
             unrecoverable,
             same_worker_tx,
             worker_dir,
@@ -2268,7 +2274,7 @@ pub enum SendResult {
 #[derive(Debug, Clone)]
 pub struct JobCompleted {
     pub job: Arc<QueuedJob>,
-    pub result: Box<RawValue>,
+    pub result: Arc<Box<RawValue>>,
     pub mem_peak: i32,
     pub success: bool,
     pub cached_res_path: Option<String>,
@@ -2435,7 +2441,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
             job_completed_tx
                 .send(JobCompleted {
                     job: job,
-                    result: cached_resource_value,
+                    result: Arc::new(cached_resource_value),
                     mem_peak: 0,
                     canceled_by: None,
                     success: true,
@@ -2452,7 +2458,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
         #[cfg(feature = "prometheus")]
         let timer = _worker_flow_initial_transition_duration.map(|x| x.start_timer());
         handle_flow(
-            &job,
+            job,
             db,
             &client.get_authed().await,
             None,
@@ -2591,7 +2597,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
 
         process_result(
             job,
-            result,
+            result.map(|x| Arc::new(x)),
             job_dir,
             job_completed_tx,
             mem_peak,
@@ -2608,7 +2614,7 @@ async fn handle_queued_job<R: rsmq_async::RsmqConnection + Send + Sync + Clone>(
 
 async fn process_result(
     job: Arc<QueuedJob>,
-    result: error::Result<Box<RawValue>>,
+    result: error::Result<Arc<Box<RawValue>>>,
     job_dir: &str,
     job_completed_tx: JobCompletedSender,
     mem_peak: i32,
@@ -2683,7 +2689,7 @@ async fn process_result(
             job_completed_tx
                 .send(JobCompleted {
                     job: job,
-                    result: to_raw_value(&error_value),
+                    result: Arc::new(to_raw_value(&error_value)),
                     mem_peak,
                     canceled_by,
                     success: false,
