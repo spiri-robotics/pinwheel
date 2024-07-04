@@ -555,9 +555,7 @@ where
     Fut: Future<Output = i32>,
 {
     let update_job_interval = Duration::from_millis(500);
-    if job_id == Uuid::nil() {
-        return UpdateJobPollingExit::Done;
-    }
+
     let db = db.clone();
 
     let mut interval = interval(update_job_interval);
@@ -576,17 +574,19 @@ where
                     let memory_usage = get_worker_memory_usage();
                     let wm_memory_usage = get_windmill_memory_usage();
                     tracing::info!("{worker_name}/{job_id} in {w_id} worker memory snapshot {}kB/{}kB", memory_usage.unwrap_or_default()/1024, wm_memory_usage.unwrap_or_default()/1024);
-                    sqlx::query!(
-                        "UPDATE worker_ping SET ping_at = now(), current_job_id = $1, current_job_workspace_id = $2, memory_usage = $3, wm_memory_usage = $4 WHERE worker = $5",
-                        &job_id,
-                        &w_id,
-                        memory_usage,
-                        wm_memory_usage,
-                        &worker_name
-                    )
-                    .execute(&db)
-                    .await
-                    .expect("update worker ping");
+                    if job_id != Uuid::nil() {
+                        sqlx::query!(
+                            "UPDATE worker_ping SET ping_at = now(), current_job_id = $1, current_job_workspace_id = $2, memory_usage = $3, wm_memory_usage = $4 WHERE worker = $5",
+                            &job_id,
+                            &w_id,
+                            memory_usage,
+                            wm_memory_usage,
+                            &worker_name
+                        )
+                        .execute(&db)
+                        .await
+                        .expect("update worker ping");
+                    }
                 }
                 let current_mem = get_mem().await;
                 if current_mem > *mem_peak {
@@ -597,29 +597,6 @@ where
 
                 let update_job_row = i == 2 || (!*SLOW_LOGS && (i < 20 || (i < 120 && i % 5 == 0) || i % 10 == 0)) || i % 20 == 0;
                 if update_job_row {
-(bool, Option<String>, Option<String>, bool)>("UPDATE queue SET mem_peak = $1, last_ping = now() WHERE id = $2 RETURNING canceled, canceled_by, canceled_reason, false")
-                    .bind(*mem_peak)
-                    .bind(job_id)
-                    .fetch_optional(&db)
-                    .await
-                    .unwrap_or_else(|e| {
-                        tracing::error!(%e, "error updating job {job_id}: {e:#}");
-                        Some((false, None, None, false))
-                    })
-                    .unwrap_or_else(|| {
-                        // if the job is not in queue, it can only be in the completed_job so it is already complete
-                        (false, None, None, true)
-                    });
-                if already_completed {
-                    return UpdateJobPollingExit::AlreadyCompleted
-                }
-                if canceled {
-                    canceled_by_ref.replace(CanceledBy {
-                        username: canceled_by.clone(),
-                        reason: canceled_reason.clone(),
-                    });
-                    break
-                }
             }
             },
         );
@@ -822,7 +799,7 @@ pub async fn handle_child(
     canceled_by_ref: &mut Option<CanceledBy>,
     mut child: Child,
     nsjail: bool,
-    worker_name: &str,
+    worker: &str,
     w_id: &str,
     child_name: &str,
     custom_timeout: Option<i32>,
@@ -864,7 +841,7 @@ pub async fn handle_child(
         mem_peak,
         canceled_by_ref,
         || get_mem_peak(pid, nsjail),
-        worker_name,
+        worker,
         w_id,
         rx,
     );
@@ -1065,7 +1042,7 @@ pub async fn handle_child(
                 log_total_size = 0;
             }
 
-            let worker_name = worker_name.to_string();
+            let worker_name = worker.to_string();
             let w_id2 = w_id.to_string();
             (do_write, write_result) = tokio::spawn(append_job_logs(job_id, w_id2, joined, db.clone(), compact_logs, pg_log_total_size.clone(), worker_name)).remote_handle();
 
@@ -1096,7 +1073,11 @@ pub async fn handle_child(
 
     let (wait_result, _) = tokio::join!(wait_on_child, lines);
 
-    tracing::info!(%job_id, "child process '{child_name}' for {worker_name}/{job_id} took {}ms, mem_peak: {:?}", start.elapsed().as_millis(), mem_peak);
+    let success = wait_result.is_ok()
+        && wait_result.as_ref().unwrap().is_ok()
+        && wait_result.as_ref().unwrap().as_ref().unwrap().success();
+    tracing::info!(%job_id, %success, %mem_peak, %worker, "child process '{child_name}' took {}ms", start.elapsed().as_millis());
+
     match wait_result {
         _ if *too_many_logs.borrow() => Err(Error::ExecutionErr(format!(
             "logs or result reached limit. (current max size: {MAX_RESULT_SIZE} characters)"
