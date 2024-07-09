@@ -166,6 +166,11 @@ impl Migrate for CustomMigrator {
 pub async fn migrate(db: &DB) -> Result<(), Error> {
     let migrator = db.acquire().await?;
     let mut custom_migrator = CustomMigrator { inner: migrator };
+
+    if let Err(err) = fix_flow_versioning_migration(&mut custom_migrator, db).await {
+        tracing::error!("Could not apply flow versioning fix migration: {err:#}");
+    }
+
     match sqlx::migrate!("../migrations")
         .run_direct(&mut custom_migrator)
         .await
@@ -181,26 +186,47 @@ pub async fn migrate(db: &DB) -> Result<(), Error> {
         Err(err) => Err(err),
     }?;
 
-    if let Err(e) = windmill_migrations(&mut custom_migrator, db).await {
-        tracing::error!("Could not apply windmill custom migrations: {e:#}")
-    }
 
     Ok(())
 }
 
-async fn windmill_migrations(migrator: &mut CustomMigrator, db: &DB) -> Result<(), Error> {
+async fn fix_flow_versioning_migration(
+    migrator: &mut CustomMigrator,
+    db: &DB,
+) -> Result<(), Error> {
     migrator.lock().await?;
 
-    let query = include_str!("../../custom_migrations/fix_flow_versioning_2.sql");
-    tracing::info!("Applying fix_flow_versioning_2.sql");
-    let mut tx: sqlx::Transaction<'_, Postgres> = db.begin().await?;
-    tx.execute(query).await?;
-    tracing::info!("Applied fix_flow_versioning_2.sql");
-    tx.commit().await?;
+    if migrator
+        .list_applied_migrations()
+        .await?
+        .iter()
+        .any(|x| x.version == 20240630102146)
+    {
+        let has_done_migration = sqlx::query_scalar!(
+                "SELECT EXISTS(SELECT name FROM windmill_migrations WHERE name = 'fix_flow_versioning_2')",
+            )
+            .fetch_one(db)
+            .await?
+            .unwrap_or(false);
+
+        if !has_done_migration {
+            let query = include_str!("../../custom_migrations/fix_flow_versioning_2.sql");
+            tracing::info!("Applying fix_flow_versioning_2.sql");
+            let mut tx: sqlx::Transaction<'_, Postgres> = db.begin().await?;
+            tx.execute(query).await?;
+            tracing::info!("Applied fix_flow_versioning_2.sql");
+            sqlx::query!("INSERT INTO windmill_migrations (name) VALUES ('fix_flow_versioning_2')")
+                .execute(&mut *tx)
+                .await?;
+            tx.commit().await?;
+        }
+    }
 
     migrator.unlock().await?;
+
     Ok(())
 }
+
 
 #[derive(Clone, Debug)]
 pub struct ApiAuthed {
