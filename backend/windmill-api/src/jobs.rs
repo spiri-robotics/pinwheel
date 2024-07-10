@@ -1101,6 +1101,10 @@ pub fn filter_list_queue_query(
             "started_at",
             format!("to_timestamp({}  / 1000.0)", dt.timestamp_millis()),
         );
+        sqlb.and_where_ge(
+            "created_at",
+            format!("to_timestamp({}  / 1000.0)", dt.timestamp_millis()),
+        );
     }
     if let Some(fs) = &lq.is_flow_step {
         sqlb.and_where_eq("is_flow_step", fs);
@@ -4072,6 +4076,10 @@ pub fn filter_list_completed_query(
             "started_at",
             format!("to_timestamp({}  / 1000.0)", dt.timestamp_millis()),
         );
+        sqlb.and_where_ge(
+            "created_at",
+            format!("to_timestamp({}  / 1000.0)", dt.timestamp_millis()),
+        );
     }
 
     if let Some(dt) = &lq.created_or_started_before {
@@ -4085,11 +4093,19 @@ pub fn filter_list_completed_query(
             "started_at",
             format!("to_timestamp({}  / 1000.0)", dt.timestamp_millis()),
         );
+        sqlb.and_where_ge(
+            "created_at",
+            format!("to_timestamp({}  / 1000.0)", dt.timestamp_millis()),
+        );
     }
 
     if let Some(dt) = &lq.created_or_started_after_completed_jobs {
         sqlb.and_where_ge(
             "started_at",
+            format!("to_timestamp({}  / 1000.0)", dt.timestamp_millis()),
+        );
+        sqlb.and_where_ge(
+            "created_at",
             format!("to_timestamp({}  / 1000.0)", dt.timestamp_millis()),
         );
     }
