@@ -116,6 +116,8 @@ impl ApiServer {
         let task = tokio::task::spawn(windmill_api::run_server(
             db.clone(),
             None,
+            None,
+            None,
             addr,
             rx,
             port_tx,

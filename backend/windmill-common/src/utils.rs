@@ -181,6 +181,7 @@ pub enum Mode {
     Agent,
     Server,
     Standalone,
+    Indexer,
 }
 
 pub async fn send_email(
