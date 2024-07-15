@@ -50,6 +50,8 @@ pub fn global_service() -> Router {
         .route("/delete/:name", delete(delete_igroup))
         .route("/adduser/:name", post(add_user_igroup))
         .route("/removeuser/:name", post(remove_user_igroup))
+        .route("/export", get(export_igroups))
+        .route("/overwrite", post(overwrite_igroups))
 }
 
 #[derive(FromRow, Serialize, Deserialize)]
@@ -757,4 +759,19 @@ async fn remove_user(
     .await?;
 
     Ok(format!("Removed {} to group {}", user_username, name))
+}
+
+
+
+async fn export_igroups() -> JsonResult<String> {
+    Err(Error::BadRequest(
+        "This feature is only available in the enterprise version".to_string(),
+    ))
+}
+
+
+async fn overwrite_igroups() -> JsonResult<String> {
+    Err(Error::BadRequest(
+        "This feature is only available in the enterprise version".to_string(),
+    ))
 }

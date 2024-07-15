@@ -28,6 +28,7 @@ pub fn global_service() -> Router {
         .route("/list_worker_groups", get(list_worker_groups))
         .route("/update/:name", post(update_config).delete(delete_config))
         .route("/get/:name", get(get_config))
+        .route("/list", get(list_configs))
 }
 
 #[derive(Serialize, Deserialize, FromRow)]
@@ -164,4 +165,11 @@ async fn delete_config(
         )));
     }
     Ok(format!("Deleted config {name}"))
+}
+
+
+async fn list_configs() -> error::JsonResult<String> {
+    Err(error::Error::BadRequest(
+        "Config listing available only in the enterprise version".to_string(),
+    ))
 }
