@@ -170,6 +170,47 @@ pub fn get_annotation(inner_content: &str) -> Annotations {
     Annotations { npm_mode, nodejs_mode }
 }
 
+pub async fn load_cache(bin_path: &str, remote_path: &str) -> (bool, String) {
+    if tokio::fs::metadata(&bin_path).await.is_ok() {
+        (true, format!("loaded from local cache: {}\n", bin_path))
+    } else {
+        (false, "".to_string())
+    }
+}
+
+pub async fn exists_in_cache(bin_path: &str, remote_path: &str) -> bool {
+    if tokio::fs::metadata(&bin_path).await.is_ok() {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+pub async fn save_cache(
+    local_cache_path: &str,
+    remote_cache_path: &str,
+    origin: &str,
+) -> crate::error::Result<String> {
+    let mut _cached_to_s3 = false;
+
+    // if !*CLOUD_HOSTED {
+    if true {
+        std::fs::copy(origin, local_cache_path)?;
+        Ok(format!(
+            "\nwrote cached binary: {} (backed by EE distributed object store: {_cached_to_s3})\n",
+            local_cache_path
+        ))
+    } else if _cached_to_s3 {
+        Ok(format!(
+            "wrote cached binary to object store {}\n",
+            local_cache_path
+        ))
+    } else {
+        Ok("".to_string())
+    }
+}
+
+
 fn get_cgroupv2_path() -> Option<String> {
     let cgroup_path: String = parse_file("/proc/self/cgroup")?;
 
