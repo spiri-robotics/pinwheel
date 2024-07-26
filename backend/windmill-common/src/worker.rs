@@ -170,7 +170,7 @@ pub fn get_annotation(inner_content: &str) -> Annotations {
     Annotations { npm_mode, nodejs_mode }
 }
 
-pub async fn load_cache(bin_path: &str, remote_path: &str) -> (bool, String) {
+pub async fn load_cache(bin_path: &str, _remote_path: &str) -> (bool, String) {
     if tokio::fs::metadata(&bin_path).await.is_ok() {
         (true, format!("loaded from local cache: {}\n", bin_path))
     } else {
@@ -178,7 +178,7 @@ pub async fn load_cache(bin_path: &str, remote_path: &str) -> (bool, String) {
     }
 }
 
-pub async fn exists_in_cache(bin_path: &str, remote_path: &str) -> bool {
+pub async fn exists_in_cache(bin_path: &str, _remote_path: &str) -> bool {
     if tokio::fs::metadata(&bin_path).await.is_ok() {
         return true;
     } else {
@@ -188,7 +188,7 @@ pub async fn exists_in_cache(bin_path: &str, remote_path: &str) -> bool {
 
 pub async fn save_cache(
     local_cache_path: &str,
-    remote_cache_path: &str,
+    _remote_cache_path: &str,
     origin: &str,
 ) -> crate::error::Result<String> {
     let mut _cached_to_s3 = false;
