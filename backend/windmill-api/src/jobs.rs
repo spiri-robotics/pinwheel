@@ -8,6 +8,7 @@
 
 use axum::body::Body;
 use axum::http::HeaderValue;
+use quick_cache::sync::Cache;
 use serde_json::value::RawValue;
 use sqlx::Pool;
 use std::collections::HashMap;
@@ -293,11 +294,17 @@ struct JsonPath {
     pub approver: Option<String>,
 }
 async fn get_result_by_id(
+    authed: ApiAuthed,
     Extension(db): Extension<DB>,
     Path((w_id, flow_id, node_id)): Path<(String, Uuid, String)>,
     Query(JsonPath { json_path, .. }): Query<JsonPath>,
 ) -> windmill_common::error::JsonResult<Box<JsonRawValue>> {
-    let res = windmill_queue::get_result_by_id(db, w_id, flow_id, node_id, json_path).await?;
+    let res =
+        windmill_queue::get_result_by_id(db.clone(), w_id.clone(), flow_id, node_id, json_path)
+            .await?;
+
+    log_job_view(&db, Some(&authed), &w_id, &flow_id).await?;
+
     Ok(Json(res))
 }
 
@@ -618,6 +625,9 @@ async fn get_flow_job_debug_info(
                 jobs.insert(job.id().to_string(), job);
             }
         }
+
+        log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+
         Ok(Json(jobs).into_response())
     } else {
         Err(error::Error::NotFound(format!(
@@ -647,6 +657,9 @@ async fn get_job(
     )
     .await?;
     job.fetch_outstanding_wait_time(&db).await?;
+
+    log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+
     Ok(Json(job).into_response())
 }
 
@@ -831,6 +844,9 @@ async fn get_job_logs(
             ));
         }
         let logs = record.logs.unwrap_or_default();
+
+        log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+
         if let Some(r) = get_logs_from_disk(record.log_offset, &logs, &record.log_file_index).await
         {
             return r.map(content_plain);
@@ -855,6 +871,9 @@ async fn get_job_logs(
             ));
         }
         let logs = text.logs.unwrap_or_default();
+
+        log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+
         if let Some(r) = get_logs_from_disk(text.log_offset, &logs, &text.log_file_index).await {
             return r.map(content_plain);
         }
@@ -889,6 +908,9 @@ async fn get_args(
                 "As a non logged in user, you can only see jobs ran by anonymous users".to_string(),
             ));
         }
+
+        log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+
         Ok(Json(record.args.map(|x| x.0).unwrap_or_default()))
     } else {
         let record = sqlx::query_as::<_, RawArgs>(
@@ -906,6 +928,9 @@ async fn get_args(
                 "As a non logged in user, you can only see jobs ran by anonymous users".to_string(),
             ));
         }
+
+        log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+
         Ok(Json(record.args.map(|x| x.0).unwrap_or_default()))
     }
 }
@@ -1895,7 +1920,7 @@ pub async fn get_suspended_job_flow(
         Job::QueuedJob(job) => &job.email,
         Job::CompletedJobWithFormattedResult(job) => &job.cj.email,
     };
-    conditionally_require_authed_user(authed, flow_status.clone(), trigger_email)?;
+    conditionally_require_authed_user(authed.clone(), flow_status.clone(), trigger_email)?;
 
     let approvers_from_status = match flow_module_status {
         FlowStatusModule::Success { approvers, .. } => approvers.to_owned(),
@@ -1921,6 +1946,8 @@ pub async fn get_suspended_job_flow(
     } else {
         approvers_from_status
     };
+
+    log_job_view(&db, authed.as_ref(), &w_id, &job).await?;
 
     Ok(Json(SuspendedJobFlow { job: flow, approvers }).into_response())
 }
@@ -3079,6 +3106,76 @@ lazy_static::lazy_static! {
         .ok()
         .and_then(|x| x.parse().ok())
         .unwrap_or(200);
+
+    static ref JOB_VIEW_AUDIT_LOGS: bool = std::env::var("JOB_VIEW_AUDIT_LOGS")
+        .ok()
+        .and_then(|x| x.parse().ok())
+        .unwrap_or(false);
+
+    static ref JOB_VIEW_CACHE: JobViewCache = JobViewCache::new(50000);
+}
+
+struct JobViewCache {
+    cache: Cache<String, std::time::Instant>,
+}
+
+impl JobViewCache {
+    fn new(items_capacity: usize) -> Self {
+        Self { cache: Cache::new(items_capacity) }
+    }
+    fn get_or_insert(&self, key: &str) -> Option<std::time::Instant> {
+        match self.cache.get(key) {
+            Some(t) if t < std::time::Instant::now() => {
+                self.cache.insert(
+                    key.to_string(),
+                    std::time::Instant::now() + std::time::Duration::from_secs(60),
+                );
+                None
+            }
+            v => {
+                self.cache.insert(
+                    key.to_string(),
+                    std::time::Instant::now() + std::time::Duration::from_secs(60),
+                );
+                v
+            }
+        }
+    }
+}
+
+async fn log_job_view(
+    db: &DB,
+    opt_authed: Option<&ApiAuthed>,
+    w_id: &str,
+    job_id: &Uuid,
+) -> error::Result<()> {
+    if *JOB_VIEW_AUDIT_LOGS {
+        let audit_author = match opt_authed {
+            Some(authed) => AuditAuthor::from(authed),
+            None => AuditAuthor {
+                username: "anonymous".to_string(),
+                username_override: None,
+                email: "anonymous".to_string(),
+            },
+        };
+        if JOB_VIEW_CACHE
+            .get_or_insert(&format!("{}_{}", job_id, audit_author.email))
+            .is_none()
+        {
+            audit_log(
+                db,
+                &audit_author,
+                "jobs.view",
+                ActionKind::Execute,
+                w_id,
+                Some(&job_id.to_string()),
+                None,
+            )
+            .await?;
+        };
+    }
+
+    Ok(())
 }
 
 pub async fn run_wait_result_job_by_path_get(
@@ -4060,6 +4157,7 @@ async fn get_job_update(
                 "As a non logged in user, you can only see jobs ran by anonymous users".to_string(),
             ));
         }
+        log_job_view(&db, opt_authed.as_ref(), &w_id, &job_id).await?;
         Ok(Json(JobUpdate {
             running: if !running && record.running {
                 Some(true)
@@ -4095,6 +4193,7 @@ async fn get_job_update(
                         .to_string(),
                 ));
             }
+            log_job_view(&db, opt_authed.as_ref(), &w_id, &job_id).await?;
             Ok(Json(JobUpdate {
                 running: Some(false),
                 completed: Some(true),
@@ -4346,7 +4445,7 @@ async fn get_completed_job<'a>(
     schedule_path, permissioned_as, flow_status, raw_flow, is_flow_step, language, started_at, is_skipped,
     raw_lock, email, visible_to_owner, mem_peak, tag, priority, result->'wm_labels' as labels FROM completed_job WHERE id = $1 AND workspace_id = $2")
         .bind(id)
-        .bind(w_id)
+        .bind(&w_id)
         .fetch_optional(&db)
         .await?;
 
@@ -4368,6 +4467,9 @@ async fn get_completed_job<'a>(
     // )
     // .fetch_optional(db)
     // .await.ok().flatten().flatten();
+
+    log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+
     Ok(response)
 }
 
@@ -4462,6 +4564,8 @@ async fn get_completed_job_result(
         raw_result.result.map(|x| x.0),
     );
 
+    log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+
     Ok(Json(result).into_response())
 }
 
@@ -4503,6 +4607,9 @@ async fn get_completed_job_result_maybe(
                 "As a non logged in user, you can only see jobs ran by anonymous users".to_string(),
             ));
         }
+
+        log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+
         Ok(Json(CompletedJobResult {
             started: Some(true),
             success: Some(res.success),
