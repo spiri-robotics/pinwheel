@@ -2316,6 +2316,7 @@ async fn do_nativets(
         canceled_by,
         worker_name,
         &job.workspace_id,
+        true,
     )
     .await?;
     Ok((result.0, result.1))
