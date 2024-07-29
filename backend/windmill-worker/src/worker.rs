@@ -2955,7 +2955,7 @@ mount {{
             )
             .await
         }
-        Some(ScriptLang::Bun) => {
+        Some(ScriptLang::Bun) | Some(ScriptLang::Bunnative) => {
             handle_bun_job(
                 requirements_o,
                 codebase,
