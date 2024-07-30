@@ -382,7 +382,7 @@ const bo = await Bun.build({{
     outdir: "./",
     target: "{}",
     plugins: [p],
-    external: [],
+    external: ["electron"],
     minify: {{
         identifiers: false,
         syntax: true,
