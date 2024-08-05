@@ -180,7 +180,10 @@ pub fn workspaced_service() -> Router {
                 .layer(ce_headers.clone()),
         )
         .route("/run/preview", post(run_preview_script))
-        .route("/run/preview_bundle", post(run_bundle_preview_script))
+        .route(
+            "/run/preview_bundle",
+            post(run_bundle_preview_script).layer(axum::extract::DefaultBodyLimit::disable()),
+        )
         .route("/add_batch_jobs/:n", post(add_batch_jobs))
         .route("/run/preview_flow", post(run_preview_flow_job))
         .route(
@@ -2529,6 +2532,7 @@ enum PreviewKind {
     Http,
     Noop,
     Bundle,
+    Tarbundle,
 }
 
 #[derive(Deserialize)]
