@@ -42,7 +42,7 @@ use windmill_common::schedule::Schedule;
 use windmill_common::users::username_to_permissioned_as;
 use windmill_common::variables::build_crypt;
 use windmill_common::worker::{to_raw_value, CLOUD_HOSTED};
-use windmill_common::workspaces::WorkspaceGitSyncSettings;
+use windmill_common::workspaces::{WorkspaceDeploymentUISettings, WorkspaceGitSyncSettings};
 use windmill_common::{
     error::{to_anyhow, Error, JsonResult, Result},
     flows::Flow,
@@ -97,6 +97,7 @@ pub fn workspaced_service() -> Router {
             post(edit_large_file_storage_config),
         )
         .route("/edit_git_sync_config", post(edit_git_sync_config))
+        .route("/edit_deploy_ui_config", post(edit_deploy_ui_config))
         .route("/edit_default_app", post(edit_default_app))
         .route("/default_app", get(get_default_app))
         .route(
@@ -167,8 +168,9 @@ pub struct WorkspaceSettings {
     pub error_handler: Option<String>,
     pub error_handler_extra_args: Option<serde_json::Value>,
     pub error_handler_muted_on_cancel: Option<bool>,
-    pub large_file_storage: Option<serde_json::Value>, // effectively: DatasetsStorage
-    pub git_sync: Option<serde_json::Value>,           // effectively: WorkspaceGitSyncSettings
+    pub large_file_storage: Option<serde_json::Value>,  // effectively: DatasetsStorage
+    pub git_sync: Option<serde_json::Value>,            // effectively: WorkspaceGitSyncSettings
+    pub deploy_ui: Option<serde_json::Value>,           // effectively: WorkspaceDeploymentUISettings
     pub default_app: Option<String>,
     pub automatic_billing: bool,
     pub default_scripts: Option<serde_json::Value>,
@@ -957,6 +959,26 @@ async fn edit_git_sync_config(
         "Git sync is only available on Windmill Enterprise Edition".to_string(),
     ));
 }
+
+
+#[derive(Deserialize)]
+struct EditDeployUIConfig {
+    deploy_ui_settings: Option<WorkspaceDeploymentUISettings>,
+}
+
+async fn edit_deploy_ui_config(
+    _authed: ApiAuthed,
+    Extension(_db): Extension<DB>,
+    Path(_w_id): Path<String>,
+    Json(_new_config): Json<EditDeployUIConfig>,
+) -> Result<String> {
+    return Err(Error::BadRequest(
+        "Deployment UI is only available on Windmill Enterprise Edition".to_string(),
+    ));
+}
+
+
+
 
 
 #[derive(Deserialize)]
