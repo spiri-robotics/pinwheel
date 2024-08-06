@@ -390,6 +390,7 @@ Windmill Community Edition {GIT_VERSION}
                     server_killpill_rx,
                     base_internal_tx,
                     server_mode,
+                    base_internal_url.clone(),
                 )
                 .await?;
             } else {

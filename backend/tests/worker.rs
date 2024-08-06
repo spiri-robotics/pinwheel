@@ -122,6 +122,7 @@ impl ApiServer {
             rx,
             port_tx,
             false,
+            format!("http://localhost:{}", addr.port()),
         ));
 
         _port_rx.await.unwrap();

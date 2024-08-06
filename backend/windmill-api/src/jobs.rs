@@ -985,7 +985,7 @@ pub struct ListableCompletedJob {
     pub labels: Option<serde_json::Value>,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Default)]
 pub struct RunJobQuery {
     scheduled_for: Option<chrono::DateTime<chrono::Utc>>,
     scheduled_in_secs: Option<i64>,
@@ -2657,6 +2657,23 @@ pub async fn run_flow_by_path(
     Query(run_query): Query<RunJobQuery>,
     args: PushArgsOwned,
 ) -> error::Result<(StatusCode, String)> {
+    run_flow_by_path_inner(
+        authed, db, user_db, rsmq, w_id, flow_path, run_query, args, None,
+    )
+    .await
+}
+
+pub async fn run_flow_by_path_inner(
+    authed: ApiAuthed,
+    db: DB,
+    user_db: UserDB,
+    rsmq: Option<rsmq_async::MultiplexedRsmq>,
+    w_id: String,
+    flow_path: StripPath,
+    run_query: RunJobQuery,
+    args: PushArgsOwned,
+    label_prefix: Option<String>,
+) -> error::Result<(StatusCode, String)> {
     let flow_path = flow_path.to_path();
     check_scopes(&authed, || format!("run:flow/{flow_path}"))?;
 
@@ -2687,7 +2704,9 @@ pub async fn run_flow_by_path(
         &w_id,
         JobPayload::Flow { path: flow_path.to_string(), dedicated_worker },
         PushArgs { args: &args.args, extra: args.extra },
-        authed.display_username(),
+        &label_prefix
+            .map(|x| x + authed.display_username())
+            .unwrap_or_else(|| authed.display_username().to_string()),
         &authed.email,
         username_to_permissioned_as(&authed.username),
         scheduled_for,
@@ -2738,6 +2757,31 @@ pub async fn run_script_by_path(
     Query(run_query): Query<RunJobQuery>,
     args: PushArgsOwned,
 ) -> error::Result<(StatusCode, String)> {
+    run_script_by_path_inner(
+        authed,
+        db,
+        user_db,
+        rsmq,
+        w_id,
+        script_path,
+        run_query,
+        args,
+        None,
+    )
+    .await
+}
+
+pub async fn run_script_by_path_inner(
+    authed: ApiAuthed,
+    db: DB,
+    user_db: UserDB,
+    rsmq: Option<rsmq_async::MultiplexedRsmq>,
+    w_id: String,
+    script_path: StripPath,
+    run_query: RunJobQuery,
+    args: PushArgsOwned,
+    label_prefix: Option<String>,
+) -> error::Result<(StatusCode, String)> {
 
     let script_path = script_path.to_path();
 
@@ -2760,7 +2804,9 @@ pub async fn run_script_by_path(
         &w_id,
         job_payload,
         PushArgs { args: &args.args, extra: args.extra },
-        authed.display_username(),
+        &label_prefix
+            .map(|x| x + authed.display_username())
+            .unwrap_or_else(|| authed.display_username().to_string()),
         &authed.email,
         username_to_permissioned_as(&authed.username),
         scheduled_for,
@@ -4022,6 +4068,31 @@ pub async fn run_job_by_hash(
     Query(run_query): Query<RunJobQuery>,
     args: PushArgsOwned,
 ) -> error::Result<(StatusCode, String)> {
+    run_job_by_hash_inner(
+        authed,
+        db,
+        user_db,
+        rsmq,
+        w_id,
+        script_hash,
+        run_query,
+        args,
+        None,
+    )
+    .await
+}
+
+pub async fn run_job_by_hash_inner(
+    authed: ApiAuthed,
+    db: DB,
+    user_db: UserDB,
+    rsmq: Option<rsmq_async::MultiplexedRsmq>,
+    w_id: String,
+    script_hash: ScriptHash,
+    run_query: RunJobQuery,
+    args: PushArgsOwned,
+    label_prefix: Option<String>,
+) -> error::Result<(StatusCode, String)> {
 
     let mut tx: QueueTransaction<'_, _> = (rsmq, user_db.begin(&authed).await?).into();
 
@@ -4065,7 +4136,9 @@ pub async fn run_job_by_hash(
             priority,
         },
         PushArgs { args: &args.args, extra: args.extra },
-        authed.display_username(),
+        &label_prefix
+            .map(|x| x + authed.display_username())
+            .unwrap_or_else(|| authed.display_username().to_string()),
         &authed.email,
         username_to_permissioned_as(&authed.username),
         scheduled_for,
