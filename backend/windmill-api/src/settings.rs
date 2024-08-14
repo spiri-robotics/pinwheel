@@ -21,6 +21,7 @@ use axum::{
     Json, Router,
 };
 
+
 use serde::Deserialize;
 use windmill_common::{
     error::{self, JsonResult, Result},
@@ -237,12 +238,12 @@ pub async fn set_global_setting_internal(
         }
         v => {
             sqlx::query!(
-                "INSERT INTO global_settings (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = $2, updated_at = now()",
-                key,
-                v
-            )
-            .execute(db)
-            .await?;
+                 "INSERT INTO global_settings (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = $2, updated_at = now()",
+                 key,
+                 v
+             )
+             .execute(db)
+             .await?;
             tracing::info!("Set global setting {} to {}", key, v);
         }
     };
@@ -319,6 +320,7 @@ pub async fn get_latest_key_renewal_attempt(
         None => Ok(Json(None)),
     }
 }
+
 
 pub async fn renew_license_key() -> Result<String> {
     return Err(error::Error::BadRequest(
