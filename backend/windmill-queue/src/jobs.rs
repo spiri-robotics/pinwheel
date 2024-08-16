@@ -52,7 +52,6 @@ use windmill_common::{
     jobs::{
         get_payload_tag_from_prefixed_path, CompletedJob, JobKind, JobPayload, QueuedJob, RawCode,
     },
-    oauth2::WORKSPACE_SLACK_BOT_TOKEN_PATH,
     schedule::Schedule,
     scripts::{get_full_hub_script_by_path, ScriptHash, ScriptLang},
     users::{SUPERADMIN_NOTIFICATION_EMAIL, SUPERADMIN_SECRET_EMAIL},
@@ -1293,16 +1292,6 @@ pub async fn push_error_handler<
         }
     }
 
-    // TODO(gbouv): REMOVE THIS after December 1st 2023 and ping users to re-save their error handlers
-    if on_failure_path
-        .to_string()
-        .eq("script/hub/5792/workspace-or-schedule-error-handler-slack")
-    {
-        // default slack error handler being used -> we need to inject the slack token
-        let slack_resource = format!("$res:{WORKSPACE_SLACK_BOT_TOKEN_PATH}");
-        extra.insert("slack".to_string(), to_raw_value(&slack_resource));
-    }
-
     let result = sanitize_result(result);
 
     let tx = PushIsolationLevel::IsolatedRoot(db.clone(), rsmq);
@@ -1415,15 +1404,6 @@ async fn handle_recovered_schedule<
                 "args of scripts needs to be dict".to_string(),
             ));
         }
-    }
-    // TODO(gbouv): REMOVE THIS after December 1st 2023 and ping users to re-save their error handlers
-    if on_recovery_path
-        .to_string()
-        .eq("script/hub/2430/slack/schedule-recovery-handler-slack")
-    {
-        // default slack error handler being used -> we need to inject the slack token
-        let slack_resource = format!("$res:{WORKSPACE_SLACK_BOT_TOKEN_PATH}");
-        extra.insert("slack".to_string(), to_raw_value(&slack_resource));
     }
 
     let args = error_job
@@ -2949,7 +2929,8 @@ pub async fn push<'c, 'd, R: rsmq_async::RsmqConnection + Send + 'c>(
             }
 
             let hub_script =
-                get_full_hub_script_by_path(StripPath(path.clone()), &HTTP_CLIENT, _db).await?;
+                get_full_hub_script_by_path(StripPath(path.clone()), &HTTP_CLIENT, Some(_db))
+                    .await?;
 
             (
                 None,
