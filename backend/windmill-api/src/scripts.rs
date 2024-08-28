@@ -43,7 +43,7 @@ use windmill_common::{
     schedule::Schedule,
     scripts::{
         to_i64, HubScript, ListScriptQuery, ListableScript, NewScript, Schema, Script, ScriptHash,
-        ScriptHistory, ScriptHistoryUpdate, ScriptKind, ScriptLang,
+        ScriptHistory, ScriptHistoryUpdate, ScriptKind, ScriptLang, ScriptWithStarred,
     },
     users::username_to_permissioned_as,
     utils::{
@@ -444,7 +444,8 @@ async fn create_script_internal<'c>(
                 )));
             };
 
-            let ps = get_script_by_hash_internal(tx.transaction_mut(), &w_id, p_hash, None).await?;
+            let ScriptWithStarred { script: ps, .. } =
+                get_script_by_hash_internal(tx.transaction_mut(), &w_id, p_hash, None).await?;
 
             if ps.path != ns.path {
                 require_owner_of_path(&authed, &ps.path)?;
@@ -745,12 +746,12 @@ async fn get_script_by_path(
     Extension(user_db): Extension<UserDB>,
     Path((w_id, path)): Path<(String, StripPath)>,
     Query(query): Query<WithStarredInfoQuery>,
-) -> JsonResult<Script> {
+) -> JsonResult<ScriptWithStarred> {
     let path = path.to_path();
     let mut tx = user_db.begin(&authed).await?;
 
     let script_o = if query.with_starred_info.unwrap_or(false) {
-        sqlx::query_as::<_, Script>(
+        sqlx::query_as::<_, ScriptWithStarred>(
             "SELECT s.*, favorite.path IS NOT NULL as starred
             FROM script s
             LEFT JOIN favorite
@@ -768,7 +769,7 @@ async fn get_script_by_path(
         .fetch_optional(&mut *tx)
         .await?
     } else {
-        sqlx::query_as::<_, Script>(
+        sqlx::query_as::<_, ScriptWithStarred>(
             "SELECT *, NULL as starred FROM script WHERE path = $1 AND workspace_id = $2 \
              AND created_at = (SELECT max(created_at) FROM script WHERE path = $1 AND \
              workspace_id = $2)",
@@ -997,9 +998,9 @@ async fn get_script_by_hash_internal<'c>(
     workspace_id: &str,
     hash: &ScriptHash,
     with_starred_info_for_username: Option<&str>,
-) -> Result<Script> {
+) -> Result<ScriptWithStarred> {
     let script_o = if let Some(username) = with_starred_info_for_username {
-        sqlx::query_as::<_, Script>(
+        sqlx::query_as::<_, ScriptWithStarred>(
             "SELECT s.*, favorite.path IS NOT NULL as starred
             FROM script s
             LEFT JOIN favorite 
@@ -1015,7 +1016,7 @@ async fn get_script_by_hash_internal<'c>(
         .fetch_optional(&mut **db)
         .await?
     } else {
-        sqlx::query_as::<_, Script>(
+        sqlx::query_as::<_, ScriptWithStarred>(
             "SELECT *, NULL as starred FROM script WHERE hash = $1 AND workspace_id = $2",
         )
         .bind(hash)
@@ -1033,7 +1034,7 @@ async fn get_script_by_hash(
     Path((w_id, hash)): Path<(String, ScriptHash)>,
     Query(query): Query<WithStarredInfoQuery>,
     Extension(authed): Extension<ApiAuthed>,
-) -> JsonResult<Script> {
+) -> JsonResult<ScriptWithStarred> {
     let mut tx = db.begin().await?;
     let r = get_script_by_hash_internal(
         &mut tx,
@@ -1064,7 +1065,7 @@ async fn raw_script_by_hash(
     let r = get_script_by_hash_internal(&mut tx, &w_id, &hash, None).await?;
     tx.commit().await?;
 
-    Ok(r.content)
+    Ok(r.script.content)
 }
 
 #[derive(FromRow, Serialize)]
