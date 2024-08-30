@@ -243,6 +243,31 @@ pub async fn send_email(
     return Ok(());
 }
 
-pub async fn report_critical_error(error_message: String) -> () {
+pub async fn report_critical_error(error_message: String, _db: DB) -> () {
     tracing::error!("CRITICAL ERROR: {error_message}");
+
+    if let Err(err) = sqlx::query!(
+        "INSERT INTO alerts (alert_type, message) VALUES ('critical_error', $1)",
+        error_message
+    )
+    .execute(&_db)
+    .await
+    {
+        tracing::error!("Failed to save critical error to database: {}", err);
+    }
+
+}
+
+pub async fn report_recovered_critical_error(message: String, _db: DB) -> () {
+    tracing::info!("RECOVERED CRITICAL ERROR: {message}");
+
+    if let Err(err) = sqlx::query!(
+        "INSERT INTO alerts (alert_type, message) VALUES ('recovered_critical_error', $1)",
+        message
+    )
+    .execute(&_db)
+    .await
+    {
+        tracing::error!("Failed to save critical error to database: {}", err);
+    }
 }

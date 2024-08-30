@@ -1053,10 +1053,10 @@ pub async fn report_error_to_workspace_handler_or_critical_side_channel<
                 queued_job.id,
                 err
             );
-            report_critical_error(error_message).await;
+            report_critical_error(error_message, db.clone()).await;
         }
     } else {
-        report_critical_error(error_message).await;
+        report_critical_error(error_message, db.clone()).await;
     }
 }
 
