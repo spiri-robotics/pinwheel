@@ -1,4 +1,3 @@
-use crate::db::DB;
 use crate::ee::LicensePlan::Community;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -24,6 +23,9 @@ pub async fn get_license_plan() -> LicensePlan {
 #[derive(Deserialize)]
 #[serde(untagged)]
 pub enum CriticalErrorChannel {}
+
+pub enum CriticalAlertKind {
+}
 
 
 

@@ -17,6 +17,7 @@ use git_version::git_version;
 use mail_send::mail_builder::MessageBuilder;
 use mail_send::SmtpClientBuilder;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::{Pool, Postgres};
@@ -26,6 +27,14 @@ pub const DEFAULT_PER_PAGE: usize = 1000;
 
 pub const GIT_VERSION: &str =
     git_version!(args = ["--tag", "--always"], fallback = "unknown-version");
+
+lazy_static::lazy_static! {
+    pub static ref HTTP_CLIENT: Client = reqwest::ClientBuilder::new()
+        .user_agent("windmill/beta")
+        .timeout(std::time::Duration::from_secs(20))
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .build().unwrap();
+}
 
 #[derive(Deserialize)]
 pub struct Pagination {
