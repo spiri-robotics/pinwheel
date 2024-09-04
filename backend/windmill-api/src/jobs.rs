@@ -4300,6 +4300,13 @@ pub fn filter_list_completed_query(
             .on_eq("id", "outstanding_wait_time.job_id");
     }
 
+    if let Some(label) = &lq.label {
+        let mut wh = format!("result->'wm_labels' ? ");
+        wh.push_str(&format!("'{}'", &label.replace("'", "''")));
+        sqlb.and_where("result ? 'wm_labels'");
+        sqlb.and_where(&wh);
+    }
+
     if w_id != "admins" || !lq.all_workspaces.is_some_and(|x| x) {
         sqlb.and_where_eq("workspace_id", "?".bind(&w_id));
     }
@@ -4386,13 +4393,6 @@ pub fn filter_list_completed_query(
 
     if let Some(result) = &lq.result {
         sqlb.and_where("result @> ?".bind(&result.replace("'", "''")));
-    }
-
-    if let Some(label) = &lq.label {
-        let mut wh = format!("result->'wm_labels' ? ");
-        wh.push_str(&format!("'{}'", &label.replace("'", "''")));
-        sqlb.and_where(&wh);
-        sqlb.and_where("result ? 'wm_labels'");
     }
 
     if lq.is_not_schedule.unwrap_or(false) {
