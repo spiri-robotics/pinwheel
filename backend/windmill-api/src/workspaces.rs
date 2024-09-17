@@ -168,9 +168,9 @@ pub struct WorkspaceSettings {
     pub error_handler: Option<String>,
     pub error_handler_extra_args: Option<serde_json::Value>,
     pub error_handler_muted_on_cancel: Option<bool>,
-    pub large_file_storage: Option<serde_json::Value>,  // effectively: DatasetsStorage
-    pub git_sync: Option<serde_json::Value>,            // effectively: WorkspaceGitSyncSettings
-    pub deploy_ui: Option<serde_json::Value>,           // effectively: WorkspaceDeploymentUISettings
+    pub large_file_storage: Option<serde_json::Value>, // effectively: DatasetsStorage
+    pub git_sync: Option<serde_json::Value>,           // effectively: WorkspaceGitSyncSettings
+    pub deploy_ui: Option<serde_json::Value>,          // effectively: WorkspaceDeploymentUISettings
     pub default_app: Option<String>,
     pub automatic_billing: bool,
     pub default_scripts: Option<serde_json::Value>,
@@ -231,7 +231,7 @@ struct EditCopilotConfig {
 struct LargeFileStorageWithSecondary {
     #[serde(flatten)]
     large_file_storage: LargeFileStorage,
-
+    #[serde(default)]
     secondary_storage: HashMap<String, LargeFileStorage>,
 }
 
@@ -976,9 +976,6 @@ async fn edit_deploy_ui_config(
         "Deployment UI is only available on Windmill Enterprise Edition".to_string(),
     ));
 }
-
-
-
 
 
 #[derive(Deserialize)]
