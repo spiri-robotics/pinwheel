@@ -17,6 +17,7 @@ mod rust_executor;
 mod worker;
 mod worker_flow;
 mod worker_lockfiles;
+mod ansible_executor;
 pub use worker::*;
 
 pub use result_processor::handle_job_error;
