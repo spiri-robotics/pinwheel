@@ -32,13 +32,10 @@ use reqwest::Response;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sqlx::{types::Json, Pool, Postgres};
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap},
-    hash::Hash,
-    sync::{
+    collections::{hash_map::DefaultHasher, HashMap}, fs::DirBuilder, hash::Hash, sync::{
         atomic::{AtomicBool, AtomicU16, Ordering},
         Arc,
-    },
-    time::Duration,
+    }, time::Duration
 };
 #[cfg(feature = "benchmark")]
 use std::sync::atomic::AtomicUsize;
@@ -74,7 +71,6 @@ use tokio::fs::symlink;
 use tokio::fs::symlink_file as symlink;
 
 use tokio::{
-    fs::DirBuilder,
     sync::{
         mpsc::{self, Sender},
         RwLock,
@@ -729,7 +725,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
     DirBuilder::new()
         .recursive(true)
         .create(&worker_dir)
-        .await
         .expect("could not create initial worker dir");
 
     if !*DISABLE_NSJAIL {
@@ -1632,12 +1627,21 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                     DirBuilder::new()
                         .recursive(true)
                         .create(&job_dir)
-                        .await
                         .expect("could not create job dir");
 
                     let same_worker = job.same_worker;
-
-                    let target = &format!("{job_dir}/shared");
+                    
+                    let folder = if job.language == Some(ScriptLang::Go) {
+                        DirBuilder::new()
+                            .recursive(true)
+                            .create(&format!("{job_dir}/go"))
+                            .expect("could not create go dir");
+                        "/go"
+                    } else {
+                        ""
+                    };
+                    
+                    let target = &format!("{job_dir}{folder}/shared");
 
                     if same_worker && job.parent_job.is_some() {
                         if tokio::fs::metadata(target).await.is_err() {
@@ -1646,7 +1650,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                             DirBuilder::new()
                                 .recursive(true)
                                 .create(&parent_shared_dir)
-                                .await
                                 .expect("could not create parent shared dir");
 
                             symlink(&parent_shared_dir, target)
@@ -1657,7 +1660,6 @@ pub async fn run_worker<R: rsmq_async::RsmqConnection + Send + Sync + Clone + 's
                         DirBuilder::new()
                             .recursive(true)
                             .create(target)
-                            .await
                             .expect("could not create shared dir");
                     }
 
@@ -2594,11 +2596,12 @@ async fn handle_code_execution_job(
     );
 
     let shared_mount = if job.same_worker && job.language != Some(ScriptLang::Deno) {
+        let folder = if job.language == Some(ScriptLang::Go) { "/go" } else { "" };
         format!(
             r#"
 mount {{
-    src: "{job_dir}/shared"
-    dst: "/tmp/shared"
+    src: "{job_dir}{folder}/shared"
+    dst: "/tmp{folder}/shared"
     is_bind: true
     rw: true
 }}
