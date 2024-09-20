@@ -51,6 +51,7 @@ use windmill_common::{
     },
     jobs::{
         get_payload_tag_from_prefixed_path, CompletedJob, JobKind, JobPayload, QueuedJob, RawCode,
+        ENTRYPOINT_OVERRIDE, PREPROCESSOR_FAKE_ENTRYPOINT,
     },
     schedule::Schedule,
     scripts::{get_full_hub_script_by_path, ScriptHash, ScriptLang},
@@ -928,6 +929,7 @@ pub async fn add_completed_job<
                             .clone()
                             .unwrap_or_else(|| ScriptLang::Deno),
                         priority: queued_job.priority,
+                        apply_preprocessor: false,
                     },
                     queued_job
                         .args
@@ -2784,7 +2786,7 @@ pub async fn push<'c, 'd, R: rsmq_async::RsmqConnection + Send + 'c>(
     mut tx: PushIsolationLevel<'c, R>,
     workspace_id: &str,
     job_payload: JobPayload,
-    args: PushArgs<'d>,
+    mut args: PushArgs<'d>,
     user: &str,
     mut email: &str,
     mut permissioned_as: String,
@@ -3003,21 +3005,38 @@ pub async fn push<'c, 'd, R: rsmq_async::RsmqConnection + Send + 'c>(
             language,
             dedicated_worker,
             priority,
-        } => (
-            Some(hash.0),
-            Some(path),
-            None,
-            JobKind::Script,
-            None,
-            None,
-            Some(language),
-            custom_concurrency_key,
-            concurrent_limit,
-            concurrency_time_window_s,
-            cache_ttl,
-            dedicated_worker,
-            priority,
-        ),
+            apply_preprocessor,
+        } => {
+            let extra = args.extra.get_or_insert_with(HashMap::new);
+            if apply_preprocessor {
+                extra.insert(
+                    ENTRYPOINT_OVERRIDE.to_string(),
+                    to_raw_value(&PREPROCESSOR_FAKE_ENTRYPOINT),
+                );
+                extra.entry("wm_trigger".to_string()).or_insert_with(|| {
+                    to_raw_value(&serde_json::json!({
+                        "kind": "webhook",
+                    }))
+                });
+            } else {
+                extra.remove("wm_trigger");
+            }
+            (
+                Some(hash.0),
+                Some(path),
+                None,
+                JobKind::Script,
+                None,
+                None,
+                Some(language),
+                custom_concurrency_key,
+                concurrent_limit,
+                concurrency_time_window_s,
+                cache_ttl,
+                dedicated_worker,
+                priority,
+            )
+        }
         JobPayload::ScriptHub { path } => {
             if path == "hub/7771/slack" || path == "hub/7836/slack" {
                 permissioned_as = SUPERADMIN_NOTIFICATION_EMAIL.to_string();
@@ -3196,9 +3215,13 @@ pub async fn push<'c, 'd, R: rsmq_async::RsmqConnection + Send + 'c>(
                             branch_or_iteration_n: restarted_from_val.branch_or_iteration_n,
                         }),
                         user_states,
+                        preprocessor_module: None,
                     }
                 }
-                _ => FlowStatus::new(&value), // this is a new flow being pushed, flow_status is set to flow_value
+                _ => {
+                    value.preprocessor_module = None;
+                    FlowStatus::new(&value)
+                } // this is a new flow being pushed, flow_status is set to flow_value
             };
             (
                 None,
@@ -3265,6 +3288,7 @@ pub async fn push<'c, 'd, R: rsmq_async::RsmqConnection + Send + 'c>(
                 early_return: None,
                 concurrency_key: custom_concurrency_key.clone(),
                 priority: priority,
+                preprocessor_module: None,
             };
             (
                 None,
@@ -3282,7 +3306,7 @@ pub async fn push<'c, 'd, R: rsmq_async::RsmqConnection + Send + 'c>(
                 priority,
             )
         }
-        JobPayload::Flow { path, dedicated_worker } => {
+        JobPayload::Flow { path, dedicated_worker, apply_preprocessor } => {
             let value_json = fetch_scalar_isolated!(
                 sqlx::query_as::<_, FlowRawValue>(
                     "SELECT flow_version.value FROM flow 
@@ -3310,6 +3334,18 @@ pub async fn push<'c, 'd, R: rsmq_async::RsmqConnection + Send + 'c>(
             let custom_concurrency_key = value.concurrency_key.clone();
             let concurrency_time_window_s = value.concurrency_time_window_s.clone();
             let concurrent_limit = value.concurrent_limit.clone();
+
+            let extra = args.extra.get_or_insert_with(HashMap::new);
+            if !apply_preprocessor {
+                value.preprocessor_module = None;
+                extra.remove("wm_trigger");
+            } else {
+                extra.entry("wm_trigger".to_string()).or_insert_with(|| {
+                    to_raw_value(&serde_json::json!({
+                        "kind": "webhook",
+                    }))
+                });
+            }
             let status = Some(FlowStatus::new(&value));
             (
                 None,
@@ -3366,6 +3402,7 @@ pub async fn push<'c, 'd, R: rsmq_async::RsmqConnection + Send + 'c>(
                     branch_or_iteration_n,
                 }),
                 user_states,
+                preprocessor_module: None,
             };
             (
                 None,

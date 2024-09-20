@@ -1214,6 +1214,7 @@ mod tests {
                 delete_after_use: None,
                 continue_on_error: None,
             })),
+            preprocessor_module: None,
             same_worker: false,
             concurrent_limit: None,
             concurrency_time_window_s: None,
@@ -1286,7 +1287,8 @@ mod tests {
                 "expr": "previous.isEmpty()",
                 "skip_if_stopped": false
             }
-          }
+          },
+          "preprocessor_module": Option::<String>::None
         });
         assert_eq!(dbg!(serde_json::json!(fv)), dbg!(expect));
     }
