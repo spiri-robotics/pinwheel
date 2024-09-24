@@ -22,7 +22,10 @@ pub async fn get_license_plan() -> LicensePlan {
 
 #[derive(Deserialize)]
 #[serde(untagged)]
-pub enum CriticalErrorChannel {}
+pub enum CriticalErrorChannel {
+    Email { email: String },
+    Slack { slack_channel: String },
+}
 
 pub enum CriticalAlertKind {
 }
