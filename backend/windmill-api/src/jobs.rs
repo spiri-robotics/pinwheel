@@ -4294,8 +4294,8 @@ async fn get_job_update(
                 "progress_perc"
                 
             )
-            .fetch_one(&db)
-            .await?
+            .fetch_optional(&db)
+            .await?.and_then(|inner| inner)
     } else {
         None
     };
