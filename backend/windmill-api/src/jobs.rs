@@ -31,6 +31,7 @@ use crate::add_webhook_allowed_origin;
 use crate::concurrency_groups::join_concurrency_key;
 use crate::db::ApiAuthed;
 
+use crate::users::get_scope_tags;
 use crate::utils::content_plain;
 use crate::{
     db::DB,
@@ -1194,12 +1195,17 @@ pub fn list_queue_jobs_query(
     lq: &ListQueueQuery,
     fields: &[&str],
     join_outstanding_wait_times: bool,
+    tags: Option<Vec<&str>>,
 ) -> SqlBuilder {
-    let sqlb = SqlBuilder::select_from("queue")
+    let mut sqlb = SqlBuilder::select_from("queue")
         .fields(fields)
         .order_by("created_at", lq.order_desc.unwrap_or(true))
         .limit(1000)
         .clone();
+
+    if let Some(tags) = tags {
+        sqlb.and_where_in("tag", &tags.iter().map(|x| quote(x)).collect::<Vec<_>>());
+    }
 
     filter_list_queue_query(sqlb, lq, w_id, join_outstanding_wait_times)
 }
@@ -1256,6 +1262,7 @@ async fn list_queue_jobs(
             "workspace_id",
         ],
         false,
+        get_scope_tags(&authed),
     )
     .sql()?;
     let mut tx = user_db.begin(&authed).await?;
@@ -1444,6 +1451,10 @@ async fn list_filtered_uuids(
 
     sqlb.and_where_is_null("schedule_path");
 
+    if let Some(tags) = get_scope_tags(&authed) {
+        sqlb.and_where_in("tag", &tags.iter().map(|x| quote(x)).collect::<Vec<_>>());
+    }
+
     sqlb = filter_list_queue_query(sqlb, &lq, w_id.as_str(), false);
 
     let sql = sqlb.query()?;
@@ -1503,7 +1514,7 @@ async fn list_jobs(
     Query(lq): Query<ListCompletedQuery>,
     Extension(_api_list_jobs_query_duration): Extension<Option<Histo>>,
 ) -> error::JsonResult<Vec<Job>> {
-    check_scopes(&authed, || format!("listjobs"))?;
+    check_scopes(&authed, || format!("jobs:listjobs"))?;
 
     let (per_page, offset) = paginate(pagination);
     let lqc = lq.clone();
@@ -1521,6 +1532,7 @@ async fn list_jobs(
             &ListCompletedQuery { order_desc: Some(true), ..lqc },
             UnifiedJob::completed_job_fields(),
             true,
+            get_scope_tags(&authed),
         ))
     } else {
         None
@@ -1536,6 +1548,7 @@ async fn list_jobs(
             &ListQueueQuery { order_desc: Some(true), ..lq.into() },
             UnifiedJob::queued_job_fields(),
             true,
+            get_scope_tags(&authed),
         );
 
         if let Some(sqlc) = sqlc {
@@ -1586,7 +1599,7 @@ pub async fn resume_suspended_flow_as_owner(
     Path((_w_id, flow_id)): Path<(String, Uuid)>,
     QueryOrBody(value): QueryOrBody<serde_json::Value>,
 ) -> error::Result<StatusCode> {
-    check_scopes(&authed, || format!("resumeflow"))?;
+    check_scopes(&authed, || format!("jobs:resumeflow"))?;
     let value = value.unwrap_or(serde_json::Value::Null);
     let mut tx = db.begin().await?;
 
@@ -3653,7 +3666,7 @@ async fn run_preview_script(
     Json(preview): Json<Preview>,
 ) -> error::Result<(StatusCode, String)> {
 
-    check_scopes(&authed, || format!("runscript"))?;
+    check_scopes(&authed, || format!("jobs:runscript"))?;
     if authed.is_operator {
         return Err(error::Error::NotAuthorized(
             "Operators cannot run preview jobs for security reasons".to_string(),
@@ -4067,7 +4080,7 @@ async fn run_preview_flow_job(
     Query(run_query): Query<RunJobQuery>,
     Json(raw_flow): Json<PreviewFlow>,
 ) -> error::Result<(StatusCode, String)> {
-    check_scopes(&authed, || format!("runflow"))?;
+    check_scopes(&authed, || format!("jobs:runflow"))?;
     if authed.is_operator {
         return Err(error::Error::NotAuthorized(
             "Operators cannot run preview jobs for security reasons".to_string(),
@@ -4474,13 +4487,18 @@ pub fn list_completed_jobs_query(
     lq: &ListCompletedQuery,
     fields: &[&str],
     join_outstanding_wait_times: bool,
+    tags: Option<Vec<&str>>,
 ) -> SqlBuilder {
-    let sqlb = SqlBuilder::select_from("completed_job")
+    let mut sqlb = SqlBuilder::select_from("completed_job")
         .fields(fields)
         .order_by("created_at", lq.order_desc.unwrap_or(true))
         .offset(offset)
         .limit(per_page)
         .clone();
+
+    if let Some(tags) = tags {
+        sqlb.and_where_in("tag", &tags.iter().map(|x| quote(x)).collect::<Vec<_>>());
+    }
 
     filter_list_completed_query(sqlb, lq, w_id, join_outstanding_wait_times)
 }
@@ -4526,7 +4544,7 @@ async fn list_completed_jobs(
     Query(pagination): Query<Pagination>,
     Query(lq): Query<ListCompletedQuery>,
 ) -> error::JsonResult<Vec<ListableCompletedJob>> {
-    check_scopes(&authed, || format!("listjobs"))?;
+    check_scopes(&authed, || format!("jobs:listjobs"))?;
 
     let (per_page, offset) = paginate(pagination);
 
@@ -4568,6 +4586,7 @@ async fn list_completed_jobs(
             "'CompletedJob' as type",
         ],
         false,
+        get_scope_tags(&authed),
     )
     .sql()?;
     let mut tx = user_db.begin(&authed).await?;
@@ -4792,7 +4811,7 @@ async fn delete_completed_job<'a>(
     Extension(user_db): Extension<UserDB>,
     Path((w_id, id)): Path<(String, Uuid)>,
 ) -> error::Result<Response> {
-    check_scopes(&authed, || format!("deletejob"))?;
+    check_scopes(&authed, || format!("jobs:deletejob"))?;
 
     let mut tx = user_db.begin(&authed).await?;
 
