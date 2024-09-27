@@ -884,7 +884,6 @@ async fn list_paths(
 
 #[derive(Deserialize)]
 pub struct ToggleWorkspaceErrorHandler {
-    pub muted: Option<bool>,
 }
 
 async fn toggle_workspace_error_handler(

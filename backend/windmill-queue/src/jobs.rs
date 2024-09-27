@@ -37,7 +37,7 @@ use ulid::Ulid;
 use uuid::Uuid;
 use windmill_audit::audit_ee::{audit_log, AuditAuthor};
 use windmill_audit::ActionKind;
-use windmill_common::worker::PriorityTags;
+
 use windmill_common::{
     auth::{fetch_authed_from_permissioned_as, permissioned_as_to_username},
     db::{Authed, UserDB},
@@ -61,8 +61,9 @@ use windmill_common::{
         to_raw_value, DEFAULT_TAGS_PER_WORKSPACE, DEFAULT_TAGS_WORKSPACES, NO_LOGS, WORKER_CONFIG,
         WORKER_PULL_QUERIES, WORKER_SUSPENDED_PULL_QUERY,
     },
-    BASE_URL, DB, METRICS_ENABLED,
+    DB, METRICS_ENABLED,
 };
+
 
 #[cfg(feature = "cloud")]
 use windmill_common::users::SUPERADMIN_SYNC_EMAIL;
@@ -122,11 +123,9 @@ const MAX_FREE_CONCURRENT_RUNS: i32 = 30;
 
 const ERROR_HANDLER_USERNAME: &str = "error_handler";
 const SCHEDULE_ERROR_HANDLER_USERNAME: &str = "schedule_error_handler";
-const SCHEDULE_RECOVERY_HANDLER_USERNAME: &str = "schedule_recovery_handler";
 const ERROR_HANDLER_USER_GROUP: &str = "g/error_handler";
 const ERROR_HANDLER_USER_EMAIL: &str = "error_handler@windmill.dev";
 const SCHEDULE_ERROR_HANDLER_USER_EMAIL: &str = "schedule_error_handler@windmill.dev";
-const SCHEDULE_RECOVERY_HANDLER_USER_EMAIL: &str = "schedule_recovery_handler@windmill.dev";
 
 #[derive(Clone, Debug)]
 pub struct CanceledBy {
@@ -474,7 +473,6 @@ where
 
 #[derive(Deserialize)]
 struct RawFlowFailureModule {
-    failure_module: Option<Box<RawValue>>,
 }
 
 #[instrument(level = "trace", skip_all)]
@@ -667,8 +665,6 @@ pub async fn add_completed_job<
             }
         }
     }
-    // tracing::error!("Added completed job {:#?}", queued_job);
-    let mut skip_downstream_error_handlers = false;
     tx = delete_job(tx, &queued_job.workspace_id, job_id).await?;
     // tracing::error!("3 {:?}", start.elapsed());
 
@@ -713,7 +709,6 @@ pub async fn add_completed_job<
             .await?;
 
             if let Some(schedule) = schedule {
-                skip_downstream_error_handlers = schedule.ws_error_handler_muted;
 
                 // script or flow that failed on start and might not have been rescheduled
                 let schedule_next_tick = !queued_job.is_flow()
@@ -746,41 +741,7 @@ pub async fn add_completed_job<
                     };
                 }
 
-                if let Err(err) = apply_schedule_handlers(
-                    rsmq.clone(),
-                    db,
-                    &schedule,
-                    script_path,
-                    &queued_job.workspace_id,
-                    success,
-                    result,
-                    job_id,
-                    queued_job.started_at.unwrap_or(chrono::Utc::now()),
-                    queued_job.priority,
-                )
-                .await
-                {
-                    if !success {
-                        tracing::error!("Could not apply schedule error handler: {}", err);
-                        let base_url = BASE_URL.read().await;
-                        let w_id: &String = &queued_job.workspace_id;
-                        if !matches!(err, Error::QuotaExceeded(_)) {
-                            report_error_to_workspace_handler_or_critical_side_channel(
-                                    rsmq.clone(),
-                                    &queued_job,
-                                    db,
-                                    format!(
-                                        "Failed to push schedule error handler job to handle failed job ({base_url}/run/{}?workspace={w_id}): {}",
-                                        queued_job.id,
-                                        err
-                                    ),
-                                )
-                                .await;
-                        }
-                    } else {
-                        tracing::error!("Could not apply schedule recovery handler: {}", err);
-                    }
-                };
+;
             } else {
                 tracing::error!(
                     "Schedule {schedule_path} in {} not found. Impossible to schedule again and apply schedule handlers",
@@ -1221,30 +1182,7 @@ struct CompletedJobSubset {
     result: Option<sqlx::types::Json<Box<RawValue>>>,
     started_at: chrono::DateTime<chrono::Utc>,
 }
-async fn apply_schedule_handlers<
-    'a,
-    'c,
-    T: Serialize + Send + Sync,
-    R: rsmq_async::RsmqConnection + Clone + Send + 'c,
->(
-    rsmq: Option<R>,
-    db: &Pool<Postgres>,
-    schedule: &Schedule,
-    script_path: &str,
-    w_id: &str,
-    success: bool,
-    result: Json<&'a T>,
-    job_id: Uuid,
-    started_at: DateTime<Utc>,
-    job_priority: Option<i16>,
-) -> windmill_common::error::Result<()> {
-    if !success {
-    } else {
 
-    }
-
-    Ok(())
-}
 
 pub async fn push_error_handler<
     'a,
@@ -1355,185 +1293,7 @@ fn sanitize_result<T: Serialize + Send + Sync>(result: Json<&T>) -> HashMap<Stri
         .unwrap_or_else(|_| [("error".to_string(), RawValue::from_string(as_str).unwrap())].into())
 }
 
-// #[derive(Serialize)]
-// pub struct RecoveryValue<T> {
-//     error_started_at: chrono::DateTime<Utc>,
-//     schedule_path: String,
-//     path: String,
-//     is_flow: boolean,
-//     extra_args: serde_json::Value
-// }
-async fn handle_recovered_schedule<
-    'a,
-    'c,
-    T: Serialize + Send + Sync,
-    R: rsmq_async::RsmqConnection + Clone + Send + 'c,
->(
-    db: &Pool<Postgres>,
-    tx: QueueTransaction<'c, R>,
-    job_id: Uuid,
-    schedule_path: &str,
-    script_path: &str,
-    is_flow: bool,
-    w_id: &str,
-    on_recovery_path: &str,
-    error_job: CompletedJobSubset,
-    successful_job_result: Json<&'a T>,
-    successful_times: i32,
-    successful_job_started_at: DateTime<Utc>,
-    extra_args: Option<Json<Box<RawValue>>>,
-) -> windmill_common::error::Result<()> {
-    let (payload, tag) = get_payload_tag_from_prefixed_path(on_recovery_path, db, w_id).await?;
 
-    let mut extra = HashMap::new();
-    extra.insert(
-        "error_started_at".to_string(),
-        to_raw_value(&error_job.started_at),
-    );
-    extra.insert("schedule_path".to_string(), to_raw_value(&schedule_path));
-    extra.insert("path".to_string(), to_raw_value(&script_path));
-    extra.insert("is_flow".to_string(), to_raw_value(&is_flow));
-    extra.insert(
-        "success_result".to_string(),
-        serde_json::from_str::<Box<RawValue>>(
-            &serde_json::to_string(&successful_job_result).unwrap(),
-        )
-        .unwrap_or_else(|_| serde_json::value::RawValue::from_string("{}".to_string()).unwrap()),
-    );
-    extra.insert("success_times".to_string(), to_raw_value(&successful_times));
-    extra.insert(
-        "success_started_at".to_string(),
-        to_raw_value(&successful_job_started_at),
-    );
-    if let Some(args_v) = extra_args {
-        if let Ok(args_m) = serde_json::from_str::<HashMap<String, Box<RawValue>>>(args_v.get()) {
-            extra.extend(args_m);
-        } else {
-            return Err(error::Error::ExecutionErr(
-                "args of scripts needs to be dict".to_string(),
-            ));
-        }
-    }
-
-    let args = error_job
-        .result
-        .and_then(|x| serde_json::from_str::<HashMap<String, Box<RawValue>>>(x.0.get()).ok())
-        .unwrap_or_else(HashMap::new);
-
-    let tx = PushIsolationLevel::Transaction(tx);
-    let (uuid, tx) = push(
-        &db,
-        tx,
-        w_id,
-        payload,
-        PushArgs { extra: Some(extra), args: &args },
-        SCHEDULE_RECOVERY_HANDLER_USERNAME,
-        SCHEDULE_RECOVERY_HANDLER_USER_EMAIL,
-        ERROR_HANDLER_USER_GROUP.to_string(),
-        None,
-        None,
-        Some(job_id),
-        Some(job_id),
-        None,
-        false,
-        false,
-        None,
-        true,
-        tag,
-        None,
-        None,
-        None,
-        None,
-    )
-    .await?;
-    tracing::info!(
-        "Pushed on_recovery job {} for {} to queue",
-        uuid,
-        schedule_path
-    );
-    tx.commit().await?;
-    Ok(())
-}
-
-async fn handle_successful_schedule<
-    'a,
-    'c,
-    T: Serialize + Send + Sync,
-    R: rsmq_async::RsmqConnection + Clone + Send + 'c,
->(
-    db: &Pool<Postgres>,
-    rsmq: Option<R>,
-    job_id: Uuid,
-    schedule_path: &str,
-    script_path: &str,
-    is_flow: bool,
-    w_id: &str,
-    on_success_path: &str,
-    successful_job_result: Json<&'a T>,
-    successful_job_started_at: DateTime<Utc>,
-    extra_args: Option<Json<Box<RawValue>>>,
-) -> windmill_common::error::Result<()> {
-    let (payload, tag) = get_payload_tag_from_prefixed_path(on_success_path, db, w_id).await?;
-
-    let mut extra = HashMap::new();
-    extra.insert("schedule_path".to_string(), to_raw_value(&schedule_path));
-    extra.insert("path".to_string(), to_raw_value(&script_path));
-    extra.insert("is_flow".to_string(), to_raw_value(&is_flow));
-    extra.insert(
-        "success_result".to_string(),
-        serde_json::from_str::<Box<RawValue>>(
-            &serde_json::to_string(&successful_job_result).unwrap(),
-        )
-        .unwrap_or_else(|_| serde_json::value::RawValue::from_string("{}".to_string()).unwrap()),
-    );
-    extra.insert(
-        "success_started_at".to_string(),
-        to_raw_value(&successful_job_started_at),
-    );
-    if let Some(args_v) = extra_args {
-        if let Ok(args_m) = serde_json::from_str::<HashMap<String, Box<RawValue>>>(args_v.get()) {
-            extra.extend(args_m);
-        } else {
-            return Err(error::Error::ExecutionErr(
-                "args of scripts needs to be dict".to_string(),
-            ));
-        }
-    }
-
-    let tx = PushIsolationLevel::IsolatedRoot(db.clone(), rsmq);
-    let (uuid, tx) = push(
-        &db,
-        tx,
-        w_id,
-        payload,
-        PushArgs { extra: Some(extra), args: &HashMap::new() },
-        SCHEDULE_RECOVERY_HANDLER_USERNAME,
-        SCHEDULE_RECOVERY_HANDLER_USER_EMAIL,
-        ERROR_HANDLER_USER_GROUP.to_string(),
-        None,
-        None,
-        Some(job_id),
-        Some(job_id),
-        None,
-        false,
-        false,
-        None,
-        true,
-        tag,
-        None,
-        None,
-        None,
-        None,
-    )
-    .await?;
-    tracing::info!(
-        "Pushed on_success job {} for {} to queue",
-        uuid,
-        schedule_path
-    );
-    tx.commit().await?;
-    Ok(())
-}
 
 pub async fn pull<R: rsmq_async::RsmqConnection + Send + Clone>(
     db: &Pool<Postgres>,
