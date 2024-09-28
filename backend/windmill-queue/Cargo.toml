@@ -11,7 +11,7 @@ path = "src/lib.rs"
 [features]
 default = []
 cloud = []
-benchmark = []
+benchmark = ["windmill-common/benchmark"]
 prometheus = ["dep:prometheus"]
 
 [dependencies]

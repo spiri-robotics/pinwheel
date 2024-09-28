@@ -11,7 +11,7 @@ path = "src/lib.rs"
 [features]
 default = []
 prometheus = ["dep:prometheus", "windmill-common/prometheus"]
-benchmark = ["windmill-queue/benchmark"]
+benchmark = ["windmill-queue/benchmark", "windmill-common/benchmark"]
 flamegraph = []
 parquet = ["windmill-common/parquet", "dep:object_store"]
 flow_testing = []

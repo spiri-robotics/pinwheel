@@ -1,8 +1,7 @@
 
 mod ansible_executor;
 mod bash_executor;
-#[cfg(feature = "benchmark")]
-mod bench;
+
 mod bun_executor;
 pub mod common;
 mod config;

@@ -1342,6 +1342,8 @@ async fn handle_zombie_jobs<R: rsmq_async::RsmqConnection + Send + Sync + Clone>
             rsmq.clone(),
             worker_name,
             send_result_never_used,
+            #[cfg(feature = "benchmark")]
+            &mut windmill_common::bench::BenchmarkIter::new(),
         )
         .await;
     }
