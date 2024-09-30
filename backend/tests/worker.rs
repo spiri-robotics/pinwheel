@@ -1120,6 +1120,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
                     priority: None,
                     delete_after_use: None,
                     continue_on_error: None,
+                    skip_if: None,
                 },
                 FlowModule {
                     id: "b".to_string(),
@@ -1160,6 +1161,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
                             priority: None,
                             delete_after_use: None,
                             continue_on_error: None,
+                            skip_if: None,
                         }],
                     }
                     .into(),
@@ -1175,6 +1177,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
                     priority: None,
                     delete_after_use: None,
                     continue_on_error: None,
+                    skip_if: None,
                 },
             ],
             same_worker: false,
@@ -1280,6 +1283,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                     priority: None,
                     delete_after_use: None,
                     continue_on_error: None,
+                    skip_if: None,
                 },
                 FlowModule {
                     id: "b".to_string(),
@@ -1330,6 +1334,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                                 priority: None,
                                 delete_after_use: None,
                                 continue_on_error: None,
+                                skip_if: None,
                             },
                             FlowModule {
                                 id: "e".to_string(),
@@ -1366,7 +1371,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                                 priority: None,
                                 delete_after_use: None,
                                 continue_on_error: None,
-
+                                skip_if: None,
                             },
                         ],
                     }.into(),
@@ -1382,6 +1387,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                     priority: None,
                     delete_after_use: None,
                     continue_on_error: None,
+                    skip_if: None,
                 },
                 FlowModule {
                     id: "c".to_string(),
@@ -1425,6 +1431,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
                     priority: None,
                     delete_after_use: None,
                     continue_on_error: None,
+                    skip_if: None,
                 },
             ],
             same_worker: true,
