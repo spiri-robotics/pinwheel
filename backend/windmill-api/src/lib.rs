@@ -37,9 +37,8 @@ use tower_http::{
     trace::TraceLayer,
 };
 use windmill_common::db::UserDB;
-use windmill_common::utils::rd_string;
 use windmill_common::worker::ALL_TAGS;
-use windmill_common::BASE_URL;
+use windmill_common::{BASE_URL, INSTANCE_NAME};
 
 use crate::scim_ee::has_scim_token;
 use windmill_common::error::AppError;
@@ -367,8 +366,6 @@ pub async fn run_server(
         )
     };
 
-    let instance_name = rd_string(5);
-
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     let port = listener.local_addr().map(|x| x.port()).unwrap_or(8000);
     let ip = listener
@@ -379,7 +376,7 @@ pub async fn run_server(
     let server = axum::serve(listener, app.into_make_service());
 
     tracing::info!(
-        instance = %instance_name,
+        instance = %*INSTANCE_NAME,
         "server started on port={} and addr={}",
         port,
         ip

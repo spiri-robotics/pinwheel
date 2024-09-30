@@ -474,9 +474,6 @@ where
     }
 }
 
-#[derive(Deserialize)]
-struct RawFlowFailureModule {
-}
 
 #[instrument(level = "trace", skip_all)]
 pub async fn add_completed_job_error<R: rsmq_async::RsmqConnection + Clone + Send>(
