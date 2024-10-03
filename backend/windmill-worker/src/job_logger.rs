@@ -1,5 +1,5 @@
-use deno_ast::swc::parser::lexer::util::CharExt;
 use itertools::Itertools;
+use swc_ecma_parser::lexer::util::CharExt;
 
 use regex::Regex;
 
