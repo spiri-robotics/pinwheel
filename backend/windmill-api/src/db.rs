@@ -199,7 +199,6 @@ pub async fn migrate(db: &DB) -> Result<(), Error> {
         Err(err) => Err(err),
     }?;
 
-
     Ok(())
 }
 
@@ -492,7 +491,6 @@ async fn fix_job_completed_index(db: &DB) -> Result<(), Error> {
 
     Ok(())
 }
-
 
 #[derive(Clone, Debug)]
 pub struct ApiAuthed {
