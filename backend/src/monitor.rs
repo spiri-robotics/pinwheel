@@ -1035,12 +1035,16 @@ pub async fn monitor_db(
     let worker_groups_alerts_f = async {
     };
 
+    let jobs_waiting_alerts_f = async {
+    };
+
     join!(
         expired_items_f,
         zombie_jobs_f,
         expose_queue_metrics_f,
         verify_license_key_f,
-        worker_groups_alerts_f
+        worker_groups_alerts_f,
+        jobs_waiting_alerts_f,
     );
 }
 
