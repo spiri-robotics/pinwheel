@@ -77,7 +77,7 @@ use windmill_common::{METRICS_DEBUG_ENABLED, METRICS_ENABLED};
 use windmill_common::{get_latest_deployed_hash_for_path, BASE_URL};
 use windmill_queue::{
     cancel_job, get_queued_job, get_result_by_id_from_running_flow, job_is_complete, push,
-    DecodeQueries, PushArgs, PushArgsOwned, PushIsolationLevel, QueueTransaction,
+    DecodeQueries, PushArgs, PushArgsOwned, PushIsolationLevel,
 };
 
 #[cfg(feature = "prometheus")]
@@ -540,8 +540,8 @@ pub async fn get_path_for_hash<'c>(
     Ok(path)
 }
 
-pub async fn get_path_tag_limits_cache_for_hash<'c, R: rsmq_async::RsmqConnection + Send>(
-    tx: &mut QueueTransaction<'c, R>,
+pub async fn get_path_tag_limits_cache_for_hash(
+    tx: &DB,
     w_id: &str,
     hash: i64,
 ) -> error::Result<(
@@ -2708,7 +2708,6 @@ pub async fn run_flow_by_path_inner(
     let flow_path = flow_path.to_path();
     check_scopes(&authed, || format!("run:flow/{flow_path}"))?;
 
-    let mut tx: QueueTransaction<'_, _> = (rsmq, user_db.begin(&authed).await?).into();
 
     let (tag, dedicated_worker, has_preprocessor) = sqlx::query!(
         "SELECT tag, dedicated_worker, flow_version.value->>'preprocessor_module' IS NOT NULL as has_preprocessor 
@@ -2719,7 +2718,7 @@ pub async fn run_flow_by_path_inner(
         flow_path,
         w_id
     )
-    .fetch_optional(&mut tx)
+    .fetch_optional(&db)
     .await?
     .map(|x| (x.tag, x.dedicated_worker, x.has_preprocessor))
     .ok_or_else(|| {
@@ -2732,7 +2731,7 @@ pub async fn run_flow_by_path_inner(
 
     check_tag_available_for_workspace(&w_id, &tag).await?;
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
-    let tx = PushIsolationLevel::Transaction(tx);
+    let tx = PushIsolationLevel::Isolated(user_db, authed.clone().into(), rsmq);
     let (uuid, tx) = push(
         &db,
         tx,
@@ -3393,15 +3392,13 @@ pub async fn run_wait_result_job_by_path_get(
     let script_path = script_path.to_path();
     check_scopes(&authed, || format!("run:script/{script_path}"))?;
 
-    let mut tx: QueueTransaction<'_, _> = (rsmq, user_db.begin(&authed).await?).into();
-
     let (job_payload, tag, delete_after_use, timeout) =
-        script_path_to_payload(script_path, &mut tx, &w_id, run_query.skip_preprocessor).await?;
+        script_path_to_payload(script_path, &db, &w_id, run_query.skip_preprocessor).await?;
 
     let tag = run_query.tag.clone().or(tag);
     check_tag_available_for_workspace(&w_id, &tag).await?;
 
-    let tx = PushIsolationLevel::Transaction(tx);
+    let tx = PushIsolationLevel::Isolated(user_db, authed.clone().into(), rsmq);
 
     let (uuid, tx) = push(
         &db,
@@ -3514,15 +3511,13 @@ pub async fn run_wait_result_script_by_path_internal(
     let script_path = script_path.to_path();
     check_scopes(&authed, || format!("run:script/{script_path}"))?;
 
-    let mut tx: QueueTransaction<'_, _> = (rsmq, user_db.begin(&authed).await?).into();
-
     let (job_payload, tag, delete_after_use, timeout) =
-        script_path_to_payload(script_path, &mut tx, &w_id, run_query.skip_preprocessor).await?;
+        script_path_to_payload(script_path, &db, &w_id, run_query.skip_preprocessor).await?;
 
     let tag = run_query.tag.clone().or(tag);
     check_tag_available_for_workspace(&w_id, &tag).await?;
 
-    let tx = PushIsolationLevel::Transaction(tx);
+    let tx = PushIsolationLevel::Isolated(user_db, authed.clone().into(), rsmq);
 
     let (uuid, tx) = push(
         &db,
@@ -3572,8 +3567,6 @@ pub async fn run_wait_result_script_by_hash(
 
     check_queue_too_long(&db, run_query.queue_limit).await?;
 
-    let mut tx: QueueTransaction<'_, _> = (rsmq, user_db.begin(&authed).await?).into();
-
     let hash = script_hash.0;
     let (
         path,
@@ -3588,7 +3581,7 @@ pub async fn run_wait_result_script_by_hash(
         delete_after_use,
         timeout,
         has_preprocessor,
-    ) = get_path_tag_limits_cache_for_hash(&mut tx, &w_id, hash).await?;
+    ) = get_path_tag_limits_cache_for_hash(&db, &w_id, hash).await?;
     if let Some(run_query_cache_ttl) = run_query.cache_ttl {
         cache_ttl = Some(run_query_cache_ttl);
     }
@@ -3597,7 +3590,7 @@ pub async fn run_wait_result_script_by_hash(
     let tag = run_query.tag.clone().or(tag);
     check_tag_available_for_workspace(&w_id, &tag).await?;
 
-    let tx = PushIsolationLevel::Transaction(tx);
+    let tx = PushIsolationLevel::Isolated(user_db, authed.clone().into(), rsmq);
 
     let (uuid, tx) = push(
         &db,
@@ -3677,7 +3670,6 @@ pub async fn run_wait_result_flow_by_path_internal(
     let flow_path = flow_path.to_path();
     check_scopes(&authed, || format!("run:flow/{flow_path}"))?;
 
-    let mut tx: QueueTransaction<'_, _> = (rsmq, user_db.begin(&authed).await?).into();
 
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
 
@@ -3690,7 +3682,7 @@ pub async fn run_wait_result_flow_by_path_internal(
         flow_path,
         w_id
     )
-    .fetch_optional(&mut tx)
+    .fetch_optional(&db)
     .await?
     .map(|x| (x.tag, x.dedicated_worker, x.early_return, x.has_preprocessor))
     .ok_or_else(|| {
@@ -3702,7 +3694,7 @@ pub async fn run_wait_result_flow_by_path_internal(
     let tag = run_query.tag.clone().or(tag);
     check_tag_available_for_workspace(&w_id, &tag).await?;
 
-    let tx = PushIsolationLevel::Transaction(tx);
+    let tx = PushIsolationLevel::Isolated(user_db, authed.clone().into(), rsmq);
 
     let (uuid, tx) = push(
         &db,
@@ -4030,7 +4022,6 @@ async fn add_batch_jobs(
             }
         }
         "flow" => {
-            let mut tx = PushIsolationLevel::IsolatedRoot(db.clone(), rsmq);
 
             let mut uuids: Vec<Uuid> = Vec::new();
             let payload = if let Some(ref fv) = batch_info.flow_value {
@@ -4048,6 +4039,7 @@ async fn add_batch_jobs(
                     ))?
                 }
             };
+            let mut tx = PushIsolationLevel::IsolatedRoot(db.clone(), rsmq);
             for _ in 0..n {
                 let ehm = HashMap::new();
                 let (uuid, ntx) = push(
@@ -4246,7 +4238,6 @@ pub async fn run_job_by_hash_inner(
     label_prefix: Option<String>,
 ) -> error::Result<(StatusCode, String)> {
 
-    let mut tx: QueueTransaction<'_, _> = (rsmq, user_db.begin(&authed).await?).into();
 
     let hash = script_hash.0;
     let (
@@ -4262,7 +4253,7 @@ pub async fn run_job_by_hash_inner(
         _delete_after_use, // not taken into account in async endpoints
         timeout,
         has_preprocessor,
-    ) = get_path_tag_limits_cache_for_hash(&mut tx, &w_id, hash).await?;
+    ) = get_path_tag_limits_cache_for_hash(&db, &w_id, hash).await?;
     check_scopes(&authed, || format!("run:script/{path}"))?;
     if let Some(run_query_cache_ttl) = run_query.cache_ttl {
         cache_ttl = Some(run_query_cache_ttl);
@@ -4271,7 +4262,7 @@ pub async fn run_job_by_hash_inner(
     let tag = run_query.tag.clone().or(tag);
 
     check_tag_available_for_workspace(&w_id, &tag).await?;
-    let tx = PushIsolationLevel::Transaction(tx);
+    let tx = PushIsolationLevel::Isolated(user_db, authed.clone().into(), rsmq);
 
     let (uuid, tx) = push(
         &db,
