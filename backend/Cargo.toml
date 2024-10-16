@@ -39,6 +39,9 @@ path = "./src/main.rs"
 opt-level = 0
 incremental = true
 
+[profile.release]
+lto = "fat"
+
 [features]
 default = []
 stripe = ["windmill-api/stripe"]
