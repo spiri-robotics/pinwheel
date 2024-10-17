@@ -336,7 +336,7 @@ try {{
         mem_peak,
         canceled_by,
         child,
-        false,
+        !*DISABLE_NSJAIL,
         worker_name,
         &job.workspace_id,
         "php run",
