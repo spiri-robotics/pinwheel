@@ -184,7 +184,7 @@ async fn install_galaxy_collections(
 
 fn check_ansible_exists() -> Result<(), error::Error> {
     if !Path::new(ANSIBLE_PLAYBOOK_PATH.as_str()).exists() {
-        let msg = format!("Couldn't find ansible-playbook at {}. This probably means that you are not using the windmill-full image. Please use the image `windmill-full` for your instance in order to run rust jobs.", ANSIBLE_PLAYBOOK_PATH.as_str());
+        let msg = format!("Couldn't find ansible-playbook at {}. This probably means that you are not using the windmill-full image. Please use the image `windmill-full` for your instance in order to run Ansible jobs.", ANSIBLE_PLAYBOOK_PATH.as_str());
         return Err(error::Error::NotFound(msg));
     }
     Ok(())
