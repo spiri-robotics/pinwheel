@@ -2713,7 +2713,6 @@ pub async fn run_flow_by_path_inner(
     let flow_path = flow_path.to_path();
     check_scopes(&authed, || format!("run:flow/{flow_path}"))?;
 
-
     let (tag, dedicated_worker, has_preprocessor) = sqlx::query!(
         "SELECT tag, dedicated_worker, flow_version.value->>'preprocessor_module' IS NOT NULL as has_preprocessor 
         FROM flow 
@@ -2831,14 +2830,12 @@ pub async fn run_script_by_path_inner(
 
     check_scopes(&authed, || format!("run:script/{script_path}"))?;
 
-
     let (job_payload, tag, _delete_after_use, timeout) =
         script_path_to_payload(script_path, &db, &w_id, run_query.skip_preprocessor).await?;
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
 
     let tag = run_query.tag.clone().or(tag);
     check_tag_available_for_workspace(&w_id, &tag).await?;
-
 
     let tx = PushIsolationLevel::Isolated(user_db, authed.clone().into(), rsmq);
 
@@ -2888,7 +2885,6 @@ pub async fn run_workflow_as_code(
     Query(wkflow_query): Query<WorkflowAsCodeQuery>,
     Json(task): Json<WorkflowTask>,
 ) -> error::Result<(StatusCode, String)> {
-
     let mut i = 1;
 
     if *CLOUD_HOSTED {
@@ -2898,22 +2894,17 @@ pub async fn run_workflow_as_code(
 
     check_tag_available_for_workspace(&w_id, &run_query.tag).await?;
 
-
     if *CLOUD_HOSTED {
         tracing::info!("workflow_as_code_tracing id {i} ");
         i += 1;
     }
-
 
     let job = get_queued_job(&job_id, &w_id, &db).await?;
 
-
-
     if *CLOUD_HOSTED {
         tracing::info!("workflow_as_code_tracing id {i} ");
         i += 1;
     }
-
 
     let job = not_found_if_none(job, "Queued Job", &job_id.to_string())?;
     let (job_payload, tag, _delete_after_use, timeout) = match job.job_kind {
@@ -2937,17 +2928,11 @@ pub async fn run_workflow_as_code(
             run_query.timeout,
         ),
         JobKind::Script => {
-            script_path_to_payload(
-                job.script_path(),
-                &db,
-                &w_id,
-                run_query.skip_preprocessor,
-            )
-            .await?
+            script_path_to_payload(job.script_path(), &db, &w_id, run_query.skip_preprocessor)
+                .await?
         }
         _ => return Err(anyhow::anyhow!("Not supported").into()),
     };
-
 
     if *CLOUD_HOSTED {
         tracing::info!("workflow_as_code_tracing id {i} ");
@@ -2962,21 +2947,17 @@ pub async fn run_workflow_as_code(
 
     let tag = run_query.tag.clone().or(tag).or(Some(job.tag));
 
-
     if *CLOUD_HOSTED {
         tracing::info!("workflow_as_code_tracing id {i} ");
         i += 1;
     }
-
 
     let tx = PushIsolationLevel::Isolated(user_db, authed.clone().into(), rsmq);
 
-
     if *CLOUD_HOSTED {
         tracing::info!("workflow_as_code_tracing id {i} ");
         i += 1;
     }
-
 
     let (uuid, mut tx) = push(
         &db,
@@ -3004,7 +2985,6 @@ pub async fn run_workflow_as_code(
     )
     .await?;
 
-
     if *CLOUD_HOSTED {
         tracing::info!("workflow_as_code_tracing id {i} ");
         i += 1;
@@ -3022,15 +3002,12 @@ pub async fn run_workflow_as_code(
         tracing::info!("Skipping update of flow status for job {job_id} in workspace {w_id}");
     }
 
-
     if *CLOUD_HOSTED {
         tracing::info!("workflow_as_code_tracing id {i} ");
         i += 1;
     }
 
-
     tx.commit().await?;
-
 
     if *CLOUD_HOSTED {
         tracing::info!("workflow_as_code_tracing id {i} ");
@@ -3675,7 +3652,6 @@ pub async fn run_wait_result_flow_by_path_internal(
     let flow_path = flow_path.to_path();
     check_scopes(&authed, || format!("run:flow/{flow_path}"))?;
 
-
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
 
     let (tag, dedicated_worker, early_return, has_preprocessor) = sqlx::query!(
@@ -4027,7 +4003,6 @@ async fn add_batch_jobs(
             }
         }
         "flow" => {
-
             let mut uuids: Vec<Uuid> = Vec::new();
             let payload = if let Some(ref fv) = batch_info.flow_value {
                 JobPayload::RawFlow { value: fv.clone(), path: None, restarted_from: None }
@@ -4242,7 +4217,6 @@ pub async fn run_job_by_hash_inner(
     args: PushArgsOwned,
     label_prefix: Option<String>,
 ) -> error::Result<(StatusCode, String)> {
-
 
     let hash = script_hash.0;
     let (

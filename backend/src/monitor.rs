@@ -1038,6 +1038,9 @@ pub async fn monitor_db(
     let jobs_waiting_alerts_f = async {
     };
 
+    let apply_autoscaling_f = async {
+    };
+
     join!(
         expired_items_f,
         zombie_jobs_f,
@@ -1045,6 +1048,7 @@ pub async fn monitor_db(
         verify_license_key_f,
         worker_groups_alerts_f,
         jobs_waiting_alerts_f,
+        apply_autoscaling_f,
     );
 }
 
@@ -1062,19 +1066,11 @@ pub async fn expose_queue_metrics(db: &Pool<Postgres>) {
         .unwrap_or(true);
 
     if metrics_enabled || save_metrics {
-        let queue_counts = sqlx::query!(
-            "SELECT tag, count(*) as count FROM queue WHERE
-                scheduled_for <= now() - ('3 seconds')::interval AND running = false
-                GROUP BY tag"
-        )
-        .fetch_all(db)
-        .await
-        .ok()
-        .unwrap_or_else(|| vec![]);
+        let queue_counts = windmill_common::queue::get_queue_counts(db).await;
 
         for q in queue_counts {
-            let count = q.count.unwrap_or(0);
-            let tag = q.tag;
+            let count = q.1;
+            let tag = q.0;
             if metrics_enabled {
                 let metric = (*QUEUE_COUNT).with_label_values(&[&tag]);
                 metric.set(count as i64);
