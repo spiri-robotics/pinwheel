@@ -3049,6 +3049,7 @@ pub async fn push<'c, 'd, R: rsmq_async::RsmqConnection + Send + 'c>(
                             path: path.clone(),
                             hash: Some(hash),
                             tag_override: tag_override,
+                            is_trigger: None,
                         },
                     ),
                     stop_after_if: None,
