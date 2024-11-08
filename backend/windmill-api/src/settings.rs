@@ -54,7 +54,10 @@ pub fn global_service() -> Router {
         )
         .route("/renew_license_key", post(renew_license_key))
         .route("/customer_portal", post(create_customer_portal_session))
-        .route("/test_critical_channels", post(test_critical_channels));
+        .route("/test_critical_channels", post(test_critical_channels))
+        .route("/critical_alerts", get(get_critical_alerts))
+        .route("/critical_alerts/:id/acknowledge", post(acknowledge_critical_alert))
+        .route("/critical_alerts/acknowledge_all", post(acknowledge_all_critical_alerts));
 
     #[cfg(feature = "parquet")]
     {
@@ -343,4 +346,31 @@ pub async fn create_customer_portal_session() -> Result<String> {
 
 pub async fn test_critical_channels() -> Result<String> {
     Ok("Critical channels require EE".to_string())
+}
+
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct CriticalAlert {
+    id: i32,
+    alert_type: String,
+    message: String,
+    created_at: chrono::DateTime<chrono::Utc>,
+    acknowledged: Option<bool>,
+}
+
+
+
+pub async fn get_critical_alerts() -> error::Error {
+    error::Error::NotFound("Critical Alerts require EE".to_string())
+}
+
+
+pub async fn acknowledge_critical_alert() -> error::Error {
+    error::Error::NotFound("Critical Alerts require EE".to_string())
+}
+
+
+pub async fn acknowledge_all_critical_alerts() -> error::Error {
+    error::Error::NotFound("Critical Alerts require EE".to_string())
 }
