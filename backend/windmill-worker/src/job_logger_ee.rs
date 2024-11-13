@@ -1,0 +1,22 @@
+use std::sync::atomic::AtomicU32;
+use std::sync::Arc;
+
+use uuid::Uuid;
+use windmill_common::DB;
+
+use crate::job_logger::CompactLogs;
+
+
+pub(crate) async fn default_disk_log_storage(
+    job_id: Uuid,
+    _w_id: &str,
+    _db: &DB,
+    _nlogs: String,
+    _total_size: Arc<AtomicU32>,
+    _compact_kind: CompactLogs,
+    _worker_name: &str,
+) {
+    tracing::info!("Logs length of {job_id} has exceeded a threshold. Implementation to store excess on disk in not OSS");
+}
+
+
