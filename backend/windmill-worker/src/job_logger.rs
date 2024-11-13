@@ -64,6 +64,7 @@ pub fn append_with_limit(dst: &mut String, src: &str, limit: &mut usize) {
     if *NO_LOGS_AT_ALL {
         return;
     }
+    
     let src_str;
     let src = {
         src_str = RE_00.replace_all(src, "");

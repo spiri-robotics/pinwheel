@@ -1,3 +1,4 @@
+use std::io;
 use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
 
@@ -20,3 +21,7 @@ pub(crate) async fn default_disk_log_storage(
 }
 
 
+
+pub(crate) fn process_streaming_log_lines(r: Result<Option<String>, io::Error>, _stderr: bool) -> Option<Result<String, io::Error>> {
+    r.transpose()
+}
