@@ -38,6 +38,10 @@ lazy_static::lazy_static! {
     static ref USE_PIP_COMPILE: bool = std::env::var("USE_PIP_COMPILE")
         .ok().map(|flag| flag == "true").unwrap_or(false);
 
+    /// Use pip install
+    static ref USE_PIP_INSTALL: bool = std::env::var("USE_PIP_INSTALL")
+        .ok().map(|flag| flag == "true").unwrap_or(false);
+
 
     static ref RELATIVE_IMPORT_REGEX: Regex = Regex::new(r#"(import|from)\s(((u|f)\.)|\.)"#).unwrap();
 
@@ -46,6 +50,8 @@ lazy_static::lazy_static! {
 }
 
 const NSJAIL_CONFIG_DOWNLOAD_PY_CONTENT: &str = include_str!("../nsjail/download.py.config.proto");
+const NSJAIL_CONFIG_DOWNLOAD_PY_CONTENT_FALLBACK: &str =
+    include_str!("../nsjail/download.py.pip.config.proto");
 const NSJAIL_CONFIG_RUN_PYTHON3_CONTENT: &str = include_str!("../nsjail/run.python3.config.proto");
 const RELATIVE_PYTHON_LOADER: &str = include_str!("../loader.py");
 
@@ -58,8 +64,8 @@ use crate::{
     },
     handle_child::handle_child,
     AuthedClientBackgroundTask, DISABLE_NSJAIL, DISABLE_NUSER, HOME_ENV, LOCK_CACHE_DIR,
-    NSJAIL_PATH, PATH_ENV, PIP_CACHE_DIR, PIP_EXTRA_INDEX_URL, PIP_INDEX_URL, PROXY_ENVS, TZ_ENV,
-    UV_CACHE_DIR,
+    NSJAIL_PATH, PATH_ENV, PIP_CACHE_DIR, PIP_EXTRA_INDEX_URL, PIP_INDEX_URL, PROXY_ENVS,
+    PY311_CACHE_DIR, TZ_ENV, UV_CACHE_DIR,
 };
 
 #[cfg(windows)]
@@ -832,10 +838,10 @@ async fn handle_python_deps(
         .unwrap_or_else(|| vec![])
         .clone();
 
+    let annotations = windmill_common::worker::PythonAnnotations::parse(inner_content);
     let requirements = match requirements_o {
         Some(r) => r,
         None => {
-            let annotation = windmill_common::worker::PythonAnnotations::parse(inner_content);
             let mut already_visited = vec![];
 
             let requirements = windmill_parser_py_imports::parse_python_imports(
@@ -860,8 +866,8 @@ async fn handle_python_deps(
                     worker_name,
                     w_id,
                     occupancy_metrics,
-                    annotation.no_uv,
-                    annotation.no_cache,
+                    annotations.no_uv || annotations.no_uv_compile,
+                    annotations.no_cache,
                 )
                 .await
                 .map_err(|e| {
@@ -886,6 +892,8 @@ async fn handle_python_deps(
             job_dir,
             worker_dir,
             occupancy_metrics,
+            annotations.no_uv || annotations.no_uv_install,
+            false,
         )
         .await?;
         additional_python_paths.append(&mut venv_path);
@@ -897,6 +905,7 @@ lazy_static::lazy_static! {
     static ref PIP_SECRET_VARIABLE: Regex = Regex::new(r"\$\{PIP_SECRET:([^\s\}]+)\}").unwrap();
 }
 
+/// pip install, include cached or pull from S3
 pub async fn handle_python_reqs(
     requirements: Vec<&str>,
     job_id: &Uuid,
@@ -908,11 +917,21 @@ pub async fn handle_python_reqs(
     job_dir: &str,
     worker_dir: &str,
     occupancy_metrics: &mut Option<&mut OccupancyMetrics>,
+    // TODO: Remove (Deprecated)
+    mut no_uv_install: bool,
+    is_ansible: bool,
 ) -> error::Result<Vec<String>> {
     let mut req_paths: Vec<String> = vec![];
     let mut vars = vec![("PATH", PATH_ENV.as_str())];
     let pip_extra_index_url;
     let pip_index_url;
+
+    no_uv_install |= *USE_PIP_INSTALL;
+
+    if no_uv_install && !is_ansible {
+        append_logs(&job_id, w_id, "\nFallback to pip (Deprecated!)\n", db).await;
+        tracing::warn!("Fallback to pip");
+    }
 
     if !*DISABLE_NSJAIL {
         pip_extra_index_url = PIP_EXTRA_INDEX_URL
@@ -944,10 +963,21 @@ pub async fn handle_python_reqs(
         let _ = write_file(
             job_dir,
             "download.config.proto",
-            &NSJAIL_CONFIG_DOWNLOAD_PY_CONTENT
-                .replace("{WORKER_DIR}", &worker_dir)
-                .replace("{CACHE_DIR}", PIP_CACHE_DIR)
-                .replace("{CLONE_NEWUSER}", &(!*DISABLE_NUSER).to_string()),
+            &(if no_uv_install {
+                NSJAIL_CONFIG_DOWNLOAD_PY_CONTENT_FALLBACK
+            } else {
+                NSJAIL_CONFIG_DOWNLOAD_PY_CONTENT
+            })
+            .replace("{WORKER_DIR}", &worker_dir)
+            .replace(
+                "{CACHE_DIR}",
+                if no_uv_install {
+                    PIP_CACHE_DIR
+                } else {
+                    PY311_CACHE_DIR
+                },
+            )
+            .replace("{CLONE_NEWUSER}", &(!*DISABLE_NUSER).to_string()),
         )?;
     };
 
@@ -957,8 +987,14 @@ pub async fn handle_python_reqs(
         if req.starts_with('#') {
             continue;
         }
+        let py_prefix = if no_uv_install {
+            PIP_CACHE_DIR
+        } else {
+            PY311_CACHE_DIR
+        };
+
         let venv_p = format!(
-            "{PIP_CACHE_DIR}/{}",
+            "{py_prefix}/{}",
             req.replace(' ', "").replace('/', "").replace(':', "")
         );
         if metadata(&venv_p).await.is_ok() {
@@ -972,7 +1008,7 @@ pub async fn handle_python_reqs(
 
     for (req, venv_p) in req_with_penv {
         let mut logs1 = String::new();
-        logs1.push_str("\n\n--- PIP INSTALL ---\n");
+        logs1.push_str("\n\n--- UV PIP INSTALL ---\n");
         logs1.push_str(&format!("\n{req} is being installed for the first time.\n It will be cached for all ulterior uses."));
         append_logs(&job_id, w_id, logs1, db).await;
 
@@ -1008,21 +1044,47 @@ pub async fn handle_python_reqs(
             #[cfg(windows)]
             let req = format!("{}", req);
 
-            let mut command_args = vec![
-                PYTHON_PATH.as_str(),
-                "-m",
-                "pip",
-                "install",
-                &req,
-                "-I",
-                "--no-deps",
-                "--no-color",
-                "--isolated",
-                "--no-warn-conflicts",
-                "--disable-pip-version-check",
-                "-t",
-                venv_p.as_str(),
-            ];
+            let mut command_args = if no_uv_install {
+                vec![
+                    PYTHON_PATH.as_str(),
+                    "-m",
+                    "pip",
+                    "install",
+                    &req,
+                    "-I",
+                    "--no-deps",
+                    "--no-color",
+                    "--isolated",
+                    "--no-warn-conflicts",
+                    "--disable-pip-version-check",
+                    "-t",
+                    venv_p.as_str(),
+                ]
+            } else {
+                vec![
+                    UV_PATH.as_str(),
+                    "pip",
+                    "install",
+                    &req,
+                    "--no-deps",
+                    "--no-color",
+                    // "-p",
+                    // "3.11",
+                    // Prevent uv from discovering configuration files.
+                    "--no-config",
+                    "--link-mode=copy",
+                    // TODO: Doublecheck it
+                    "--system",
+                    // Prefer main index over extra
+                    // https://docs.astral.sh/uv/pip/compatibility/#packages-that-exist-on-multiple-indexes
+                    // TODO: Use env variable that can be toggled from UI
+                    "--index-strategy",
+                    "unsafe-best-match",
+                    "--target",
+                    venv_p.as_str(),
+                    "--no-cache",
+                ]
+            };
             let pip_extra_index_url = PIP_EXTRA_INDEX_URL
                 .read()
                 .await
@@ -1054,7 +1116,7 @@ pub async fn handle_python_reqs(
 
             envs.push(("HOME", HOME_ENV.as_str()));
 
-            tracing::debug!("pip install command: {:?}", command_args);
+            tracing::debug!("uv pip install command: {:?}", command_args);
 
             #[cfg(unix)]
             {
@@ -1065,7 +1127,12 @@ pub async fn handle_python_reqs(
                     .envs(envs)
                     .args([
                         "-x",
-                        &format!("{}/pip-{}.lock", LOCK_CACHE_DIR, fssafe_req),
+                        &format!(
+                            "{}/{}-{}.lock",
+                            LOCK_CACHE_DIR,
+                            if no_uv_install { "pip" } else { "py311" },
+                            fssafe_req
+                        ),
                         "--command",
                         &command_args.join(" "),
                     ])
@@ -1076,16 +1143,20 @@ pub async fn handle_python_reqs(
 
             #[cfg(windows)]
             {
-                let mut pip_cmd = Command::new(PYTHON_PATH.as_str());
-                pip_cmd
-                    .env_clear()
+                let installer_path = if no_uv_install { command_args[0] } else { "uv" };
+                let mut cmd: Command = Command::new(&installer_path);
+                cmd.env_clear()
                     .envs(envs)
                     .envs(PROXY_ENVS.clone())
                     .env("SystemRoot", SYSTEM_ROOT.as_str())
+                    .env(
+                        "TMP",
+                        std::env::var("TMP").unwrap_or_else(|_| String::from("/tmp")),
+                    )
                     .args(&command_args[1..])
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped());
-                start_child_process(pip_cmd, PYTHON_PATH.as_str()).await?
+                start_child_process(cmd, installer_path).await?
             }
         };
 
@@ -1098,7 +1169,7 @@ pub async fn handle_python_reqs(
             false,
             worker_name,
             &w_id,
-            &format!("pip install {req}"),
+            &format!("uv pip install {req}"),
             None,
             false,
             occupancy_metrics,
