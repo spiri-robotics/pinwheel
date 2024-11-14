@@ -70,6 +70,7 @@ use windmill_common::{
 use windmill_common::users::SUPERADMIN_SYNC_EMAIL;
 
 
+
 use crate::{
     schedule::{get_schedule_opt, push_scheduled_job},
     QueueTransaction,
@@ -473,7 +474,6 @@ where
         None
     }
 }
-
 
 #[instrument(level = "trace", skip_all)]
 pub async fn add_completed_job_error<R: rsmq_async::RsmqConnection + Clone + Send>(
