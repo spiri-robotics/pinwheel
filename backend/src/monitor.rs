@@ -49,8 +49,8 @@ use windmill_common::{
     utils::{now_from_db, rd_string, report_critical_error, Mode},
     worker::{
         load_worker_config, make_pull_query, make_suspended_pull_query, reload_custom_tags_setting,
-        DEFAULT_TAGS_PER_WORKSPACE, DEFAULT_TAGS_WORKSPACES, SMTP_CONFIG, WORKER_CONFIG,
-        WORKER_GROUP,
+        update_min_version, DEFAULT_TAGS_PER_WORKSPACE, DEFAULT_TAGS_WORKSPACES, SMTP_CONFIG,
+        WORKER_CONFIG, WORKER_GROUP,
     },
     BASE_URL, CRITICAL_ERROR_CHANNELS, DB, DEFAULT_HUB_BASE_URL, HUB_BASE_URL, JOB_RETENTION_SECS,
     METRICS_DEBUG_ENABLED, METRICS_ENABLED, CRITICAL_ALERT_MUTE_UI_ENABLED
@@ -1051,6 +1051,10 @@ pub async fn monitor_db(
     let apply_autoscaling_f = async {
     };
 
+    let update_min_worker_version_f = async {
+        update_min_version(db).await;
+    };
+
     join!(
         expired_items_f,
         zombie_jobs_f,
@@ -1059,6 +1063,7 @@ pub async fn monitor_db(
         worker_groups_alerts_f,
         jobs_waiting_alerts_f,
         apply_autoscaling_f,
+        update_min_worker_version_f,
     );
 }
 
