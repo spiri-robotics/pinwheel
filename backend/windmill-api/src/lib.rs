@@ -60,13 +60,14 @@ mod http_triggers;
 mod indexer_ee;
 mod inputs;
 mod integration;
+mod ai;
+
 #[cfg(feature = "parquet")]
 mod job_helpers_ee;
 pub mod job_metrics;
 pub mod jobs;
 pub mod oauth2_ee;
 mod oidc_ee;
-mod openai;
 mod raw_apps;
 mod resources;
 mod saml_ee;
@@ -91,6 +92,7 @@ mod workspaces;
 mod workspaces_ee;
 
 pub const DEFAULT_BODY_LIMIT: usize = 2097152 * 100; // 200MB
+
 
 lazy_static::lazy_static! {
 
@@ -272,7 +274,7 @@ pub async fn run_server(
                         .nest("/job_helpers", job_helpers_service)
                         .nest("/jobs", jobs::workspaced_service())
                         .nest("/oauth", oauth2_ee::workspaced_service())
-                        .nest("/openai", openai::workspaced_service())
+                        .nest("/ai", ai::workspaced_service())
                         .nest("/raw_apps", raw_apps::workspaced_service())
                         .nest("/resources", resources::workspaced_service())
                         .nest("/schedules", schedule::workspaced_service())
