@@ -30,6 +30,7 @@ pub const GIT_VERSION: &str =
 use crate::CRITICAL_ALERT_MUTE_UI_ENABLED;
 use std::sync::atomic::Ordering;
 
+use crate::worker::CLOUD_HOSTED;
 
 lazy_static::lazy_static! {
     pub static ref HTTP_CLIENT: Client = reqwest::ClientBuilder::new()
