@@ -348,18 +348,6 @@ pub async fn test_critical_channels() -> Result<String> {
     Ok("Critical channels require EE".to_string())
 }
 
-use serde::Serialize;
-
-#[derive(Serialize)]
-pub struct CriticalAlert {
-    id: i32,
-    alert_type: String,
-    message: String,
-    created_at: chrono::DateTime<chrono::Utc>,
-    acknowledged: Option<bool>,
-}
-
-
 
 pub async fn get_critical_alerts() -> error::Error {
     error::Error::NotFound("Critical Alerts require EE".to_string())

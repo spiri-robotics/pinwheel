@@ -115,7 +115,11 @@ pub fn workspaced_service() -> Router {
         .route("/change_workspace_name", post(change_workspace_name))
         .route("/change_workspace_id", post(change_workspace_id))
         .route("/usage", get(get_usage))
-        .route("/used_triggers", get(get_used_triggers));
+        .route("/used_triggers", get(get_used_triggers))
+        .route("/critical_alerts", get(get_critical_alerts))
+        .route("/critical_alerts/:id/acknowledge", post(acknowledge_critical_alert))
+        .route("/critical_alerts/acknowledge_all", post(acknowledge_all_critical_alerts))
+        .route("/critical_alerts/mute", post(mute_critical_alerts));
 
     #[cfg(feature = "stripe")]
     {
@@ -176,6 +180,7 @@ pub struct WorkspaceSettings {
     pub default_app: Option<String>,
     pub automatic_billing: bool,
     pub default_scripts: Option<serde_json::Value>,
+    pub mute_critical_alerts: Option<bool>,
 }
 
 #[derive(FromRow, Serialize, Debug)]
@@ -2868,4 +2873,26 @@ async fn get_usage(Extension(db): Extension<DB>, Path(w_id): Path<String>) -> Re
     .await?
     .unwrap_or(0);
     Ok(usage.to_string())
+}
+
+
+pub async fn get_critical_alerts() -> Error {
+    Error::NotFound("Critical Alerts require EE".to_string())
+}
+
+
+pub async fn acknowledge_critical_alert() -> Error {
+    Error::NotFound("Critical Alerts require EE".to_string())
+}
+
+
+pub async fn acknowledge_all_critical_alerts() -> Error {
+    Error::NotFound("Critical Alerts require EE".to_string())
+}
+
+
+
+
+pub async fn mute_critical_alerts() -> Error {
+    Error::NotFound("Critical Alerts require EE".to_string())
 }

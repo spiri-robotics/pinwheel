@@ -16,6 +16,8 @@ use windmill_common::{
     DB,
 };
 
+
+
 #[derive(Deserialize)]
 pub struct WithStarredInfoQuery {
     pub with_starred_info: Option<bool>,
@@ -162,3 +164,19 @@ pub fn content_plain(body: Body) -> Response {
         .body(body)
         .unwrap()
 }
+
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct CriticalAlert {
+    id: i32,
+    alert_type: String,
+    message: String,
+    created_at: chrono::DateTime<chrono::Utc>,
+    acknowledged: Option<bool>,
+    workspace_id: Option<String>,
+}
+
+
+
+
