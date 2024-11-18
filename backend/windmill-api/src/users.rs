@@ -707,7 +707,7 @@ pub async fn fetch_api_authed(
     email: String,
     w_id: &str,
     db: &DB,
-    username_override: String,
+    username_override: Option<String>,
 ) -> error::Result<ApiAuthed> {
     let permissioned_as = username_to_permissioned_as(username.as_str());
     fetch_api_authed_from_permissioned_as(permissioned_as, email, w_id, db, username_override).await
@@ -718,7 +718,7 @@ pub async fn fetch_api_authed_from_permissioned_as(
     email: String,
     w_id: &str,
     db: &DB,
-    username_override: String,
+    username_override: Option<String>,
 ) -> error::Result<ApiAuthed> {
     let authed =
         fetch_authed_from_permissioned_as(permissioned_as, email.clone(), w_id, db).await?;
@@ -730,7 +730,7 @@ pub async fn fetch_api_authed_from_permissioned_as(
         groups: authed.groups,
         folders: authed.folders,
         scopes: authed.scopes,
-        username_override: Some(username_override),
+        username_override: username_override,
     })
 }
 
