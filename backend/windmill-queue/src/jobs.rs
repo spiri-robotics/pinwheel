@@ -17,6 +17,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use chrono::{DateTime, Duration, Utc};
+use futures::future::TryFutureExt;
 use itertools::Itertools;
 #[cfg(feature = "prometheus")]
 use prometheus::IntCounter;
@@ -68,7 +69,6 @@ use windmill_common::{
 
 #[cfg(feature = "cloud")]
 use windmill_common::users::SUPERADMIN_SYNC_EMAIL;
-
 
 
 use crate::{
@@ -574,12 +574,21 @@ pub async fn add_completed_job<
     let (raw_code, raw_lock, raw_flow) = if !*MIN_VERSION_IS_AT_LEAST_1_427.read().await {
         sqlx::query!(
             "SELECT raw_code, raw_lock, raw_flow AS \"raw_flow: Json<Box<JsonRawValue>>\"
-            FROM queue_view WHERE id = $1 AND workspace_id = $2 LIMIT 1",
+            FROM job WHERE id = $1 AND workspace_id = $2 LIMIT 1",
             &job_id, &queued_job.workspace_id
         )
         .fetch_one(db)
+        .map_ok(|record| (record.raw_code, record.raw_lock, record.raw_flow))
+        .or_else(|_| {
+            sqlx::query!(
+                "SELECT raw_code, raw_lock, raw_flow AS \"raw_flow: Json<Box<JsonRawValue>>\"
+                FROM queue WHERE id = $1 AND workspace_id = $2 LIMIT 1",
+                &job_id, &queued_job.workspace_id
+            )
+            .fetch_one(db)
+            .map_ok(|record| (record.raw_code, record.raw_lock, record.raw_flow))
+        })
         .await
-        .map(|record| (record.raw_code, record.raw_lock, record.raw_flow))
         .unwrap_or_default()
     } else {
         (None, None, None)
@@ -1318,11 +1327,27 @@ fn sanitize_result<T: Serialize + Send + Sync>(result: Json<&T>) -> HashMap<Stri
 
 
 
+#[derive(sqlx::FromRow)]
+pub struct PulledJob {
+    #[sqlx(flatten)]
+    pub job: QueuedJob,
+    pub raw_code: Option<String>,
+    pub raw_lock: Option<String>,
+    pub raw_flow: Option<Json<Box<RawValue>>>,
+}
+
+impl std::ops::Deref for PulledJob {
+    type Target = QueuedJob;
+    fn deref(&self) -> &Self::Target {
+        &self.job
+    }
+}
+
 pub async fn pull<R: rsmq_async::RsmqConnection + Send + Clone>(
     db: &Pool<Postgres>,
     rsmq: Option<R>,
     suspend_first: bool,
-) -> windmill_common::error::Result<(Option<QueuedJob>, bool)> {
+) -> windmill_common::error::Result<(Option<PulledJob>, bool)> {
     loop {
         let (job, suspended) = pull_single_job_and_mark_as_running_no_concurrency_limit(
             db,
@@ -1331,11 +1356,11 @@ pub async fn pull<R: rsmq_async::RsmqConnection + Send + Clone>(
         )
         .await?;
 
-        if job.is_none() {
+        let Some(job) = job else {
             return Ok((None, suspended));
-        }
+        };
 
-        let has_concurent_limit = job.as_ref().unwrap().concurrent_limit.is_some();
+        let has_concurent_limit = job.concurrent_limit.is_some();
 
         if has_concurent_limit {
             tracing::error!("Concurrent limits are an EE feature only, ignoring constraints")
@@ -1344,7 +1369,7 @@ pub async fn pull<R: rsmq_async::RsmqConnection + Send + Clone>(
         let has_concurent_limit = false;
 
         // concurrency check. If more than X jobs for this path are already running, we re-queue and pull another job from the queue
-        let pulled_job = job.unwrap();
+        let pulled_job = job;
         if pulled_job.script_path.is_none() || !has_concurent_limit || pulled_job.canceled {
             #[cfg(feature = "prometheus")]
             if METRICS_ENABLED.load(std::sync::atomic::Ordering::Relaxed) {
@@ -1524,7 +1549,7 @@ pub async fn pull<R: rsmq_async::RsmqConnection + Send + Clone>(
         let job_log_event = format!(
             "\nRe-scheduled job to {estimated_next_schedule_timestamp} due to concurrency limits with key {job_concurrency_key} and limit {job_custom_concurrent_limit} in the last {job_custom_concurrency_time_window_s} seconds",
         );
-        let _ = append_logs(&job_uuid, pulled_job.workspace_id, job_log_event, db).await;
+        let _ = append_logs(&job_uuid, &pulled_job.workspace_id, job_log_event, db).await;
         if rsmq.is_some() {
             // if let Some(ref mut rsmq) = tx.rsmq {
             // if using redis, only one message at a time can be poped from the queue. Process only this message and move to the next elligible job
@@ -1578,8 +1603,8 @@ async fn pull_single_job_and_mark_as_running_no_concurrency_limit<
     db: &Pool<Postgres>,
     rsmq: Option<R>,
     suspend_first: bool,
-) -> windmill_common::error::Result<(Option<QueuedJob>, bool)> {
-    let job_and_suspended: (Option<QueuedJob>, bool) = if let Some(mut rsmq) = rsmq {
+) -> windmill_common::error::Result<(Option<PulledJob>, bool)> {
+    let job_and_suspended: (Option<PulledJob>, bool) = if let Some(mut rsmq) = rsmq {
         #[cfg(feature = "benchmark")]
         let instant = Instant::now();
 
@@ -1611,7 +1636,7 @@ async fn pull_single_job_and_mark_as_running_no_concurrency_limit<
                     .map_err(|_| anyhow::anyhow!("Failed to parsed Redis message"))?,
             );
 
-            let m2r = sqlx::query_as::<_, QueuedJob>(
+            let m2r = sqlx::query_as::<_, PulledJob>(
                 "UPDATE queue
             SET running = true
             , started_at = coalesce(started_at, now())
@@ -1624,7 +1649,7 @@ async fn pull_single_job_and_mark_as_running_no_concurrency_limit<
                 flow_status,  is_flow_step,  language,  suspend,  suspend_until,  
                 same_worker,  pre_run_error,  email,  visible_to_owner,  mem_peak, 
                  root_job,  leaf_jobs,  tag,  concurrent_limit,  concurrency_time_window_s,  
-                 timeout,  flow_step_id,  cache_ttl, priority",
+                 timeout,  flow_step_id,  cache_ttl, priority, raw_code, raw_lock, raw_flow",
             )
             .bind(uuid)
             .fetch_optional(db)
@@ -1658,7 +1683,7 @@ async fn pull_single_job_and_mark_as_running_no_concurrency_limit<
 
         let r = if suspend_first {
             // tracing::info!("Pulling job with query: {}", query);
-            sqlx::query_as::<_, QueuedJob>(&query)
+            sqlx::query_as::<_, PulledJob>(&query)
                 .fetch_optional(db)
                 .await?
         } else {
@@ -1667,7 +1692,7 @@ async fn pull_single_job_and_mark_as_running_no_concurrency_limit<
         if r.is_none() {
             // #[cfg(feature = "benchmark")]
             // let instant = Instant::now();
-            let mut highest_priority_job: Option<QueuedJob> = None;
+            let mut highest_priority_job: Option<PulledJob> = None;
 
             let queries = WORKER_PULL_QUERIES.read().await;
 
@@ -1678,7 +1703,7 @@ async fn pull_single_job_and_mark_as_running_no_concurrency_limit<
 
             for query in queries.iter() {
                 // tracing::info!("Pulling job with query: {}", query);
-                let r = sqlx::query_as::<_, QueuedJob>(query)
+                let r = sqlx::query_as::<_, PulledJob>(query)
                     .fetch_optional(db)
                     .await?;
 
@@ -2118,7 +2143,7 @@ pub async fn job_is_complete(db: &DB, id: Uuid, w_id: &str) -> error::Result<boo
     .unwrap_or(false))
 }
 
-pub async fn get_queued_job_tx<'c>(
+async fn get_queued_job_tx<'c>(
     id: Uuid,
     w_id: &str,
     tx: &mut Transaction<'c, Postgres>,
@@ -3636,7 +3661,14 @@ async fn restarted_flows_resolution(
     ),
     Error,
 > {
-    let completed_job = sqlx::query_as::<_, CompletedJob>(
+    #[derive(sqlx::FromRow)]
+    struct CompletedJobWithRawFlow {
+        #[sqlx(flatten)]
+        completed_job: CompletedJob,
+        raw_flow: Option<Json<Box<RawValue>>>,
+    }
+
+    let CompletedJobWithRawFlow { completed_job, raw_flow } = sqlx::query_as::<_, CompletedJobWithRawFlow>(
         "SELECT *, null as labels FROM completed_job WHERE id = $1 and workspace_id = $2",
     )
     .bind(completed_flow_id)
@@ -3651,22 +3683,23 @@ async fn restarted_flows_resolution(
     })?;
 
     let flow_value = if let Some(flow_value) = flow_value_if_any {
-        flow_value
+        Some(flow_value)
+    } else if let Some(raw_flow) = raw_flow.as_ref() {
+        serde_json::from_str::<FlowValue>(raw_flow.get()).ok()
     } else {
         sqlx::query_scalar!(
             "SELECT raw_flow AS \"raw_flow!: Json<Box<JsonRawValue>>\"
-            FROM completed_job_view WHERE id = $1 AND workspace_id = $2 LIMIT 1",
+            FROM job WHERE id = $1 AND workspace_id = $2 LIMIT 1",
             &completed_flow_id, workspace_id
         )
         .fetch_one(db)
         .await
         .ok()
         .and_then(|raw_flow| serde_json::from_str::<FlowValue>(raw_flow.get()).ok())
-        .ok_or(Error::InternalErr(format!(
-            "Unable to parse raw definition for job {} in workspace {}",
-            completed_flow_id, workspace_id,
-        )))?
-    };
+    }.ok_or(Error::InternalErr(format!(
+        "Unable to parse raw definition for job {} in workspace {}",
+        completed_flow_id, workspace_id,
+    )))?;
     let flow_status = completed_job
         .parse_flow_status()
         .ok_or(Error::InternalErr(format!(
