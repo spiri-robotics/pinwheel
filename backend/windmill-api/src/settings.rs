@@ -11,7 +11,7 @@ use std::time::Duration;
 use crate::{
     db::{ApiAuthed, DB},
     ee::validate_license_key,
-    utils::{generate_instance_username_for_all_users, require_super_admin},
+    utils::{require_devops_role, generate_instance_username_for_all_users, require_super_admin},
     HTTP_CLIENT,
 };
 

@@ -6,6 +6,7 @@
  * LICENSE-AGPL for a copy of the license.
  */
 
+use crate::auth::is_devops_email;
 use crate::ee::LICENSE_KEY_ID;
 use crate::error::{to_anyhow, Error, Result};
 use crate::global_settings::UNIQUE_ID_SETTING;
@@ -73,6 +74,16 @@ pub fn require_admin(is_admin: bool, username: &str) -> Result<()> {
     } else {
         Ok(())
     }
+}
+
+pub async fn require_admin_or_devops(is_admin: bool, username: &str, email: &str, db: &DB) -> Result<()> {
+    if !is_admin {
+        if !is_devops_email(db, email).await? {
+            return Err(Error::RequireAdmin(username.to_string()));
+        }
+    }
+    Ok(())
+
 }
 
 pub fn hostname() -> String {

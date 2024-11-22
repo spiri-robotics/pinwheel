@@ -50,7 +50,7 @@ use windmill_common::{
     global_settings::AUTOMATE_USERNAME_CREATION_SETTING,
     oauth2::WORKSPACE_SLACK_BOT_TOKEN_PATH,
     scripts::{Schema, Script, ScriptLang},
-    utils::{paginate, rd_string, require_admin, Pagination},
+    utils::{paginate, rd_string, require_admin, require_admin_or_devops, Pagination},
     variables::ExportableListableVariable,
 };
 use windmill_git_sync::handle_deployment_metadata;
