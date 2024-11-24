@@ -88,7 +88,6 @@ pub fn global_service() -> Router {
         .route("/setpassword", post(set_password))
         .route("/set_password_of/:user", post(set_password_of_user))
         .route("/set_login_type/:user", post(set_login_type))
-
         .route("/create", post(create_user))
         .route("/update/:user", post(update_user))
         .route("/delete/:user", delete(delete_user))
@@ -837,7 +836,6 @@ pub struct EditLoginType {
     pub login_type: String,
 }
 
-
 #[derive(FromRow, Serialize)]
 pub struct TruncatedToken {
     pub label: Option<String>,
@@ -1440,7 +1438,7 @@ async fn whois(
 // ) -> Result<(StatusCode, String)> {
 
 //     let mut tx = db.begin().await?;
-//     require_super_admin(&mut tx, email).await?;
+//     require_super_admin(&mut *tx, email).await?;
 
 //     sqlx::query!(
 //         "INSERT INTO invite_code
@@ -1449,7 +1447,7 @@ async fn whois(
 //         nu.code,
 //         nu.seats
 //     )
-//     .execute(&mut tx)
+//     .execute(&mut *tx)
 //     .await?;
 
 //     tx.commit().await?;
@@ -1511,7 +1509,6 @@ async fn accept_invite(
     authed: ApiAuthed,
     Extension(webhook): Extension<WebhookShared>,
     Extension(db): Extension<DB>,
-    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Json(nu): Json<AcceptInvite>,
 ) -> Result<(StatusCode, String)> {
     let mut tx = db.begin().await?;
@@ -1574,7 +1571,6 @@ async fn accept_invite(
             &nu.workspace_id,
             windmill_git_sync::DeployedObject::User { email: authed.email.clone() },
             Some(format!("User '{}' accepted invite", &authed.email)),
-            rsmq,
             true,
         )
         .await?;
@@ -1744,7 +1740,6 @@ async fn get_workspace_user(
 async fn update_workspace_user(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
-    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Path((w_id, username_to_update)): Path<(String, String)>,
     Json(eu): Json<EditWorkspaceUser>,
 ) -> Result<String> {
@@ -1813,7 +1808,6 @@ async fn update_workspace_user(
         &w_id,
         windmill_git_sync::DeployedObject::User { email: user_email.clone() },
         Some(format!("Updated user '{}'", &user_email)),
-        rsmq,
         true,
     )
     .await?;
@@ -1933,16 +1927,14 @@ async fn create_user(
     Extension(db): Extension<DB>,
     Extension(webhook): Extension<WebhookShared>,
     Extension(argon2): Extension<Arc<Argon2<'_>>>,
-    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Json(nu): Json<NewUser>,
 ) -> Result<(StatusCode, String)> {
-    crate::users_ee::create_user(authed, db, webhook, argon2, rsmq, nu).await
+    crate::users_ee::create_user(authed, db, webhook, argon2, nu).await
 }
 
 async fn delete_workspace_user(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
-    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Path((w_id, username_to_delete)): Path<(String, String)>,
 ) -> Result<String> {
     let mut tx = db.begin().await?;
@@ -1997,7 +1989,6 @@ async fn delete_workspace_user(
             "Removed user '{}' from workspace",
             &email_to_delete
         )),
-        rsmq,
         true,
     )
     .await?;
@@ -2055,8 +2046,10 @@ async fn set_login_type(
     .await?;
 
     tx.commit().await?;
-    Ok(format!("login type of {} updated to {}", email, et.login_type))
-    
+    Ok(format!(
+        "login type of {} updated to {}",
+        email, et.login_type
+    ))
 }
 
 async fn login(

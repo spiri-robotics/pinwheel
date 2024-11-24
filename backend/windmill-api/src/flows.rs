@@ -46,7 +46,7 @@ use windmill_common::{
     utils::{http_get_from_hub, not_found_if_none, paginate, Pagination, StripPath},
 };
 use windmill_git_sync::{handle_deployment_metadata, DeployedObject};
-use windmill_queue::{push, schedule::push_scheduled_job, PushIsolationLevel, QueueTransaction};
+use windmill_queue::{push, schedule::push_scheduled_job, PushIsolationLevel};
 
 pub fn workspaced_service() -> Router {
     Router::new()
@@ -283,7 +283,6 @@ async fn create_flow(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
     Extension(user_db): Extension<UserDB>,
-    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Extension(webhook): Extension<WebhookShared>,
     Path(w_id): Path<String>,
     Json(nf): Json<NewFlow>,
@@ -303,10 +302,10 @@ async fn create_flow(
     // cron::Schedule::from_str(&ns.schedule).map_err(|e| error::Error::BadRequest(e.to_string()))?;
     let authed = maybe_refresh_folders(&nf.path, &w_id, authed, &db).await;
 
-    let mut tx: QueueTransaction<'_, _> = (rsmq, user_db.clone().begin(&authed).await?).into();
+    let mut tx = user_db.clone().begin(&authed).await?;
 
-    check_path_conflict(tx.transaction_mut(), &w_id, &nf.path).await?;
-    check_schedule_conflict(tx.transaction_mut(), &w_id, &nf.path).await?;
+    check_path_conflict(&mut tx, &w_id, &nf.path).await?;
+    check_schedule_conflict(&mut tx, &w_id, &nf.path).await?;
 
     let schema_str = nf.schema.and_then(|x| serde_json::to_string(&x.0).ok());
 
@@ -326,7 +325,7 @@ async fn create_flow(
         schema_str,
         &authed.username,
     )
-    .execute(&mut tx)
+    .execute(&mut *tx)
     .await?;
 
     let version = sqlx::query_scalar!(
@@ -339,7 +338,7 @@ async fn create_flow(
         schema_str,
         &authed.username,
     )
-    .fetch_one(&mut tx)
+    .fetch_one(&mut *tx)
     .await?;
 
     sqlx::query!(
@@ -347,18 +346,18 @@ async fn create_flow(
         version,
         nf.path,
         w_id
-    ).execute(&mut tx).await?;
+    ).execute(&mut *tx).await?;
 
     sqlx::query!(
         "DELETE FROM draft WHERE path = $1 AND workspace_id = $2 AND typ = 'flow'",
         nf.path,
         &w_id
     )
-    .execute(&mut tx)
+    .execute(&mut *tx)
     .await?;
 
     audit_log(
-        &mut tx,
+        &mut *tx,
         &authed,
         "flows.create",
         ActionKind::Create,
@@ -415,7 +414,7 @@ async fn create_flow(
         nf.path,
         w_id
     )
-    .execute(&mut new_tx)
+    .execute(&mut *new_tx)
     .await?;
 
     new_tx.commit().await?;
@@ -593,7 +592,6 @@ async fn update_flow_history(
 async fn update_flow(
     authed: ApiAuthed,
     Extension(user_db): Extension<UserDB>,
-    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Extension(db): Extension<DB>,
     Extension(webhook): Extension<WebhookShared>,
     Path((w_id, flow_path)): Path<(String, StripPath)>,
@@ -614,9 +612,9 @@ async fn update_flow(
     let flow_path = flow_path.to_path();
     let authed = maybe_refresh_folders(&flow_path, &w_id, authed, &db).await;
 
-    let mut tx: QueueTransaction<'_, _> = (rsmq, user_db.clone().begin(&authed).await?).into();
+    let mut tx = user_db.clone().begin(&authed).await?;
 
-    check_schedule_conflict(tx.transaction_mut(), &w_id, flow_path).await?;
+    check_schedule_conflict(&mut tx, &w_id, flow_path).await?;
 
     let schema = nf.schema.map(|x| x.0);
     let old_dep_job = sqlx::query_scalar!(
@@ -624,7 +622,7 @@ async fn update_flow(
         flow_path,
         w_id
     )
-    .fetch_optional(&mut tx)
+    .fetch_optional(&mut *tx)
     .await?;
     let old_dep_job = not_found_if_none(old_dep_job, "Flow", flow_path)?;
 
@@ -649,7 +647,7 @@ async fn update_flow(
         flow_path,
         w_id,
     )
-    .execute(&mut tx)
+    .execute(&mut *tx)
     .await.map_err(|e| error::Error::InternalErr(format!("Error updating flow due to flow update: {e:#}")))?;
 
     if is_new_path {
@@ -664,7 +662,7 @@ async fn update_flow(
             flow_path,
             w_id
         )
-        .execute(&mut tx)
+        .execute(&mut *tx)
         .await
         .map_err(|e| {
             error::Error::InternalErr(format!("Error updating flow due to create new flow: {e:#}"))
@@ -676,7 +674,7 @@ async fn update_flow(
             flow_path,
             w_id
         )
-        .execute(&mut tx)
+        .execute(&mut *tx)
         .await
         .map_err(|e| {
             error::Error::InternalErr(format!(
@@ -689,7 +687,7 @@ async fn update_flow(
             flow_path,
             w_id
         )
-        .execute(&mut tx)
+        .execute(&mut *tx)
         .await
         .map_err(|e| {
             error::Error::InternalErr(format!(
@@ -706,7 +704,7 @@ async fn update_flow(
         schema_str,
         &authed.username,
     )
-    .fetch_one(&mut tx)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| {
         error::Error::InternalErr(format!(
@@ -717,10 +715,10 @@ async fn update_flow(
     sqlx::query!(
         "UPDATE flow SET versions = array_append(versions, $1) WHERE path = $2 AND workspace_id = $3",
         version, nf.path, w_id
-    ).execute(&mut tx).await?;
+    ).execute(&mut *tx).await?;
 
     if is_new_path {
-        check_schedule_conflict(tx.transaction_mut(), &w_id, &nf.path).await?;
+        check_schedule_conflict(&mut tx, &w_id, &nf.path).await?;
 
         if !authed.is_admin {
             require_owner_of_path(&authed, flow_path)?;
@@ -732,7 +730,7 @@ async fn update_flow(
             .bind(&nf.path)
             .bind(&flow_path)
             .bind(&w_id)
-        .fetch_all(&mut tx)
+        .fetch_all(&mut *tx)
         .await.map_err(|e| error::Error::InternalErr(format!("Error updating flow due to related schedules update: {e:#}")))?;
 
     let schedule = sqlx::query_as::<_, Schedule>(
@@ -740,16 +738,16 @@ async fn update_flow(
         .bind(&nf.path)
         .bind(&flow_path)
         .bind(&w_id)
-    .fetch_optional(&mut tx)
+    .fetch_optional(&mut *tx)
     .await.map_err(|e| error::Error::InternalErr(format!("Error updating flow due to related schedule update: {e:#}")))?;
 
     if let Some(schedule) = schedule {
-        clear_schedule(tx.transaction_mut(), &flow_path, &w_id).await?;
+        clear_schedule(&mut tx, &flow_path, &w_id).await?;
         schedulables.push(schedule);
     }
 
     for schedule in schedulables.into_iter() {
-        clear_schedule(tx.transaction_mut(), &schedule.path, &w_id).await?;
+        clear_schedule(&mut tx, &schedule.path, &w_id).await?;
 
         if schedule.enabled {
             tx = push_scheduled_job(&db, tx, &schedule, None).await?;
@@ -761,11 +759,11 @@ async fn update_flow(
         flow_path,
         &w_id
     )
-    .execute(&mut tx)
+    .execute(&mut *tx)
     .await?;
 
     audit_log(
-        &mut tx,
+        &mut *tx,
         &authed,
         "flows.update",
         ActionKind::Create,
@@ -832,7 +830,7 @@ async fn update_flow(
         nf.path,
         w_id
     )
-    .execute(&mut new_tx)
+    .execute(&mut *new_tx)
     .await
     .map_err(|e| {
         error::Error::InternalErr(format!(
@@ -844,7 +842,7 @@ async fn update_flow(
             "UPDATE queue SET canceled = true WHERE id = $1",
             old_dep_job
         )
-        .execute(&mut new_tx)
+        .execute(&mut *new_tx)
         .await
         .map_err(|e| {
             error::Error::InternalErr(format!(
@@ -995,7 +993,6 @@ async fn archive_flow_by_path(
     Extension(db): Extension<DB>,
     Extension(user_db): Extension<UserDB>,
     Extension(webhook): Extension<WebhookShared>,
-    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Path((w_id, path)): Path<(String, StripPath)>,
     Json(archived): Json<Archived>,
 ) -> Result<String> {
@@ -1042,7 +1039,6 @@ async fn archive_flow_by_path(
                 "unarchived"
             }
         )),
-        rsmq,
         true,
     )
     .await?;
@@ -1059,7 +1055,6 @@ async fn delete_flow_by_path(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
     Extension(user_db): Extension<UserDB>,
-    Extension(rsmq): Extension<Option<rsmq_async::MultiplexedRsmq>>,
     Extension(webhook): Extension<WebhookShared>,
     Path((w_id, path)): Path<(String, StripPath)>,
 ) -> Result<String> {
@@ -1105,7 +1100,6 @@ async fn delete_flow_by_path(
             version: 0, // dummy version as it will not get inserted in db
         },
         Some(format!("Flow '{}' deleted", path)),
-        rsmq,
         true,
     )
     .await?;

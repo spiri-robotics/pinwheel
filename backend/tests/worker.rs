@@ -120,7 +120,6 @@ impl ApiServer {
             db.clone(),
             None,
             None,
-            None,
             addr,
             rx,
             port_tx,
@@ -893,8 +892,8 @@ impl RunJob {
             hm_args.insert(k, windmill_common::worker::to_raw_value(&v));
         }
 
-        let tx = PushIsolationLevel::IsolatedRoot(db.clone(), None);
-        let (uuid, tx) = windmill_queue::push::<rsmq_async::MultiplexedRsmq>(
+        let tx = PushIsolationLevel::IsolatedRoot(db.clone());
+        let (uuid, tx) = windmill_queue::push(
             &db,
             tx,
             "test-workspace",
@@ -1012,7 +1011,7 @@ fn spawn_test_worker(
             windmill_common::worker::make_suspended_pull_query(&wc).await;
             windmill_common::worker::make_pull_query(&wc).await;
         }
-        windmill_worker::run_worker::<rsmq_async::MultiplexedRsmq>(
+        windmill_worker::run_worker(
             &db,
             worker_instance,
             worker_name,
@@ -1022,7 +1021,6 @@ fn spawn_test_worker(
             rx,
             tx2,
             &base_internal_url,
-            None,
             false,
         )
         .await
