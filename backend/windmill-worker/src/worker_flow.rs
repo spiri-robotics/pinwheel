@@ -1012,8 +1012,7 @@ pub async fn update_flow_status_after_job_completion_internal(
                 canceled_job_to_result(&flow_job),
                         worker_name,
                 true,
-                #[cfg(feature = "benchmark")]
-                bench,
+                None,
             )
             .await?;
         } else {
@@ -1053,9 +1052,8 @@ pub async fn update_flow_status_after_job_completion_internal(
                     Json(&nresult),
                     0,
                     None,
-                                true,
-                    #[cfg(feature = "benchmark")]
-                    bench,
+                    true,
+                    None,
                 )
                 .await?;
             } else {
@@ -1071,9 +1069,8 @@ pub async fn update_flow_status_after_job_completion_internal(
                     ),
                     0,
                     None,
-                                true,
-                    #[cfg(feature = "benchmark")]
-                    bench,
+                    true,
+                    None,
                 )
                 .await?;
             }
@@ -1110,8 +1107,7 @@ pub async fn update_flow_status_after_job_completion_internal(
                     e,
                                 worker_name,
                     true,
-                    #[cfg(feature = "benchmark")]
-                    bench,
+                    None,
                 )
                 .await;
                 true
