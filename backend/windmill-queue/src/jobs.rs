@@ -72,7 +72,6 @@ use backon::{BackoffBuilder, Retryable};
 #[cfg(feature = "cloud")]
 use windmill_common::users::SUPERADMIN_SYNC_EMAIL;
 
-
 use crate::schedule::{get_schedule_opt, push_scheduled_job};
 
 #[cfg(feature = "prometheus")]
