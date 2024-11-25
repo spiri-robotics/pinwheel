@@ -1767,7 +1767,7 @@ async fn handle_queued_job(
         return Err(Error::ExecutionErr(e.to_string()));
     }
 
-    if job.created_by.starts_with("email-") {
+    if job.parent_job.is_none() && job.created_by.starts_with("email-") {
         let daily_count = sqlx::query!(
             "SELECT value FROM metrics WHERE id = 'email_trigger_usage' AND created_at > NOW() - INTERVAL '1 day' ORDER BY created_at DESC LIMIT 1"
         ).fetch_optional(db).await?.map(|x| serde_json::from_value::<i64>(x.value).unwrap_or(1));
