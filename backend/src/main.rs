@@ -390,8 +390,8 @@ Windmill Community Edition {GIT_VERSION}
         tracing::error!("Could loading critical error emails setting: {:?}", e);
     }
 
-    let worker_mode = num_workers > 0;
 
+    let worker_mode = num_workers > 0;
 
     if server_mode || worker_mode || indexer_mode {
         let port_var = std::env::var("PORT").ok().and_then(|x| x.parse().ok());
