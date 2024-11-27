@@ -2341,7 +2341,7 @@ impl Job {
     pub fn is_flow(&self) -> bool {
         matches!(
             self.job_kind(),
-            JobKind::Flow | JobKind::FlowPreview | JobKind::SingleScriptFlow
+            JobKind::Flow | JobKind::FlowPreview | JobKind::SingleScriptFlow | JobKind::FlowNode
         )
     }
 

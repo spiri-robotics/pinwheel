@@ -1211,6 +1211,7 @@ mod tests {
                             value: windmill_common::worker::to_raw_value(&[1, 2, 3]),
                         },
                         modules: vec![],
+                        modules_node: None,
                         skip_failures: true,
                         parallel: false,
                         parallelism: None,
