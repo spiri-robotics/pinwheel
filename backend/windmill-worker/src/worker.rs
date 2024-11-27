@@ -8,6 +8,7 @@
 
 use windmill_common::{
     auth::{fetch_authed_from_permissioned_as, JWTAuthClaims, JobPerms, JWT_SECRET},
+    ee::LICENSE_KEY_VALID,
     scripts::PREVIEW_IS_TAR_CODEBASE_HASH,
     worker::{
         get_memory, get_vcpus, get_windmill_memory_usage, get_worker_memory_usage, write_file,
@@ -1049,6 +1050,7 @@ pub async fn run_worker(
     let mut killed_but_draining_same_worker_jobs = false;
 
     loop {
+
         #[cfg(feature = "benchmark")]
         let mut bench = BenchmarkIter::new();
 
@@ -1612,6 +1614,7 @@ pub async fn run_worker(
 
     drop(job_completed_tx);
 
+    tracing::info!("waiting for job_completed_processor to finish processing remaining jobs");
     if let Err(e) = send_result.await {
         tracing::error!("error in awaiting send_result process: {e:?}")
     }
@@ -2268,7 +2271,7 @@ async fn handle_code_execution_job(
                 envs: None,
                 codebase: None,
             }
-        },
+        }
         JobKind::DeploymentCallback => {
             get_script_content_by_path(job.script_path.clone(), &job.workspace_id, db).await?
         }
