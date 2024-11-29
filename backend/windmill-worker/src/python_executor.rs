@@ -1598,9 +1598,13 @@ pub async fn handle_python_reqs(
                 }
             };
 
+
+            let s3_push = false;
+
+
             print_success(
                 false,
-                true,
+                s3_push,
                 &job_id,
                 &w_id,
                 &req,
