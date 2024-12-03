@@ -20,7 +20,9 @@ pub(crate) async fn default_disk_log_storage(
     tracing::info!("Logs length of {job_id} has exceeded a threshold. Implementation to store excess on disk in not OSS");
 }
 
-
-pub(crate) fn process_streaming_log_lines(r: Result<Option<String>, io::Error>, _stderr: bool) -> Option<Result<String, io::Error>> {
+pub(crate) fn process_streaming_log_lines(
+    r: Result<Option<String>, io::Error>,
+    _stderr: bool,
+) -> Option<Result<String, io::Error>> {
     r.transpose()
 }
