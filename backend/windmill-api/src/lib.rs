@@ -325,6 +325,12 @@ pub async fn run_server(
                 )
                 .nest("/concurrency_groups", concurrency_groups::global_service())
                 .nest("/scripts_u", scripts::global_unauthed_service())
+                .nest("/apps_u", {
+
+                    {
+                        Router::new()
+                    }
+                })
                 .nest(
                     "/w/:workspace_id/apps_u",
                     apps::unauthed_service()
