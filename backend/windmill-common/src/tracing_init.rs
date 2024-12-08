@@ -57,12 +57,12 @@ pub fn initialize_tracing(
         )
     }
 
-    let meter_provider = crate::otel_ee::init_meter_provider(mode);
+    let meter_provider = crate::otel_ee::init_meter_provider(mode, hostname);
 
 
     let opentelemetry: Option<EnvFilter> = None;
 
-    let logs_bridge = crate::otel_ee::init_logs_bridge(&mode);
+    let logs_bridge = crate::otel_ee::init_logs_bridge(&mode, hostname);
 
     use tracing_appender::rolling::{RollingFileAppender, Rotation};
 
