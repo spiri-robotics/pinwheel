@@ -74,6 +74,7 @@ async fn initialize_tracing() {
         let _ = windmill_common::tracing_init::initialize_tracing(
             "test",
             &windmill_common::utils::Mode::Standalone,
+            "test",
         );
     });
 }

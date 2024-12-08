@@ -35,12 +35,12 @@ pub trait FutureExt: Sized {
 
 use tracing_subscriber::EnvFilter;
 
-pub(crate) fn init_logs_bridge(_mode: &Mode, _hostname: &str) -> Option<EnvFilter> {
+pub(crate) fn init_logs_bridge(_mode: &Mode, _hostname: &str, _env: &str) -> Option<EnvFilter> {
     None
 }
 
 
-pub(crate) fn init_meter_provider(_mode: &Mode, _hostname: &str) -> OtelProvider {
+pub(crate) fn init_meter_provider(_mode: &Mode, _hostname: &str, _env: &str) -> OtelProvider {
     None
 }
 
