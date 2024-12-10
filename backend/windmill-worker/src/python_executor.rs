@@ -403,7 +403,7 @@ async fn postinstall(
                 }
 
                 if let Some(existing_paths) = lookup_table.get_mut(&name) {
-                    tracing::info!(
+                    tracing::debug!(
                         "Found existing package name: {:?} in {}",
                         entry.file_name(),
                         path
@@ -454,6 +454,8 @@ fn copy_dir_recursively(src: &Path, dst: &Path) -> windmill_common::error::Resul
         fs::create_dir_all(dst)?;
     }
 
+    tracing::debug!("Copying recursively from {:?} to {:?}", src, dst);
+
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let src_path = entry.path();
@@ -465,6 +467,8 @@ fn copy_dir_recursively(src: &Path, dst: &Path) -> windmill_common::error::Resul
             fs::copy(&src_path, &dst_path)?;
         }
     }
+
+    tracing::debug!("Finished copying recursively from {:?} to {:?}", src, dst);
 
     Ok(())
 }
@@ -504,10 +508,13 @@ pub async fn handle_python_job(
     )
     .await?;
 
+    tracing::debug!("Finished handling python dependencies");
+
     if !PythonAnnotations::parse(inner_content).no_postinstall {
         if let Err(e) = postinstall(&mut additional_python_paths, job_dir, job, db).await {
             tracing::error!("Postinstall stage has failed. Reason: {e}");
         }
+        tracing::debug!("Finished deps postinstall stage");
     }
 
     append_logs(
@@ -538,9 +545,13 @@ pub async fn handle_python_job(
     )
     .await?;
 
+    tracing::debug!("Finished preparing wrapper");
+
     let apply_preprocessor = pre_spread.is_some();
 
     create_args_and_out_file(&client, job, job_dir, db).await?;
+    tracing::debug!("Finished preparing wrapper");
+
 
     let preprocessor = if let Some(pre_spread) = pre_spread {
         format!(
@@ -638,6 +649,8 @@ except BaseException as e:
 "#,
     );
     write_file(job_dir, "wrapper.py", &wrapper_content)?;
+
+    tracing::debug!("Finished writing wrapper");
 
     let client = client.get_authed().await;
     let mut reserved_variables = get_reserved_variables(job, &client.token, db).await?;
