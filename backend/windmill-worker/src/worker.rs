@@ -9,7 +9,6 @@
 // #[cfg(feature = "otel")]
 // use opentelemetry::{global,  KeyValue};
 
-
 use windmill_common::{
     apps::AppScriptId,
     auth::{fetch_authed_from_permissioned_as, JWTAuthClaims, JobPerms, JWT_SECRET},
@@ -90,12 +89,30 @@ use tokio::{
 use rand::Rng;
 
 use crate::{
-    ansible_executor::handle_ansible_job, bash_executor::{handle_bash_job, handle_powershell_job}, bun_executor::handle_bun_job, common::{
+    ansible_executor::handle_ansible_job,
+    bash_executor::{handle_bash_job, handle_powershell_job},
+    bun_executor::handle_bun_job,
+    common::{
         build_args_map, get_cached_resource_value_if_valid, get_reserved_variables, hash_args,
         update_worker_ping_for_failed_init_script, OccupancyMetrics,
-    }, deno_executor::handle_deno_job, go_executor::handle_go_job, graphql_executor::do_graphql, handle_child::SLOW_LOGS, handle_job_error, job_logger::NO_LOGS_AT_ALL, js_eval::{eval_fetch_timeout, transpile_ts}, mysql_executor::do_mysql, pg_executor::do_postgresql, php_executor::handle_php_job, python_executor::handle_python_job, result_processor::{process_result, start_background_processor}, rust_executor::handle_rust_job, worker_flow::{handle_flow, update_flow_status_in_progress, Step}, worker_lockfiles::{
+    },
+    deno_executor::handle_deno_job,
+    go_executor::handle_go_job,
+    graphql_executor::do_graphql,
+    handle_child::SLOW_LOGS,
+    handle_job_error,
+    job_logger::NO_LOGS_AT_ALL,
+    js_eval::{eval_fetch_timeout, transpile_ts},
+    mysql_executor::do_mysql,
+    pg_executor::do_postgresql,
+    php_executor::handle_php_job,
+    python_executor::handle_python_job,
+    result_processor::{process_result, start_background_processor},
+    rust_executor::handle_rust_job,
+    worker_flow::{handle_flow, update_flow_status_in_progress, Step},
+    worker_lockfiles::{
         handle_app_dependency_job, handle_dependency_job, handle_flow_dependency_job,
-    }
+    },
 };
 
 use backon::ConstantBuilder;
@@ -942,7 +959,6 @@ pub async fn run_worker(
             None
         };
 
-
     // let worker_resource = &[
     //     KeyValue::new("hostname", hostname.to_string()),
     //     KeyValue::new("worker", worker_name.to_string()),
@@ -950,7 +966,6 @@ pub async fn run_worker(
     // // Create a meter from the above MeterProvider.
     // let meter = global::meter("windmill");
     // let counter = meter.u64_counter("jobs.execution").build();
-
 
     let mut occupancy_metrics = OccupancyMetrics::new(start_time);
     let mut jobs_executed = 0;
@@ -1121,19 +1136,19 @@ pub async fn run_worker(
             )
             .notify(|err, dur| {
                 tracing::error!(
-                    worker = %worker_name, hostname = %hostname, 
+                    worker = %worker_name, hostname = %hostname,
                     "retrying updating worker ping in {dur:#?}, err: {err:#?}"
                 );
             })
             .sleep(tokio::time::sleep)
             .await {
                 tracing::error!(
-                    worker = %worker_name, hostname = %hostname, 
+                    worker = %worker_name, hostname = %hostname,
                     "failed to update worker ping, exiting: {}", e);
                 killpill_tx.send(()).unwrap_or_default();
             }
             tracing::info!(
-                worker = %worker_name, hostname = %hostname, 
+                worker = %worker_name, hostname = %hostname,
                 "ping update, memory: container={}MB, windmill={}MB",
                 memory_usage.unwrap_or_default() / (1024 * 1024),
                 wm_memory_usage.unwrap_or_default() / (1024 * 1024)
@@ -1192,7 +1207,7 @@ pub async fn run_worker(
             if let Ok(same_worker_job) = same_worker_rx.try_recv() {
                 same_worker_queue_size.fetch_sub(1, Ordering::SeqCst);
                 tracing::debug!(
-                    worker = %worker_name, hostname = %hostname, 
+                    worker = %worker_name, hostname = %hostname,
                     "received {} from same worker channel",
                     same_worker_job.job_id
                 );
@@ -1205,7 +1220,7 @@ pub async fn run_worker(
                 .map_err(|_| Error::InternalErr("Impossible to fetch same_worker job".to_string()));
                 if r.is_err() && !same_worker_job.recoverable {
                     tracing::error!(
-                        worker = %worker_name, hostname = %hostname, 
+                        worker = %worker_name, hostname = %hostname,
                         "failed to fetch same_worker job on a non recoverable job, exiting"
                     );
                     job_completed_tx
@@ -1481,7 +1496,6 @@ pub async fn run_worker(
                     let arc_job = Arc::new(job);
                     add_time!(bench, "handle_queued_job START");
 
-
                     let span = tracing::span!(tracing::Level::INFO, "job",
                             job_id = %arc_job.id, root_job = field::Empty, workspace_id = %arc_job.workspace_id,  worker = %worker_name, hostname = %hostname, tag = %arc_job.tag,
                             language = field::Empty,
@@ -1572,8 +1586,6 @@ pub async fn run_worker(
                         }
                         _ => {}
                     }
-
-
 
                     #[cfg(feature = "prometheus")]
                     if let Some(duration) = _timer.map(|x| x.stop_and_record()) {
@@ -1680,8 +1692,6 @@ pub async fn run_worker(
     tracing::info!(worker = %worker_name, hostname = %hostname, "worker {} exited", worker_name);
     tracing::info!(worker = %worker_name, hostname = %hostname, "number of jobs executed: {}", jobs_executed);
 }
-
-
 
 async fn queue_init_bash_maybe<'c>(
     db: &Pool<Postgres>,
@@ -1826,7 +1836,6 @@ async fn handle_queued_job(
     #[cfg(feature = "benchmark")] bench: &mut BenchmarkIter,
 ) -> windmill_common::error::Result<bool> {
     // Extract the active span from the context
-
 
     if job.canceled {
         return Err(Error::JsonErr(canceled_job_to_result(&job)));
@@ -2170,7 +2179,6 @@ async fn handle_queued_job(
     }
 }
 
-
 pub fn build_envs(
     envs: Option<Vec<String>>,
 ) -> windmill_common::error::Result<HashMap<String, String>> {
@@ -2277,7 +2285,6 @@ async fn handle_code_execution_job(
     new_args: &mut Option<HashMap<String, Box<RawValue>>>,
     occupancy_metrics: &mut OccupancyMetrics,
     killpill_rx: &mut tokio::sync::broadcast::Receiver<()>,
-
 ) -> error::Result<Box<RawValue>> {
     let ContentReqLangEnvs {
         content: inner_content,
