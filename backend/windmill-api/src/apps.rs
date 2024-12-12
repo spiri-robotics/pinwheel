@@ -144,6 +144,8 @@ pub struct AppWithLastVersion {
     pub created_by: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub extra_perms: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_path: Option<String>,
 }
 
 #[derive(Serialize, FromRow)]
@@ -165,8 +167,6 @@ pub struct AppWithLastVersionAndDraft {
     pub draft: Option<sqlx::types::Json<Box<RawValue>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub draft_only: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub custom_path: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -366,7 +366,7 @@ async fn get_app(
 
     let app_o = if query.with_starred_info.unwrap_or(false) {
         sqlx::query_as::<_, AppWithLastVersionAndStarred>(
-            "SELECT app.id, app.path, app.summary, app.versions, app.policy,
+            "SELECT app.id, app.path, app.summary, app.versions, app.policy, app.custom_path,
             app.extra_perms, app_version.value, 
             app_version.created_at, app_version.created_by, favorite.path IS NOT NULL as starred
             FROM app
@@ -386,7 +386,7 @@ async fn get_app(
         .await?
     } else {
         sqlx::query_as::<_, AppWithLastVersionAndStarred>(
-            "SELECT app.id, app.path, app.summary, app.versions, app.policy,
+            "SELECT app.id, app.path, app.summary, app.versions, app.policy, app.custom_path,
             app.extra_perms, app_version.value, 
             app_version.created_at, app_version.created_by, NULL as starred
             FROM app, app_version
@@ -412,7 +412,7 @@ async fn get_app_lite(
     let mut tx = user_db.begin(&authed).await?;
 
     let app_o = sqlx::query_as::<_, AppWithLastVersion>(
-        "SELECT app.id, app.path, app.summary, app.versions, app.policy,
+        "SELECT app.id, app.path, app.summary, app.versions, app.policy, app.custom_path,
         app.extra_perms, coalesce(app_version_lite.value::json, app_version.value) as value, 
         app_version.created_at, app_version.created_by, NULL as starred
         FROM app, app_version
@@ -439,8 +439,8 @@ async fn get_app_w_draft(
     let mut tx = user_db.begin(&authed).await?;
 
     let app_o = sqlx::query_as::<_, AppWithLastVersionAndDraft>(
-        r#"SELECT app.id, app.path, app.summary, app.versions, app.policy,
-        app.extra_perms, app_version.value, app.custom_path,
+        r#"SELECT app.id, app.path, app.summary, app.versions, app.policy, app.custom_path,
+        app.extra_perms, app_version.value,
         app_version.created_at, app_version.created_by,
         app.draft_only, draft.value as "draft"
         from app
@@ -570,7 +570,7 @@ async fn get_app_by_id(
     let mut tx = user_db.begin(&authed).await?;
 
     let app_o = sqlx::query_as::<_, AppWithLastVersion>(
-        "SELECT app.id, app.path, app.summary, app.versions, app.policy,
+        "SELECT app.id, app.path, app.summary, app.versions, app.policy, app.custom_path,
         app.extra_perms, app_version.value, 
         app_version.created_at, app_version.created_by from app, app_version 
         WHERE app_version.id = $1 AND app.id = app_version.app_id AND app.workspace_id = $2",
@@ -601,7 +601,7 @@ async fn get_public_app_by_secret(
     let id: i64 = bytes.parse().map_err(to_anyhow)?;
 
     let app_o = sqlx::query_as::<_, AppWithLastVersion>(
-        "SELECT app.id, app.path, app.summary, app.versions, app.policy,
+        "SELECT app.id, app.path, app.summary, app.versions, app.policy, app.custom_path,
         null as extra_perms, coalesce(app_version_lite.value::json, app_version.value::json) as value,
         app_version.created_at, app_version.created_by from app, app_version 
         LEFT JOIN app_version_lite ON app_version_lite.id = app_version.id
