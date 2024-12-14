@@ -88,7 +88,6 @@ use tokio::{
 use rand::Rng;
 
 use crate::{
-    ansible_executor::handle_ansible_job,
     bash_executor::{handle_bash_job, handle_powershell_job},
     bun_executor::handle_bun_job,
     common::{
@@ -104,8 +103,6 @@ use crate::{
     job_logger::NO_LOGS_AT_ALL,
     js_eval::{eval_fetch_timeout, transpile_ts},
     pg_executor::do_postgresql,
-    php_executor::handle_php_job,
-    python_executor::handle_python_job,
     result_processor::{process_result, start_background_processor},
     rust_executor::handle_rust_job,
     worker_flow::{handle_flow, update_flow_status_in_progress},
@@ -114,11 +111,22 @@ use crate::{
     },
 };
 
+#[cfg(feature = "php")]
+use crate::php_executor::handle_php_job;
+
+#[cfg(feature = "python")]
+use crate::python_executor::handle_python_job;
+
+#[cfg(feature = "python")]
+use crate::ansible_executor::handle_ansible_job;
+
 #[cfg(feature = "mysql")]
 use crate::mysql_executor::do_mysql;
 
 use backon::ConstantBuilder;
 use backon::{BackoffBuilder, Retryable};
+
+
 
 
 
@@ -2327,7 +2335,9 @@ async fn handle_code_execution_job(
         .await;
     } else if language == Some(ScriptLang::Mysql) {
         #[cfg(not(feature = "mysql"))]
-        return Err(Error::InternalErr("MySQL requires the mysql feature to be enabled".to_string()));
+        return Err(Error::InternalErr(
+            "MySQL requires the mysql feature to be enabled".to_string(),
+        ));
 
         #[cfg(feature = "mysql")]
         return do_mysql(
@@ -2349,6 +2359,13 @@ async fn handle_code_execution_job(
             ));
         }
 
+        #[cfg(not(feature = "bigquery"))]
+        {
+            return Err(Error::InternalErr(
+                "Bigquery requires the bigquery feature to be enabled".to_string(),
+            ));
+        }
+
     } else if language == Some(ScriptLang::Snowflake) {
         {
             return Err(Error::ExecutionErr(
@@ -2360,6 +2377,13 @@ async fn handle_code_execution_job(
         {
             return Err(Error::ExecutionErr(
                 "Microsoft SQL server is only available with an enterprise license".to_string(),
+            ));
+        }
+
+        #[cfg(not(feature = "mssql"))]
+        {
+            return Err(Error::InternalErr(
+                "Microsoft SQL server requires the mssql feature to be enabled".to_string(),
             ));
         }
 
@@ -2453,6 +2477,12 @@ mount {{
             ))?;
         }
         Some(ScriptLang::Python3) => {
+            #[cfg(not(feature = "python"))]
+            return Err(Error::InternalErr(
+                "Python requires the python feature to be enabled".to_string(),
+            ));
+
+            #[cfg(feature = "python")]
             handle_python_job(
                 requirements_o,
                 job_dir,
@@ -2564,6 +2594,12 @@ mount {{
             .await
         }
         Some(ScriptLang::Php) => {
+            #[cfg(not(feature = "php"))]
+            return Err(Error::InternalErr(
+                "PHP requires the php feature to be enabled".to_string(),
+            ));
+
+            #[cfg(feature = "php")]
             handle_php_job(
                 requirements_o,
                 mem_peak,
@@ -2600,6 +2636,12 @@ mount {{
             .await
         }
         Some(ScriptLang::Ansible) => {
+            #[cfg(not(feature = "python"))]
+            return Err(Error::InternalErr(
+                "Ansible requires the python feature to be enabled".to_string(),
+            ));
+
+            #[cfg(feature = "python")]
             handle_ansible_job(
                 requirements_o,
                 job_dir,
