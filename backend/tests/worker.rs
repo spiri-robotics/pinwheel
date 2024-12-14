@@ -128,6 +128,7 @@ impl ApiServer {
             rx,
             port_tx,
             false,
+            #[cfg(feature = "smtp")]
             format!("http://localhost:{}", addr.port()),
         ));
 
