@@ -56,7 +56,6 @@ use windmill_common::{
 use windmill_git_sync::handle_deployment_metadata;
 
 
-use crate::oauth2_ee::InstanceEvent;
 use crate::variables::{decrypt, encrypt};
 use hyper::{header, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -65,6 +64,7 @@ use sqlx::{FromRow, Postgres, Transaction};
 use tempfile::TempDir;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
+use windmill_common::oauth2::InstanceEvent;
 use windmill_common::utils::not_found_if_none;
 
 lazy_static::lazy_static! {
@@ -1907,6 +1907,7 @@ pub fn is_none_or_false(val: &Option<bool>) -> bool {
 }
 
 enum ArchiveImpl {
+    #[cfg(feature = "zip")]
     Zip(async_zip::write::ZipFileWriter<File>),
     Tar(tokio_tar::Builder<File>),
 }
@@ -1925,6 +1926,7 @@ impl ArchiveImpl {
                 header.set_cksum();
                 t.append_data(&mut header, path, bytes).await?;
             }
+            #[cfg(feature = "zip")]
             ArchiveImpl::Zip(z) => {
                 let header = async_zip::ZipEntryBuilder::new(
                     path.to_owned(),
@@ -1943,6 +1945,7 @@ impl ArchiveImpl {
     async fn finish(self) -> Result<()> {
         match self {
             ArchiveImpl::Tar(t) => t.into_inner().await?,
+            #[cfg(feature = "zip")]
             ArchiveImpl::Zip(z) => z.close().await.map_err(to_anyhow)?,
         }
         .sync_all()
@@ -2097,6 +2100,7 @@ async fn tarball_workspace(
     let file = File::create(&file_path).await?;
     let mut archive = match archive_type.as_deref() {
         Some("tar") | None => Ok(ArchiveImpl::Tar(tokio_tar::Builder::new(file))),
+        #[cfg(feature = "zip")]
         Some("zip") => Ok(ArchiveImpl::Zip(async_zip::write::ZipFileWriter::new(file))),
         Some(t) => Err(Error::BadRequest(format!("Invalid Archive Type {t}"))),
     }?;

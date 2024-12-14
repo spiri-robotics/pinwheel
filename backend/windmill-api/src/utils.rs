@@ -10,7 +10,6 @@ use axum::{body::Body, response::Response};
 use regex::Regex;
 use serde::Deserialize;
 use sqlx::{Postgres, Transaction};
-use windmill_common::worker::CLOUD_HOSTED;
 use windmill_common::{
     auth::{is_devops_email, is_super_admin_email},
     error::{self, Error},

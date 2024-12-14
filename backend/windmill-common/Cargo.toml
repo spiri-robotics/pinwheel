@@ -8,7 +8,6 @@ edition.workspace = true
 default = []
 jemalloc = ["dep:tikv-jemalloc-ctl"]
 prometheus = ["dep:prometheus"]
-flamegraph = ["dep:tracing-flame"]
 loki = ["dep:tracing-loki"]
 benchmark = []
 parquet = ["dep:object_store", "dep:aws-config", "dep:aws-sdk-sts"]
@@ -39,7 +38,6 @@ tokio = { workspace = true }
 reqwest = { workspace = true }
 tracing-subscriber = { workspace = true }
 lazy_static.workspace = true
-tracing-flame = { version = "^0", optional = true }
 tracing-appender.workspace = true
 gethostname.workspace = true
 itertools.workspace = true
