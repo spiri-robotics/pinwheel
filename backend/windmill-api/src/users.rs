@@ -14,6 +14,7 @@ use std::sync::Arc;
 use crate::db::ApiAuthed;
 
 pub use crate::auth::Tokened;
+
 use crate::utils::{
     generate_instance_wide_unique_username, get_instance_username_or_create_pending,
 };

@@ -15,6 +15,7 @@ use std::sync::{
     atomic::{AtomicI64, AtomicU64, Ordering},
     Arc,
 };
+
 use windmill_common::{
     auth::{get_folders_for_user, get_groups_for_user, JWTAuthClaims, JWT_SECRET},
     users::{COOKIE_NAME, SUPERADMIN_SECRET_EMAIL},
