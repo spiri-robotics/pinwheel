@@ -53,6 +53,7 @@ mod ai;
 mod apps;
 mod args;
 mod audit;
+mod auth;
 mod capture;
 mod concurrency_groups;
 mod configs;
@@ -102,6 +103,8 @@ mod websocket_triggers;
 mod workers;
 mod workspaces;
 mod workspaces_ee;
+mod workspaces_export;
+mod workspaces_extra;
 
 pub const DEFAULT_BODY_LIMIT: usize = 2097152 * 100; // 200MB
 
@@ -187,7 +190,7 @@ pub async fn run_server(
 ) -> anyhow::Result<()> {
     let user_db = UserDB::new(db.clone());
 
-    let auth_cache = Arc::new(users::AuthCache::new(
+    let auth_cache = Arc::new(crate::auth::AuthCache::new(
         db.clone(),
         std::env::var("SUPERADMIN_SECRET").ok(),
     ));
