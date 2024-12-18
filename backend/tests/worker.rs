@@ -3540,6 +3540,7 @@ mod job_payload {
                 concurrency_time_window_s: None,
                 cache_ttl: None,
                 dedicated_worker: None,
+                path: "f/system/hello/test-0".into(),
             })
             .arg("world", json!("foo"))
             .run_until_complete(&db, port)
@@ -3559,6 +3560,7 @@ mod job_payload {
                 concurrency_time_window_s: None,
                 cache_ttl: None,
                 dedicated_worker: None,
+                path: "f/system/hello/test-0".into(),
             })
             .arg("hello", json!("You know nothing Jean Neige"))
             .run_until_complete(&db, port)
