@@ -3506,7 +3506,7 @@ mod job_payload {
         let flow_data = cache::flow::fetch_version_lite(&db, 1443253234253454)
             .await
             .unwrap();
-        let flow_value = flow_data.value().unwrap();
+        let flow_value = flow_data.value();
         let flow_scripts = {
             async fn load(db: &Pool<Postgres>, modules: &[FlowModule]) -> Vec<FlowNodeId> {
                 let mut res = vec![];
@@ -3517,9 +3517,7 @@ mod job_payload {
                         FlowModuleValue::FlowScript { id, .. } => res.push(id),
                         FlowModuleValue::ForloopFlow { modules_node: Some(flow_node), .. } => {
                             let flow_data = cache::flow::fetch_flow(db, flow_node).await.unwrap();
-                            res.extend(
-                                Box::pin(load(db, &flow_data.value().unwrap().modules)).await,
-                            );
+                            res.extend(Box::pin(load(db, &flow_data.value().modules)).await);
                         }
                         _ => {}
                     }
@@ -3596,7 +3594,7 @@ mod job_payload {
         let flow_data = cache::flow::fetch_version_lite(&db, 1443253234253454)
             .await
             .unwrap();
-        let flow_value = flow_data.value().unwrap();
+        let flow_value = flow_data.value();
         let forloop_module =
             serde_json::from_str::<FlowModuleValue>(flow_value.modules[0].value.get()).unwrap();
         let FlowModuleValue::ForloopFlow { modules_node: Some(id), .. } = forloop_module else {
