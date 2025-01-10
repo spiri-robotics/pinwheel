@@ -87,6 +87,7 @@ mod scim_ee;
 mod scripts;
 mod service_logs;
 mod settings;
+mod slack_approvals;
 #[cfg(feature = "smtp")]
 mod smtp_server_ee;
 mod static_assets;
@@ -103,7 +104,6 @@ mod websocket_triggers;
 mod workers;
 mod workspaces;
 mod workspaces_ee;
-mod slack_approvals;
 mod workspaces_export;
 mod workspaces_extra;
 
@@ -259,12 +259,20 @@ pub async fn run_server(
         }
     };
 
+    let nats_triggers_service = {
+
+        {
+            Router::new()
+        }
+    };
+
     if !*CLOUD_HOSTED {
         #[cfg(feature = "websocket")]
         {
             let ws_killpill_rx = rx.resubscribe();
             websocket_triggers::start_websockets(db.clone(), ws_killpill_rx).await;
         }
+
 
     }
 
@@ -334,7 +342,8 @@ pub async fn run_server(
                             #[cfg(not(feature = "websocket"))]
                             Router::new()
                         })
-                        .nest("/kafka_triggers", kafka_triggers_service),
+                        .nest("/kafka_triggers", kafka_triggers_service)
+                        .nest("/nats_triggers", nats_triggers_service),
                 )
                 .nest("/workspaces", workspaces::global_service())
                 .nest(
@@ -389,7 +398,10 @@ pub async fn run_server(
                     jobs::workspace_unauthed_service().layer(cors.clone()),
                 )
                 .route("/slack", post(slack_approvals::slack_app_callback_handler))
-                .route("/w/:workspace_id/jobs/slack_approval/:job_id", get(slack_approvals::request_slack_approval))
+                .route(
+                    "/w/:workspace_id/jobs/slack_approval/:job_id",
+                    get(slack_approvals::request_slack_approval),
+                )
                 .nest(
                     "/w/:workspace_id/resources_u",
                     resources::public_service().layer(cors.clone()),

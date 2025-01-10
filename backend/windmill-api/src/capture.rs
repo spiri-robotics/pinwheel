@@ -82,6 +82,7 @@ pub enum TriggerKind {
     Websocket,
     Kafka,
     Email,
+    Nats,
 }
 
 impl fmt::Display for TriggerKind {
@@ -92,6 +93,7 @@ impl fmt::Display for TriggerKind {
             TriggerKind::Websocket => "websocket",
             TriggerKind::Kafka => "kafka",
             TriggerKind::Email => "email",
+            TriggerKind::Nats => "nats",
         };
         write!(f, "{}", s)
     }
@@ -103,6 +105,8 @@ struct HttpTriggerConfig {
     route_path: String,
     http_method: HttpMethod,
 }
+
+
 
 
 
