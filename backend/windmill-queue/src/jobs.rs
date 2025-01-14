@@ -1241,7 +1241,7 @@ pub async fn push_error_handler<'a, 'c, T: Serialize + Send + Sync>(
     } else {
         w_id
     };
-    let (payload, tag) =
+    let (payload, tag, on_behalf_of) =
         get_payload_tag_from_prefixed_path(on_failure_path, db, handler_w_id).await?;
 
     let mut extra = HashMap::new();
@@ -1270,6 +1270,25 @@ pub async fn push_error_handler<'a, 'c, T: Serialize + Send + Sync>(
 
     let result = sanitize_result(result);
 
+    let (email, permissioned_as) = if let Some(on_behalf_of) = on_behalf_of.as_ref() {
+        (
+            on_behalf_of.email.as_str(),
+            on_behalf_of.permissioned_as.clone(),
+        )
+    } else if is_global_error_handler {
+        (SUPERADMIN_SECRET_EMAIL, SUPERADMIN_SECRET_EMAIL.to_string())
+    } else if is_schedule_error_handler {
+        (
+            SCHEDULE_ERROR_HANDLER_USER_EMAIL,
+            ERROR_HANDLER_USER_GROUP.to_string(),
+        )
+    } else {
+        (
+            ERROR_HANDLER_USER_EMAIL,
+            ERROR_HANDLER_USER_GROUP.to_string(),
+        )
+    };
+
     let tx = PushIsolationLevel::IsolatedRoot(db.clone());
     let (uuid, tx) = push(
         &db,
@@ -1284,18 +1303,8 @@ pub async fn push_error_handler<'a, 'c, T: Serialize + Send + Sync>(
         } else {
             ERROR_HANDLER_USERNAME
         },
-        if is_global_error_handler {
-            SUPERADMIN_SECRET_EMAIL
-        } else if is_schedule_error_handler {
-            SCHEDULE_ERROR_HANDLER_USER_EMAIL
-        } else {
-            ERROR_HANDLER_USER_EMAIL
-        },
-        if is_global_error_handler {
-            SUPERADMIN_SECRET_EMAIL.to_string()
-        } else {
-            ERROR_HANDLER_USER_GROUP.to_string()
-        },
+        email,
+        permissioned_as,
         None,
         None,
         Some(job_id),
