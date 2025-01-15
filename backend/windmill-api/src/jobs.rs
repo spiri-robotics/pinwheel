@@ -520,28 +520,8 @@ async fn force_cancel(
     }
 }
 
-pub async fn get_path_for_hash<'c>(
-    db: &mut Transaction<'c, Postgres>,
-    w_id: &str,
-    hash: i64,
-) -> error::Result<String> {
-    let path = sqlx::query_scalar!(
-        "select path from script where hash = $1 AND workspace_id = $2",
-        hash,
-        w_id
-    )
-    .fetch_one(&mut **db)
-    .await
-    .map_err(|e| {
-        Error::InternalErr(format!(
-            "querying getting path for hash {hash} in {w_id}: {e:#}"
-        ))
-    })?;
-    Ok(path)
-}
-
 pub async fn get_path_tag_limits_cache_for_hash(
-    tx: &DB,
+    mut tx: Transaction<'_, Postgres>,
     w_id: &str,
     hash: i64,
 ) -> error::Result<(
@@ -565,7 +545,7 @@ pub async fn get_path_tag_limits_cache_for_hash(
         hash,
         w_id
     )
-    .fetch_optional(tx)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| {
         Error::InternalErr(format!(
@@ -2938,6 +2918,7 @@ pub async fn run_flow_by_path_inner(
     let flow_path = flow_path.to_path();
     check_scopes(&authed, || format!("run:flow/{flow_path}"))?;
 
+    let mut tx = user_db.clone().begin(&authed).await?;
     let (tag, dedicated_worker, has_preprocessor, on_behalf_of_email, edited_by) = sqlx::query!(
         "SELECT tag, dedicated_worker, flow_version.value->>'preprocessor_module' IS NOT NULL as has_preprocessor, on_behalf_of_email, edited_by
         FROM flow 
@@ -2947,7 +2928,7 @@ pub async fn run_flow_by_path_inner(
         flow_path,
         w_id
     )
-    .fetch_optional(&db)
+    .fetch_optional(&mut *tx)
     .await?
     .map(|x| (x.tag, x.dedicated_worker, x.has_preprocessor, x.on_behalf_of_email, x.edited_by))
     .ok_or_else(|| {
@@ -2955,6 +2936,7 @@ pub async fn run_flow_by_path_inner(
             "flow not found at path {flow_path} in workspace {w_id}"
         ))
     })?;
+    drop(tx);
 
     let tag = run_query.tag.clone().or(tag);
 
@@ -3069,8 +3051,10 @@ pub async fn run_script_by_path_inner(
 
     check_scopes(&authed, || format!("run:script/{script_path}"))?;
 
+    let mut tx = user_db.clone().begin(&authed).await?;
     let (job_payload, tag, _delete_after_use, timeout, on_behalf_of) =
-        script_path_to_payload(script_path, &db, &w_id, run_query.skip_preprocessor).await?;
+        script_path_to_payload(script_path, &mut *tx, &w_id, run_query.skip_preprocessor).await?;
+    drop(tx);
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
 
     let tag = run_query.tag.clone().or(tag);
@@ -3186,8 +3170,14 @@ pub async fn run_workflow_as_code(
             None,
         ),
         JobKind::Script => {
-            script_path_to_payload(job.script_path(), &db, &w_id, run_query.skip_preprocessor)
-                .await?
+            let mut tx = user_db.clone().begin(&authed).await?;
+            script_path_to_payload(
+                job.script_path(),
+                &mut *tx,
+                &w_id,
+                run_query.skip_preprocessor,
+            )
+            .await?
         }
         _ => return Err(anyhow::anyhow!("Not supported").into()),
     };
@@ -3669,8 +3659,10 @@ pub async fn run_wait_result_job_by_path_get(
     let script_path = script_path.to_path();
     check_scopes(&authed, || format!("run:script/{script_path}"))?;
 
+    let mut tx = user_db.clone().begin(&authed).await?;
     let (job_payload, tag, delete_after_use, timeout, on_behalf_authed) =
-        script_path_to_payload(script_path, &db, &w_id, run_query.skip_preprocessor).await?;
+        script_path_to_payload(script_path, &mut *tx, &w_id, run_query.skip_preprocessor).await?;
+    drop(tx);
 
     let tag = run_query.tag.clone().or(tag);
     check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
@@ -3801,8 +3793,9 @@ pub async fn run_wait_result_script_by_path_internal(
     let script_path = script_path.to_path();
     check_scopes(&authed, || format!("run:script/{script_path}"))?;
 
+    let mut tx = user_db.clone().begin(&authed).await?;
     let (job_payload, tag, delete_after_use, timeout, on_behalf_of) =
-        script_path_to_payload(script_path, &db, &w_id, run_query.skip_preprocessor).await?;
+        script_path_to_payload(script_path, &mut *tx, &w_id, run_query.skip_preprocessor).await?;
 
     let tag = run_query.tag.clone().or(tag);
     check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
@@ -3889,7 +3882,8 @@ pub async fn run_wait_result_script_by_hash(
         has_preprocessor,
         on_behalf_of_email,
         created_by,
-    ) = get_path_tag_limits_cache_for_hash(&db, &w_id, hash).await?;
+    ) = get_path_tag_limits_cache_for_hash(user_db.clone().begin(&authed).await?, &w_id, hash)
+        .await?;
     if let Some(run_query_cache_ttl) = run_query.cache_ttl {
         cache_ttl = Some(run_query_cache_ttl);
     }
@@ -3995,6 +3989,7 @@ pub async fn run_wait_result_flow_by_path_internal(
 
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
 
+    let mut tx = user_db.clone().begin(&authed).await?;
     let (tag, dedicated_worker, early_return, has_preprocessor, on_behalf_of_email, edited_by) = sqlx::query!(
         "SELECT tag, dedicated_worker, flow_version.value->>'early_return' as early_return, flow_version.value->>'preprocessor_module' IS NOT NULL as has_preprocessor, on_behalf_of_email, edited_by
         FROM flow 
@@ -4004,7 +3999,7 @@ pub async fn run_wait_result_flow_by_path_internal(
         flow_path,
         w_id
     )
-    .fetch_optional(&db)
+    .fetch_optional(&mut *tx)
     .await?
     .map(|x| (x.tag, x.dedicated_worker, x.early_return, x.has_preprocessor, x.on_behalf_of_email, x.edited_by))
     .ok_or_else(|| {
@@ -4313,6 +4308,7 @@ struct BatchInfo {
 async fn add_batch_jobs(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
+    Extension(user_db): Extension<UserDB>,
     Path((w_id, n)): Path<(String, i32)>,
     Json(batch_info): Json<BatchInfo>,
 ) -> error::JsonResult<Vec<Uuid>> {
@@ -4335,6 +4331,7 @@ async fn add_batch_jobs(
     ) = match batch_info.kind.as_str() {
         "script" => {
             if let Some(path) = batch_info.path {
+                let mut tx = user_db.clone().begin(&authed).await?;
                 let (
                     script_hash,
                     _tag,
@@ -4350,7 +4347,7 @@ async fn add_batch_jobs(
                     _,
                     _, // TODO: consider on_behalf_of_email and created_by for batch jobs
                     _, // ------------------------------------------
-                ) = get_latest_deployed_hash_for_path(&db, &w_id, &path).await?;
+                ) = get_latest_deployed_hash_for_path(&mut *tx, &w_id, &path).await?;
                 (
                     Some(script_hash),
                     Some(path),
@@ -4399,6 +4396,7 @@ async fn add_batch_jobs(
             let (mut value, job_kind, path) = if let Some(value) = batch_info.flow_value {
                 (value, JobKind::FlowPreview, None)
             } else if let Some(path) = batch_info.path {
+                let mut tx = user_db.clone().begin(&authed).await?;
                 let value_json = sqlx::query!(
                     "SELECT coalesce(flow_version_lite.value, flow_version.value) as \"value!: sqlx::types::Json<Box<RawValue>>\" FROM flow 
                     LEFT JOIN flow_version
@@ -4408,7 +4406,7 @@ async fn add_batch_jobs(
                     WHERE flow.path = $1 AND flow.workspace_id = $2 LIMIT 1",
                     &path, &w_id
                 )
-                .fetch_optional(&db)
+                .fetch_optional(&mut *tx)
                 .await?
                 .ok_or_else(|| Error::InternalErr(format!("not found flow at path {:?}", path)))?;
                 let value =
@@ -4476,6 +4474,8 @@ async fn add_batch_jobs(
         format!("{}", language.as_str())
     };
 
+    let mut tx = user_db.begin(&authed).await?;
+
     let uuids = sqlx::query_scalar!(
         r#"WITH uuid_table as (
             select gen_random_uuid() as uuid from generate_series(1, $5)
@@ -4490,7 +4490,7 @@ async fn add_batch_jobs(
         raw_flow.map(sqlx::types::Json) as Option<sqlx::types::Json<FlowValue>>,
         n
     )
-    .fetch_all(&db)
+    .fetch_all(&mut *tx)
     .await?;
 
     let uuids = sqlx::query_scalar!(
@@ -4517,7 +4517,7 @@ async fn add_batch_jobs(
             timeout,
             flow_status.map(sqlx::types::Json) as Option<sqlx::types::Json<FlowStatus>>
         )
-        .fetch_all(&db)
+        .fetch_all(&mut *tx)
         .await?;
 
     if let Some(custom_concurrency_key) = custom_concurrency_key {
@@ -4526,9 +4526,11 @@ async fn add_batch_jobs(
             custom_concurrency_key,
             &uuids
         )
-        .execute(&db)
+        .execute(&mut *tx)
         .await?;
     }
+
+    tx.commit().await?;
 
     Ok(Json(uuids))
 }
@@ -4635,7 +4637,8 @@ pub async fn run_job_by_hash_inner(
         has_preprocessor,
         on_behalf_of_email,
         created_by,
-    ) = get_path_tag_limits_cache_for_hash(&db, &w_id, hash).await?;
+    ) = get_path_tag_limits_cache_for_hash(user_db.clone().begin(&authed).await?, &w_id, hash)
+        .await?;
     check_scopes(&authed, || format!("run:script/{path}"))?;
     if let Some(run_query_cache_ttl) = run_query.cache_ttl {
         cache_ttl = Some(run_query_cache_ttl);
