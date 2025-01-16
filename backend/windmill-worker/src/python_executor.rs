@@ -1629,9 +1629,10 @@ pub async fn handle_python_reqs(
 
             tracing::info!(
                 workspace_id = %w_id,
+                job_id = %job_id,
                 // is_ok = out,
                 "started thread to install wheel {}",
-                job_id
+                venv_p
             );
 
             let start = std::time::Instant::now();
@@ -1741,9 +1742,10 @@ pub async fn handle_python_reqs(
 
             tracing::info!(
                 workspace_id = %w_id,
+                job_id = %job_id,
                 // is_ok = out,
                 "finished setting up python dependency {}",
-                job_id
+                venv_p
             );
 
             pids.lock().await.get_mut(i).and_then(|e| e.take());
