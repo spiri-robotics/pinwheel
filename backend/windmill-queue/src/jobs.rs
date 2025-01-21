@@ -3067,6 +3067,12 @@ pub async fn push<'c, 'd>(
         // priority is only available on EE. Do not compute it on CE
         final_priority = None;
     }
+    // prioritize flow steps to drain the queue faster
+    let final_priority = if flow_step_id.is_some() && final_priority.is_none() {
+        Some(0)
+    } else {
+        final_priority
+    };
 
     let is_running = same_worker;
     if let Some(flow) = raw_flow.as_ref() {
