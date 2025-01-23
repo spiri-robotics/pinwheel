@@ -46,7 +46,7 @@ use windmill_common::{
 use windmill_git_sync::handle_deployment_metadata;
 
 
-use crate::variables::{decrypt, encrypt};
+use windmill_common::variables::{decrypt, encrypt};
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Postgres, Transaction};
