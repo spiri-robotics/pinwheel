@@ -57,6 +57,8 @@ mod auth;
 mod capture;
 mod concurrency_groups;
 mod configs;
+#[cfg(feature = "postgres_trigger")]
+mod postgres_triggers;
 mod db;
 mod drafts;
 pub mod ee;
@@ -274,6 +276,11 @@ pub async fn run_server(
         }
 
 
+        #[cfg(feature = "postgres_trigger")]
+        {
+            let db_killpill_rx = rx.resubscribe();
+            postgres_triggers::start_database(db.clone(), db_killpill_rx).await;
+        }
     }
 
     // build our application with a route
@@ -343,7 +350,16 @@ pub async fn run_server(
                             Router::new()
                         })
                         .nest("/kafka_triggers", kafka_triggers_service)
-                        .nest("/nats_triggers", nats_triggers_service),
+                        .nest("/nats_triggers", nats_triggers_service)
+                        .nest("/postgres_triggers", {
+                            #[cfg(feature = "postgres_trigger")]
+                            {
+                                postgres_triggers::workspaced_service()
+                            }
+
+                            #[cfg(not(feature = "postgres_trigger"))]
+                            Router::new()
+                        }),
                 )
                 .nest("/workspaces", workspaces::global_service())
                 .nest(
