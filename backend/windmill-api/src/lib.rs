@@ -57,8 +57,6 @@ mod auth;
 mod capture;
 mod concurrency_groups;
 mod configs;
-#[cfg(feature = "postgres_trigger")]
-mod postgres_triggers;
 mod db;
 mod drafts;
 pub mod ee;
@@ -73,6 +71,8 @@ mod http_triggers;
 mod indexer_ee;
 mod inputs;
 mod integration;
+#[cfg(feature = "postgres_trigger")]
+mod postgres_triggers;
 
 #[cfg(feature = "parquet")]
 mod job_helpers_ee;
@@ -272,14 +272,14 @@ pub async fn run_server(
         #[cfg(feature = "websocket")]
         {
             let ws_killpill_rx = rx.resubscribe();
-            websocket_triggers::start_websockets(db.clone(), ws_killpill_rx).await;
+            websocket_triggers::start_websockets(db.clone(), ws_killpill_rx);
         }
 
 
         #[cfg(feature = "postgres_trigger")]
         {
             let db_killpill_rx = rx.resubscribe();
-            postgres_triggers::start_database(db.clone(), db_killpill_rx).await;
+            postgres_triggers::start_database(db.clone(), db_killpill_rx);
         }
     }
 

@@ -108,8 +108,6 @@ struct HttpTriggerConfig {
 
 
 
-
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WebsocketTriggerConfig {
     pub url: String,
