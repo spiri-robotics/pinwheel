@@ -32,7 +32,9 @@ use http::HeaderValue;
 use reqwest::Client;
 #[cfg(feature = "oauth2")]
 use std::collections::HashMap;
+use windmill_common::worker::HUB_CACHE_DIR;
 
+use std::fs::DirBuilder;
 use std::time::Duration;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
@@ -192,6 +194,13 @@ pub async fn run_server(
     #[cfg(feature = "smtp")] base_internal_url: String,
 ) -> anyhow::Result<()> {
     let user_db = UserDB::new(db.clone());
+
+    for x in [HUB_CACHE_DIR] {
+        DirBuilder::new()
+            .recursive(true)
+            .create(x)
+            .expect("could not create initial server dir");
+    }
 
     let auth_cache = Arc::new(crate::auth::AuthCache::new(
         db.clone(),
