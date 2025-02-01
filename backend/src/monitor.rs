@@ -1090,7 +1090,7 @@ pub async fn reload_option_setting_with_tracing<T: FromStr + DeserializeOwned>(
     }
 }
 
-async fn load_value_from_global_settings(
+pub async fn load_value_from_global_settings(
     db: &DB,
     setting_name: &str,
 ) -> error::Result<Option<serde_json::Value>> {
@@ -1103,6 +1103,7 @@ async fn load_value_from_global_settings(
     .map(|x| x.value);
     Ok(r)
 }
+
 pub async fn reload_option_setting<T: FromStr + DeserializeOwned>(
     db: &DB,
     setting_name: &str,
