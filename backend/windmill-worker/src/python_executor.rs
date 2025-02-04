@@ -1369,12 +1369,12 @@ async fn prepare_wrapper(
                     } else {
                         format!(
                             r#"pre_args["{name}"] = kwargs.get("{name}")
-    if pre_args["{name}"] is None:
-        del pre_args["{name}"]"#
+        if pre_args["{name}"] is None:
+            del pre_args["{name}"]"#
                         )
                     }
                 })
-                .join("\n    ")
+                .join("\n        ")
         };
         Some(spread)
     } else {
