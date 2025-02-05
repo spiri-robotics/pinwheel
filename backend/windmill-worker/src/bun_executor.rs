@@ -524,7 +524,7 @@ pub async fn generate_wrapper_mjs(
         format!("{job_dir}/wrapper.js"),
         format!("{job_dir}/wrapper.mjs"),
     )
-    .map_err(|e| error::Error::InternalErr(format!("Could not move wrapper to mjs: {e:#}")))?;
+    .map_err(|e| error::Error::internal_err(format!("Could not move wrapper to mjs: {e:#}")))?;
     Ok(())
 }
 
@@ -617,7 +617,7 @@ pub fn copy_recursively(
                 stack.push((entry.path(), destination, level + 1));
             } else {
                 fs::hard_link(&original, &destination).map_err(|e| {
-                    error::Error::InternalErr(format!(
+                    error::Error::internal_err(format!(
                         "hard linking from {original:?} to {destination:?}: {e:#}"
                     ))
                 })?;
@@ -766,7 +766,7 @@ async fn write_lock(splitted_lockb_2: &str, job_dir: &str, is_binary: bool) -> R
             "bun.lockb",
             &base64::engine::general_purpose::STANDARD
                 .decode(splitted_lockb_2)
-                .map_err(|_| error::Error::InternalErr(format!("Could not decode bun.lockb")))?,
+                .map_err(|_| error::Error::internal_err(format!("Could not decode bun.lockb")))?,
         )
         .await?;
     } else {
@@ -1445,13 +1445,13 @@ try {{
         let args = read_file(&format!("{job_dir}/args.json"))
             .await
             .map_err(|e| {
-                error::Error::InternalErr(format!(
+                error::Error::internal_err(format!(
                     "error while reading args from preprocessing: {e:#}"
                 ))
             })?;
         let args: HashMap<String, Box<RawValue>> =
             serde_json::from_str(args.get()).map_err(|e| {
-                error::Error::InternalErr(format!(
+                error::Error::internal_err(format!(
                     "error while deserializing args from preprocessing: {e:#}"
                 ))
             })?;

@@ -349,7 +349,7 @@ async fn list_apps(
             .fields(&["dm.deployment_msg"]);
     }
 
-    let sql = sqlb.sql().map_err(|e| Error::InternalErr(e.to_string()))?;
+    let sql = sqlb.sql().map_err(|e| Error::internal_err(e.to_string()))?;
     let mut tx = user_db.begin(&authed).await?;
     let rows = sqlx::query_as::<_, ListableApp>(&sql)
         .fetch_all(&mut *tx)
@@ -600,7 +600,7 @@ async fn get_public_app_by_secret(
 
     let decrypted = mc
         .decrypt_bytes_to_bytes(&(hex::decode(secret)?))
-        .map_err(|e| Error::InternalErr(e.to_string()))?;
+        .map_err(|e| Error::internal_err(e.to_string()))?;
     let bytes = str::from_utf8(&decrypted).map_err(to_anyhow)?;
 
     let id: i64 = bytes.parse().map_err(to_anyhow)?;
@@ -947,7 +947,7 @@ async fn delete_app(
     .execute(&db)
     .await
     .map_err(|e| {
-        Error::InternalErr(format!(
+        Error::internal_err(format!(
             "error deleting deployment metadata for script with path {path} in workspace {w_id}: {e:#}"
         ))
     })?;
@@ -1050,7 +1050,7 @@ async fn update_app(
 
         sqlb.returning("path");
 
-        let sql = sqlb.sql().map_err(|e| Error::InternalErr(e.to_string()))?;
+        let sql = sqlb.sql().map_err(|e| Error::internal_err(e.to_string()))?;
         let npath_o: Option<String> = sqlx::query_scalar(&sql).fetch_optional(&mut *tx).await?;
         not_found_if_none(npath_o, "App", path)?
     } else {
@@ -1699,7 +1699,7 @@ async fn upload_s3_file_from_app(
         }
     };
 
-    let s3_resource = s3_resource_opt.ok_or(Error::InternalErr(
+    let s3_resource = s3_resource_opt.ok_or(Error::internal_err(
         "No files storage resource defined at the workspace level".to_string(),
     ))?;
     let s3_client = build_object_store_client(&s3_resource).await?;
@@ -2023,7 +2023,10 @@ async fn build_args(
             safe_args.insert(
                 k.to_string(),
                 to_raw_value(&value.unwrap_or(Ok(serde_json::Value::Null)).map_err(|e| {
-                    Error::InternalErr(format!("failed to serialize ctx variable for {}: {}", k, e))
+                    Error::internal_err(format!(
+                        "failed to serialize ctx variable for {}: {}",
+                        k, e
+                    ))
                 })?),
             );
         } else if !arg_str.contains("\"$var:") && !arg_str.contains("\"$res:") {
@@ -2043,7 +2046,7 @@ async fn build_args(
                         ),
                 )
                 .map_err(|e| {
-                    Error::InternalErr(format!(
+                    Error::internal_err(format!(
                         "failed to remove sensitive variable(s)/resource(s) with error: {}",
                         e
                     ))
