@@ -204,7 +204,7 @@ pub async fn handle_child(
 
         let set_reason = async {
             if matches!(kill_reason, KillReason::Timeout { .. }) {
-                if let Err(err) = sqlx::query(
+                if let Err(err) = sqlx::query!(
                     r#"
                        UPDATE queue
                           SET canceled = true
@@ -212,9 +212,9 @@ pub async fn handle_child(
                             , canceled_reason = $1
                         WHERE id = $2
                     "#,
+                    format!("duration > {}", timeout_duration.as_secs()),
+                    job_id
                 )
-                .bind(format!("duration > {}", timeout_duration.as_secs()))
-                .bind(job_id)
                 .execute(&db)
                 .await
                 {

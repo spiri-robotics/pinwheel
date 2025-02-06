@@ -14,8 +14,6 @@ use tokio::sync::RwLock;
 
 use windmill_api_client::types::{CreateFlowBody, RawScript};
 
-use sqlx::query;
-
 
 use serde::Serialize;
 use windmill_common::auth::JWT_SECRET;
@@ -3194,7 +3192,7 @@ async fn run_deployed_relative_imports(
         async move {
             completed.next().await; // deployed script
 
-            let script = query!(
+            let script = sqlx::query!(
                 "SELECT hash FROM script WHERE path = $1",
                 "f/system/test_import".to_string()
             )
