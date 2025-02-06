@@ -205,13 +205,10 @@ pub async fn handle_child(
         let set_reason = async {
             if matches!(kill_reason, KillReason::Timeout { .. }) {
                 if let Err(err) = sqlx::query!(
-                    r#"
-                       UPDATE queue
-                          SET canceled = true
-                            , canceled_by = 'timeout'
-                            , canceled_reason = $1
-                        WHERE id = $2
-                    "#,
+                    "UPDATE v2_job_queue
+                        SET canceled_by = 'timeout'
+                          , canceled_reason = $1
+                    WHERE id = $2",
                     format!("duration > {}", timeout_duration.as_secs()),
                     job_id
                 )

@@ -183,7 +183,6 @@ async fn set_jwt_secret() -> () {
 mod suspend_resume {
 
     use serde_json::json;
-    use sqlx::query_scalar;
 
     use super::*;
 
@@ -194,11 +193,13 @@ mod suspend_resume {
     ) {
         loop {
             queue.by_ref().find(&flow).await.unwrap();
-            if query_scalar("SELECT suspend > 0 FROM queue WHERE id = $1")
-                .bind(flow)
-                .fetch_one(db)
-                .await
-                .unwrap()
+            if sqlx::query_scalar!(
+                "SELECT suspend > 0 AS \"r!\" FROM v2_job_queue WHERE id = $1",
+                flow
+            )
+            .fetch_one(db)
+            .await
+            .unwrap()
             {
                 break;
             }
@@ -352,7 +353,7 @@ mod suspend_resume {
         // ensure resumes are cleaned up through CASCADE when the flow is finished
         assert_eq!(
             0,
-            query_scalar::<_, i64>("SELECT count(*) FROM resume_job")
+            sqlx::query_scalar!("SELECT count(*) AS \"count!\" FROM resume_job")
                 .fetch_one(&db)
                 .await
                 .unwrap()
@@ -919,7 +920,7 @@ impl RunJob {
             /* root job  */ None,
             /* job_id */ None,
             /* is_flow_step */ false,
-            /* running */ false,
+            /* same_worker */ false,
             None,
             true,
             None,
@@ -1056,11 +1057,11 @@ fn spawn_test_worker(
 }
 
 async fn listen_for_completed_jobs(db: &Pool<Postgres>) -> impl Stream<Item = Uuid> + Unpin {
-    listen_for_uuid_on(db, "insert on completed_job").await
+    listen_for_uuid_on(db, "completed").await
 }
 
 async fn listen_for_queue(db: &Pool<Postgres>) -> impl Stream<Item = Uuid> + Unpin {
-    listen_for_uuid_on(db, "queue").await
+    listen_for_uuid_on(db, "queued").await
 }
 
 async fn listen_for_uuid_on(
@@ -1085,7 +1086,7 @@ async fn listen_for_uuid_on(
 
 async fn completed_job(uuid: Uuid, db: &Pool<Postgres>) -> CompletedJob {
     sqlx::query_as::<_, CompletedJob>(
-        "SELECT *, result->'wm_labels' as labels FROM completed_job  WHERE id = $1",
+        "SELECT *, result->'wm_labels' as labels FROM v2_as_completed_job  WHERE id = $1",
     )
     .bind(uuid)
     .fetch_one(db)
