@@ -3,6 +3,8 @@
 mod ansible_executor;
 mod bash_executor;
 
+#[cfg(feature = "benchmark")]
+pub mod bench;
 mod bun_executor;
 pub mod common;
 mod config;
@@ -30,6 +32,7 @@ mod rust_executor;
 mod worker;
 mod worker_flow;
 mod worker_lockfiles;
+
 pub use worker::*;
 
 pub use result_processor::handle_job_error;
