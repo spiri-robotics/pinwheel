@@ -3049,7 +3049,7 @@ fn get_path(flow_job: &QueuedJob, status: &FlowStatus, module: &FlowModule) -> S
     {
         format!("{}/preprocessor", flow_job.script_path())
     } else {
-        format!("{}/step-{}", flow_job.script_path(), status.step)
+        format!("{}/{}", flow_job.script_path(), module.id)
     }
 }
 
