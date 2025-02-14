@@ -893,6 +893,7 @@ pub async fn handle_bun_job(
         let args = windmill_parser_ts::parse_deno_signature(
             inner_content,
             true,
+            false,
             main_override.map(ToString::to_string),
         )?
         .args;
@@ -902,6 +903,7 @@ pub async fn handle_bun_job(
                 windmill_parser_ts::parse_deno_signature(
                     inner_content,
                     true,
+                    false,
                     Some("preprocessor".to_string()),
                 )?
                 .args,

@@ -1270,12 +1270,14 @@ async fn prepare_wrapper(
     let sig = windmill_parser_py::parse_python_signature(
         inner_content,
         main_override.map(ToString::to_string),
+        false,
     )?;
 
     let pre_sig = if apply_preprocessor {
         Some(windmill_parser_py::parse_python_signature(
             inner_content,
             Some("preprocessor".to_string()),
+            false,
         )?)
     } else {
         None
@@ -1592,7 +1594,7 @@ async fn spawn_uv_install(
             .replace("{TARGET_DIR}", &venv_p)
             .replace("{CLONE_NEWUSER}", &(!*DISABLE_NUSER).to_string()),
         )?;
-    
+
         let mut nsjail_cmd = Command::new(NSJAIL_PATH.as_str());
         nsjail_cmd
             .current_dir(job_dir)
