@@ -94,6 +94,7 @@ pub enum TriggerKind {
     Kafka,
     Email,
     Nats,
+    Sqs,
     Postgres,
 }
 
@@ -106,6 +107,7 @@ impl fmt::Display for TriggerKind {
             TriggerKind::Kafka => "kafka",
             TriggerKind::Email => "email",
             TriggerKind::Nats => "nats",
+            TriggerKind::Sqs => "sqs",
             TriggerKind::Postgres => "postgres",
         };
         write!(f, "{}", s)
@@ -118,6 +120,7 @@ struct HttpTriggerConfig {
     route_path: String,
     http_method: HttpMethod,
 }
+
 
 
 
