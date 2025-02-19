@@ -1581,8 +1581,7 @@ async fn spawn_uv_install(
 
         #[cfg(windows)]
         {
-            let installer_path = if no_uv_install { command_args[0] } else { "uv" };
-            let mut cmd: Command = Command::new(&installer_path);
+            let mut cmd: Command = Command::new("uv");
             cmd.env_clear()
                 .envs(envs)
                 .envs(PROXY_ENVS.clone())
