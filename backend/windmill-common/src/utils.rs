@@ -404,7 +404,11 @@ impl ScheduleType {
         }
     }
 
-    pub fn from_str(schedule_str: &str, version: Option<&str>) -> Result<ScheduleType> {
+    pub fn from_str(
+        schedule_str: &str,
+        version: Option<&str>,
+        seconds_required: bool,
+    ) -> Result<ScheduleType> {
         tracing::debug!(
             "Attempting to parse schedule string: {}, with version: {:?}",
             schedule_str,
@@ -428,7 +432,13 @@ impl ScheduleType {
             Some("v2") | Some(_) => {
                 // Use Croner for v2
                 let schedule_type_result = panic::catch_unwind(AssertUnwindSafe(|| {
-                    Cron::new(schedule_str).with_seconds_optional().parse()
+                    let mut croner = Cron::new(schedule_str);
+                    if seconds_required {
+                        croner.with_seconds_required();
+                    } else {
+                        croner.with_seconds_optional();
+                    };
+                    croner.parse()
                 }))
                 .map_err(|_| {
                     tracing::error!(
