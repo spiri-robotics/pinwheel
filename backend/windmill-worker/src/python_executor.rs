@@ -1404,15 +1404,6 @@ async fn handle_python_deps(
         }
     };
 
-    let requirements_lines: Vec<&str> = if requirements.len() > 0 {
-        requirements
-            .split("\n")
-            .filter(|x| !x.starts_with("--") && !x.trim().is_empty())
-            .collect()
-    } else {
-        vec![]
-    };
-
     /*
      For deployed scripts we want to find out version in following order:
      1. Assigned version (written in lockfile)
@@ -1423,20 +1414,9 @@ async fn handle_python_deps(
      2. Instance version
      3. Latest Stable
     */
+    let requirements_lines = split_requirements(requirements.as_str());
     let final_version = if is_deployed {
-        // If script is deployed we can try to parse first line to get assigned version
-        if let Some(v) = requirements_lines
-            .get(0)
-            .and_then(|line| PyVersion::parse_version(line))
-        {
-            // We have valid assigned version, we use it
-            v
-        } else {
-            // If there is no assigned version in lockfile we automatically fallback to 3.11
-            // In this case we have dependencies, but no associated python version
-            // This is the case for old deployed scripts
-            PyVersion::Py311
-        }
+        get_pyv_from_requirements_lines(&requirements_lines)
     } else {
         // This is not deployed script, meaning we test run it (Preview)
         annotated_pyv.unwrap_or(instance_pyv)
@@ -2143,6 +2123,29 @@ pub async fn handle_python_reqs(
     } else {
         Ok(req_paths)
     };
+}
+
+fn split_requirements(requirements: &str) -> Vec<&str> {
+    requirements
+        .split("\n")
+        .filter(|x| !x.trim_start().starts_with("--") && !x.trim().is_empty())
+        .collect()
+}
+/// Check requirements/lockfile to figure out python version assigned to it.
+fn get_pyv_from_requirements_lines(requirements_lines: &[&str]) -> PyVersion {
+    // If script is deployed we can try to parse first line to get assigned version
+    if let Some(v) = requirements_lines
+        .get(0)
+        .and_then(|line| PyVersion::parse_version(*line))
+    {
+        // We have valid assigned version, we use it
+        v
+    } else {
+        // If there is no assigned version in lockfile we automatically fallback to 3.11
+        // In this case we have dependencies, but no associated python version
+        // This is the case for old deployed scripts
+        PyVersion::Py311
+    }
 }
 
 
