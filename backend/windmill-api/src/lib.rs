@@ -83,6 +83,8 @@ mod postgres_triggers;
 mod job_helpers_ee;
 pub mod job_metrics;
 pub mod jobs;
+#[cfg(feature = "mqtt_trigger")]
+mod mqtt_triggers;
 #[cfg(feature = "oauth2")]
 pub mod oauth2_ee;
 mod oidc_ee;
@@ -297,6 +299,18 @@ pub async fn run_server(
         }
     };
 
+    let mqtt_triggers_service = {
+        #[cfg(all(feature = "mqtt_trigger"))]
+        {
+            mqtt_triggers::workspaced_service()
+        }
+
+        #[cfg(not(feature = "mqtt_trigger"))]
+        {
+            Router::new()
+        }
+    };
+
     let sqs_triggers_service = {
 
         {
@@ -347,6 +361,12 @@ pub async fn run_server(
         {
             let db_killpill_rx = rx.resubscribe();
             postgres_triggers::start_database(db.clone(), db_killpill_rx);
+        }
+        
+        #[cfg(feature = "mqtt_trigger")]
+        {
+            let mqtt_killpill_rx = rx.resubscribe();
+            mqtt_triggers::start_mqtt_consumer(db.clone(), mqtt_killpill_rx);
         }
 
     }
@@ -403,6 +423,7 @@ pub async fn run_server(
                         .nest("/websocket_triggers", websocket_triggers_service)
                         .nest("/kafka_triggers", kafka_triggers_service)
                         .nest("/nats_triggers", nats_triggers_service)
+                        .nest("/mqtt_triggers", mqtt_triggers_service)
                         .nest("/sqs_triggers", sqs_triggers_service)
                         .nest("/postgres_triggers", postgres_triggers_service),
                 )
@@ -525,7 +546,6 @@ pub async fn run_server(
                 .on_failure(MyOnFailure {}),
         )
     };
-
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     let port = listener.local_addr().map(|x| x.port()).unwrap_or(8000);
     let ip = listener
