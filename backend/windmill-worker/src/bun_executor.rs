@@ -572,8 +572,6 @@ pub async fn generate_bun_bundle(
 }
 
 pub async fn pull_codebase(w_id: &str, id: &str, job_dir: &str) -> Result<()> {
-    use crate::global_cache::extract_tar;
-
     let path = windmill_common::s3_helpers::bundle(&w_id, &id);
     let bun_cache_path = format!(
         "{}/{}",
@@ -587,35 +585,64 @@ pub async fn pull_codebase(w_id: &str, id: &str, job_dir: &str) -> Result<()> {
         if is_tar { "codebase.tar" } else { "main.js" }
     );
 
-    if tokio::fs::metadata(&bun_cache_path).await.is_ok() {
+    if std::fs::metadata(&bun_cache_path).is_ok() {
         tracing::info!("loading {bun_cache_path} from cache");
-        if is_tar {
-            extract_tar(fs::read(bun_cache_path)?.into(), job_dir).await?;
-        } else {
-            #[cfg(unix)]
-            tokio::fs::symlink(&bun_cache_path, dst).await?;
 
-            #[cfg(windows)]
-            std::os::windows::fs::symlink_dir(&bun_cache_path, &dst)?;
-        }
+        extract_saved_codebase(job_dir, &bun_cache_path, is_tar, &dst, false)?;
     } else {
+
+        let object_store: Option<()> = None;
+
+        if &windmill_common::utils::MODE_AND_ADDONS.mode
+            == &windmill_common::utils::Mode::Standalone
+            && object_store.is_none()
         {
-            if &windmill_common::utils::MODE_AND_ADDONS.mode
-                == &windmill_common::utils::Mode::Standalone
-            {
+            let bun_cache_path = format!(
+                "{}{}",
+                windmill_common::worker::ROOT_STANDALONE_BUNDLE_DIR,
+                id
+            );
+            if std::fs::metadata(&bun_cache_path).is_ok() {
+                tracing::info!("loading {bun_cache_path} from standalone bundle cache");
+                extract_saved_codebase(job_dir, &bun_cache_path, is_tar, &dst, true)?;
+            } else {
                 return Err(error::Error::ExecutionErr(format!(
                     "(standalone bundle test mode) could not find codebase at {bun_cache_path}"
                 )));
-            } else {
-                return Err(error::Error::ExecutionErr(
-                    "codebase is an EE feature".to_string(),
-                ));
             }
+        } else {
+            return Err(error::Error::ExecutionErr(
+                "codebase is an EE feature".to_string(),
+            ));
         }
 
     }
 
     Ok(())
+}
+
+fn extract_saved_codebase(
+    job_dir: &str,
+    bun_cache_path: &String,
+    is_tar: bool,
+    dst: &str,
+    copy: bool,
+) -> Result<()> {
+    use crate::global_cache::extract_tar;
+
+    Ok(if is_tar {
+        extract_tar(fs::read(bun_cache_path)?.into(), job_dir)?;
+    } else {
+        if copy {
+            std::fs::copy(bun_cache_path, dst)?;
+        } else {
+            #[cfg(unix)]
+            std::os::unix::fs::symlink(bun_cache_path, dst)?;
+
+            #[cfg(windows)]
+            std::os::windows::fs::symlink_dir(bun_cache_path, dst)?;
+        }
+    })
 }
 
 pub async fn prebundle_bun_script(

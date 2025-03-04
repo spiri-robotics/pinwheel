@@ -393,28 +393,26 @@ async fn create_snapshot_script(
             })?;
 
             uploaded = true;
-            let path = windmill_common::s3_helpers::bundle(&w_id, &hash);
+
+
+            let object_store: Option<()> = None;
 
             if &windmill_common::utils::MODE_AND_ADDONS.mode
                 == &windmill_common::utils::Mode::Standalone
+                && object_store.is_none()
             {
-                std::fs::create_dir_all(format!(
-                    "{}/script_bundle/{}",
-                    windmill_common::worker::ROOT_CACHE_NOMOUNT_DIR,
-                    w_id
-                ))?;
+                std::fs::create_dir_all(windmill_common::worker::ROOT_STANDALONE_BUNDLE_DIR)?;
                 windmill_common::worker::write_file(
-                    windmill_common::worker::ROOT_CACHE_NOMOUNT_DIR,
-                    &path,
+                    windmill_common::worker::ROOT_STANDALONE_BUNDLE_DIR,
+                    &hash,
                     &String::from_utf8_lossy(&data),
                 )?;
-                return Ok((StatusCode::CREATED, format!("{}", script_hash.unwrap())));
-            }
+            } else {
+                {
+                    return Err(Error::ExecutionErr("codebase is an EE feature".to_string()));
+                }
 
-            {
-                return Err(Error::ExecutionErr("codebase is an EE feature".to_string()));
             }
-
         }
         // println!("Length of `{}` is {} bytes", name, data.len());
     }
