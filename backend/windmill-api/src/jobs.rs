@@ -28,6 +28,7 @@ use windmill_common::flow_status::{JobResult, RestartedFrom};
 use windmill_common::jobs::{format_completed_job_result, format_result, ENTRYPOINT_OVERRIDE};
 use windmill_common::worker::{CLOUD_HOSTED, TMP_DIR};
 
+use windmill_common::scripts::PREVIEW_IS_CODEBASE_HASH;
 use windmill_common::variables::get_workspace_key;
 
 use crate::add_webhook_allowed_origin;
@@ -4200,11 +4201,146 @@ async fn run_preview_script(
     Ok((StatusCode::CREATED, uuid.to_string()))
 }
 
+async fn run_bundle_preview_script(
+    authed: ApiAuthed,
+    Extension(db): Extension<DB>,
+    Extension(user_db): Extension<UserDB>,
+    Path(w_id): Path<String>,
+    Query(run_query): Query<RunJobQuery>,
+    mut multipart: axum::extract::Multipart,
+) -> error::Result<(StatusCode, String)> {
+    use windmill_common::scripts::PREVIEW_IS_TAR_CODEBASE_HASH;
 
-async fn run_bundle_preview_script() -> error::Result<(StatusCode, String)> {
-    return Err(Error::BadRequest(
-        "bundle preview is an ee feature".to_string(),
-    ));
+    check_scopes(&authed, || format!("jobs:runscript"))?;
+    if authed.is_operator {
+        return Err(error::Error::NotAuthorized(
+            "Operators cannot run preview jobs for security reasons".to_string(),
+        ));
+    }
+
+    let mut job_id = None;
+    let mut tx = None;
+    let mut uploaded = false;
+    let mut is_tar = false;
+
+    while let Some(field) = multipart.next_field().await.unwrap() {
+        let name = field.name().unwrap().to_string();
+        let data = field.bytes().await;
+        let data = data.map_err(to_anyhow)?;
+        if name == "preview" {
+            let preview: Preview = serde_json::from_slice(&data).map_err(to_anyhow)?;
+
+            let scheduled_for = run_query.get_scheduled_for(&db).await?;
+            let tag = run_query.tag.clone().or(preview.tag.clone());
+            check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
+            let ltx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into());
+
+            let args = preview.args.unwrap_or_default();
+
+            is_tar = match preview.kind {
+                Some(PreviewKind::Tarbundle) => true,
+                _ => false,
+            };
+
+            // tracing::info!("is_tar 1: {is_tar}");
+            // hmap.insert("")
+            let (uuid, ntx) = push(
+                &db,
+                ltx,
+                &w_id,
+                JobPayload::Code(RawCode {
+                    hash: if is_tar {
+                        Some(PREVIEW_IS_TAR_CODEBASE_HASH)
+                    } else {
+                        Some(PREVIEW_IS_CODEBASE_HASH)
+                    },
+                    content: preview.content.unwrap_or_default(),
+                    path: preview.path,
+                    language: preview.language.unwrap_or(ScriptLang::Deno),
+                    lock: preview.lock,
+                    concurrent_limit: None, // TODO(gbouv): once I find out how to store limits in the content of a script, should be easy to plug limits here
+                    concurrency_time_window_s: None, // TODO(gbouv): same as above
+                    cache_ttl: None,
+                    dedicated_worker: preview.dedicated_worker,
+                    custom_concurrency_key: None,
+                }),
+                PushArgs::from(&args),
+                authed.display_username(),
+                &authed.email,
+                username_to_permissioned_as(&authed.username),
+                scheduled_for,
+                None,
+                None,
+                None,
+                run_query.job_id,
+                false,
+                false,
+                None,
+                true,
+                tag,
+                run_query.timeout,
+                None,
+                None,
+                Some(&authed.clone().into()),
+            )
+            .await?;
+            job_id = Some(uuid);
+            tx = Some(ntx);
+        }
+        if name == "file" {
+            let mut id = job_id
+                .as_ref()
+                .ok_or_else(|| {
+                    Error::BadRequest(
+                        "script need to be passed first in the multipart upload".to_string(),
+                    )
+                })?
+                .to_string();
+
+            // tracing::info!("is_tar 2: {is_tar}");
+
+            if is_tar {
+                id = format!("{}.tar", id);
+            }
+
+            uploaded = true;
+
+
+            let object_store: Option<()> = None;
+
+            if &windmill_common::utils::MODE_AND_ADDONS.mode
+                == &windmill_common::utils::Mode::Standalone
+                && object_store.is_none()
+            {
+                std::fs::create_dir_all(
+                    windmill_common::worker::ROOT_STANDALONE_BUNDLE_DIR.clone(),
+                )?;
+                windmill_common::worker::write_file(
+                    &windmill_common::worker::ROOT_STANDALONE_BUNDLE_DIR,
+                    &id,
+                    &String::from_utf8_lossy(&data),
+                )?;
+            } else {
+                {
+                    return Err(Error::ExecutionErr("codebase is an EE feature".to_string()));
+                }
+
+            }
+        }
+        // println!("Length of `{}` is {} bytes", name, data.len());
+    }
+    if !uploaded {
+        return Err(Error::BadRequest("No file uploaded".to_string()));
+    }
+    if job_id.is_none() {
+        return Err(Error::BadRequest(
+            "No script found in the uploaded file".to_string(),
+        ));
+    }
+
+    tx.unwrap().commit().await?;
+
+    Ok((StatusCode::CREATED, job_id.unwrap().to_string()))
 }
 
 #[derive(Deserialize)]
