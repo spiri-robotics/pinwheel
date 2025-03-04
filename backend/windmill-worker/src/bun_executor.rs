@@ -614,8 +614,8 @@ pub async fn pull_codebase(w_id: &str, id: &str, job_dir: &str) -> Result<()> {
             return Err(error::Error::ExecutionErr(
                 "codebase is an EE feature".to_string(),
             ));
-        }
 
+        }
     }
 
     Ok(())
