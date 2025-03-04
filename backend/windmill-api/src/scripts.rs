@@ -18,6 +18,7 @@ use crate::{
     webhook_util::{WebhookMessage, WebhookShared},
     HTTP_CLIENT,
 };
+use axum::extract::Multipart;
 
 use axum::{
     extract::{Extension, Path, Query},
@@ -40,6 +41,7 @@ use std::{
 use windmill_audit::audit_ee::audit_log;
 use windmill_audit::ActionKind;
 
+use windmill_common::error::to_anyhow;
 
 use windmill_common::{
     db::UserDB,
@@ -351,10 +353,83 @@ fn hash_script(ns: &NewScript) -> i64 {
     dh.finish() as i64
 }
 
-async fn create_snapshot_script() -> Result<(StatusCode, String)> {
-    Err(Error::BadRequest("Upgrade to EE to use bundle".to_string()))
-}
+async fn create_snapshot_script(
+    authed: ApiAuthed,
+    Extension(user_db): Extension<UserDB>,
+    Extension(webhook): Extension<WebhookShared>,
+    Extension(db): Extension<DB>,
+    Path(w_id): Path<String>,
+    mut multipart: Multipart,
+) -> Result<(StatusCode, String)> {
+    let mut script_hash = None;
+    let mut tx = None;
+    let mut uploaded = false;
 
+    while let Some(field) = multipart.next_field().await.unwrap() {
+        let name = field.name().unwrap().to_string();
+        let data = field.bytes().await.unwrap();
+        if name == "script" {
+            let ns: NewScript = Some(serde_json::from_slice(&data).map_err(to_anyhow)?).unwrap();
+            let is_tar = ns.codebase.as_ref().is_some_and(|x| x.ends_with(".tar"));
+
+            let (new_hash, ntx) = create_script_internal(
+                ns,
+                w_id.clone(),
+                authed.clone(),
+                db.clone(),
+                user_db.clone(),
+                webhook.clone(),
+            )
+            .await?;
+            let nh = new_hash.to_string();
+            script_hash = Some(if is_tar { format!("{nh}.tar") } else { nh });
+            tx = Some(ntx);
+        }
+        if name == "file" {
+            let hash = script_hash.as_ref().ok_or_else(|| {
+                Error::BadRequest(
+                    "script need to be passed first in the multipart upload".to_string(),
+                )
+            })?;
+
+            uploaded = true;
+            let path = windmill_common::s3_helpers::bundle(&w_id, &hash);
+
+            if &windmill_common::utils::MODE_AND_ADDONS.mode
+                == &windmill_common::utils::Mode::Standalone
+            {
+                std::fs::create_dir_all(format!(
+                    "{}/script_bundle/{}",
+                    windmill_common::worker::ROOT_CACHE_NOMOUNT_DIR,
+                    w_id
+                ))?;
+                windmill_common::worker::write_file(
+                    windmill_common::worker::ROOT_CACHE_NOMOUNT_DIR,
+                    &path,
+                    &String::from_utf8_lossy(&data),
+                )?;
+                return Ok((StatusCode::CREATED, format!("{}", script_hash.unwrap())));
+            }
+
+            {
+                return Err(Error::ExecutionErr("codebase is an EE feature".to_string()));
+            }
+
+        }
+        // println!("Length of `{}` is {} bytes", name, data.len());
+    }
+    if !uploaded {
+        return Err(Error::BadRequest("No file uploaded".to_string()));
+    }
+    if script_hash.is_none() {
+        return Err(Error::BadRequest(
+            "No script found in the uploaded file".to_string(),
+        ));
+    }
+
+    tx.unwrap().commit().await?;
+    return Ok((StatusCode::CREATED, format!("{}", script_hash.unwrap())));
+}
 
 async fn create_script(
     authed: ApiAuthed,
