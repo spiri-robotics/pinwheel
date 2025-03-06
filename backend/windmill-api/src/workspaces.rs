@@ -448,7 +448,6 @@ async fn get_settings(
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| Error::internal_err(format!("getting settings: {e:#}")))?;
-
     tx.commit().await?;
     Ok(Json(settings))
 }
@@ -824,7 +823,7 @@ async fn edit_git_sync_config(
 }
 
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 struct EditDeployUIConfig {
 }
 
