@@ -844,10 +844,6 @@ Windmill Community Edition {GIT_VERSION}
                                     disable_s3_store,
                                 )
                                 .await;
-                                if let Err(err) = reload_license_key(&db).await {
-                                    tracing::error!("Failed to reload license key: {err:#}");
-                                }
-                                last_listener_refresh = Instant::now();
                             }
 
                             tracing::info!("monitor task started");
