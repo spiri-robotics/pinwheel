@@ -9,7 +9,7 @@ use serde_json::value::RawValue;
 
 use uuid::Uuid;
 use windmill_parser_ts::remove_pinned_imports;
-use windmill_queue::{append_logs, CanceledBy};
+use windmill_queue::{append_logs, CanceledBy, MiniPulledJob};
 
 
 use crate::{
@@ -35,7 +35,6 @@ use tokio::io::AsyncReadExt;
 use windmill_common::{
     error::{self, Result},
     get_latest_hash_for_path,
-    jobs::QueuedJob,
     scripts::ScriptLang,
     worker::{exists_in_cache, save_cache, write_file, DISABLE_BUNDLING},
     DB,
@@ -798,7 +797,7 @@ pub async fn handle_bun_job(
     codebase: Option<&String>,
     mem_peak: &mut i32,
     canceled_by: &mut Option<CanceledBy>,
-    job: &QueuedJob,
+    job: &MiniPulledJob,
     db: &sqlx::Pool<sqlx::Postgres>,
     client: &AuthedClientBackgroundTask,
     job_dir: &str,
@@ -820,7 +819,7 @@ pub async fn handle_bun_job(
         let (local_path, remote_path) = compute_bundle_local_and_remote_path(
             inner_content,
             requirements_o,
-            job.script_path(),
+            job.runnable_path(),
             Some(db.clone()),
             &job.workspace_id,
         )
@@ -845,7 +844,7 @@ pub async fn handle_bun_job(
         annotation.nodejs = true
     }
     let main_override = job.script_entrypoint_override.as_deref();
-    let apply_preprocessor = !job.is_flow_step && job.preprocessed == Some(false);
+    let apply_preprocessor = !job.is_flow_step() && job.preprocessed == Some(false);
 
     if has_bundle_cache {
         let target;
@@ -910,7 +909,7 @@ pub async fn handle_bun_job(
             &job.workspace_id,
             Some(db),
             &client.get_token().await,
-            &job.script_path(),
+            job.runnable_path(),
             job_dir,
             base_internal_url,
             worker_name,
@@ -1104,7 +1103,7 @@ try {{
                 base_internal_url,
                 &client.get_token().await,
                 &job.workspace_id,
-                &job.script_path(),
+                job.runnable_path(),
                 if annotation.nodejs {
                     LoaderMode::NodeBundle
                 } else if annotation.native {
@@ -1122,7 +1121,7 @@ try {{
                 base_internal_url,
                 &client.get_token().await,
                 &job.workspace_id,
-                &job.script_path(),
+                job.runnable_path(),
                 if annotation.nodejs {
                     LoaderMode::Node
                 } else {
