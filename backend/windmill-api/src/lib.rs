@@ -100,7 +100,6 @@ mod slack_approvals;
 #[cfg(feature = "smtp")]
 mod smtp_server_ee;
 mod static_assets;
-mod stripe_ee;
 mod teams_ee;
 mod tracing_init;
 mod triggers;
@@ -425,7 +424,7 @@ pub async fn run_server(
                         .nest("/nats_triggers", nats_triggers_service)
                         .nest("/mqtt_triggers", mqtt_triggers_service)
                         .nest("/sqs_triggers", sqs_triggers_service)
-                        .nest("/postgres_triggers", postgres_triggers_service)
+                        .nest("/postgres_triggers", postgres_triggers_service),
                 )
                 .nest("/workspaces", workspaces::global_service())
                 .nest(
@@ -493,8 +492,8 @@ pub async fn run_server(
                 )
                 .nest("/w/:workspace_id/github_app", {
 
-                            Router::new()
-                        })
+                    Router::new()
+                })
                 .nest("/github_app", {
 
                     Router::new()
