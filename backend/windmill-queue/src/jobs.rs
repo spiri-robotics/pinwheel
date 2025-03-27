@@ -2582,7 +2582,7 @@ pub async fn push<'c, 'd>(
                     .await?
                     .unwrap_or(0);
 
-                    if in_queue > MAX_FREE_EXECS.into() {
+                    if in_queue > MAX_FREE_EXECS as i64 {
                         return Err(error::Error::QuotaExceeded(format!(
                             "User {email} has exceeded the jobs in queue limit of {MAX_FREE_EXECS} that applies outside of premium workspaces."
                         )));
@@ -2596,7 +2596,7 @@ pub async fn push<'c, 'd>(
                     .await?
                     .unwrap_or(0);
 
-                    if concurrent_runs > MAX_FREE_CONCURRENT_RUNS.into() {
+                    if concurrent_runs > MAX_FREE_CONCURRENT_RUNS as i64 {
                         return Err(error::Error::QuotaExceeded(format!(
                             "User {email} has exceeded the concurrent runs limit of {MAX_FREE_CONCURRENT_RUNS} that applies outside of premium workspaces."
                         )));
@@ -2638,7 +2638,7 @@ pub async fn push<'c, 'd>(
                     .await?
                     .unwrap_or(0);
 
-                    if in_queue_workspace > MAX_FREE_EXECS.into() {
+                    if in_queue_workspace > MAX_FREE_EXECS as i64 {
                         return Err(error::Error::QuotaExceeded(format!(
                             "Workspace {workspace_id} has exceeded the jobs in queue limit of {MAX_FREE_EXECS} that applies outside of premium workspaces."
                         )));
@@ -2652,7 +2652,7 @@ pub async fn push<'c, 'd>(
                     .await?
                     .unwrap_or(0);
 
-                    if concurrent_runs_workspace > MAX_FREE_CONCURRENT_RUNS.into() {
+                    if concurrent_runs_workspace > MAX_FREE_CONCURRENT_RUNS as i64 {
                         return Err(error::Error::QuotaExceeded(format!(
                             "Workspace {workspace_id} has exceeded the concurrent runs limit of {MAX_FREE_CONCURRENT_RUNS} that applies outside of premium workspaces."
                         )));
