@@ -9,7 +9,7 @@ use serde_json::value::RawValue;
 use std::{
     cmp::Reverse,
     collections::{HashMap, HashSet},
-    fs::File,
+    fs::{self, File},
     io::Write,
     path::{Component, Path, PathBuf},
     str::FromStr,
@@ -51,6 +51,8 @@ lazy_static::lazy_static! {
         "ansible".to_string(),
         "csharp".to_string(),
         "nu".to_string(),
+        "java".to_string(),
+        // KJQXZ
         "dependency".to_string(),
         "flow".to_string(),
         "other".to_string()
@@ -402,11 +404,47 @@ pub struct SqlAnnotations {
 pub struct BashAnnotations {
     pub docker: bool,
 }
+/// length = 5
+/// value  = "foo"
+/// output = "foo  "
+///           12345
+pub fn pad_string(value: &str, total_length: usize) -> String {
+    if value.len() >= total_length {
+        value.to_string() // Return the original string if it's already long enough
+    } else {
+        let padding_needed = total_length - value.len();
+        format!("{value}{}", " ".repeat(padding_needed)) // Pad with spaces
+    }
+}
+pub fn copy_dir_recursively(src: &Path, dst: &Path) -> error::Result<()> {
+    if !dst.exists() {
+        fs::create_dir_all(dst)?;
+    }
 
-pub async fn load_cache(bin_path: &str, _remote_path: &str) -> (bool, String) {
+    tracing::debug!("Copying recursively from {:?} to {:?}", src, dst);
+
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if src_path.is_dir() && !src_path.is_symlink() {
+            copy_dir_recursively(&src_path, &dst_path)?;
+        } else {
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
+
+    tracing::debug!("Finished copying recursively from {:?} to {:?}", src, dst);
+
+    Ok(())
+}
+
+pub async fn load_cache(bin_path: &str, _remote_path: &str, is_dir: bool) -> (bool, String) {
     if tokio::fs::metadata(&bin_path).await.is_ok() {
         (true, format!("loaded from local cache: {}\n", bin_path))
     } else {
+        let _ = is_dir;
         (false, "".to_string())
     }
 }
@@ -423,12 +461,17 @@ pub async fn save_cache(
     local_cache_path: &str,
     _remote_cache_path: &str,
     origin: &str,
+    is_dir: bool,
 ) -> crate::error::Result<String> {
     let mut _cached_to_s3 = false;
 
     // if !*CLOUD_HOSTED {
     if true {
-        std::fs::copy(origin, local_cache_path)?;
+        if is_dir {
+            copy_dir_recursively(&PathBuf::from(origin), &PathBuf::from(local_cache_path))?;
+        } else {
+            std::fs::copy(origin, local_cache_path)?;
+        }
         Ok(format!(
             "\nwrote cached binary: {} (backed by EE distributed object store: {_cached_to_s3})\n",
             local_cache_path
