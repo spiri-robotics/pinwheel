@@ -1393,7 +1393,7 @@ pub fn filter_list_queue_query(
         sqlb.and_where_eq("created_by", "?".bind(cb));
     }
     if let Some(t) = &lq.tag {
-        sqlb.and_where_eq("tag", "?".bind(t));
+        sqlb.and_where_eq("v2_job.tag", "?".bind(t));
     }
     if let Some(r) = &lq.running {
         sqlb.and_where_eq("running", &r);
@@ -1485,7 +1485,10 @@ pub fn list_queue_jobs_query(
         .clone();
 
     if let Some(tags) = tags {
-        sqlb.and_where_in("tag", &tags.iter().map(|x| quote(x)).collect::<Vec<_>>());
+        sqlb.and_where_in(
+            "v2_job.tag",
+            &tags.iter().map(|x| quote(x)).collect::<Vec<_>>(),
+        );
     }
 
     filter_list_queue_query(sqlb, lq, w_id, join_outstanding_wait_times)
@@ -1692,7 +1695,10 @@ async fn list_filtered_uuids(
         .or_where_is_null("v2_job.trigger_kind");
 
     if let Some(tags) = get_scope_tags(&authed) {
-        sqlb.and_where_in("tag", &tags.iter().map(|x| quote(x)).collect::<Vec<_>>());
+        sqlb.and_where_in(
+            "v2_job.tag",
+            &tags.iter().map(|x| quote(x)).collect::<Vec<_>>(),
+        );
     }
 
     sqlb = filter_list_queue_query(sqlb, &lq, w_id.as_str(), false);
@@ -1775,7 +1781,7 @@ async fn count_completed_jobs_detail(
 
     if let Some(tags) = query.tags {
         sqlb.and_where_in(
-            "tag",
+            "v2_job.tag",
             &tags
                 .split(",")
                 .map(|t| format!("'{}'", t))
@@ -5219,7 +5225,7 @@ pub fn filter_list_completed_query(
         sqlb.and_where_eq("runnable_id", "?".bind(h));
     }
     if let Some(t) = &lq.tag {
-        sqlb.and_where_eq("tag", "?".bind(t));
+        sqlb.and_where_eq("v2_job.tag", "?".bind(t));
     }
     if let Some(cb) = &lq.created_by {
         sqlb.and_where_eq("created_by", "?".bind(cb));
@@ -5320,7 +5326,10 @@ pub fn list_completed_jobs_query(
         .clone();
 
     if let Some(tags) = tags {
-        sqlb.and_where_in("tag", &tags.iter().map(|x| quote(x)).collect::<Vec<_>>());
+        sqlb.and_where_in(
+            "v2_job.tag",
+            &tags.iter().map(|x| quote(x)).collect::<Vec<_>>(),
+        );
     }
 
     filter_list_completed_query(sqlb, lq, w_id, join_outstanding_wait_times)
