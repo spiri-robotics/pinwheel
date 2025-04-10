@@ -7,30 +7,36 @@
  */
 
 #[cfg(feature = "http_trigger")]
-use crate::http_triggers::{build_http_trigger_extra, HttpMethod};
+use {
+    crate::{
+        args::try_from_request_body,
+        http_triggers::{build_http_trigger_extra, HttpMethod},
+    },
+    axum::response::{IntoResponse, Response},
+    std::collections::HashMap,
+};
+
+
+#[cfg(feature = "http_trigger")]
+use {
+    axum::extract::Request, http::HeaderMap, serde::de::DeserializeOwned,
+    windmill_common::error::Error,
+};
+
+
 #[cfg(feature = "mqtt_trigger")]
 use crate::mqtt_triggers::{MqttClientVersion, MqttV3Config, MqttV5Config, SubscribeTopic};
+
+
 #[cfg(feature = "postgres_trigger")]
-use crate::postgres_triggers::{
-    create_logical_replication_slot_query, create_publication_query, drop_publication_query,
-    generate_random_string, get_database_connection, PublicationData,
+use {
+    crate::postgres_triggers::{
+        create_logical_replication_slot_query, create_publication_query, drop_publication_query,
+        generate_random_string, get_database_connection, PublicationData,
+    },
+    itertools::Itertools,
+    pg_escape::quote_literal,
 };
-#[cfg(feature = "http_trigger")]
-use axum::extract::Request;
-#[cfg(feature = "http_trigger")]
-use axum::response::IntoResponse;
-#[cfg(feature = "http_trigger")]
-use http::HeaderMap;
-#[cfg(feature = "postgres_trigger")]
-use itertools::Itertools;
-#[cfg(feature = "postgres_trigger")]
-use pg_escape::quote_literal;
-#[cfg(feature = "http_trigger")]
-use serde::de::DeserializeOwned;
-#[cfg(feature = "http_trigger")]
-use std::collections::HashMap;
-#[cfg(feature = "http_trigger")]
-use windmill_common::error::Error;
 
 use crate::{
     args::WebhookArgs,
@@ -38,23 +44,26 @@ use crate::{
     users::fetch_api_authed,
     utils::RunnableKind,
 };
+
 use axum::{
     extract::{Extension, Path, Query},
     routing::{delete, get, head, post},
     Json, Router,
 };
+
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 use sqlx::types::Json as SqlxJson;
+
 use windmill_common::{
     db::UserDB,
     error::{JsonResult, Result},
     utils::{not_found_if_none, paginate, Pagination, StripPath},
     worker::{to_raw_value, CLOUD_HOSTED},
 };
-use windmill_queue::TriggerKind;
-use windmill_queue::{PushArgs, PushArgsOwned};
+
+use windmill_queue::{PushArgs, PushArgsOwned, TriggerKind};
 
 const KEEP_LAST: i64 = 20;
 
@@ -83,9 +92,13 @@ pub fn workspaced_unauthed_service() -> Router {
 
     #[cfg(feature = "http_trigger")]
     {
-        router.route("/http/:runnable_kind/:path/*route_path", {
+        #[cfg(feature = "http_trigger")]
+        let router = router.route("/http/:runnable_kind/:path/*route_path", {
             head(|| async {}).fallback(http_payload)
-        })
+        });
+
+
+        router
     }
 
     #[cfg(not(feature = "http_trigger"))]
@@ -102,6 +115,7 @@ struct HttpTriggerConfig {
     raw_string: Option<bool>,
     wrap_body: Option<bool>,
 }
+
 
 
 
@@ -171,15 +185,26 @@ async fn get_configs(
 
     let configs = sqlx::query_as!(
         CaptureConfig,
-        r#"SELECT trigger_config as "trigger_config: _", trigger_kind as "trigger_kind: _", error, last_server_ping
-        FROM capture_config
-        WHERE workspace_id = $1 AND path = $2 AND is_flow = $3"#,
+        r#"
+        SELECT 
+            trigger_config AS "trigger_config: _", 
+            trigger_kind AS "trigger_kind: _", 
+            error, 
+            last_server_ping
+        FROM 
+            capture_config
+        WHERE 
+            workspace_id = $1 
+            AND path = $2 
+            AND is_flow = $3
+        "#,
         &w_id,
         &path.to_path(),
         matches!(runnable_kind, RunnableKind::Flow),
     )
     .fetch_all(&mut *tx)
     .await?;
+
     tx.commit().await?;
 
     Ok(Json(configs))
@@ -247,33 +272,70 @@ async fn set_postgres_trigger_config(
     Ok(capture_config)
 }
 
+#[inline]
+#[cfg(not(feature = "postgres_trigger"))]
+async fn set_postgres_trigger_config(
+    _w_id: &str,
+    _authed: ApiAuthed,
+    _db: &DB,
+    _user_db: UserDB,
+    capture_config: NewCaptureConfig,
+) -> Result<NewCaptureConfig> {
+    Ok(capture_config)
+}
+
+
+#[inline]
+async fn set_gcp_trigger_config(
+    _w_id: &str,
+    _authed: ApiAuthed,
+    _db: &DB,
+    capture_config: NewCaptureConfig,
+) -> Result<NewCaptureConfig> {
+    Ok(capture_config)
+}
+
 async fn set_config(
     authed: ApiAuthed,
     Extension(user_db): Extension<UserDB>,
-    #[cfg(feature = "postgres_trigger")] Extension(db): Extension<DB>,
+    Extension(db): Extension<DB>,
     Path(w_id): Path<String>,
     Json(nc): Json<NewCaptureConfig>,
-) -> Result<()> {
-    #[cfg(feature = "postgres_trigger")]
-    let nc = if let TriggerKind::Postgres = nc.trigger_kind {
-        set_postgres_trigger_config(&w_id, authed.clone(), &db, user_db.clone(), nc).await?
-    } else {
-        nc
+) -> JsonResult<Option<TriggerConfig>> {
+    let nc = match nc.trigger_kind {
+        TriggerKind::Postgres => {
+            set_postgres_trigger_config(&w_id, authed.clone(), &db, user_db.clone(), nc).await?
+        }
+        TriggerKind::Gcp => set_gcp_trigger_config(&w_id, authed.clone(), &db, nc).await?,
+        _ => nc,
     };
 
     let mut tx = user_db.begin(&authed).await?;
 
     sqlx::query!(
-        "INSERT INTO capture_config
-            (workspace_id, path, is_flow, trigger_kind, trigger_config, owner, email)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        r#"
+        INSERT INTO capture_config (
+            workspace_id, path, is_flow, trigger_kind, trigger_config, owner, email
+        )
+        VALUES (
+            $1, $2, $3, $4, $5, $6, $7
+        )
         ON CONFLICT (workspace_id, path, is_flow, trigger_kind)
-            DO UPDATE SET trigger_config = $5, owner = $6, email = $7, server_id = NULL, error = NULL",
+        DO UPDATE 
+        SET 
+            trigger_config = $5, 
+            owner = $6, 
+            email = $7, 
+            server_id = NULL, 
+            error = NULL
+        "#,
         &w_id,
         &nc.path,
         nc.is_flow,
         nc.trigger_kind as TriggerKind,
-        nc.trigger_config.map(|x| SqlxJson(to_raw_value(&x))) as Option<SqlxJson<Box<RawValue>>>,
+        nc.trigger_config
+            .as_ref()
+            .map(|x| SqlxJson(to_raw_value(&x))) as Option<SqlxJson<Box<RawValue>>>,
         &authed.username,
         &authed.email,
     )
@@ -282,7 +344,7 @@ async fn set_config(
 
     tx.commit().await?;
 
-    Ok(())
+    Ok(Json(nc.trigger_config))
 }
 
 async fn ping_config(
@@ -296,8 +358,19 @@ async fn ping_config(
     )>,
 ) -> Result<()> {
     let mut tx = user_db.begin(&authed).await?;
+
     sqlx::query!(
-        "UPDATE capture_config SET last_client_ping = now() WHERE workspace_id = $1 AND path = $2 AND is_flow = $3 AND trigger_kind = $4",
+        r#"
+        UPDATE 
+            capture_config
+        SET 
+            last_client_ping = NOW()
+        WHERE 
+            workspace_id = $1 
+            AND path = $2 
+            AND is_flow = $3 
+            AND trigger_kind = $4
+        "#,
         &w_id,
         &path.to_path(),
         matches!(runnable_kind, RunnableKind::Flow),
@@ -305,6 +378,7 @@ async fn ping_config(
     )
     .execute(&mut *tx)
     .await?;
+
     tx.commit().await?;
     Ok(())
 }
@@ -337,14 +411,28 @@ async fn list_captures(
 
     let captures = sqlx::query_as!(
         Capture,
-        r#"SELECT id, created_at, trigger_kind as "trigger_kind: _", CASE WHEN pg_column_size(payload) < 40000 THEN payload ELSE '"WINDMILL_TOO_BIG"'::jsonb END as "payload!: _", trigger_extra as "trigger_extra: _"
-        FROM capture
-        WHERE workspace_id = $1
-            AND path = $2 AND is_flow = $3
+        r#"
+        SELECT 
+            id, 
+            created_at, 
+            trigger_kind AS "trigger_kind: _",
+            CASE 
+                WHEN pg_column_size(payload) < 40000 THEN payload 
+                ELSE '"WINDMILL_TOO_BIG"'::jsonb 
+            END AS "payload!: _",
+            trigger_extra AS "trigger_extra: _"
+        FROM 
+            capture
+        WHERE 
+            workspace_id = $1 
+            AND path = $2 
+            AND is_flow = $3 
             AND ($4::trigger_kind IS NULL OR trigger_kind = $4)
-        ORDER BY created_at DESC
+        ORDER BY 
+            created_at DESC
         OFFSET $5
-        LIMIT $6"#,
+        LIMIT $6
+        "#,
         &w_id,
         &path.to_path(),
         matches!(runnable_kind, RunnableKind::Flow),
@@ -366,14 +454,28 @@ async fn get_capture(
     Path((w_id, id)): Path<(String, i64)>,
 ) -> JsonResult<Capture> {
     let mut tx = user_db.begin(&authed).await?;
+
     let capture = sqlx::query_as!(
         Capture,
-        r#"SELECT id, created_at, trigger_kind as "trigger_kind: _", payload as "payload!: _", trigger_extra as "trigger_extra: _" FROM capture WHERE id = $1 AND workspace_id = $2"#,
+        r#"
+        SELECT 
+            id, 
+            created_at, 
+            trigger_kind AS "trigger_kind: _", 
+            payload AS "payload!: _", 
+            trigger_extra AS "trigger_extra: _"
+        FROM 
+            capture
+        WHERE 
+            id = $1 
+            AND workspace_id = $2
+        "#,
         id,
         &w_id,
     )
     .fetch_one(&mut *tx)
-        .await?;
+    .await?;
+
     tx.commit().await?;
     Ok(Json(capture))
 }
@@ -384,9 +486,17 @@ async fn delete_capture(
     Path((_, id)): Path<(String, i64)>,
 ) -> Result<()> {
     let mut tx = user_db.begin(&authed).await?;
-    sqlx::query!("DELETE FROM capture WHERE id = $1", id)
-        .execute(&mut *tx)
-        .await?;
+    sqlx::query!(
+        r#"
+        DELETE FROM 
+            capture
+        WHERE 
+            id = $1
+        "#,
+        id
+    )
+    .execute(&mut *tx)
+    .await?;
     tx.commit().await?;
     Ok(())
 }
@@ -404,8 +514,18 @@ async fn move_captures_and_configs(
 ) -> Result<()> {
     let mut tx = user_db.begin(&authed).await?;
     let old_path = old_path.to_path();
+
     sqlx::query!(
-        "UPDATE capture_config SET path = $1 WHERE path = $2 AND workspace_id = $3 AND is_flow = $4",
+        r#"
+        UPDATE 
+            capture_config
+        SET 
+            path = $1
+        WHERE 
+            path = $2 
+            AND workspace_id = $3 
+            AND is_flow = $4
+        "#,
         body.new_path,
         old_path,
         &w_id,
@@ -413,8 +533,18 @@ async fn move_captures_and_configs(
     )
     .execute(&mut *tx)
     .await?;
+
     sqlx::query!(
-        "UPDATE capture SET path = $1 WHERE path = $2 AND workspace_id = $3 AND is_flow = $4",
+        r#"
+        UPDATE 
+            capture
+        SET 
+            path = $1
+        WHERE 
+            path = $2 
+            AND workspace_id = $3 
+            AND is_flow = $4
+        "#,
         body.new_path,
         old_path,
         &w_id,
@@ -422,6 +552,7 @@ async fn move_captures_and_configs(
     )
     .execute(&mut *tx)
     .await?;
+
     tx.commit().await?;
     Ok(())
 }
@@ -441,9 +572,19 @@ pub async fn get_active_capture_owner_and_email(
 ) -> Result<(String, String)> {
     let capture_config = sqlx::query_as!(
         ActiveCaptureOwner,
-        "SELECT owner, email
-        FROM capture_config
-        WHERE workspace_id = $1 AND path = $2 AND is_flow = $3 AND trigger_kind = $4 AND last_client_ping > NOW() - INTERVAL '10 seconds'",
+        r#"
+        SELECT 
+            owner, 
+            email
+        FROM 
+            capture_config
+        WHERE 
+            workspace_id = $1 
+            AND path = $2 
+            AND is_flow = $3 
+            AND trigger_kind = $4 
+            AND last_client_ping > NOW() - INTERVAL '10 seconds'
+        "#,
         &w_id,
         &path,
         is_flow,
@@ -475,16 +616,34 @@ async fn get_capture_trigger_config_and_owner<T: DeserializeOwned>(
         owner: String,
         email: String,
     }
-
     let capture_config = sqlx::query_as!(
         CaptureTriggerConfigAndOwner,
-        r#"SELECT trigger_config as "trigger_config: _", owner, email
-        FROM capture_config
-        WHERE workspace_id = $1 AND path = $2 AND is_flow = $3 AND trigger_kind = $4 AND last_client_ping > NOW() - INTERVAL '10 seconds'"#,
+        r#"
+        SELECT 
+            trigger_config AS "trigger_config: _", 
+            owner, 
+            email
+        FROM 
+            capture_config
+        WHERE 
+            workspace_id = $1
+            AND path = $2
+            AND is_flow = $3
+            AND trigger_kind = $4
+            AND last_client_ping > NOW() - INTERVAL '10 seconds'
+            AND (
+                $5::bool IS FALSE
+                OR (
+                    trigger_config IS NOT NULL
+                    AND trigger_config ->> 'delivery_type' = 'push'
+                )
+            )
+        "#,
         &w_id,
         &path,
         is_flow,
         kind as &TriggerKind,
+        matches!(kind, TriggerKind::Gcp)
     )
     .fetch_optional(db)
     .await?;
@@ -517,17 +676,24 @@ async fn clear_captures_history(db: &DB, w_id: &str) -> Result<()> {
     if *CLOUD_HOSTED {
         /* Retain only KEEP_LAST most recent captures in this workspace. */
         sqlx::query!(
-            "DELETE FROM capture
-            WHERE workspace_id = $1
-                AND created_at <=
-                    (
-                        SELECT created_at
-                            FROM capture
-                            WHERE workspace_id = $1
-                        ORDER BY created_at DESC
-                            OFFSET $2
-                            LIMIT 1
-                    )",
+            r#"
+        DELETE FROM 
+            capture
+        WHERE 
+            workspace_id = $1
+            AND created_at <= (
+                SELECT 
+                    created_at
+                FROM 
+                    capture
+                WHERE 
+                    workspace_id = $1
+                ORDER BY 
+                    created_at DESC
+                OFFSET $2
+                LIMIT 1
+            )
+        "#,
             &w_id,
             KEEP_LAST,
         )
@@ -548,8 +714,15 @@ pub async fn insert_capture_payload(
     owner: &str,
 ) -> Result<()> {
     sqlx::query!(
-        "INSERT INTO capture (workspace_id, path, is_flow, trigger_kind, payload, trigger_extra, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        r#"
+    INSERT INTO 
+        capture (
+            workspace_id, path, is_flow, trigger_kind, payload, trigger_extra, created_by
+        )
+    VALUES (
+        $1, $2, $3, $4, $5, $6, $7
+    )
+    "#,
         &w_id,
         path,
         is_flow,
@@ -605,36 +778,27 @@ async fn webhook_payload(
     Ok(StatusCode::NO_CONTENT)
 }
 
+
 #[cfg(feature = "http_trigger")]
 async fn http_payload(
     Extension(db): Extension<DB>,
-    Path((w_id, kind, path, route_path)): Path<(String, RunnableKind, String, StripPath)>,
+    Path((w_id, runnable_kind, path, route_path)): Path<(String, RunnableKind, String, StripPath)>,
     Query(query): Query<HashMap<String, String>>,
     method: http::Method,
     headers: HeaderMap,
     request: Request,
-) -> std::result::Result<StatusCode, impl IntoResponse> {
-    use axum::response::Response;
-
-    use crate::args::try_from_request_body;
-
-    let route_path = route_path.to_path();
+) -> std::result::Result<StatusCode, Response> {
     let path = path.replace(".", "/");
-
+    let is_flow = matches!(runnable_kind, RunnableKind::Flow);
+    let route_path = route_path.to_path();
     let (http_trigger_config, owner, email): (HttpTriggerConfig, _, _) =
-        get_capture_trigger_config_and_owner(
-            &db,
-            &w_id,
-            &path,
-            matches!(kind, RunnableKind::Flow),
-            &TriggerKind::Http,
-        )
-        .await
-        .map_err(|e| e.into_response())?;
+        get_capture_trigger_config_and_owner(&db, &w_id, &path, is_flow, &TriggerKind::Http)
+            .await
+            .map_err(|e| e.into_response())?;
 
     let args = try_from_request_body(
         request,
-        &db,
+        &(),
         http_trigger_config.raw_string,
         http_trigger_config.wrap_body,
     )
@@ -684,7 +848,7 @@ async fn http_payload(
         &db,
         &w_id,
         &path,
-        matches!(kind, RunnableKind::Flow),
+        is_flow,
         &TriggerKind::Http,
         args,
         extra,
@@ -693,5 +857,5 @@ async fn http_payload(
     .await
     .map_err(|e| e.into_response())?;
 
-    Ok::<_, Response>(StatusCode::NO_CONTENT)
+    Ok(StatusCode::NO_CONTENT)
 }

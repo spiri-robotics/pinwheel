@@ -1459,6 +1459,7 @@ pub enum TriggerKind {
     Mqtt,
     Sqs,
     Postgres,
+    Gcp
 }
 
 #[derive(sqlx::Type, Serialize, Deserialize, Debug, Clone)]
@@ -1475,6 +1476,7 @@ pub enum JobTriggerKind {
     Sqs,
     Postgres,
     Schedule,
+    Gcp
 }
 
 impl fmt::Display for TriggerKind {
@@ -1489,6 +1491,7 @@ impl fmt::Display for TriggerKind {
             TriggerKind::Mqtt => "mqtt",
             TriggerKind::Sqs => "sqs",
             TriggerKind::Postgres => "postgres",
+            TriggerKind::Gcp => "gcp",
         };
         write!(f, "{}", s)
     }
