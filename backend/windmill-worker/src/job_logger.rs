@@ -1,6 +1,7 @@
 use regex::Regex;
 
-use windmill_common::worker::CLOUD_HOSTED;
+pub use windmill_common::jobs::LARGE_LOG_THRESHOLD_SIZE;
+use windmill_common::worker::{Connection, CLOUD_HOSTED};
 
 use windmill_queue::append_logs;
 
@@ -8,7 +9,6 @@ use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
 
 use uuid::Uuid;
-use windmill_common::DB;
 
 use crate::job_logger_ee::default_disk_log_storage;
 
@@ -21,35 +21,36 @@ pub enum CompactLogs {
     S3,
 }
 
-pub(crate) async fn append_job_logs(
+pub async fn append_job_logs(
     job_id: Uuid,
     w_id: String,
     logs: String,
-    db: DB,
+    conn: Connection,
     must_compact_logs: bool,
     total_size: Arc<AtomicU32>,
     worker_name: String,
 ) -> () {
-    if must_compact_logs {
+    match conn {
+        Connection::Sql(db) if must_compact_logs => {
 
-        {
-            default_disk_log_storage(
-                job_id,
-                &w_id,
-                &db,
-                logs,
-                total_size,
-                CompactLogs::NotEE,
-                &worker_name,
-            )
-            .await;
+            {
+                default_disk_log_storage(
+                    job_id,
+                    &w_id,
+                    &db,
+                    logs,
+                    total_size,
+                    CompactLogs::NotEE,
+                    &worker_name,
+                )
+                .await;
+            }
         }
-    } else {
-        append_logs(&job_id, w_id, logs, db).await;
+        _ => {
+            append_logs(&job_id, w_id, logs, &conn).await;
+        }
     }
 }
-
-pub const LARGE_LOG_THRESHOLD_SIZE: usize = 9000;
 
 lazy_static::lazy_static! {
     static ref RE_00: Regex = Regex::new('\u{00}'.to_string().as_str()).unwrap();
