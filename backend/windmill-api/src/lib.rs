@@ -583,11 +583,6 @@ pub async fn run_server(
                 .nest(
                     "/gcp/w/:workspace_id",
                     {
-                        #[cfg(feature = "gcp_trigger")]
-                        {
-                            gcp_triggers_ee::gcp_push_route_handler()
-                        }
-                        #[cfg(not(feature = "gcp_trigger"))]
                         {
                             Router::new()
                         }
