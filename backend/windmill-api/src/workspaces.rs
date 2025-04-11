@@ -1097,7 +1097,7 @@ struct UsedTriggers {
     pub postgres_used: bool,
     pub mqtt_used: bool,
     pub sqs_used: bool,
-    pub gcp_used: bool
+    pub gcp_used: bool,
 }
 
 async fn get_used_triggers(
