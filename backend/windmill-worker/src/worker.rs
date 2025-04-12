@@ -148,7 +148,7 @@ use crate::oracledb_executor::do_oracledb;
 
 
 #[cfg(feature = "benchmark")]
-use crate::bench::{benchmark_init, BenchmarkInfo, BenchmarkIter};
+use windmill_common::bench::{benchmark_init, BenchmarkInfo, BenchmarkIter};
 
 use windmill_common::add_time;
 
@@ -991,8 +991,10 @@ pub async fn run_worker(
 
     #[cfg(feature = "benchmark")]
     {
-        if let Some(db) = conn.as_sql() {
-            benchmark_init(benchmark_jobs, db).await;
+        if i_worker == 1 {
+            if let Some(db) = conn.as_sql() {
+                benchmark_init(benchmark_jobs, db).await;
+            }
         }
     }
 
@@ -1267,7 +1269,15 @@ pub async fn run_worker(
                             last_suspend_first = Instant::now();
                         }
 
-                        let job = pull(&db, suspend_first, &worker_name, None).await;
+                        let job = pull(
+                            &db,
+                            suspend_first,
+                            &worker_name,
+                            None,
+                            #[cfg(feature = "benchmark")]
+                            &mut bench,
+                        )
+                        .await;
 
                         add_time!(bench, "job pulled from DB");
                         let duration_pull_s = pull_time.elapsed().as_secs_f64();
