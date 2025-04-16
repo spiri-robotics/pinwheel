@@ -3006,16 +3006,17 @@ struct CancelJob {
 enum PreviewKind {
     Code,
     Identity,
-    Http,
     Noop,
     Bundle,
     Tarbundle,
+    ScriptHash,
 }
 
 #[derive(Deserialize)]
 struct Preview {
     content: Option<String>,
     kind: Option<PreviewKind>,
+    script_hash: Option<String>,
     path: Option<String>,
     args: Option<HashMap<String, Box<JsonRawValue>>>,
     language: Option<ScriptLang>,
@@ -4656,7 +4657,10 @@ async fn run_preview_script(
             Some(PreviewKind::Identity) => JobPayload::Identity,
             Some(PreviewKind::Noop) => JobPayload::Noop,
             _ => JobPayload::Code(RawCode {
-                hash: None,
+                hash: preview
+                    .script_hash
+                    .as_ref()
+                    .and_then(|s| windmill_common::scripts::to_i64(s).ok()),
                 content: preview.content.unwrap_or_default(),
                 path: preview.path,
                 language: preview.language.unwrap_or(ScriptLang::Deno),
