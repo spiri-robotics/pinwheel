@@ -98,6 +98,7 @@ async_zip = { workspace = true, optional = true }
 regex.workspace = true
 bytes.workspace = true
 samael = { workspace = true, optional = true }
+libxml = { workspace = true, optional = true }
 async-recursion.workspace = true
 rsa = { workspace = true, optional = true}
 uuid.workspace = true
