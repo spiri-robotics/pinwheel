@@ -4431,7 +4431,6 @@ pub async fn run_wait_result_script_by_hash(
 ) -> error::Result<Response> {
 
     let args = args.to_push_args_owned(&authed, &db, &w_id).await?;
-
     check_queue_too_long(&db, run_query.queue_limit).await?;
 
     let hash = script_hash.0;
