@@ -131,6 +131,7 @@ impl ApiServer {
             rx,
             port_tx,
             false,
+            false,
             format!("http://localhost:{}", addr.port()),
         ));
 
@@ -3665,7 +3666,6 @@ def main():
 }
 #[sqlx::test(fixtures("base", "lockfile_python"))]
 async fn test_extra_requirements_python2(db: Pool<Postgres>) {
-
     let content = r#"
 # py311
 # extra_requirements:
@@ -3681,14 +3681,9 @@ def main():
         &db,
         content,
         ScriptLang::Python3,
-        vec![
-            "# py311",
-            "simplejson==3.20.1",
-            "tiny==0.1.3"
-        ],
+        vec!["# py311", "simplejson==3.20.1", "tiny==0.1.3"],
     )
     .await;
-    
 }
 
 #[sqlx::test(fixtures("base", "lockfile_python"))]
@@ -3717,7 +3712,7 @@ def main():
             "bottle==0.13.0",
             "microdot==2.2.0",
             "simplejson==3.19.3",
-            "tiny==0.1.3"
+            "tiny==0.1.3",
         ],
     )
     .await;
