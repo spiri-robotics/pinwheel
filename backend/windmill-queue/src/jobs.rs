@@ -2074,6 +2074,7 @@ async fn pull_single_job_and_mark_as_running_no_concurrency_limit<'c>(
 
         if query.is_empty() {
             tracing::warn!("No suspended pull queries available");
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             return Ok((None, false));
         }
 
@@ -2095,6 +2096,7 @@ async fn pull_single_job_and_mark_as_running_no_concurrency_limit<'c>(
 
             if queries.is_empty() {
                 tracing::warn!("No pull queries available");
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                 return Ok((None, false));
             }
 
