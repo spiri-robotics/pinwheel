@@ -316,7 +316,7 @@ async fn windmill_main() -> anyhow::Result<()> {
         .ok()
         .and_then(|x| x.parse::<bool>().ok())
         .unwrap_or(false)
-        && (mode == Mode::Server || mode == Mode::Standalone || mode == Mode::MCP);
+        && (mode == Mode::Server || mode == Mode::Standalone);
 
     let indexer_mode = mode == Mode::Indexer;
     let mcp_mode = mode == Mode::MCP;
@@ -424,10 +424,10 @@ Windmill Community Edition {GIT_VERSION}
     display_config(&ENV_SETTINGS);
 
 
-    if server_mode || worker_mode || indexer_mode {
+    if server_mode || worker_mode || indexer_mode || mcp_mode {
         let port_var = std::env::var("PORT").ok().and_then(|x| x.parse().ok());
 
-        let port = if server_mode || indexer_mode {
+        let port = if server_mode || indexer_mode || mcp_mode {
             port_var.unwrap_or(DEFAULT_PORT as u16)
         } else {
             port_var.unwrap_or(0)
