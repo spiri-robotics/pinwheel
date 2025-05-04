@@ -12,14 +12,18 @@ use sqlx::{postgres::PgListener, types::Uuid, Pool, Postgres};
 
 use tokio::sync::RwLock;
 
+#[cfg(feature = "python")]
 use windmill_api_client::types::{CreateFlowBody, RawScript};
 use windmill_api_client::types::{NewScript, ScriptLang as NewScriptLanguage};
 
 use serde::Serialize;
 use windmill_common::worker::WORKER_CONFIG;
+#[cfg(feature = "deno_core")]
+use windmill_common::flows::InputTransform;
+
 use windmill_common::{
     flow_status::{FlowStatus, FlowStatusModule, RestartedFrom},
-    flows::{FlowModule, FlowModuleValue, FlowValue, InputTransform},
+    flows::{FlowModule, FlowModuleValue, FlowValue},
     jobs::{JobKind, JobPayload, RawCode},
     jwt::JWT_SECRET,
     scripts::{ScriptHash, ScriptLang},
@@ -161,6 +165,7 @@ impl ApiServer {
 //     Ok(())
 // }
 
+#[cfg(feature="python")]
 fn get_module(cjob: &CompletedJob, id: &str) -> Option<FlowStatusModule> {
     cjob.flow_status.clone().and_then(|fs| {
         find_module_in_vec(
@@ -170,6 +175,7 @@ fn get_module(cjob: &CompletedJob, id: &str) -> Option<FlowStatusModule> {
     })
 }
 
+#[cfg(feature="python")]
 fn find_module_in_vec(modules: Vec<FlowStatusModule>, id: &str) -> Option<FlowStatusModule> {
     modules.into_iter().find(|s| s.id() == id)
 }
@@ -278,6 +284,7 @@ mod suspend_resume {
             .unwrap()
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base"))]
     async fn test(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -360,6 +367,7 @@ mod suspend_resume {
         );
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base"))]
     async fn cancel_from_job(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -385,6 +393,7 @@ mod suspend_resume {
         );
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base"))]
     async fn cancel_after_suspend(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -558,6 +567,7 @@ def main(last, port):
         .unwrap()
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base"))]
     async fn test_pass(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -603,6 +613,7 @@ def main(last, port):
         assert_eq!(json!([3, 5, 7, 9]), result);
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base"))]
     async fn test_fail_step_zero(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -646,6 +657,7 @@ def main(last, port):
         );
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base"))]
     async fn test_fail_step_one(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -687,6 +699,7 @@ def main(last, port):
             .contains("index out of range"));
     }
 
+    #[cfg(feature = "python")]
     #[sqlx::test(fixtures("base"))]
     async fn test_with_failure_module(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -763,6 +776,7 @@ def main(error, port):
     }
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_iteration(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -821,6 +835,7 @@ async fn test_iteration(db: Pool<Postgres>) {
         .contains("2"));
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_iteration_parallel(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -1099,6 +1114,7 @@ trait StreamFind: futures::Stream + Unpin + Sized {
 
 impl<T: futures::Stream + Unpin + Sized> StreamFind for T {}
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_deno_flow(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -1217,6 +1233,7 @@ async fn test_deno_flow(db: Pool<Postgres>) {
     }
 }
 
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base"))]
 async fn test_identity(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -1254,6 +1271,7 @@ async fn test_identity(db: Pool<Postgres>) {
     assert_eq!(result, serde_json::json!(42));
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_deno_flow_same_worker(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -1529,6 +1547,7 @@ async fn test_flow_result_by_id(db: Pool<Postgres>) {
     assert_eq!(result, serde_json::json!([[42]]));
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_stop_after_if(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -1582,6 +1601,7 @@ async fn test_stop_after_if(db: Pool<Postgres>) {
     assert_eq!(json!(-123), result);
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_stop_after_if_nested(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -1640,6 +1660,7 @@ async fn test_stop_after_if_nested(db: Pool<Postgres>) {
     assert_eq!(json!([-123]), result);
 }
 
+#[cfg(all(feature = "deno_core", feature = "python"))]
 #[sqlx::test(fixtures("base"))]
 async fn test_python_flow(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -1697,6 +1718,7 @@ async fn test_python_flow(db: Pool<Postgres>) {
     }
 }
 
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base"))]
 async fn test_python_flow_2(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -1771,6 +1793,7 @@ func main(derp string) (string, error) {
     assert_eq!(result, serde_json::json!("hello world"));
 }
 
+#[cfg(feature = "rust")]
 #[sqlx::test(fixtures("base"))]
 async fn test_rust_job(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2026,6 +2049,7 @@ public class Main {
     assert_eq!(job.json_result(), Some(json!("hello world")));
 }
 
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base"))]
 async fn test_python_job(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2059,6 +2083,7 @@ def main():
     assert_eq!(result, serde_json::json!("hello world"));
 }
 
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base"))]
 async fn test_python_job_heavy_dep(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2095,6 +2120,7 @@ def main():
     assert_eq!(result, serde_json::json!(3));
 }
 
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base"))]
 async fn test_python_job_with_imports(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2198,6 +2224,7 @@ export async function main(a: Date) {
     assert_eq!(result, serde_json::json!("object"));
 }
 
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base"))]
 async fn test_python_job_datetime_and_bytes(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2233,6 +2260,7 @@ def main(a: datetime, b: bytes):
     assert_eq!(result, serde_json::json!([true, true]));
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_empty_loop_1(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2289,6 +2317,7 @@ async fn test_empty_loop_1(db: Pool<Postgres>) {
     assert_eq!(result, serde_json::json!(0));
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_invalid_first_step(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2369,6 +2398,7 @@ async fn test_empty_loop_2(db: Pool<Postgres>) {
     assert_eq!(result, serde_json::json!([]));
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_step_after_loop(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2492,6 +2522,7 @@ async fn test_branchone_simple(db: Pool<Postgres>) {
     assert_eq!(result, serde_json::json!([1, 2]));
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_branchone_with_cond(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2528,6 +2559,7 @@ async fn test_branchone_with_cond(db: Pool<Postgres>) {
     assert_eq!(result, serde_json::json!([1, 3]));
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_branchall_sequential(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2566,6 +2598,7 @@ async fn test_branchall_sequential(db: Pool<Postgres>) {
     assert_eq!(result, serde_json::json!([[1, 2], [1, 3]]));
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_branchall_simple(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2693,6 +2726,7 @@ async fn test_branchall_skip_failure(db: Pool<Postgres>) {
     );
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_branchone_nested(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2812,6 +2846,7 @@ async fn test_branchall_nested(db: Pool<Postgres>) {
     );
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_failure_module(db: Pool<Postgres>) {
     initialize_tracing().await;
@@ -2924,6 +2959,7 @@ async fn test_failure_module(db: Pool<Postgres>) {
     assert_eq!(json!({ "l": [0, 1, 2] }), result);
 }
 
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base"))]
 async fn test_flow_lock_all(db: Pool<Postgres>) {
     use futures::StreamExt;
@@ -3062,6 +3098,7 @@ async fn test_flow_lock_all(db: Pool<Postgres>) {
         });
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 
 async fn test_complex_flow_restart(db: Pool<Postgres>) {
@@ -3440,6 +3477,7 @@ export async function main() {
     run_preview_relative_imports(&db, content, ScriptLang::Bun).await;
 }
 
+#[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base", "relative_bun"))]
 async fn test_nested_imports_bun(db: Pool<Postgres>) {
     let content = r#"
@@ -3488,6 +3526,7 @@ export async function main() {
     run_preview_relative_imports(&db, content, ScriptLang::Deno).await;
 }
 
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base", "relative_python"))]
 async fn test_relative_imports_python(db: Pool<Postgres>) {
     let content = r#"
@@ -3505,6 +3544,7 @@ def main():
     run_preview_relative_imports(&db, content, ScriptLang::Python3).await;
 }
 
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base", "relative_python"))]
 async fn test_nested_imports_python(db: Pool<Postgres>) {
     let content = r#"
@@ -3520,6 +3560,7 @@ def main():
     run_preview_relative_imports(&db, content, ScriptLang::Python3).await;
 }
 
+#[cfg(feature = "python")]
 async fn assert_lockfile(
     db: &Pool<Postgres>,
     script_content: String,
@@ -3612,6 +3653,8 @@ async fn assert_lockfile(
     )
     .await;
 }
+
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base", "lockfile_python"))]
 async fn test_requirements_python(db: Pool<Postgres>) {
     let content = r#"
@@ -3637,6 +3680,8 @@ def main():
     )
     .await;
 }
+
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base", "lockfile_python"))]
 async fn test_extra_requirements_python(db: Pool<Postgres>) {
     {
@@ -3664,6 +3709,8 @@ def main():
         .await;
     }
 }
+
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base", "lockfile_python"))]
 async fn test_extra_requirements_python2(db: Pool<Postgres>) {
     let content = r#"
@@ -3686,6 +3733,7 @@ def main():
     .await;
 }
 
+#[cfg(feature = "python")]
 #[sqlx::test(fixtures("base", "lockfile_python"))]
 async fn test_pins_python(db: Pool<Postgres>) {
     let content = r#"
@@ -3969,6 +4017,7 @@ mod job_payload {
         ];
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base", "hello"))]
     async fn test_script_hash_payload(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -4129,6 +4178,7 @@ mod job_payload {
         test_for_versions(VERSION_FLAGS.iter().cloned(), test).await;
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base", "hello"))]
     async fn test_flow_node_payload(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -4313,6 +4363,7 @@ mod job_payload {
         test_for_versions(VERSION_FLAGS.iter().cloned(), test).await;
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base", "hello"))]
     async fn test_flow_payload(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -4355,6 +4406,7 @@ mod job_payload {
         test_for_versions(VERSION_FLAGS.iter().cloned(), test).await;
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base", "hello"))]
     async fn test_flow_payload_with_preprocessor(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -4422,6 +4474,7 @@ mod job_payload {
         test_for_versions(VERSION_FLAGS.iter().cloned(), test).await;
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base", "hello"))]
     async fn test_restarted_flow_payload(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -4474,6 +4527,7 @@ mod job_payload {
         test_for_versions(VERSION_FLAGS.iter().cloned(), test).await;
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base", "hello"))]
     async fn test_raw_flow_payload(db: Pool<Postgres>) {
         initialize_tracing().await;
@@ -4520,6 +4574,7 @@ mod job_payload {
         test_for_versions(VERSION_FLAGS.iter().cloned(), test).await;
     }
 
+    #[cfg(feature = "deno_core")]
     #[sqlx::test(fixtures("base", "hello"))]
     async fn test_raw_flow_payload_with_restarted_from(db: Pool<Postgres>) {
         initialize_tracing().await;
