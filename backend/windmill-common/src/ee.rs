@@ -1,4 +1,3 @@
-use crate::db::DB;
 use crate::ee::LicensePlan::Community;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -47,4 +46,4 @@ pub enum CriticalAlertKind {
 
 
 
-pub async fn low_disk_alerts(_db: &DB, _: bool, _: bool, _: Vec<String>) {}
+
