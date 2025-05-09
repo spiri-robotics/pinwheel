@@ -79,6 +79,8 @@ mod folders;
 mod granular_acls;
 mod groups;
 #[cfg(feature = "http_trigger")]
+mod http_trigger_args;
+#[cfg(feature = "http_trigger")]
 mod http_trigger_auth;
 #[cfg(feature = "http_trigger")]
 mod http_triggers;
@@ -108,6 +110,7 @@ mod settings;
 mod slack_approvals;
 #[cfg(feature = "smtp")]
 mod smtp_server_ee;
+mod trigger_helpers;
 
 mod static_assets;
 mod teams_ee;

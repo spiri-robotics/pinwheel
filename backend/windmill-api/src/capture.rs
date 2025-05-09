@@ -8,10 +8,7 @@
 
 #[cfg(feature = "http_trigger")]
 use {
-    crate::{
-        args::try_from_request_body,
-        http_triggers::{build_http_trigger_extra, HttpMethod},
-    },
+    crate::http_trigger_args::{HttpMethod, RawHttpTriggerArgs},
     axum::response::{IntoResponse, Response},
     std::collections::HashMap,
 };
@@ -42,8 +39,9 @@ use {
 };
 
 use crate::{
-    args::WebhookArgs,
+    args::RawWebhookArgs,
     db::{ApiAuthed, DB},
+    trigger_helpers::{RunnableFormat, RunnableFormatVersion},
     users::fetch_api_authed,
     utils::RunnableKind,
 };
@@ -391,8 +389,8 @@ struct Capture {
     id: i64,
     created_at: chrono::DateTime<chrono::Utc>,
     trigger_kind: TriggerKind,
-    payload: SqlxJson<Box<serde_json::value::RawValue>>,
-    trigger_extra: Option<SqlxJson<Box<serde_json::value::RawValue>>>,
+    main_args: SqlxJson<Box<serde_json::value::RawValue>>,
+    preprocessor_args: Option<SqlxJson<Box<serde_json::value::RawValue>>>,
 }
 
 #[derive(Deserialize)]
@@ -420,10 +418,13 @@ async fn list_captures(
             created_at, 
             trigger_kind AS "trigger_kind: _",
             CASE 
-                WHEN pg_column_size(payload) < 40000 THEN payload 
+                WHEN pg_column_size(main_args) < 40000 THEN main_args 
                 ELSE '"WINDMILL_TOO_BIG"'::jsonb 
-            END AS "payload!: _",
-            trigger_extra AS "trigger_extra: _"
+            END AS "main_args!: _",
+            CASE
+                WHEN pg_column_size(preprocessor_args) < 40000 THEN preprocessor_args
+                ELSE '"WINDMILL_TOO_BIG"'::jsonb
+            END AS "preprocessor_args: _"
         FROM 
             capture
         WHERE 
@@ -465,8 +466,8 @@ async fn get_capture(
             id, 
             created_at, 
             trigger_kind AS "trigger_kind: _", 
-            payload AS "payload!: _", 
-            trigger_extra AS "trigger_extra: _"
+            main_args AS "main_args!: _", 
+            preprocessor_args AS "preprocessor_args: _"
         FROM 
             capture
         WHERE 
@@ -712,15 +713,15 @@ pub async fn insert_capture_payload(
     path: &str,
     is_flow: bool,
     trigger_kind: &TriggerKind,
-    payload: PushArgsOwned,
-    trigger_extra: Option<Box<RawValue>>,
+    main_args: PushArgsOwned,
+    preprocessor_args: PushArgsOwned,
     owner: &str,
 ) -> Result<()> {
     sqlx::query!(
         r#"
     INSERT INTO 
         capture (
-            workspace_id, path, is_flow, trigger_kind, payload, trigger_extra, created_by
+            workspace_id, path, is_flow, trigger_kind, main_args, preprocessor_args, created_by
         )
     VALUES (
         $1, $2, $3, $4, $5, $6, $7
@@ -730,11 +731,9 @@ pub async fn insert_capture_payload(
         path,
         is_flow,
         trigger_kind as &TriggerKind,
-        SqlxJson(to_raw_value(&PushArgs {
-            args: &payload.args,
-            extra: payload.extra
-        })) as SqlxJson<Box<RawValue>>,
-        trigger_extra.map(SqlxJson) as Option<SqlxJson<Box<RawValue>>>,
+        SqlxJson(PushArgs { args: &main_args.args, extra: main_args.extra }) as SqlxJson<PushArgs>,
+        SqlxJson(PushArgs { args: &preprocessor_args.args, extra: preprocessor_args.extra })
+            as SqlxJson<PushArgs>,
         owner,
     )
     .execute(db)
@@ -748,7 +747,7 @@ pub async fn insert_capture_payload(
 async fn webhook_payload(
     Extension(db): Extension<DB>,
     Path((w_id, runnable_kind, path)): Path<(String, RunnableKind, StripPath)>,
-    args: WebhookArgs,
+    args: RawWebhookArgs,
 ) -> Result<StatusCode> {
     let (owner, email) = get_active_capture_owner_and_email(
         &db,
@@ -760,7 +759,15 @@ async fn webhook_payload(
     .await?;
 
     let authed = fetch_api_authed(owner.clone(), email, &w_id, &db, None).await?;
-    let args = args.to_push_args_owned(&authed, &db, &w_id).await?;
+
+    let args = args.process_args(&authed, &db, &w_id, None).await?;
+
+    let preprocessor_args = args.clone().to_args_from_format(RunnableFormat {
+        has_preprocessor: true,
+        version: RunnableFormatVersion::V2,
+    })?;
+
+    let main_args = args.to_main_args()?;
 
     insert_capture_payload(
         &db,
@@ -768,12 +775,8 @@ async fn webhook_payload(
         &path.to_path(),
         matches!(runnable_kind, RunnableKind::Flow),
         &TriggerKind::Webhook,
-        args,
-        Some(to_raw_value(&serde_json::json!({
-            "wm_trigger": {
-                "kind": "webhook",
-            }
-        }))),
+        main_args,
+        preprocessor_args,
         &owner,
     )
     .await?;
@@ -786,10 +789,7 @@ async fn webhook_payload(
 async fn http_payload(
     Extension(db): Extension<DB>,
     Path((w_id, runnable_kind, path, route_path)): Path<(String, RunnableKind, String, StripPath)>,
-    Query(query): Query<HashMap<String, String>>,
-    method: http::Method,
-    headers: HeaderMap,
-    request: Request,
+    args: RawHttpTriggerArgs,
 ) -> std::result::Result<StatusCode, Response> {
     let path = path.replace(".", "/");
     let is_flow = matches!(runnable_kind, RunnableKind::Flow);
@@ -799,20 +799,17 @@ async fn http_payload(
             .await
             .map_err(|e| e.into_response())?;
 
-    let args = try_from_request_body(
-        request,
-        &(),
-        http_trigger_config.raw_string,
-        http_trigger_config.wrap_body,
-    )
-    .await
-    .map_err(|e| e.into_response())?;
-
     let authed = fetch_api_authed(owner.clone(), email, &w_id, &db, None)
         .await
         .map_err(|e| e.into_response())?;
-    let mut args = args
-        .to_push_args_owned(&authed, &db, &w_id)
+
+    let args = args
+        .process_args(
+            &authed,
+            &db,
+            &w_id,
+            http_trigger_config.raw_string.unwrap_or(false),
+        )
         .await
         .map_err(|e| e.into_response())?;
 
@@ -830,31 +827,23 @@ async fn http_payload(
         .map(|(k, v)| (k.to_string(), v.to_string()))
         .collect();
 
-    let extra = args.extra.get_or_insert_with(HashMap::new);
+    let preprocessor_args = args
+        .clone()
+        .to_v2_preprocessor_args(&http_trigger_config.route_path, &route_path, &params)
+        .map_err(|e| e.into_response())?;
 
-    extra.insert(
-        "wm_trigger".to_string(),
-        build_http_trigger_extra(
-            &http_trigger_config.route_path,
-            route_path,
-            &method,
-            &params,
-            &query,
-            &headers,
-        )
-        .await,
-    );
+    let main_args = args
+        .to_main_args(http_trigger_config.wrap_body.unwrap_or(false))
+        .map_err(|e| e.into_response())?;
 
-    let extra = Some(to_raw_value(&extra));
-    args.extra = None;
     insert_capture_payload(
         &db,
         &w_id,
         &path,
         is_flow,
         &TriggerKind::Http,
-        args,
-        extra,
+        main_args,
+        preprocessor_args,
         &owner,
     )
     .await
