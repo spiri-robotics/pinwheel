@@ -10,10 +10,10 @@ use crate::job_logger::CompactLogs;
 
 #[allow(dead_code)]
 pub(crate) async fn default_disk_log_storage(
-    job_id: Uuid,
+    job_id: &Uuid,
     _w_id: &str,
     _db: &DB,
-    _nlogs: String,
+    _logs: &str,
     _total_size: Arc<AtomicU32>,
     _compact_kind: CompactLogs,
     _worker_name: &str,
