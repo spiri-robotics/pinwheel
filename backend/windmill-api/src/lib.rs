@@ -108,6 +108,8 @@ mod scripts;
 mod service_logs;
 mod settings;
 mod slack_approvals;
+mod approvals;
+mod teams_approvals_ee;
 #[cfg(feature = "smtp")]
 mod smtp_server_ee;
 mod trigger_helpers;
@@ -579,6 +581,10 @@ pub async fn run_server(
                 .route(
                     "/w/:workspace_id/jobs/slack_approval/:job_id",
                     get(slack_approvals::request_slack_approval),
+                )
+                .route(
+                    "/w/:workspace_id/jobs/teams_approval/:job_id",
+                    get(teams_approvals_ee::request_teams_approval),
                 )
                 .nest("/w/:workspace_id/github_app", {
 
