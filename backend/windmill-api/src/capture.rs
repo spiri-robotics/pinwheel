@@ -16,12 +16,7 @@ use {
 
 
 #[cfg(feature = "http_trigger")]
-use {
-    axum::extract::Request,
-    http::HeaderMap,
-    serde::de::DeserializeOwned,
-    windmill_common::{error::Error, utils::empty_as_none},
-};
+use {serde::de::DeserializeOwned, windmill_common::error::Error};
 
 
 #[cfg(feature = "mqtt_trigger")]
