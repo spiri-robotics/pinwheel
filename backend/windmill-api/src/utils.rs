@@ -5,7 +5,6 @@
  * Please see the included NOTICE for copyright information and
  * LICENSE-AGPL for a copy of the license.
  */
-
 use axum::{body::Body, response::Response};
 use regex::Regex;
 use serde::{Deserialize, Deserializer};
@@ -208,3 +207,10 @@ pub struct CriticalAlert {
 
 
 
+
+#[cfg(feature = "http_trigger")]
+#[derive(Clone)]
+pub struct ExpiringCacheEntry<T> {
+    pub value: T,
+    pub expiry: std::time::Instant,
+}
