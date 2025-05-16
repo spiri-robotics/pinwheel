@@ -1458,7 +1458,7 @@ pub struct S3ModeWorkerData {
 }
 
 impl S3ModeWorkerData {
-    pub async fn upload<S>(&self, stream: S) -> error::Result<reqwest::Response>
+    pub async fn upload<S>(&self, stream: S) -> error::Result<()>
     where
         S: futures::stream::TryStream + Send + 'static,
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
@@ -1472,6 +1472,14 @@ impl S3ModeWorkerData {
                 stream,
             )
             .await
+    }
+
+    pub fn to_return_s3_obj(&self) -> windmill_common::s3_helpers::S3Object {
+        windmill_common::s3_helpers::S3Object {
+            s3: self.object_key.clone(),
+            storage: self.storage.clone(),
+            ..Default::default()
+        }
     }
 }
 
