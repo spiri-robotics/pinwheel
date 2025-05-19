@@ -816,6 +816,8 @@ pub async fn handle_python_job(
 ) -> windmill_common::error::Result<Box<RawValue>> {
     let script_path = crate::common::use_flow_root_path(job.runnable_path());
 
+    let annotations = PythonAnnotations::parse(inner_content);
+
     let (py_version, mut additional_python_paths) = handle_python_deps(
         job_dir,
         requirements_o,
@@ -830,10 +832,10 @@ pub async fn handle_python_job(
         canceled_by,
         &mut Some(occupancy_metrics),
         precomputed_agent_info,
+        annotations,
     )
     .await?;
 
-    let PythonAnnotations { no_postinstall, .. } = PythonAnnotations::parse(inner_content);
     tracing::debug!("Finished handling python dependencies");
     let python_path = get_python_path(
         py_version,
@@ -846,7 +848,7 @@ pub async fn handle_python_job(
     )
     .await?;
 
-    if !no_postinstall {
+    if !annotations.no_postinstall {
         if let Err(e) = postinstall(&mut additional_python_paths, job_dir, job, conn).await {
             tracing::error!("Postinstall stage has failed. Reason: {e}");
         }
@@ -912,6 +914,8 @@ pub async fn handle_python_job(
         "".to_string()
     };
 
+    let postprocessor = get_result_postprocessor(annotations.skip_result_postprocessing);
+
     let os_main_override = if let Some(main_override) = main_name.as_ref() {
         format!("os.environ[\"MAIN_OVERRIDE\"] = \"{main_override}\"\n")
     } else {
@@ -958,7 +962,8 @@ def res_to_json(res):
         for k, v in res.items():
             if type(v).__name__ == 'bytes':
                 res[k] = to_b_64(v)
-    return re.sub(replace_invalid_fields, ' null ', json.dumps(res, separators=(',', ':'), default=str).replace('\n', ''))
+    unprocessed = json.dumps(res, separators=(',', ':'), default=str).replace('\n', '')
+    return {postprocessor}
 
 try:
     {preprocessor}
@@ -1355,6 +1360,7 @@ async fn handle_python_deps(
     canceled_by: &mut Option<CanceledBy>,
     occupancy_metrics: &mut Option<&mut OccupancyMetrics>,
     precomputed_agent_info: Option<PrecomputedAgentInfo>,
+    annotations: PythonAnnotations,
 ) -> error::Result<(PyVersion, Vec<String>)> {
     create_dependencies_dir(job_dir).await;
 
@@ -1372,7 +1378,6 @@ async fn handle_python_deps(
     let mut annotated_pyv_numeric = None;
     let is_deployed = requirements_o.is_some();
     let instance_pyv = PyVersion::from_instance_version(job_id, w_id, conn).await;
-    let annotations = windmill_common::worker::PythonAnnotations::parse(inner_content);
     let requirements = match requirements_o {
         Some(r) => r,
         None => {
@@ -2190,6 +2195,15 @@ fn get_pyv_from_requirements_lines(requirements_lines: &[&str]) -> PyVersion {
         // In this case we have dependencies, but no associated python version
         // This is the case for old deployed scripts
         PyVersion::Py311
+    }
+}
+
+// Returns code snippet that needs to be injected into wrapper to post-process results or leave unprocessed
+fn get_result_postprocessor<'a>(skip: bool) -> &'a str {
+    if skip {
+        "unprocessed"
+    } else {
+        "re.sub(replace_invalid_fields, ' null ', unprocessed)"
     }
 }
 
