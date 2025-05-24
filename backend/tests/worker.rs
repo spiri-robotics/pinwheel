@@ -3658,7 +3658,7 @@ async fn assert_lockfile(
 #[sqlx::test(fixtures("base", "lockfile_python"))]
 async fn test_requirements_python(db: Pool<Postgres>) {
     let content = r#"
-# py311
+# py: 3.11.11
 # requirements:
 # tiny==0.1.3
 
@@ -3676,7 +3676,7 @@ def main():
         &db,
         content,
         ScriptLang::Python3,
-        vec!["# py311", "tiny==0.1.3"],
+        vec!["# py: 3.11.11", "tiny==0.1.3"],
     )
     .await;
 }
@@ -3686,7 +3686,7 @@ def main():
 async fn test_extra_requirements_python(db: Pool<Postgres>) {
     {
         let content = r#"
-# py311
+# py: ==3.11.11
 # extra_requirements:
 # tiny
 
@@ -3704,7 +3704,7 @@ def main():
             &db,
             content,
             ScriptLang::Python3,
-            vec!["# py311", "bottle==0.13.2", "tiny==0.1.2"],
+            vec!["# py: 3.11.11", "bottle==0.13.2", "tiny==0.1.2"],
         )
         .await;
     }
@@ -3714,7 +3714,7 @@ def main():
 #[sqlx::test(fixtures("base", "lockfile_python"))]
 async fn test_extra_requirements_python2(db: Pool<Postgres>) {
     let content = r#"
-# py311
+# py: ==3.11.11
 # extra_requirements:
 # tiny==0.1.3
 
@@ -3728,7 +3728,7 @@ def main():
         &db,
         content,
         ScriptLang::Python3,
-        vec!["# py311", "simplejson==3.20.1", "tiny==0.1.3"],
+        vec!["# py: 3.11.11", "simplejson==3.20.1", "tiny==0.1.3"],
     )
     .await;
 }
@@ -3737,7 +3737,7 @@ def main():
 #[sqlx::test(fixtures("base", "lockfile_python"))]
 async fn test_pins_python(db: Pool<Postgres>) {
     let content = r#"
-# py311
+# py: ==3.11.11
 # extra_requirements:
 # tiny==0.1.3
 # bottle==0.13.2
@@ -3757,12 +3757,45 @@ def main():
         content,
         ScriptLang::Python3,
         vec![
-            "# py311",
+            "# py: 3.11.11",
             "bottle==0.13.2",
             "microdot==2.2.0",
             "simplejson==3.19.3",
             "tiny==0.1.3",
         ],
+    )
+    .await;
+}
+#[cfg(feature = "python")]
+#[sqlx::test(fixtures("base", "multipython"))]
+async fn test_multipython_python(db: Pool<Postgres>) {
+    let content = r#"# py: <=3.12.2, >=3.12.0
+import f.multipython.script1
+import f.multipython.aliases
+"#
+    .to_string();
+
+    assert_lockfile(&db, content, ScriptLang::Python3, vec!["# py: 3.12.1\n"]).await;
+}
+
+#[cfg(feature = "python")]
+#[sqlx::test(fixtures("base", "multipython"))]
+async fn test_inline_script_metadata_python(db: Pool<Postgres>) {
+    let content = r#"# py_select_latest
+# /// script
+# requires-python = ">3.11,<3.12.3,!=3.12.2"
+# dependencies = [
+#   "tiny==0.1.3",
+# ]
+# ///
+"#
+    .to_string();
+
+    assert_lockfile(
+        &db,
+        content,
+        ScriptLang::Python3,
+        vec!["# py: 3.12.1", "tiny==0.1.3"],
     )
     .await;
 }
