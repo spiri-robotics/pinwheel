@@ -1253,10 +1253,12 @@ async fn raw_script_by_path_internal(
             w_id
         )
         .fetch_one(&db)
-        .await?;
-        if exists.unwrap_or(false) {
+        .await?
+        .unwrap_or(false);
+
+        if exists {
             return Err(Error::NotFound(format!(
-                "Script {path} not visible to {} but exists",
+                "Script {path} exists but {} does not have permissions to access it",
                 authed.username
             )));
         }

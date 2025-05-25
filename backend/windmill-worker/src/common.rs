@@ -44,10 +44,8 @@ use windmill_common::{variables, DB};
 use tokio::{io::AsyncWriteExt, process::Child, time::Instant};
 
 use crate::agent_workers::UPDATE_PING_URL;
-use crate::{
-    AuthedClient, DISABLE_NSJAIL, JOB_DEFAULT_TIMEOUT, MAX_RESULT_SIZE, MAX_TIMEOUT_DURATION,
-    PATH_ENV,
-};
+use crate::{DISABLE_NSJAIL, JOB_DEFAULT_TIMEOUT, MAX_RESULT_SIZE, MAX_TIMEOUT_DURATION, PATH_ENV};
+use windmill_common::client::AuthedClient;
 
 pub async fn build_args_map<'a>(
     job: &'a MiniPulledJob,
@@ -779,19 +777,17 @@ async fn get_workspace_s3_resource_path(
         }
     };
 
-    let client2 = client.clone();
-    let token_fn = |audience: String| async move {
-        client2
-            .get_id_token(&audience)
-            .await
-            .map_err(|e| windmill_common::error::Error::from(e))
-    };
     let s3_resource_value_raw = client
         .get_resource_value::<serde_json::Value>(path.as_str())
         .await?;
-    get_s3_resource_internal(rt, s3_resource_value_raw, token_fn)
-        .await
-        .map(Some)
+    get_s3_resource_internal(
+        rt,
+        s3_resource_value_raw,
+        windmill_common::job_s3_helpers_ee::TokenGenerator::AsClient(client),
+        db,
+    )
+    .await
+    .map(Some)
 }
 
 #[cfg(feature = "parquet")]
@@ -1458,7 +1454,7 @@ pub struct S3ModeWorkerData {
 }
 
 impl S3ModeWorkerData {
-    pub async fn upload<S>(&self, stream: S) -> error::Result<()>
+    pub async fn upload<S>(&self, stream: S) -> anyhow::Result<()>
     where
         S: futures::stream::TryStream + Send + 'static,
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
