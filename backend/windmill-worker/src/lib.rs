@@ -12,6 +12,8 @@ pub mod common;
 mod config;
 mod csharp_executor;
 mod deno_executor;
+#[cfg(feature = "duckdb")]
+mod duckdb_executor;
 mod global_cache;
 mod go_executor;
 mod graphql_executor;
