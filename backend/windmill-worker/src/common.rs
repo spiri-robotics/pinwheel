@@ -725,7 +725,7 @@ async fn get_workspace_s3_resource_path(
     storage: Option<&String>,
 ) -> windmill_common::error::Result<Option<ObjectStoreResource>> {
     use windmill_common::{
-        job_s3_helpers_ee::get_s3_resource_internal, s3_helpers::StorageResourceType,
+        job_s3_helpers_oss::get_s3_resource_internal, s3_helpers::StorageResourceType,
     };
 
     let raw_lfs_opt = if let Some(storage) = storage {
@@ -783,7 +783,7 @@ async fn get_workspace_s3_resource_path(
     get_s3_resource_internal(
         rt,
         s3_resource_value_raw,
-        windmill_common::job_s3_helpers_ee::TokenGenerator::AsClient(client),
+        windmill_common::job_s3_helpers_oss::TokenGenerator::AsClient(client),
         db,
     )
     .await

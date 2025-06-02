@@ -1,3 +1,4 @@
+
 /*
  * Author: Ruben Fiszel
  * Copyright: Windmill Labs, Inc 2022
@@ -117,6 +118,7 @@ async fn list_logins() -> error::JsonResult<Logins> {
     return Ok(Json(Logins { oauth: vec![], saml: None }));
 }
 
+#[allow(unused)]
 #[cfg(feature = "oauth2")]
 async fn list_connects() -> error::JsonResult<Vec<String>> {
     Ok(Json(
@@ -127,10 +129,11 @@ async fn list_connects() -> error::JsonResult<Vec<String>> {
     ))
 }
 
+#[allow(unused)]
 #[cfg(not(feature = "oauth2"))]
-async fn list_connects() -> error::JsonResult<Vec<String>> {
+async fn list_connects() -> windmill_common::error::JsonResult<Vec<String>> {
     // Implementation is not open source
-    return Ok(Json(vec![]));
+    return Ok(axum::Json(vec![]));
 }
 
 pub async fn _refresh_token<'c>(
@@ -174,7 +177,6 @@ pub async fn check_nb_of_user(db: &DB) -> error::Result<()> {
 pub struct SlackVerifier {
     _mac: HmacSha256,
 }
-
 impl SlackVerifier {
     pub fn new<S: AsRef<[u8]>>(secret: S) -> anyhow::Result<SlackVerifier> {
         HmacSha256::new_from_slice(secret.as_ref())

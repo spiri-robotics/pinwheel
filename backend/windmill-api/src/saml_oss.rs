@@ -7,6 +7,7 @@
  */
 #![allow(non_snake_case)]
 
+
 use axum::{routing::post, Router};
 
 pub struct ServiceProviderExt();

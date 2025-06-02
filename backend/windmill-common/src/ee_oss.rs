@@ -1,4 +1,5 @@
-use crate::ee::LicensePlan::Community;
+
+use crate::ee_oss::LicensePlan::Community;
 use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -38,7 +39,6 @@ pub struct TeamsChannel {
 
 pub enum CriticalAlertKind {
 }
-
 
 
 

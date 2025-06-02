@@ -1471,7 +1471,7 @@ pub async fn run_worker(
                         span.record("root_job", root_job.to_string().as_str());
                     }
 
-                    windmill_common::otel_ee::set_span_parent(&span, &rj);
+                    windmill_common::otel_oss::set_span_parent(&span, &rj);
                     // span.context().span().add_event_with_timestamp("job created".to_string(), arc_job.created_at.into(), vec![]);
 
                     match handle_queued_job(

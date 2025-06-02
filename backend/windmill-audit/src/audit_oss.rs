@@ -1,3 +1,4 @@
+
 /*
  * Author: Ruben Fiszel
  * Copyright: Windmill Labs, Inc 2022
@@ -5,15 +6,15 @@
  * Please see the included NOTICE for copyright information and
  * LICENSE-AGPL for a copy of the license.
  */
-use std::collections::HashMap;
-
-use windmill_common::{
-    error::{Error, Result},
-    utils::Pagination,
+use {
+    crate::{ActionKind, AuditLog, ListAuditLogQuery},
+    sqlx::{Postgres, Transaction},
+    std::collections::HashMap,
+    windmill_common::{
+        error::{Error, Result},
+        utils::Pagination,
+    },
 };
-
-use crate::{ActionKind, AuditLog, ListAuditLogQuery};
-use sqlx::{Postgres, Transaction};
 
 #[derive(Clone)]
 pub struct AuditAuthor {

@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use uuid::Uuid;
 
-use crate::job_logger_ee::default_disk_log_storage;
+use crate::job_logger_oss::default_disk_log_storage;
 
 
 pub enum CompactLogs {

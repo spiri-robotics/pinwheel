@@ -7,7 +7,7 @@
  */
 
 use crate::auth::is_devops_email;
-use crate::ee::LICENSE_KEY_ID;
+use crate::ee_oss::LICENSE_KEY_ID;
 use crate::error::{to_anyhow, Error, Result};
 use crate::global_settings::UNIQUE_ID_SETTING;
 use crate::DB;

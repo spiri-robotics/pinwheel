@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use crate::{
     db::{ApiAuthed, DB},
-    ee::validate_license_key,
+    ee_oss::validate_license_key,
     utils::{generate_instance_username_for_all_users, require_super_admin},
     HTTP_CLIENT,
 };
@@ -25,7 +25,7 @@ use axum::{
 
 use serde::Deserialize;
 use windmill_common::{
-    email_ee::send_email,
+    email_oss::send_email,
     error::{self, JsonResult, Result},
     global_settings::{
         AUTOMATE_USERNAME_CREATION_SETTING, CRITICAL_ALERT_MUTE_UI_SETTING, EMAIL_DOMAIN_SETTING,
@@ -301,10 +301,10 @@ async fn list_global_settings() -> JsonResult<String> {
 
 pub async fn send_stats(Extension(db): Extension<DB>, authed: ApiAuthed) -> Result<String> {
     require_super_admin(&db, &authed.email).await?;
-    windmill_common::stats_ee::send_stats(
+    windmill_common::stats_oss::send_stats(
         &HTTP_CLIENT,
         &db,
-        windmill_common::stats_ee::SendStatsReason::Manual,
+        windmill_common::stats_oss::SendStatsReason::Manual,
     )
     .await?;
 

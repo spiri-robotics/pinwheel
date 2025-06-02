@@ -19,7 +19,7 @@ mod go_executor;
 mod graphql_executor;
 mod handle_child;
 pub mod job_logger;
-mod job_logger_ee;
+mod job_logger_oss;
 mod js_eval;
 #[cfg(feature = "mysql")]
 mod mysql_executor;
@@ -27,7 +27,7 @@ mod mysql_executor;
 mod nu_executor;
 #[cfg(feature = "oracledb")]
 mod oracledb_executor;
-mod otel_ee;
+mod otel_oss;
 mod pg_executor;
 #[cfg(feature = "php")]
 mod php_executor;

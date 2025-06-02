@@ -47,7 +47,7 @@ use windmill_common::{
         TIMEOUT_WAIT_RESULT_SETTING,
     },
     scripts::ScriptLang,
-    stats_ee::schedule_stats,
+    stats_oss::schedule_stats,
     triggers::TriggerKind,
     utils::{hostname, rd_string, Mode, GIT_VERSION, MODE_AND_ADDONS},
     worker::{
@@ -96,7 +96,7 @@ const DEFAULT_NUM_WORKERS: usize = 1;
 const DEFAULT_PORT: u16 = 8000;
 const DEFAULT_SERVER_BIND_ADDR: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 
-mod ee;
+mod ee_oss;
 mod monitor;
 
 pub fn setup_deno_runtime() -> anyhow::Result<()> {
@@ -510,7 +510,7 @@ Windmill Community Edition {GIT_VERSION}
                 _ = indexer_rx.recv() => {
                     tracing::info!("Received killpill, aborting index initialization");
                 },
-                res = windmill_indexer::completed_runs_ee::init_index(&db) => {
+                res = windmill_indexer::completed_runs_oss::init_index(&db) => {
                         let res = res?;
                         reader = Some(res.0);
                         writer = Some(res.1);
@@ -532,7 +532,7 @@ Windmill Community Edition {GIT_VERSION}
             async {
                 if let Some(db) = conn.as_sql() {
                     if let Some(index_writer) = index_writer2 {
-                        windmill_indexer::completed_runs_ee::run_indexer(
+                        windmill_indexer::completed_runs_oss::run_indexer(
                             db.clone(),
                             index_writer,
                             indexer_rx,
@@ -554,7 +554,7 @@ Windmill Community Edition {GIT_VERSION}
                     _ = indexer_rx.recv() => {
                         tracing::info!("Received killpill, aborting index initialization");
                     },
-                    res = windmill_indexer::service_logs_ee::init_index(&db, killpill_tx.clone()) => {
+                    res = windmill_indexer::service_logs_oss::init_index(&db, killpill_tx.clone()) => {
                             let res = res?;
                             reader = Some(res.0);
                             writer = Some(res.1);
@@ -576,7 +576,7 @@ Windmill Community Edition {GIT_VERSION}
             async {
                 if let Some(db) = conn.as_sql() {
                     if let Some(log_index_writer) = log_index_writer2 {
-                        windmill_indexer::service_logs_ee::run_indexer(
+                        windmill_indexer::service_logs_oss::run_indexer(
                             db.clone(),
                             log_index_writer,
                             log_indexer_rx,

@@ -1,11 +1,8 @@
-use std::io;
-use std::sync::atomic::AtomicU32;
-use std::sync::Arc;
 
-use uuid::Uuid;
-use windmill_common::DB;
-
-use crate::job_logger::CompactLogs;
+use {
+    crate::job_logger::CompactLogs, std::io, std::sync::atomic::AtomicU32, std::sync::Arc,
+    uuid::Uuid, windmill_common::DB,
+};
 
 
 #[allow(dead_code)]

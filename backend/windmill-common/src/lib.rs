@@ -19,7 +19,7 @@ use std::{
 
 use tokio::sync::broadcast;
 
-use ee::CriticalErrorChannel;
+use ee_oss::CriticalErrorChannel;
 use error::Error;
 use scripts::ScriptLang;
 use sqlx::{Pool, Postgres};
@@ -32,8 +32,8 @@ pub mod bench;
 pub mod cache;
 pub mod client;
 pub mod db;
-pub mod ee;
-pub mod email_ee;
+pub mod ee_oss;
+pub mod email_oss;
 pub mod error;
 pub mod external_ip;
 pub mod flow_status;
@@ -42,22 +42,22 @@ pub mod global_settings;
 pub mod indexer;
 pub mod job_metrics;
 #[cfg(feature = "parquet")]
-pub mod job_s3_helpers_ee;
+pub mod job_s3_helpers_oss;
 
 
 pub mod jobs;
 pub mod jwt;
 pub mod more_serde;
 pub mod oauth2;
-pub mod otel_ee;
+pub mod otel_oss;
 pub mod queue;
 pub mod s3_helpers;
 pub mod schedule;
 pub mod schema;
 pub mod scripts;
 pub mod server;
-pub mod stats_ee;
-pub mod teams_ee;
+pub mod stats_oss;
+pub mod teams_oss;
 pub mod tracing_init;
 pub mod users;
 pub mod utils;
