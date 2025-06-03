@@ -26,6 +26,7 @@ use tokio::io::AsyncReadExt;
 #[cfg(feature = "prometheus")]
 use tokio::time::Instant;
 use tower::ServiceBuilder;
+use windmill_common::auth::is_super_admin_email;
 use windmill_common::error::JsonResult;
 use windmill_common::flow_status::{JobResult, RestartedFrom};
 use windmill_common::jobs::{format_completed_job_result, format_result, ENTRYPOINT_OVERRIDE};
@@ -3053,28 +3054,27 @@ pub fn add_raw_string(
 }
 
 async fn check_tag_available_for_workspace(
+    db: &DB,
     w_id: &str,
     tag: &Option<String>,
     authed: &ApiAuthed,
 ) -> error::Result<()> {
     if let Some(tag) = tag {
-        if tag == "" {
+        if tag.is_empty() {
             return Ok(());
         }
 
         let tags = get_scope_tags(authed);
+        let mut is_tag_available_in_workspace = None;
+        let mut is_tag_in_workspace_custom_tags = false;
 
-        if let Some(tags) = tags {
-            if !tags.contains(&tag.as_str()) {
-                return Err(Error::BadRequest(format!(
-                    "Tag {tag} is not available in your scope"
-                )));
-            }
+        if let Some(tags) = tags.as_ref() {
+            is_tag_available_in_workspace = Some(tags.contains(&tag.as_str()));
         }
 
         let custom_tags_per_w = CUSTOM_TAGS_PER_WORKSPACE.read().await;
         if custom_tags_per_w.0.contains(&tag.to_string()) {
-            Ok(())
+            is_tag_in_workspace_custom_tags = true;
         } else if custom_tags_per_w.1.contains_key(tag)
             && custom_tags_per_w
                 .1
@@ -3082,16 +3082,33 @@ async fn check_tag_available_for_workspace(
                 .unwrap()
                 .contains(&w_id.to_string())
         {
-            Ok(())
-        } else {
+            is_tag_in_workspace_custom_tags = true;
+        }
+
+        match is_tag_available_in_workspace {
+            Some(true) | None => {
+                if is_tag_in_workspace_custom_tags {
+                    return Ok(());
+                }
+            }
+            _ => {}
+        }
+
+        if !is_super_admin_email(db, &authed.email).await? {
+            if tags.is_some() && is_tag_available_in_workspace.is_some() {
+                return Err(Error::BadRequest(format!(
+                    "Tag {tag} is not available in your scope"
+                )));
+            }
+
             return Err(error::Error::BadRequest(format!(
-                "Tag {tag} cannot be used on workspace {w_id}: (CUSTOM_TAGS: {:?})",
+                "Only super admins are allowed to use tags that are not included in the allowed CUSTOM_TAGS: {:?}",
                 custom_tags_per_w
             )));
         }
-    } else {
-        Ok(())
     }
+
+    return Ok(());
 }
 
 
@@ -3407,7 +3424,7 @@ pub async fn run_flow_by_path_inner(
 
     let tag = run_query.tag.clone().or(tag);
 
-    check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
+    check_tag_available_for_workspace(&db, &w_id, &tag, &authed).await?;
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
 
     let (email, permissioned_as, push_authed, tx) =
@@ -3522,7 +3539,7 @@ pub async fn run_script_by_path_inner(
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
 
     let tag = run_query.tag.clone().or(tag);
-    check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
+    check_tag_available_for_workspace(&db, &w_id, &tag, &authed).await?;
 
     let (email, permissioned_as, push_authed, tx) =
         if let Some(on_behalf_of) = on_behalf_of.as_ref() {
@@ -3591,7 +3608,7 @@ pub async fn run_workflow_as_code(
         i += 1;
     }
 
-    check_tag_available_for_workspace(&w_id, &run_query.tag, &authed).await?;
+    check_tag_available_for_workspace(&db, &w_id, &run_query.tag, &authed).await?;
 
     if *CLOUD_HOSTED {
         tracing::info!("workflow_as_code_tracing id {i} ");
@@ -4186,7 +4203,7 @@ pub async fn run_wait_result_job_by_path_get(
     drop(tx);
 
     let tag = run_query.tag.clone().or(tag);
-    check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
+    check_tag_available_for_workspace(&db, &w_id, &tag, &authed).await?;
 
     let (email, permissioned_as, push_authed, tx) =
         if let Some(on_behalf_of) = on_behalf_authed.as_ref() {
@@ -4322,7 +4339,7 @@ pub async fn run_wait_result_script_by_path_internal(
     drop(tx);
 
     let tag = run_query.tag.clone().or(tag);
-    check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
+    check_tag_available_for_workspace(&db, &w_id, &tag, &authed).await?;
 
     let (email, permissioned_as, push_authed, tx) =
         if let Some(on_behalf_of) = on_behalf_of.as_ref() {
@@ -4421,7 +4438,7 @@ pub async fn run_wait_result_script_by_hash(
     check_scopes(&authed, || format!("run:script/{path}"))?;
 
     let tag = run_query.tag.clone().or(tag);
-    check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
+    check_tag_available_for_workspace(&db, &w_id, &tag, &authed).await?;
 
     let (email, permissioned_as, push_authed, tx) = if let Some(email) = on_behalf_of_email.as_ref()
     {
@@ -4539,7 +4556,7 @@ pub async fn run_wait_result_flow_by_path_internal(
     drop(tx);
 
     let tag = run_query.tag.clone().or(tag);
-    check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
+    check_tag_available_for_workspace(&db, &w_id, &tag, &authed).await?;
 
     let (email, permissioned_as, push_authed, tx) =
         if let Some(on_behalf_of_email) = on_behalf_of_email.as_ref() {
@@ -4611,7 +4628,7 @@ async fn run_preview_script(
     }
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
     let tag = run_query.tag.clone().or(preview.tag.clone());
-    check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
+    check_tag_available_for_workspace(&db, &w_id, &tag, &authed).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into());
 
     let (uuid, tx) = push(
@@ -4693,7 +4710,7 @@ async fn run_bundle_preview_script(
 
             let scheduled_for = run_query.get_scheduled_for(&db).await?;
             let tag = run_query.tag.clone().or(preview.tag.clone());
-            check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
+            check_tag_available_for_workspace(&db, &w_id, &tag, &authed).await?;
             let ltx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into());
 
             let args = preview.args.unwrap_or_default();
@@ -5258,7 +5275,7 @@ async fn run_preview_flow_job(
     }
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
     let tag = run_query.tag.clone().or(raw_flow.tag.clone());
-    check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
+    check_tag_available_for_workspace(&db, &w_id, &tag, &authed).await?;
     let tx = PushIsolationLevel::Isolated(user_db.clone(), authed.clone().into());
 
     let (uuid, tx) = push(
@@ -5351,7 +5368,7 @@ pub async fn run_job_by_hash_inner(
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
     let tag = run_query.tag.clone().or(tag);
 
-    check_tag_available_for_workspace(&w_id, &tag, &authed).await?;
+    check_tag_available_for_workspace(&db, &w_id, &tag, &authed).await?;
 
     let (email, permissioned_as, push_authed, tx) = if let Some(email) = on_behalf_of_email.as_ref()
     {
