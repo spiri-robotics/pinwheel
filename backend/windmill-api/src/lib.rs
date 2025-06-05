@@ -65,7 +65,7 @@ mod ai;
 mod apps;
 pub mod args;
 mod audit;
-mod auth;
+pub mod auth;
 mod capture;
 mod concurrency_groups;
 mod configs;
