@@ -632,7 +632,7 @@ except BaseException as e:
 
     // Add /tmp/windmill/cache/python_x_y_z/global-site-packages to PYTHONPATH.
     // Usefull if certain wheels needs to be preinstalled before execution.
-    let global_site_packages_path = py_version.to_cache_dir() + "/global-site-packages";
+    let global_site_packages_path = py_version.to_cache_dir(true) + "/global-site-packages";
     let additional_python_paths_folders = {
         let mut paths = additional_python_paths.clone();
         if std::fs::metadata(&global_site_packages_path).is_ok() {
@@ -1411,7 +1411,7 @@ pub async fn handle_python_reqs(
         if req.starts_with('#') || req.starts_with('-') || req.trim().is_empty() {
             continue;
         }
-        let py_prefix = &py_version.to_cache_dir();
+        let py_prefix = &py_version.to_cache_dir(false);
 
         let venv_p = format!(
             "{py_prefix}/{}",
