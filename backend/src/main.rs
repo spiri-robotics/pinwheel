@@ -153,6 +153,7 @@ lazy_static::lazy_static! {
         .ok()
         .and_then(|x| x.parse::<u64>().ok())
         .unwrap_or(3600 * 12);
+
 }
 
 pub fn main() -> anyhow::Result<()> {
@@ -1014,7 +1015,9 @@ Windmill Community Edition {GIT_VERSION}
                                     }
 
                                     if server_mode {
-                                        tracing::info!("monitor task started");
+                                        if !*windmill_common::QUIET_LOGS {
+                                            tracing::info!("monitor task started");
+                                        }
                                     }
                                     monitor_db(
                                         &conn,
@@ -1026,7 +1029,9 @@ Windmill Community Edition {GIT_VERSION}
                                     )
                                     .await;
                                     if server_mode {
-                                        tracing::info!("monitor task finished");
+                                        if !*windmill_common::QUIET_LOGS {
+                                            tracing::info!("monitor task finished");
+                                        }
                                     }
                                 },
                             }
