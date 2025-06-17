@@ -93,6 +93,8 @@ mod integration;
 #[cfg(feature = "postgres_trigger")]
 mod postgres_triggers;
 
+pub mod openapi;
+
 mod approvals;
 #[cfg(feature = "parquet")]
 mod job_helpers_oss;
@@ -493,6 +495,7 @@ pub async fn run_server(
                         .nest("/variables", variables::workspaced_service())
                         .nest("/workspaces", workspaces::workspaced_service())
                         .nest("/oidc", oidc_oss::workspaced_service())
+                        .nest("/openapi", openapi::openapi_service())
                         .nest("/http_triggers", http_triggers_service)
                         .nest("/websocket_triggers", websocket_triggers_service)
                         .nest("/kafka_triggers", kafka_triggers_service)
