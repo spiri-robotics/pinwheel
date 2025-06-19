@@ -3533,6 +3533,7 @@ pub async fn push<'c, 'd>(
         ),
     };
 
+
     let final_priority: Option<i16>;
     {
         // priority is only available on EE. Do not compute it on CE
