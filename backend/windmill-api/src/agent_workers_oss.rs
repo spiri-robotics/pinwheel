@@ -11,8 +11,6 @@ use crate::db::DB;
 
 use axum::Router;
 
-use serde::{Deserialize, Serialize};
-
 pub fn global_service() -> Router {
     Router::new()
 }
@@ -34,14 +32,6 @@ pub fn workspaced_service(
     let router = Router::new();
 
     (router, vec![], Some(job_completed_tx))
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AgentAuth {
-    pub worker_group: String,
-    pub suffix: Option<String>,
-    pub tags: Vec<String>,
-    pub exp: Option<usize>,
 }
 
 pub struct AgentCache {}
