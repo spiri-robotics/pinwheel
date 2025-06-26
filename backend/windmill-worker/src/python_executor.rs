@@ -261,6 +261,7 @@ pub async fn uv_pip_compile(
             child_cmd
                 .env("SystemRoot", SYSTEM_ROOT.as_str())
                 .env("USERPROFILE", crate::USERPROFILE_ENV.as_str())
+                .env("HOME", crate::USERPROFILE_ENV.as_str())
                 .env(
                     "LOCALAPPDATA",
                     std::env::var("LOCALAPPDATA")
@@ -269,6 +270,29 @@ pub async fn uv_pip_compile(
                 .env(
                     "TMP",
                     std::env::var("TMP").unwrap_or_else(|_| String::from("/tmp")),
+                )
+                .env(
+                    "APPDATA",
+                    std::env::var("APPDATA")
+                        .unwrap_or_else(|_| format!("{}\\AppData\\Roaming", crate::USERPROFILE_ENV.as_str())),
+                )
+                .env(
+                    "ComSpec",
+                    std::env::var("ComSpec").unwrap_or_else(|_| String::from("C:\\Windows\\System32\\cmd.exe")),
+                )
+                .env(
+                    "PATHEXT",
+                    std::env::var("PATHEXT").unwrap_or_else(|_|
+                        String::from(".COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.CPL")
+                    ),
+                )
+                .env(
+                    "ProgramData",
+                    std::env::var("ProgramData").unwrap_or_else(|_| String::from("C:\\ProgramData")),
+                )
+                .env(
+                    "ProgramFiles",
+                    std::env::var("ProgramFiles").unwrap_or_else(|_| String::from("C:\\Program Files")),
                 );
         }
 
@@ -539,7 +563,7 @@ pub async fn handle_python_job(
             if v == '<function call>':
                 del pre_args[k]
         kwargs = inner_script.preprocessor(**pre_args)
-        kwrags_json = res_to_json(kwargs)    
+        kwrags_json = res_to_json(kwargs)
         with open("args.json", 'w') as f:
             f.write(kwrags_json)"#
         )
@@ -615,7 +639,7 @@ except BaseException as e:
     tb = traceback.format_tb(exc_traceback)
     with open(result_json, 'w') as f:
         err = {{ "message": str(e), "name": e.__class__.__name__, "stack": '\n'.join(tb[1:]) }}
-        extra = e.__dict__ 
+        extra = e.__dict__
         if extra and len(extra) > 0:
             err['extra'] = extra
         flow_node_id = os.environ.get('WM_FLOW_STEP_ID')
@@ -1307,6 +1331,7 @@ async fn spawn_uv_install(
                 .envs(PROXY_ENVS.clone())
                 .env("SystemRoot", SYSTEM_ROOT.as_str())
                 .env("USERPROFILE", crate::USERPROFILE_ENV.as_str())
+                .env("HOME", HOME_ENV.as_str())
                 .env(
                     "TMP",
                     std::env::var("TMP").unwrap_or_else(|_| String::from("/tmp")),
@@ -1315,6 +1340,29 @@ async fn spawn_uv_install(
                     "LOCALAPPDATA",
                     std::env::var("LOCALAPPDATA")
                         .unwrap_or_else(|_| format!("{}\\AppData\\Local", HOME_ENV.as_str())),
+                )
+                .env(
+                    "APPDATA",
+                    std::env::var("APPDATA")
+                        .unwrap_or_else(|_| format!("{}\\AppData\\Roaming", crate::USERPROFILE_ENV.as_str())),
+                )
+                .env(
+                    "ComSpec",
+                    std::env::var("ComSpec").unwrap_or_else(|_| String::from("C:\\Windows\\System32\\cmd.exe")),
+                )
+                .env(
+                    "PATHEXT",
+                    std::env::var("PATHEXT").unwrap_or_else(|_|
+                        String::from(".COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.CPL")
+                    ),
+                )
+                .env(
+                    "ProgramData",
+                    std::env::var("ProgramData").unwrap_or_else(|_| String::from("C:\\ProgramData")),
+                )
+                .env(
+                    "ProgramFiles",
+                    std::env::var("ProgramFiles").unwrap_or_else(|_| String::from("C:\\Program Files")),
                 )
                 .args(&command_args[1..])
                 .stdout(Stdio::piped())
@@ -1781,7 +1829,7 @@ pub async fn handle_python_reqs(
             pids.lock().await.get_mut(i).and_then(|e| e.take());
             // Create a file to indicate that installation was successfull
             let valid_path = venv_p.clone() + "/.valid.windmill";
-            // This is atomic operation, meaning, that it either completes and wheel is valid, 
+            // This is atomic operation, meaning, that it either completes and wheel is valid,
             // or it does not and wheel is invalid and will be reinstalled next run
             if let Err(e) = File::create(&valid_path).await{
                 tracing::error!(
