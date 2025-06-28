@@ -357,6 +357,10 @@ lazy_static::lazy_static! {
         .and_then(|x| x.parse().ok())
         .unwrap_or(false);
 
+    pub static ref OUTSTANDING_WAIT_TIME_THRESHOLD_MS: i64 = std::env::var("OUTSTANDING_WAIT_TIME_THRESHOLD_MS")
+        .ok()
+        .and_then(|x| x.parse::<i64>().ok())
+        .unwrap_or(1000);
 }
 
 type Envs = Vec<(String, String)>;
@@ -577,8 +581,6 @@ pub async fn drop_cache() {
         }
     }
 }
-
-const OUTSTANDING_WAIT_TIME_THRESHOLD_MS: i64 = 1000;
 
 async fn insert_wait_time(
     job_id: Uuid,
@@ -1565,7 +1567,7 @@ pub async fn run_worker(
                         .expect("send job completed END");
                     add_time!(bench, "sent job completed");
                 } else {
-                    add_outstanding_wait_time(&conn, &job, OUTSTANDING_WAIT_TIME_THRESHOLD_MS);
+                    add_outstanding_wait_time(&conn, &job, *OUTSTANDING_WAIT_TIME_THRESHOLD_MS);
 
                     #[cfg(feature = "prometheus")]
                     register_metric(
