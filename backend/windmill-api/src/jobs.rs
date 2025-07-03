@@ -22,7 +22,7 @@ use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 use tokio::io::AsyncReadExt;
 use tower::ServiceBuilder;
-use windmill_common::auth::is_super_admin_email;
+use windmill_common::auth::{is_super_admin_email, TOKEN_PREFIX_LEN};
 use windmill_common::error::JsonResult;
 use windmill_common::flow_status::{JobResult, RestartedFrom};
 use windmill_common::jobs::{format_completed_job_result, format_result, ENTRYPOINT_OVERRIDE};
@@ -33,6 +33,7 @@ use windmill_common::scripts::PREVIEW_IS_CODEBASE_HASH;
 use windmill_common::variables::get_workspace_key;
 
 use crate::add_webhook_allowed_origin;
+use crate::auth::{OptTokened, Tokened};
 use crate::concurrency_groups::join_concurrency_key;
 use crate::db::ApiAuthed;
 
@@ -293,6 +294,7 @@ struct JsonPath {
 }
 async fn get_result_by_id(
     authed: ApiAuthed,
+    tokened: Tokened,
     Extension(db): Extension<DB>,
     Path((w_id, flow_id, node_id)): Path<(String, Uuid, String)>,
     Query(JsonPath { json_path, .. }): Query<JsonPath>,
@@ -301,7 +303,7 @@ async fn get_result_by_id(
         windmill_queue::get_result_by_id(db.clone(), w_id.clone(), flow_id, node_id, json_path)
             .await?;
 
-    log_job_view(&db, Some(&authed), &w_id, &flow_id).await?;
+    log_job_view(&db, Some(&authed), Some(&tokened.token), &w_id, &flow_id).await?;
 
     Ok(Json(res))
 }
@@ -337,6 +339,7 @@ async fn get_db_clock(Extension(db): Extension<DB>) -> windmill_common::error::J
 
 async fn cancel_job_api(
     OptAuthed(opt_authed): OptAuthed,
+    opt_tokened: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
     Json(CancelJob { reason }): Json<CancelJob>,
@@ -349,6 +352,7 @@ async fn cancel_job_api(
             username: "anonymous".to_string(),
             username_override: None,
             email: "anonymous".to_string(),
+            token_prefix: opt_tokened.token.map(|s| s[0..TOKEN_PREFIX_LEN].to_string()),
         },
     };
     let (mut tx, job_option) = tokio::time::timeout(
@@ -447,6 +451,7 @@ async fn cancel_persistent_script_api(
 
 async fn force_cancel(
     OptAuthed(opt_authed): OptAuthed,
+    tokened: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
     Json(CancelJob { reason }): Json<CancelJob>,
@@ -459,6 +464,7 @@ async fn force_cancel(
             username: "anonymous".to_string(),
             username_override: None,
             email: "anonymous".to_string(),
+            token_prefix: tokened.token.map(|t| t[0..TOKEN_PREFIX_LEN].to_string()),
         },
     };
 
@@ -510,6 +516,7 @@ async fn force_cancel(
 
 async fn get_flow_job_debug_info(
     OptAuthed(opt_authed): OptAuthed,
+    tokened_o: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
 ) -> error::Result<Response> {
@@ -561,7 +568,7 @@ async fn get_flow_job_debug_info(
             }
         }
 
-        log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+        log_job_view(&db, opt_authed.as_ref(), tokened_o.token.as_deref(), &w_id, &id).await?;
 
         Ok(Json(jobs).into_response())
     } else {
@@ -621,6 +628,7 @@ struct GetJobQuery {
 
 async fn get_job(
     OptAuthed(opt_authed): OptAuthed,
+    opt_tokened: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
     Query(GetJobQuery { no_logs }): Query<GetJobQuery>,
@@ -640,7 +648,7 @@ async fn get_job(
     let mut job = get.fetch(&db, id, &w_id).await?;
     job.fetch_outstanding_wait_time(&db).await?;
 
-    log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+    log_job_view(&db, opt_authed.as_ref(), opt_tokened.token.as_deref(), &w_id, &id).await?;
 
     Ok(Json(job).into_response())
 }
@@ -1047,6 +1055,7 @@ async fn get_logs_from_disk(
 
 async fn get_job_logs(
     OptAuthed(opt_authed): OptAuthed,
+    opt_tokened: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
 ) -> error::Result<Response> {
@@ -1084,7 +1093,7 @@ async fn get_job_logs(
         }
         let logs = record.logs.unwrap_or_default();
 
-        log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+        log_job_view(&db, opt_authed.as_ref(), opt_tokened.token.as_deref(), &w_id, &id).await?;
 
         if let Some(r) = get_logs_from_disk(record.log_offset, &logs, &record.log_file_index).await
         {
@@ -1116,7 +1125,7 @@ async fn get_job_logs(
         }
         let logs = text.logs.unwrap_or_default();
 
-        log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+        log_job_view(&db, opt_authed.as_ref(), opt_tokened.token.as_deref(), &w_id, &id).await?;
 
         if let Some(r) =
             get_logs_from_disk(text.log_offset.unwrap_or(0), &logs, &text.log_file_index).await
@@ -1134,6 +1143,7 @@ async fn get_job_logs(
 
 async fn get_args(
     OptAuthed(opt_authed): OptAuthed,
+    opt_tokened: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
 ) -> JsonResult<Box<RawValue>> {
@@ -1159,7 +1169,7 @@ async fn get_args(
             ));
         }
 
-        log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+        log_job_view(&db, opt_authed.as_ref(), opt_tokened.token.as_deref(), &w_id, &id).await?;
 
         Ok(Json(record.args.map(|x| x.0).unwrap_or_default()))
     } else {
@@ -1180,7 +1190,7 @@ async fn get_args(
             ));
         }
 
-        log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+        log_job_view(&db, opt_authed.as_ref(), opt_tokened.token.as_deref(), &w_id, &id).await?;
 
         Ok(Json(record.args.map(|x| x.0).unwrap_or_default()))
     }
@@ -1941,13 +1951,23 @@ pub async fn resume_suspended_flow_as_owner(
 
 pub async fn resume_suspended_job(
     authed: Option<ApiAuthed>,
+    opt_tokened: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, job_id, resume_id, secret)): Path<(String, Uuid, u32, String)>,
     Query(approver): Query<QueryApprover>,
     QueryOrBody(value): QueryOrBody<serde_json::Value>,
 ) -> error::Result<StatusCode> {
     resume_suspended_job_internal(
-        value, db, w_id, job_id, resume_id, approver, secret, authed, true,
+        value,
+        db,
+        w_id,
+        job_id,
+        resume_id,
+        approver,
+        secret,
+        authed,
+        opt_tokened,
+        true,
     )
     .await
 }
@@ -1961,6 +1981,7 @@ async fn resume_suspended_job_internal(
     approver: QueryApprover,
     secret: String,
     authed: Option<ApiAuthed>,
+    opt_tokened: OptTokened,
     approved: bool,
 ) -> Result<StatusCode, Error> {
     let value = value.unwrap_or(serde_json::Value::Null);
@@ -2039,6 +2060,7 @@ async fn resume_suspended_job_internal(
             email: approver.clone(),
             username: approver.clone(),
             username_override: None,
+            token_prefix: opt_tokened.token.map(|s| s[0..TOKEN_PREFIX_LEN].to_string()),
         },
     };
     audit_log(
@@ -2208,13 +2230,14 @@ async fn get_suspended_flow_info<'c>(
 
 pub async fn cancel_suspended_job(
     authed: Option<ApiAuthed>,
+    opt_tokened: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, job_id, resume_id, secret)): Path<(String, Uuid, u32, String)>,
     Query(approver): Query<QueryApprover>,
     QueryOrBody(value): QueryOrBody<serde_json::Value>,
 ) -> error::Result<StatusCode> {
     resume_suspended_job_internal(
-        value, db, w_id, job_id, resume_id, approver, secret, authed, false,
+        value, db, w_id, job_id, resume_id, approver, secret, authed, opt_tokened, false,
     )
     .await
 }
@@ -2232,6 +2255,7 @@ pub struct QueryApprover {
 
 pub async fn get_suspended_job_flow(
     authed: Option<ApiAuthed>,
+    opt_tokened: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, job, resume_id, secret)): Path<(String, Uuid, u32, String)>,
     Query(approver): Query<QueryApprover>,
@@ -2298,7 +2322,7 @@ pub async fn get_suspended_job_flow(
         approvers_from_status
     };
 
-    log_job_view(&db, authed.as_ref(), &w_id, &job).await?;
+    log_job_view(&db, authed.as_ref(), opt_tokened.token.as_deref(), &w_id, &job).await?;
 
     Ok(Json(SuspendedJobFlow { job: flow, approvers }).into_response())
 }
@@ -3405,6 +3429,7 @@ pub async fn run_flow_by_path_inner(
         authed.display_username(),
         email,
         permissioned_as,
+        authed.token_prefix.as_deref(),
         scheduled_for,
         None,
         run_query.parent_job,
@@ -3513,6 +3538,7 @@ pub async fn run_script_by_path_inner(
         authed.display_username(),
         email,
         permissioned_as,
+        authed.token_prefix.as_deref(),
         scheduled_for,
         None,
         run_query.parent_job,
@@ -3656,6 +3682,7 @@ pub async fn run_workflow_as_code(
         authed.display_username(),
         email,
         permissioned_as,
+        authed.token_prefix.as_deref(),
         scheduled_for,
         None,
         Some(job_id),
@@ -4071,6 +4098,7 @@ impl JobViewCache {
 async fn log_job_view(
     db: &DB,
     opt_authed: Option<&ApiAuthed>,
+    opt_token: Option<&str>,
     w_id: &str,
     job_id: &Uuid,
 ) -> error::Result<()> {
@@ -4081,6 +4109,7 @@ async fn log_job_view(
                 username: "anonymous".to_string(),
                 username_override: None,
                 email: "anonymous".to_string(),
+                token_prefix: opt_token.map(|t| t[0..TOKEN_PREFIX_LEN].to_string())
             },
         };
         if JOB_VIEW_CACHE
@@ -4177,6 +4206,7 @@ pub async fn run_wait_result_job_by_path_get(
         authed.display_username(),
         email,
         permissioned_as,
+        authed.token_prefix.as_deref(),
         None,
         None,
         run_query.parent_job,
@@ -4313,6 +4343,7 @@ pub async fn run_wait_result_script_by_path_internal(
         authed.display_username(),
         email,
         permissioned_as,
+        authed.token_prefix.as_deref(),
         None,
         None,
         run_query.parent_job,
@@ -4424,6 +4455,7 @@ pub async fn run_wait_result_script_by_hash(
         authed.display_username(),
         email,
         permissioned_as,
+        authed.token_prefix.as_deref(),
         None,
         None,
         run_query.parent_job,
@@ -4536,6 +4568,7 @@ pub async fn run_wait_result_flow_by_path_internal(
         authed.display_username(),
         email,
         permissioned_as,
+        authed.token_prefix.as_deref(),
         scheduled_for,
         None,
         run_query.parent_job,
@@ -4604,6 +4637,7 @@ async fn run_preview_script(
         authed.display_username(),
         &authed.email,
         username_to_permissioned_as(&authed.username),
+        authed.token_prefix.as_deref(),
         scheduled_for,
         None,
         None,
@@ -4692,6 +4726,7 @@ async fn run_bundle_preview_script(
                 authed.display_username(),
                 &authed.email,
                 username_to_permissioned_as(&authed.username),
+                authed.token_prefix.as_deref(),
                 scheduled_for,
                 None,
                 None,
@@ -4840,6 +4875,7 @@ async fn run_dependencies_job(
         authed.display_username(),
         &authed.email,
         username_to_permissioned_as(&authed.username),
+        authed.token_prefix.as_deref(),
         None,
         None,
         None,
@@ -4897,6 +4933,7 @@ async fn run_flow_dependencies_job(
         authed.display_username(),
         &authed.email,
         username_to_permissioned_as(&authed.username),
+        authed.token_prefix.as_deref(),
         None,
         None,
         None,
@@ -5237,6 +5274,7 @@ async fn run_preview_flow_job(
         authed.display_username(),
         &authed.email,
         username_to_permissioned_as(&authed.username),
+        authed.token_prefix.as_deref(),
         scheduled_for,
         None,
         None,
@@ -5354,6 +5392,7 @@ pub async fn run_job_by_hash_inner(
         authed.display_username(),
         email,
         permissioned_as,
+        authed.token_prefix.as_deref(),
         scheduled_for,
         None,
         run_query.parent_job,
@@ -5415,6 +5454,7 @@ async fn get_log_file(Path((_w_id, file_p)): Path<(String, String)>) -> error::R
 
 async fn get_job_update(
     OptAuthed(opt_authed): OptAuthed,
+    opt_tokened: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, job_id)): Path<(String, Uuid)>,
     Query(JobUpdateQuery { log_offset, get_progress, running }): Query<JobUpdateQuery>,
@@ -5471,7 +5511,7 @@ async fn get_job_update(
             "As a non logged in user, you can only see jobs ran by anonymous users".to_string(),
         ));
     }
-    log_job_view(&db, opt_authed.as_ref(), &w_id, &job_id).await?;
+    log_job_view(&db, opt_authed.as_ref(), opt_tokened.token.as_deref(), &w_id, &job_id).await?;
     Ok(Json(JobUpdate {
         running: record.running,
         completed: record.completed,
@@ -5759,6 +5799,7 @@ async fn list_completed_jobs(
 
 async fn get_completed_job<'a>(
     OptAuthed(opt_authed): OptAuthed,
+    opt_tokened: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
 ) -> error::Result<Response> {
@@ -5784,7 +5825,7 @@ async fn get_completed_job<'a>(
     // .fetch_optional(db)
     // .await.ok().flatten().flatten();
 
-    log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+    log_job_view(&db, opt_authed.as_ref(), opt_tokened.token.as_deref(), &w_id, &id).await?;
 
     Ok(response)
 }
@@ -5798,6 +5839,7 @@ pub struct RawResult {
 
 async fn get_completed_job_result(
     OptAuthed(opt_authed): OptAuthed,
+    opt_tokened: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
     Query(JsonPath { json_path, suspended_job, approver, resume_id, secret }): Query<JsonPath>,
@@ -5886,7 +5928,7 @@ async fn get_completed_job_result(
         raw_result.result.as_mut(),
     );
 
-    log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+    log_job_view(&db, opt_authed.as_ref(), opt_tokened.token.as_deref(), &w_id, &id).await?;
 
     Ok(Json(raw_result.result).into_response())
 }
@@ -5944,6 +5986,7 @@ struct GetCompletedJobQuery {
 
 async fn get_completed_job_result_maybe(
     OptAuthed(opt_authed): OptAuthed,
+    opt_tokened: OptTokened,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
     Query(GetCompletedJobQuery { get_started }): Query<GetCompletedJobQuery>,
@@ -5976,7 +6019,7 @@ async fn get_completed_job_result_maybe(
             ));
         }
 
-        log_job_view(&db, opt_authed.as_ref(), &w_id, &id).await?;
+        log_job_view(&db, opt_authed.as_ref(), opt_tokened.token.as_deref(), &w_id, &id).await?;
 
         Ok(Json(CompletedJobResult {
             started: Some(true),
@@ -6014,6 +6057,7 @@ async fn get_completed_job_result_maybe(
 
 async fn delete_completed_job<'a>(
     authed: ApiAuthed,
+    Tokened { token }: Tokened,
     Extension(user_db): Extension<UserDB>,
     Extension(db): Extension<DB>,
     Path((w_id, id)): Path<(String, Uuid)>,
@@ -6063,5 +6107,11 @@ async fn delete_completed_job<'a>(
     .await?;
 
     tx.commit().await?;
-    return get_completed_job(OptAuthed(Some(authed)), Extension(db), Path((w_id, id))).await;
+    return get_completed_job(
+        OptAuthed(Some(authed)),
+        OptTokened { token: Some(token) },
+        Extension(db),
+        Path((w_id, id)),
+    )
+    .await;
 }

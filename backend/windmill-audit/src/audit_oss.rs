@@ -16,13 +16,6 @@ use {
     },
 };
 
-#[derive(Clone)]
-pub struct AuditAuthor {
-    pub username: String,
-    pub email: String,
-    pub username_override: Option<String>,
-}
-
 impl AuditAuthorable for AuditAuthor {
     fn email(&self) -> &str {
         &self.email
@@ -35,12 +28,27 @@ impl AuditAuthorable for AuditAuthor {
     fn username_override(&self) -> Option<&str> {
         self.username_override.as_deref()
     }
+
+    fn token_prefix(&self) -> Option<&str> {
+        self.token_prefix.as_deref()
+    }
 }
 
 pub trait AuditAuthorable {
     fn username(&self) -> &str;
     fn email(&self) -> &str;
     fn username_override(&self) -> Option<&str>;
+    fn token_prefix(&self) -> Option<&str> {
+        None
+    }
+}
+
+#[derive(Clone)]
+pub struct AuditAuthor {
+    pub username: String,
+    pub email: String,
+    pub username_override: Option<String>,
+    pub token_prefix: Option<String>,
 }
 
 #[tracing::instrument(level = "trace", skip_all)]

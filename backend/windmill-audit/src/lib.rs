@@ -22,6 +22,7 @@ pub struct AuditLog {
     pub action_kind: ActionKind,
     pub resource: Option<String>,
     pub parameters: Option<serde_json::Value>,
+    pub span: Option<String>,
 }
 
 #[derive(Deserialize)]
