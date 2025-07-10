@@ -163,7 +163,7 @@ pub async fn gen_bun_lockfile(
             )
             .await?;
         } else {
-            child_process.wait().await?;
+            Box::into_pin(child_process.wait()).await?;
         }
 
         let new_package_json = read_file_content(&format!("{job_dir}/package.json")).await?;
@@ -358,7 +358,7 @@ pub async fn install_bun_lockfile(
         )
         .await?
     } else {
-        child_process.wait().await?;
+        Box::into_pin(child_process.wait()).await?;
     }
 
     if has_file {
@@ -581,7 +581,7 @@ pub async fn generate_bun_bundle(
         )
         .await?;
     } else {
-        child_process.wait().await?;
+        Box::into_pin(child_process.wait()).await?;
     }
     Ok(())
 }
