@@ -560,7 +560,10 @@ pub(crate) async fn tarball_workspace(
                     static_asset_config AS "static_asset_config: _", 
                     is_static_website,
                     wrap_body,
-                    raw_string
+                    raw_string,
+                    error_handler_path,
+                    error_handler_args as "error_handler_args: _",
+                    retry as "retry: _"
                 FROM http_trigger
                 WHERE workspace_id = $1
                 "#,
@@ -599,7 +602,10 @@ pub(crate) async fn tarball_workspace(
                     filters AS "filters: _",
                     initial_messages AS "initial_messages: _",
                     url_runnable_args AS "url_runnable_args: _",
-                    can_return_message
+                    can_return_message,
+                    error_handler_path,
+                    error_handler_args as "error_handler_args: _",
+                    retry as "retry: _"
                 FROM 
                     websocket_trigger
                 WHERE 
@@ -629,8 +635,27 @@ pub(crate) async fn tarball_workspace(
         {
             let postgres_triggers = sqlx::query_as!(
                 crate::postgres_triggers::PostgresTrigger,
-                "SELECT * FROM postgres_trigger
-                 WHERE workspace_id = $1",
+                r#"SELECT 
+                    workspace_id,
+                    path,
+                    script_path,
+                    is_flow,
+                    edited_by,
+                    email,
+                    edited_at,
+                    server_id,
+                    last_server_ping,
+                    extra_perms,
+                    error,
+                    enabled,
+                    replication_slot_name,
+                    publication_name,
+                    postgres_resource_path,
+                    error_handler_path,
+                    error_handler_args as "error_handler_args: _",
+                    retry as "retry: _" 
+                FROM postgres_trigger
+                WHERE workspace_id = $1"#,
                 &w_id
             )
             .fetch_all(&mut *tx)

@@ -1318,6 +1318,7 @@ mod tests {
                     delete_after_use: None,
                     continue_on_error: None,
                     skip_if: None,
+                    apply_preprocessor: None,
                 },
                 FlowModule {
                     id: "b".to_string(),
@@ -1350,6 +1351,7 @@ mod tests {
                     delete_after_use: None,
                     continue_on_error: None,
                     skip_if: None,
+                    apply_preprocessor: None,
                 },
                 FlowModule {
                     id: "c".to_string(),
@@ -1379,6 +1381,7 @@ mod tests {
                     delete_after_use: None,
                     continue_on_error: None,
                     skip_if: None,
+                    apply_preprocessor: None,
                 },
             ],
             failure_module: Some(Box::new(FlowModule {
@@ -1407,6 +1410,7 @@ mod tests {
                 delete_after_use: None,
                 continue_on_error: None,
                 skip_if: None,
+                apply_preprocessor: None,
             })),
             preprocessor_module: None,
             same_worker: false,
