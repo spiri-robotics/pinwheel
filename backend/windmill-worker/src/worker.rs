@@ -851,7 +851,13 @@ pub fn start_interactive_worker_shell(
                                 .await;
                             }
                             _ => {
-                                tokio::time::sleep(Duration::from_millis(*SLEEP_QUEUE * 10)).await;
+                                tokio::select! {
+                                    _ = tokio::time::sleep(Duration::from_millis(*SLEEP_QUEUE * 10)) => {
+                                    }
+                                    _ = killpill_rx.recv() => {
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
