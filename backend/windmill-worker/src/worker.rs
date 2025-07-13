@@ -1292,6 +1292,7 @@ pub async fn run_worker(
     let mut killed_but_draining_same_worker_jobs = false;
 
     let mut killpill_rx2 = killpill_rx.resubscribe();
+    
     loop {
 
         #[cfg(feature = "benchmark")]
@@ -1404,9 +1405,13 @@ pub async fn run_worker(
                         .map_err(|e| error::Error::InternalErr(e.to_string()))
                         .map(|x: Option<JobAndPerms>| x.map(|y| NextJob::Http(y))),
                 }
-            } else if let Ok(_) = killpill_rx.try_recv() {
+            } else if match killpill_rx.try_recv() {
+                Ok(_) | Err(broadcast::error::TryRecvError::Closed) => true,
+                _ => false,
+            } {
                 if !killed_but_draining_same_worker_jobs {
                     killed_but_draining_same_worker_jobs = true;
+                    tracing::info!(worker = %worker_name, hostname = %hostname, "killpill received in worker main loop, sending killpill job");
                     job_completed_tx
                         .kill()
                         .await
