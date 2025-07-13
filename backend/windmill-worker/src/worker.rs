@@ -1857,6 +1857,7 @@ pub async fn run_worker(
 
     tracing::info!(worker = %worker_name, hostname = %hostname, "worker {} exiting", worker_name);
 
+
     #[cfg(feature = "benchmark")]
     {
         infos
