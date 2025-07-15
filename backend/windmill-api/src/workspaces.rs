@@ -43,7 +43,7 @@ use windmill_common::{
     oauth2::WORKSPACE_SLACK_BOT_TOKEN_PATH,
     utils::{paginate, rd_string, require_admin, Pagination},
 };
-use windmill_git_sync::handle_deployment_metadata;
+use windmill_git_sync::{handle_deployment_metadata, DeployedObject};
 
 
 use hyper::StatusCode;
@@ -646,6 +646,17 @@ async fn edit_webhook(
     .await?;
     tx.commit().await?;
 
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        DeployedObject::Settings { setting_type: "webhook".to_string() },
+        None,
+        false,
+    )
+    .await?;
+
     Ok(format!("Edit webhook for workspace {}", &w_id))
 }
 
@@ -685,6 +696,18 @@ async fn edit_copilot_config(
     )
     .await?;
     tx.commit().await?;
+
+    // Trigger git sync for AI config changes
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Settings { setting_type: "ai_config".to_string() },
+        Some("AI configuration updated".to_string()),
+        false,
+    )
+    .await?;
 
     Ok(format!("Edit copilot config for workspace {}", &w_id))
 }
@@ -762,6 +785,20 @@ async fn edit_large_file_storage_config(
         .await?;
     }
     tx.commit().await?;
+
+    // Trigger git sync for large file storage changes
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Settings {
+            setting_type: "large_file_storage".to_string(),
+        },
+        Some("Large file storage configuration updated".to_string()),
+        false,
+    )
+    .await?;
 
     Ok(format!(
         "Edit large file storage config for workspace {}",
@@ -855,6 +892,18 @@ async fn edit_default_scripts(
         .await?;
     }
     tx.commit().await?;
+
+    // Trigger git sync for default scripts changes
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Settings { setting_type: "default_scripts".to_string() },
+        Some("Default scripts configuration updated".to_string()),
+        false,
+    )
+    .await?;
 
     Ok(format!("Edit default scripts for workspace {}", &w_id))
 }
@@ -950,6 +999,18 @@ async fn edit_error_handler(
     .await?;
     tx.commit().await?;
 
+    // Trigger git sync for error handler changes
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Settings { setting_type: "error_handler".to_string() },
+        Some("Error handler configuration updated".to_string()),
+        false,
+    )
+    .await?;
+
     Ok(format!("Edit error_handler for workspace {}", &w_id))
 }
 
@@ -991,6 +1052,7 @@ async fn set_environment_variable(
             )
             .await?;
             tx.commit().await?;
+
             Ok(format!("Set environment variable {}", name))
         }
         None => {
@@ -1013,6 +1075,7 @@ async fn set_environment_variable(
             )
             .await?;
             tx.commit().await?;
+
             Ok(format!("Deleted environment variable {}", name))
         }
     }
@@ -1105,6 +1168,18 @@ async fn set_encryption_key(
             .await?;
         }
     }
+
+    // Trigger git sync for encryption key changes
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Key { key_type: "encryption_key".to_string() },
+        Some("Encryption key updated".to_string()),
+        false,
+    )
+    .await?;
 
     return Ok(());
 }
@@ -1842,6 +1917,18 @@ async fn change_workspace_name(
 
     tx.commit().await?;
 
+    // Trigger git sync for workspace name changes
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Settings { setting_type: "workspace_name".to_string() },
+        Some(format!("Workspace name updated to {}", &rw.new_name)),
+        false,
+    )
+    .await?;
+
     Ok(format!("updated workspace name to {}", &rw.new_name))
 }
 
@@ -1864,6 +1951,17 @@ async fn change_workspace_color(
     .await?;
 
     tx.commit().await?;
+
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        DeployedObject::Settings { setting_type: "workspace_color".to_string() },
+        None,
+        false,
+    )
+    .await?;
 
     Ok(format!(
         "updated workspace color to {}",
@@ -1942,6 +2040,20 @@ async fn update_operator_settings(
     .await?;
 
     tx.commit().await?;
+
+    // Trigger git sync for operator settings changes
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Settings {
+            setting_type: "operator_settings".to_string(),
+        },
+        Some("Operator settings updated".to_string()),
+        false,
+    )
+    .await?;
 
     Ok("Operator settings updated successfully".to_string())
 }
