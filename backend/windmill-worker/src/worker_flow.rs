@@ -15,7 +15,8 @@ use crate::common::{cached_result_path, save_in_cache};
 use crate::js_eval::{eval_timeout, IdContext};
 use crate::worker_utils::get_tag_and_concurrency;
 use crate::{
-    JobCompletedSender, PreviousResult, SameWorkerSender, SendResultPayload, UpdateFlow, KEEP_JOB_DIR
+    JobCompletedSender, PreviousResult, SameWorkerSender, SendResultPayload, UpdateFlow,
+    KEEP_JOB_DIR,
 };
 
 use anyhow::Context;
