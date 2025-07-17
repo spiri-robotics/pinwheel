@@ -32,11 +32,11 @@ use agent_workers_oss::AgentCache;
 
 use anyhow::Context;
 use argon2::Argon2;
-use axum::extract::DefaultBodyLimit;
-use axum::{middleware::from_extractor, routing::get, routing::post, Extension, Router};
-use axum::response::Response;
-use axum::http::HeaderValue;
 use axum::body::Body;
+use axum::extract::DefaultBodyLimit;
+use axum::http::HeaderValue;
+use axum::response::Response;
+use axum::{middleware::from_extractor, routing::get, routing::post, Extension, Router};
 use db::DB;
 use reqwest::Client;
 #[cfg(feature = "oauth2")]
@@ -113,6 +113,7 @@ mod resources;
 mod saml_oss;
 mod schedule;
 mod scim_oss;
+mod scopes;
 mod scripts;
 mod service_logs;
 mod settings;
@@ -124,6 +125,7 @@ mod trigger_helpers;
 
 mod static_assets;
 mod teams_oss;
+mod token;
 mod tracing_init;
 mod triggers;
 mod users;
@@ -181,7 +183,6 @@ lazy_static::lazy_static! {
 
 }
 
-
 // Compliance with cloud events spec.
 pub async fn add_webhook_allowed_origin(
     req: axum::extract::Request,
@@ -203,7 +204,6 @@ pub async fn add_webhook_allowed_origin(
     }
     next.run(req).await
 }
-
 
 #[cfg(not(feature = "tantivy"))]
 type IndexReader = ();
@@ -547,6 +547,7 @@ pub async fn run_server(
                     scim_oss::global_service()
                         .route_layer(axum::middleware::from_fn(has_scim_token)),
                 )
+                .nest("/tokens", token::global_service())
                 .nest("/concurrency_groups", concurrency_groups::global_service())
                 .nest("/scripts_u", scripts::global_unauthed_service())
                 .nest("/apps_u", {

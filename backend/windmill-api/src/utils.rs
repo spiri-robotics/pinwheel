@@ -8,13 +8,15 @@
 
 use axum::{body::Body, response::Response};
 use regex::Regex;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use sqlx::{Postgres, Transaction};
 use windmill_common::{
     auth::{is_devops_email, is_super_admin_email},
     error::{self, Error},
     DB,
 };
+
+use crate::{db::ApiAuthed, scopes::ScopeDefinition};
 
 
 
@@ -33,6 +35,36 @@ pub async fn require_super_admin(db: &DB, email: &str) -> error::Result<()> {
     } else {
         Ok(())
     }
+}
+
+pub fn check_scopes<F>(authed: &ApiAuthed, required: F) -> error::Result<()>
+where
+    F: FnOnce() -> String,
+{
+    if let Some(scopes) = authed.scopes.as_ref() {
+        let mut is_scoped_token = false;
+        let required_scope = ScopeDefinition::from_scope_string(&required())?;
+        for scope in scopes {
+            if !scope.starts_with("if_jobs:filter_tags:") {
+                if !is_scoped_token {
+                    is_scoped_token = true;
+                }
+
+                match ScopeDefinition::from_scope_string(scope) {
+                    Ok(scope) if scope.includes(&required_scope) => return Ok(()),
+                    _ => {}
+                }
+            }
+        }
+
+        if is_scoped_token {
+            return Err(Error::NotAuthorized(format!(
+                "Required scope: {}",
+                required_scope.as_string()
+            )));
+        }
+    }
+    Ok(())
 }
 
 pub async fn require_devops_role(db: &DB, email: &str) -> error::Result<()> {
@@ -185,8 +217,6 @@ where
     let o: Option<String> = Option::deserialize(deserializer)?;
     Ok(o.filter(|s| !s.trim().is_empty()))
 }
-
-use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct CriticalAlert {

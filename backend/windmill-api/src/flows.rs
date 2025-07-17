@@ -8,15 +8,15 @@
 
 use std::collections::HashMap;
 
-use crate::db::ApiAuthed;
-use crate::triggers::{
-    get_triggers_count_internal, list_tokens_internal, TriggersCount, TruncatedTokenWithEmail,
-};
 use crate::utils::WithStarredInfoQuery;
 use crate::{
-    db::DB,
+    db::{ApiAuthed, DB},
     schedule::clear_schedule,
+    triggers::{
+        get_triggers_count_internal, list_tokens_internal, TriggersCount, TruncatedTokenWithEmail,
+    },
     users::{maybe_refresh_folders, require_owner_of_path},
+    utils::check_scopes,
     webhook_util::{WebhookMessage, WebhookShared},
     HTTP_CLIENT,
 };
@@ -289,6 +289,8 @@ async fn list_paths_from_workspace_runnable(
     Extension(user_db): Extension<UserDB>,
     Path((w_id, runnable_kind, path)): Path<(String, RunnableKind, StripPath)>,
 ) -> JsonResult<Vec<String>> {
+    let path = path.to_path();
+    check_scopes(&authed, || format!("flows:read:{}", path))?;
     let mut tx = user_db.begin(&authed).await?;
     let runnables = sqlx::query_scalar!(
         r#"SELECT f.path
@@ -296,7 +298,7 @@ async fn list_paths_from_workspace_runnable(
             JOIN flow f
                 ON wru.flow_path = f.path AND wru.workspace_id = f.workspace_id
             WHERE wru.runnable_path = $1 AND wru.runnable_is_flow = $2 AND wru.workspace_id = $3"#,
-        path.to_path(),
+        path,
         matches!(runnable_kind, RunnableKind::Flow),
         w_id
     )
@@ -314,6 +316,7 @@ async fn create_flow(
     Path(w_id): Path<String>,
     Json(nf): Json<NewFlow>,
 ) -> Result<(StatusCode, String)> {
+    check_scopes(&authed, || format!("flows:write:{}", nf.path))?;
     if *CLOUD_HOSTED {
         let nb_flows =
             sqlx::query_scalar!("SELECT COUNT(*) FROM flow WHERE workspace_id = $1", &w_id)
@@ -534,6 +537,7 @@ async fn get_flow_history(
     Path((w_id, path)): Path<(String, StripPath)>,
 ) -> JsonResult<Vec<FlowVersion>> {
     let path = path.to_path();
+    check_scopes(&authed, || format!("flows:read:{}", path))?;
     let mut tx = user_db.begin(&authed).await?;
 
     let flows = sqlx::query_as!(
@@ -558,6 +562,7 @@ async fn get_latest_version(
     Path((w_id, path)): Path<(String, StripPath)>,
 ) -> JsonResult<Option<FlowVersion>> {
     let path = path.to_path();
+    check_scopes(&authed, || format!("flows:read:{}", path))?;
     let mut tx = user_db.begin(&authed).await?;
 
     let version = sqlx::query_as!(
@@ -582,6 +587,7 @@ async fn get_flow_version(
     Path((w_id, version, path)): Path<(String, i64, StripPath)>,
 ) -> JsonResult<Flow> {
     let path = path.to_path();
+    check_scopes(&authed, || format!("flows:read:{}", path))?;
     let mut tx = user_db.begin(&authed).await?;
 
     let flow = sqlx::query_as::<_, Flow>(
@@ -615,6 +621,7 @@ async fn update_flow_history(
     Json(history_update): Json<FlowHistoryUpdate>,
 ) -> Result<()> {
     let path = path.to_path();
+    check_scopes(&authed, || format!("flows:write:{}", path))?;
     let mut tx = user_db.begin(&authed).await?;
     let path_o = sqlx::query_scalar!(
         "SELECT flow.path FROM flow
@@ -656,6 +663,8 @@ async fn update_flow(
     Path((w_id, flow_path)): Path<(String, StripPath)>,
     Json(nf): Json<NewFlow>,
 ) -> Result<String> {
+    let flow_path = flow_path.to_path();
+    check_scopes(&authed, || format!("flows:write:{}", flow_path))?;
     if nf
         .value
         .get("ws_error_handler_muted")
@@ -668,7 +677,6 @@ async fn update_flow(
         ));
     }
 
-    let flow_path = flow_path.to_path();
     let authed = maybe_refresh_folders(&flow_path, &w_id, authed, &db).await;
 
     let mut tx = user_db.clone().begin(&authed).await?;
@@ -991,6 +999,7 @@ async fn get_flow_by_path(
     Query(query): Query<WithStarredInfoQuery>,
 ) -> JsonResult<FlowWithStarred> {
     let path = path.to_path();
+    check_scopes(&authed, || format!("flows:read:{}", path))?;
     let mut tx = user_db.begin(&authed).await?;
 
     let flow_o = if query.with_starred_info.unwrap_or(false) {
@@ -1058,10 +1067,11 @@ async fn get_flow_by_path_w_draft(
     Path((w_id, path)): Path<(String, StripPath)>,
 ) -> JsonResult<FlowWDraft> {
     let path = path.to_path();
+    check_scopes(&authed, || format!("flows:read:{}", path))?;
     let mut tx = user_db.begin(&authed).await?;
 
     let flow_o = sqlx::query_as::<_, FlowWDraft>(
-        "SELECT flow.path, flow.summary, flow,description, flow_version.schema, flow_version.value, flow.extra_perms, flow.draft_only, flow.ws_error_handler_muted, flow.dedicated_worker, draft.value as draft, flow.tag, flow.visible_to_runner_only, flow.on_behalf_of_email
+        "SELECT flow.path, flow.summary, flow.description, flow_version.schema, flow_version.value, flow.extra_perms, flow.draft_only, flow.ws_error_handler_muted, flow.dedicated_worker, draft.value as draft, flow.tag, flow.visible_to_runner_only, flow.on_behalf_of_email
          FROM flow
         LEFT JOIN draft
             ON flow.path = draft.path AND draft.workspace_id = $2 AND draft.typ = 'flow' 
@@ -1111,6 +1121,7 @@ async fn archive_flow_by_path(
     Json(archived): Json<Archived>,
 ) -> Result<String> {
     let path = path.to_path();
+    check_scopes(&authed, || format!("flows:write:{}", path))?;
     let mut tx = user_db.begin(&authed).await?;
 
     sqlx::query!(
@@ -1187,6 +1198,7 @@ async fn delete_flow_by_path(
     Query(query): Query<DeleteFlowQuery>,
 ) -> Result<String> {
     let path = path.to_path();
+    check_scopes(&authed, || format!("flows:write:{}", path))?;
     let mut tx = user_db.begin(&authed).await?;
 
     sqlx::query!(
