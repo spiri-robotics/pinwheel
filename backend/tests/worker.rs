@@ -108,7 +108,7 @@ fn next_worker_name() -> String {
                 .unwrap_or(s)
         })
         .unwrap_or("no thread name");
-    format!("{id}/{thread_name}")
+    format!("{id}/worker-{thread_name}")
 }
 
 pub struct ApiServer {
