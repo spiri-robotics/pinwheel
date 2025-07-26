@@ -13,13 +13,6 @@ pub async fn schedule_stats(_db: &DB, _http_client: &reqwest::Client) -> () {
     // stats details are closed source
 }
 
-#[derive(Debug, sqlx::FromRow, serde::Serialize)]
-struct JobsUsage {
-    language: Option<ScriptLang>,
-    total_duration: i64,
-    count: i64,
-}
-
 pub enum SendStatsReason {
     Manual,
     Schedule,
