@@ -8,7 +8,7 @@
 
 use axum::{body::Body, response::Response};
 use regex::Regex;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer};
 use sqlx::{Postgres, Transaction};
 use windmill_common::{
     auth::{is_devops_email, is_super_admin_email},
@@ -222,15 +222,6 @@ where
     Ok(o.filter(|s| !s.trim().is_empty()))
 }
 
-#[derive(Serialize)]
-pub struct CriticalAlert {
-    id: i32,
-    alert_type: String,
-    message: String,
-    created_at: chrono::DateTime<chrono::Utc>,
-    acknowledged: Option<bool>,
-    workspace_id: Option<String>,
-}
 
 
 

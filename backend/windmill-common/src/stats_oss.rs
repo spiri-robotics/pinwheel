@@ -1,7 +1,7 @@
 
 use sqlx::Postgres;
 
-use crate::{error::Result, scripts::ScriptLang, DB};
+use crate::{error::Result, DB};
 
 pub async fn get_disable_stats_setting(_db: &DB) -> bool {
     // stats details are closed source
