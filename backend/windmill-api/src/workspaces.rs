@@ -107,6 +107,8 @@ pub fn workspaced_service() -> Router {
             post(edit_large_file_storage_config),
         )
         .route("/edit_git_sync_config", post(edit_git_sync_config))
+        .route("/edit_git_sync_repository", post(edit_git_sync_repository))
+        .route("/delete_git_sync_repository", delete(delete_git_sync_repository))
         .route("/edit_deploy_ui_config", post(edit_deploy_ui_config))
         .route("/edit_default_app", post(edit_default_app))
         .route("/default_app", get(get_default_app))
@@ -801,11 +803,39 @@ async fn edit_large_file_storage_config(
 pub struct EditGitSyncConfig {
 }
 
+
+
+
+
 async fn edit_git_sync_config(
     _authed: ApiAuthed,
     Extension(_db): Extension<DB>,
     Path(_w_id): Path<String>,
     Json(_new_config): Json<EditGitSyncConfig>,
+) -> Result<String> {
+    return Err(Error::BadRequest(
+        "Git sync is only available on Windmill Enterprise Edition".to_string(),
+    ));
+}
+
+
+async fn edit_git_sync_repository(
+    _authed: ApiAuthed,
+    Extension(_db): Extension<DB>,
+    Path(_w_id): Path<String>,
+    Json(_new_config): Json<serde_json::Value>,
+) -> Result<String> {
+    return Err(Error::BadRequest(
+        "Git sync is only available on Windmill Enterprise Edition".to_string(),
+    ));
+}
+
+
+async fn delete_git_sync_repository(
+    _authed: ApiAuthed,
+    Extension(_db): Extension<DB>,
+    Path(_w_id): Path<String>,
+    Json(_request): Json<serde_json::Value>,
 ) -> Result<String> {
     return Err(Error::BadRequest(
         "Git sync is only available on Windmill Enterprise Edition".to_string(),
