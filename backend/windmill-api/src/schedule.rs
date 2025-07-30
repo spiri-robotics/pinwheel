@@ -25,7 +25,11 @@ use std::str::FromStr;
 use windmill_audit::audit_oss::audit_log;
 use windmill_audit::ActionKind;
 use windmill_common::{
-    db::UserDB, error::{Error, JsonResult, Result}, schedule::Schedule, utils::{not_found_if_none, paginate, Pagination, ScheduleType, StripPath}, worker::to_raw_value
+    db::UserDB,
+    error::{Error, JsonResult, Result},
+    schedule::Schedule,
+    utils::{not_found_if_none, paginate, Pagination, ScheduleType, StripPath},
+    worker::to_raw_value,
 };
 use windmill_git_sync::{handle_deployment_metadata, DeployedObject};
 use windmill_queue::schedule::push_scheduled_job;
@@ -250,17 +254,6 @@ async fn create_schedule(
     .await
     .map_err(|e| Error::internal_err(format!("inserting schedule in {w_id}: {e:#}")))?;
 
-    handle_deployment_metadata(
-        &authed.email,
-        &authed.username,
-        &db,
-        &w_id,
-        DeployedObject::Schedule { path: ns.path.clone() },
-        Some(format!("Schedule '{}' created", ns.path.clone())),
-        true,
-    )
-    .await?;
-
     audit_log(
         &mut *tx,
         &authed,
@@ -284,6 +277,17 @@ async fn create_schedule(
         tx = push_scheduled_job(&db, tx, &schedule, Some(&authed.clone().into())).await?
     }
     tx.commit().await?;
+
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        DeployedObject::Schedule { path: ns.path.clone() },
+        Some(format!("Schedule '{}' created", ns.path.clone())),
+        true,
+    )
+    .await?;
 
     Ok(ns.path.to_string())
 }
@@ -395,17 +399,6 @@ async fn edit_schedule(
     .await
     .map_err(|e| Error::internal_err(format!("updating schedule in {w_id}: {e:#}")))?;
 
-    handle_deployment_metadata(
-        &authed.email,
-        &authed.username,
-        &db,
-        &w_id,
-        DeployedObject::Schedule { path: path.to_string() },
-        None,
-        true,
-    )
-    .await?;
-
     audit_log(
         &mut *tx,
         &authed,
@@ -426,6 +419,17 @@ async fn edit_schedule(
         tx = push_scheduled_job(&db, tx, &schedule, None).await?;
     }
     tx.commit().await?;
+
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        DeployedObject::Schedule { path: path.to_string() },
+        None,
+        true,
+    )
+    .await?;
 
     Ok(path.to_string())
 }
@@ -664,17 +668,6 @@ pub async fn set_enabled(
 
     clear_schedule(&mut tx, path, &w_id).await?;
 
-    handle_deployment_metadata(
-        &authed.email,
-        &authed.username,
-        &db,
-        &w_id,
-        DeployedObject::Schedule { path: path.to_string() },
-        None,
-        true,
-    )
-    .await?;
-
     audit_log(
         &mut *tx,
         &authed,
@@ -690,6 +683,17 @@ pub async fn set_enabled(
         tx = push_scheduled_job(&db, tx, &schedule, None).await?;
     }
     tx.commit().await?;
+
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        DeployedObject::Schedule { path: path.to_string() },
+        None,
+        true,
+    )
+    .await?;
 
     Ok(format!(
         "succesfully updated schedule at path {} to status {}",
@@ -787,17 +791,6 @@ async fn delete_schedule(
         )));
     }
 
-    handle_deployment_metadata(
-        &authed.email,
-        &authed.username,
-        &db,
-        &w_id,
-        DeployedObject::Schedule { path: path.to_string() },
-        Some(format!("Schedule '{}' deleted", path)),
-        true,
-    )
-    .await?;
-
     audit_log(
         &mut *tx,
         &authed,
@@ -810,6 +803,17 @@ async fn delete_schedule(
     .await?;
 
     tx.commit().await?;
+
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        DeployedObject::Schedule { path: path.to_string() },
+        Some(format!("Schedule '{}' deleted", path)),
+        true,
+    )
+    .await?;
 
     Ok(format!("schedule {} deleted", path))
 }
