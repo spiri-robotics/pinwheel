@@ -1228,19 +1228,6 @@ async fn restart_job_if_perpetual_inner(
     Ok(())
 }
 
-async fn has_failure_module(db: &Pool<Postgres>, job: &MiniPulledJob) -> bool {
-    if let Ok(flow) = cache::job::fetch_flow(db, job.kind, job.runnable_id).await {
-        return flow.value().failure_module.is_some();
-    }
-    sqlx::query_scalar!(
-        "SELECT raw_flow->'failure_module' != 'null'::jsonb FROM v2_job WHERE id = $1",
-        job.id
-    )
-    .fetch_one(db)
-    .await
-    .unwrap_or(Some(false))
-    .unwrap_or(false)
-}
 
 
 #[cfg(feature = "cloud")]
