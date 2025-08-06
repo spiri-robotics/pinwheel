@@ -66,6 +66,7 @@ pub mod variables;
 pub mod worker;
 pub mod workspaces;
 pub mod triggers;
+pub mod result_stream;
 pub mod stream;
 
 pub const DEFAULT_MAX_CONNECTIONS_SERVER: u32 = 50;
