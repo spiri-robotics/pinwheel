@@ -37,6 +37,7 @@ use windmill_common::s3_helpers::LargeFileStorage;
 use windmill_common::users::username_to_permissioned_as;
 use windmill_common::variables::{build_crypt, decrypt, encrypt};
 use windmill_common::worker::{to_raw_value, CLOUD_HOSTED};
+use windmill_common::workspaces::{Ducklake, DucklakeCatalogResourceType};
 use windmill_common::{
     error::{Error, JsonResult, Result},
     global_settings::AUTOMATE_USERNAME_CREATION_SETTING,
@@ -106,9 +107,14 @@ pub fn workspaced_service() -> Router {
             "/edit_large_file_storage_config",
             post(edit_large_file_storage_config),
         )
+        .route("/edit_ducklake_config", post(edit_ducklake_config))
+        .route("/list_ducklakes", get(list_ducklakes))
         .route("/edit_git_sync_config", post(edit_git_sync_config))
         .route("/edit_git_sync_repository", post(edit_git_sync_repository))
-        .route("/delete_git_sync_repository", delete(delete_git_sync_repository))
+        .route(
+            "/delete_git_sync_repository",
+            delete(delete_git_sync_repository),
+        )
         .route("/edit_deploy_ui_config", post(edit_deploy_ui_config))
         .route("/edit_default_app", post(edit_default_app))
         .route("/default_app", get(get_default_app))
@@ -217,6 +223,8 @@ pub struct WorkspaceSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub large_file_storage: Option<serde_json::Value>, // effectively: DatasetsStorage
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub ducklake: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub git_sync: Option<serde_json::Value>, // effectively: WorkspaceGitSyncSettings
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deploy_ui: Option<serde_json::Value>, // effectively: WorkspaceDeploymentUISettings
@@ -279,9 +287,19 @@ struct LargeFileStorageWithSecondary {
     secondary_storage: HashMap<String, LargeFileStorage>,
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+pub struct DucklakeSettings {
+    pub ducklakes: HashMap<String, Ducklake>,
+}
+
 #[derive(Deserialize, Debug)]
 struct EditLargeFileStorageConfig {
     large_file_storage: Option<LargeFileStorageWithSecondary>,
+}
+
+#[derive(Deserialize, Debug)]
+struct EditDucklakeConfig {
+    settings: DucklakeSettings,
 }
 
 #[derive(Deserialize)]
@@ -422,7 +440,7 @@ async fn get_settings(
     let mut tx = user_db.begin(&authed).await?;
     let settings = sqlx::query_as!(
         WorkspaceSettings,
-        "SELECT workspace_id, slack_team_id, teams_team_id, teams_team_name, slack_name, slack_command_script, teams_command_script, slack_email, auto_invite_domain, auto_invite_operator, auto_add, customer_id, plan, webhook, deploy_to, ai_config, error_handler, error_handler_extra_args, error_handler_muted_on_cancel, large_file_storage, git_sync, deploy_ui, default_app, default_scripts, mute_critical_alerts, color, operator_settings, git_app_installations FROM workspace_settings WHERE workspace_id = $1",
+        "SELECT workspace_id, slack_team_id, teams_team_id, teams_team_name, slack_name, slack_command_script, teams_command_script, slack_email, auto_invite_domain, auto_invite_operator, auto_add, customer_id, plan, webhook, deploy_to, ai_config, error_handler, error_handler_extra_args, error_handler_muted_on_cancel, large_file_storage, ducklake, git_sync, deploy_ui, default_app, default_scripts, mute_critical_alerts, color, operator_settings, git_app_installations FROM workspace_settings WHERE workspace_id = $1",
         &w_id
     )
     .fetch_optional(&mut *tx)
@@ -797,6 +815,90 @@ async fn edit_large_file_storage_config(
         "Edit large file storage config for workspace {}",
         &w_id
     ))
+}
+
+async fn list_ducklakes(
+    _authed: ApiAuthed,
+    Extension(db): Extension<DB>,
+    Path(w_id): Path<String>,
+) -> JsonResult<Vec<String>> {
+    let ducklakes = sqlx::query_scalar!(
+        r#"
+            SELECT jsonb_object_keys(ws.ducklake->'ducklakes') AS ducklake_name
+            FROM workspace_settings ws
+            WHERE ws.workspace_id = $1
+        "#,
+        &w_id
+    )
+    .fetch_all(&db)
+    .await?
+    .into_iter()
+    .filter_map(|s| s)
+    .collect();
+
+    Ok(Json(ducklakes))
+}
+
+async fn edit_ducklake_config(
+    authed: ApiAuthed,
+    Extension(db): Extension<DB>,
+    Path(w_id): Path<String>,
+    ApiAuthed { is_admin, username, .. }: ApiAuthed,
+    Json(new_config): Json<EditDucklakeConfig>,
+) -> Result<String> {
+    require_admin(is_admin, &username)?;
+
+    let mut tx = db.begin().await?;
+
+    let args_for_audit = format!("{:?}", new_config.settings);
+    audit_log(
+        &mut *tx,
+        &authed,
+        "workspaces.edit_ducklake_config",
+        ActionKind::Update,
+        &w_id,
+        Some(&authed.email),
+        Some([("ducklake", args_for_audit.as_str())].into()),
+    )
+    .await?;
+
+    // Check that all ducklake catalog resources exist to prevent
+    // exploiting the shared property to see any resource
+    for dl in new_config.settings.ducklakes.values() {
+        if dl.catalog.resource_type == DucklakeCatalogResourceType::Instance {
+            continue;
+        }
+        let catalog_res = sqlx::query_scalar!(
+            "SELECT 1 FROM resource WHERE workspace_id = $1 AND path = $2",
+            &w_id,
+            &dl.catalog.resource_path
+        )
+        .fetch_optional(&mut *tx)
+        .await?
+        .flatten();
+
+        if catalog_res.is_none() {
+            return Err(Error::BadRequest(format!(
+                "Ducklake catalog resource {} not found in workspace {}",
+                dl.catalog.resource_path, &w_id
+            )));
+        }
+    }
+
+    let config: serde_json::Value = serde_json::to_value(new_config.settings)
+        .map_err(|err| Error::internal_err(err.to_string()))?;
+
+    sqlx::query!(
+        "UPDATE workspace_settings SET ducklake = $1 WHERE workspace_id = $2",
+        config,
+        &w_id
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(format!("Edit ducklake config for workspace {}", &w_id))
 }
 
 #[derive(Deserialize)]
