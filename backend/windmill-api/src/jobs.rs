@@ -16,6 +16,7 @@ use http::{HeaderMap, HeaderName};
 use itertools::Itertools;
 use quick_cache::sync::Cache;
 use serde_json::value::RawValue;
+use serde_json::Value;
 use sqlx::Pool;
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -24,6 +25,8 @@ use std::str::FromStr;
 use std::time::Instant;
 use tokio::io::AsyncReadExt;
 use tower::ServiceBuilder;
+#[cfg(feature = "smtp")]
+use windmill_common::auth::is_super_admin_email;
 use windmill_common::auth::TOKEN_PREFIX_LEN;
 use windmill_common::error::JsonResult;
 use windmill_common::flow_status::{JobResult, RestartedFrom};
@@ -33,6 +36,8 @@ use windmill_common::jobs::{
 };
 use windmill_common::utils::WarnAfterExt;
 use windmill_common::worker::{Connection, CLOUD_HOSTED, TMP_DIR};
+#[cfg(feature = "smtp")]
+use windmill_common::{email_oss::send_email_html, server::load_smtp_config};
 
 use windmill_common::scripts::PREVIEW_IS_CODEBASE_HASH;
 use windmill_common::variables::get_workspace_key;
@@ -66,7 +71,9 @@ use tower_http::cors::{Any, CorsLayer};
 use urlencoding::encode;
 use windmill_audit::audit_oss::{audit_log, AuditAuthor};
 use windmill_audit::ActionKind;
+
 use windmill_common::worker::to_raw_value;
+
 use windmill_common::{
     cache,
     db::UserDB,
@@ -85,7 +92,7 @@ use windmill_common::{
 
 use windmill_common::{
     get_latest_deployed_hash_for_path, get_latest_flow_version_info_for_path,
-    get_script_info_for_hash, FlowVersionInfo, ScriptHashInfo, BASE_URL,
+    get_script_info_for_hash, utils::empty_as_none, FlowVersionInfo, ScriptHashInfo, BASE_URL,
 };
 use windmill_queue::{
     cancel_job, get_result_and_success_by_id_from_flow, job_is_complete, push, PushArgs,
@@ -234,6 +241,10 @@ pub fn workspaced_service() -> Router {
         )
         .route("/run/dependencies", post(run_dependencies_job))
         .route("/run/flow_dependencies", post(run_flow_dependencies_job))
+        .route(
+            "/send_email_with_instance_smtp",
+            post(send_email_with_instance_smtp),
+        )
 }
 
 pub fn workspace_unauthed_service() -> Router {
@@ -1035,6 +1046,31 @@ impl<'a> GetQuery<'a> {
             }
         }
     }
+}
+
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SendEmail {
+    job_id: Uuid,
+    #[serde(default, deserialize_with = "empty_as_none")]
+    trigger_path: Option<String>,
+    #[serde(default, deserialize_with = "empty_as_none")]
+    runnable_path: Option<String>,
+    #[serde(default, deserialize_with = "empty_as_none")]
+    email_recipients: Option<Vec<String>>,
+    error: Value,
+}
+
+
+async fn send_email_with_instance_smtp(
+    _authed: ApiAuthed,
+    Extension(_db): Extension<DB>,
+    Path(_w_id): Path<String>,
+    Json(_send_email): Json<SendEmail>,
+) -> error::Result<Json<String>> {
+    tracing::warn!("SMTP is not enabled, skipping workspace trigger failure email notification",);
+
+    return Err(anyhow::anyhow!("SMTP is not enabled").into());
 }
 
 

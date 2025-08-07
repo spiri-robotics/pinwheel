@@ -26,7 +26,7 @@ use axum::{
 use serde::Deserialize;
 use windmill_common::error::to_anyhow;
 use windmill_common::{
-    email_oss::send_email,
+    email_oss::send_email_plain_text,
     error::{self, JsonResult, Result},
     get_database_url,
     global_settings::{
@@ -99,7 +99,7 @@ pub async fn test_email(
     let to = test_email.to;
 
     let client_timeout = Duration::from_secs(3);
-    send_email(
+    send_email_plain_text(
         "Test email from Windmill",
         "Test email content",
         vec![to],

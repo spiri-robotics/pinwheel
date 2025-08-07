@@ -13,6 +13,7 @@ default = []
 cloud = []
 benchmark = ["windmill-common/benchmark"]
 prometheus = ["dep:prometheus"]
+smtp = []
 
 [dependencies]
 windmill-audit.workspace = true

@@ -564,8 +564,10 @@ pub(crate) async fn tarball_workspace(
                     error_handler_path,
                     error_handler_args as "error_handler_args: _",
                     retry as "retry: _"
-                FROM http_trigger
-                WHERE workspace_id = $1
+                FROM 
+                    http_trigger
+                WHERE 
+                    workspace_id = $1
                 "#,
                 &w_id
             )
@@ -635,7 +637,8 @@ pub(crate) async fn tarball_workspace(
         {
             let postgres_triggers = sqlx::query_as!(
                 crate::postgres_triggers::PostgresTrigger,
-                r#"SELECT 
+                r#"
+                SELECT 
                     workspace_id,
                     path,
                     script_path,
@@ -653,9 +656,12 @@ pub(crate) async fn tarball_workspace(
                     postgres_resource_path,
                     error_handler_path,
                     error_handler_args as "error_handler_args: _",
-                    retry as "retry: _" 
-                FROM postgres_trigger
-                WHERE workspace_id = $1"#,
+                    retry as "retry: _"
+                FROM 
+                    postgres_trigger
+                WHERE 
+                    workspace_id = $1
+                "#,
                 &w_id
             )
             .fetch_all(&mut *tx)
