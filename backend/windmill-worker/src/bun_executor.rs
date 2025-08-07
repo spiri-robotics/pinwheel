@@ -18,7 +18,7 @@ use crate::{
         read_file_content, read_result, start_child_process, write_file_binary, OccupancyMetrics,
     },
     handle_child::handle_child,
-    BUNFIG_INSTALL_SCOPES, BUN_BUNDLE_CACHE_DIR, BUN_CACHE_DIR, BUN_PATH, DISABLE_NSJAIL,
+    BUNFIG_INSTALL_SCOPES, BUN_BUNDLE_CACHE_DIR, BUN_CACHE_DIR, BUN_NO_CACHE, BUN_PATH, DISABLE_NSJAIL,
     DISABLE_NUSER, HOME_ENV, NODE_BIN_PATH, NODE_PATH, NPM_CONFIG_REGISTRY, NPM_PATH, NSJAIL_PATH,
     PATH_ENV, PROXY_ENVS, TZ_ENV,
 };
@@ -285,12 +285,21 @@ pub async fn install_bun_lockfile(
     occupancy_metrics: &mut Option<&mut OccupancyMetrics>,
 ) -> Result<()> {
     let mut child_cmd = Command::new(if npm_mode { &*NPM_PATH } else { &*BUN_PATH });
+
+    let mut args = vec!["install", "--save-text-lockfile"];
+
+    let no_cache = !npm_mode && *BUN_NO_CACHE;
+
+    if no_cache {
+        args.push("--no-cache");
+    }
+
     child_cmd
         .current_dir(job_dir)
         .env_clear()
         .envs(PROXY_ENVS.clone())
         .envs(common_bun_proc_envs)
-        .args(vec!["install", "--save-text-lockfile"])
+        .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
@@ -299,6 +308,8 @@ pub async fn install_bun_lockfile(
 
     let mut npm_logs = if npm_mode {
         "NPM mode\n".to_string()
+    } else if no_cache {
+        "Bun install with --no-cache flag (BUN_NO_CACHE=true)\n".to_string()
     } else {
         "".to_string()
     };
@@ -331,7 +342,7 @@ pub async fn install_bun_lockfile(
         false
     };
 
-    if npm_mode {
+    if npm_mode || no_cache {
         if let Some(db) = db {
             append_logs(&job_id.clone(), w_id, npm_logs, db).await;
         }
