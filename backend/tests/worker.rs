@@ -3465,6 +3465,7 @@ async fn run_deployed_relative_imports(
                 codebase: None,
                 has_preprocessor: None,
                 on_behalf_of_email: None,
+                assets: vec![],
             },
         )
         .await
@@ -3716,6 +3717,7 @@ async fn assert_lockfile(
                 codebase: None,
                 has_preprocessor: None,
                 on_behalf_of_email: None,
+                assets: vec![],
             },
         )
         .await

@@ -170,6 +170,7 @@ lazy_static::lazy_static! {
         "csharp".to_string(),
         "nu".to_string(),
         "java".to_string(),
+        "ruby".to_string(),
         "duckdb".to_string(),
         // for related places search: ADD_NEW_LANG
         "dependency".to_string(),
@@ -611,6 +612,12 @@ fn parse_file<T: FromStr>(path: &str) -> Option<T> {
                 .ok()
         })
         .flatten()
+}
+
+#[derive(Copy, Clone)]
+#[annotations("#")]
+pub struct RubyAnnotations {
+    pub verbose: bool,
 }
 
 #[derive(Copy, Clone)]
