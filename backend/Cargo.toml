@@ -49,7 +49,7 @@ incremental = true
 lto = "thin"
 
 [features]
-default = ["ruby"]
+default = []
 agent_worker_server = ["windmill-api/agent_worker_server"]
 stripe = ["windmill-api/stripe"]
 benchmark = ["windmill-api/benchmark", "windmill-worker/benchmark", "windmill-queue/benchmark", "windmill-common/benchmark"]
