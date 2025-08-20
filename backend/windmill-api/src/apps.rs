@@ -1081,6 +1081,7 @@ async fn create_app_internal<'a>(
         None,
         None,
         Some(&authed.clone().into()),
+        false,
     )
     .await?;
     tracing::info!("Pushed app dependency job {}", dependency_job_uuid);
@@ -1458,6 +1459,7 @@ async fn update_app_internal<'a>(
         None,
         None,
         Some(&authed.clone().into()),
+        false,
     )
     .await?;
     tracing::info!("Pushed app dependency job {}", dependency_job_uuid);
@@ -1771,6 +1773,7 @@ async fn execute_component(
         None,
         None,
         None,
+        false,
     )
     .await?;
     tx.commit().await?;

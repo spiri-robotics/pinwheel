@@ -444,6 +444,7 @@ pub async fn push_init_job<'c>(
         None,
         None,
         None,
+        false,
     )
     .await?;
     inner_tx.commit().await?;
@@ -496,6 +497,7 @@ pub async fn push_periodic_bash_job<'c>(
         None,
         None,
         None,
+        false,
     )
     .await?;
     inner_tx.commit().await?;
@@ -1223,6 +1225,7 @@ async fn restart_job_if_perpetual_inner(
             None,
             queued_job.priority,
             None,
+            false,
         )
         .await?;
         tx.commit().await?;
@@ -1710,6 +1713,7 @@ pub async fn push_error_handler<'a, 'c, T: Serialize + Send + Sync>(
         None,
         priority,
         None,
+        false,
     )
     .await?;
     tx.commit().await?;
@@ -3096,7 +3100,7 @@ pub async fn push<'c, 'd>(
     root_job: Option<Uuid>,
     job_id: Option<Uuid>,
     _is_flow_step: bool,
-    mut same_worker: bool,
+    mut same_worker: bool, // whether the job will be executed on the same worker: if true, the job will be set to running but started_at will not be set.
     pre_run_error: Option<&windmill_common::error::Error>,
     visible_to_owner: bool,
     mut tag: Option<String>,
@@ -3104,6 +3108,7 @@ pub async fn push<'c, 'd>(
     flow_step_id: Option<String>,
     _priority_override: Option<i16>,
     authed: Option<&Authed>,
+    running: bool, // whether the job is already running: only set this to true if you don't want the job to be picked up by a worker from the queue. It will also set started_at to now.
 ) -> Result<(Uuid, Transaction<'c, Postgres>), Error> {
     #[cfg(feature = "cloud")]
     if *CLOUD_HOSTED {
@@ -3913,6 +3918,21 @@ pub async fn push<'c, 'd>(
             None,
             None,
         ),
+        JobPayload::AIAgent { path } => (
+            None,
+            Some(path),
+            None,
+            JobKind::AIAgent,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
     };
 
     let final_priority: Option<i16>;
@@ -3927,7 +3947,7 @@ pub async fn push<'c, 'd>(
         final_priority
     };
 
-    let is_running = same_worker;
+    let is_running = same_worker || running;
     if let Some(flow) = raw_flow.as_ref() {
         same_worker = same_worker || flow.same_worker;
 
@@ -3973,7 +3993,10 @@ pub async fn push<'c, 'd>(
         let per_workspace = per_workspace_tag(&workspace_id).await;
 
         let default = || {
-            let ntag = if job_kind.is_flow() || job_kind == JobKind::Identity {
+            let ntag = if job_kind.is_flow()
+                || job_kind == JobKind::Identity
+                || job_kind == JobKind::AIAgent
+            {
                 "flow".to_string()
             } else if job_kind == JobKind::Dependencies
                 || job_kind == JobKind::FlowDependencies
@@ -4132,7 +4155,7 @@ pub async fn push<'c, 'd>(
         )
         INSERT INTO v2_job_queue
             (workspace_id, id, running, scheduled_for, started_at, tag, priority)
-            VALUES ($2, $1, $28, COALESCE($29, now()), CASE WHEN $27 THEN now() END, $30, $31)",
+            VALUES ($2, $1, $28, COALESCE($29, now()), CASE WHEN $27 OR $40 THEN now() END, $30, $31)",
         job_id,
         workspace_id,
         raw_code,
@@ -4176,6 +4199,7 @@ pub async fn push<'c, 'd>(
         job_authed.groups.as_slice(),
         root_job.or(parent_job),
         trigger_kind as Option<JobTriggerKind>,
+        running,
     )
     .execute(&mut *tx)
     .warn_after_seconds(1)
@@ -4247,6 +4271,7 @@ pub async fn push<'c, 'd>(
             JobKind::FlowScript => "jobs.run.flow_script",
             JobKind::FlowNode => "jobs.run.flow_node",
             JobKind::AppScript => "jobs.run.app_script",
+            JobKind::AIAgent => "jobs.run.ai_agent",
         };
 
         let audit_author = if format!("u/{user}") != permissioned_as && user != permissioned_as {
@@ -4436,6 +4461,8 @@ async fn restarted_flows_resolution(
                             parallel,
                             while_loop: false,
                             progress: None,
+                            agent_actions: None,
+                            agent_actions_success: None,
                         });
                     }
                     Ok(FlowModuleValue::ForloopFlow { parallel, .. }) => {
@@ -4474,6 +4501,8 @@ async fn restarted_flows_resolution(
                             parallel,
                             while_loop: false,
                             progress: None,
+                            agent_actions: None,
+                            agent_actions_success: None,
                         });
                     }
                     _ => {

@@ -474,6 +474,7 @@ async fn create_flow(
         None,
         None,
         Some(&authed.clone().into()),
+        false,
     )
     .await?;
 
@@ -939,6 +940,7 @@ async fn update_flow(
         None,
         None,
         Some(&authed.clone().into()),
+        false,
     )
     .await?;
     sqlx::query!(
