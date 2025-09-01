@@ -3428,7 +3428,7 @@ async fn batch_rerun_handle_job(
                 PushArgsOwned { extra: None, args },
             )
             .await;
-            if let Ok(uuid) = result {
+            if let Ok((uuid, _)) = result {
                 return Ok(uuid.to_string());
             }
         }
@@ -3485,7 +3485,7 @@ pub async fn run_flow_by_path(
         )
         .await?;
 
-    let uuid =
+    let (uuid, _) =
         run_flow_by_path_inner(authed, db, user_db, w_id, flow_path, run_query, args).await?;
 
     Ok((StatusCode::CREATED, uuid.to_string()))
@@ -3499,7 +3499,7 @@ pub async fn run_flow_by_path_inner(
     flow_path: StripPath,
     run_query: RunJobQuery,
     args: PushArgsOwned,
-) -> error::Result<Uuid> {
+) -> error::Result<(Uuid, Option<String>)> {
 
     let flow_path = flow_path.to_path();
     check_scopes(&authed, || format!("jobs:run:flows:{flow_path}"))?;
@@ -3513,6 +3513,7 @@ pub async fn run_flow_by_path_inner(
         has_preprocessor,
         on_behalf_of_email,
         edited_by,
+        early_return,
         ..
     } = get_latest_flow_version_info_for_path(&mut *tx, &w_id, &flow_path, true).await?;
 
@@ -3574,7 +3575,7 @@ pub async fn run_flow_by_path_inner(
     )
     .await?;
     tx.commit().await?;
-    Ok(uuid)
+    Ok((uuid, early_return))
 }
 
 pub async fn restart_flow(
