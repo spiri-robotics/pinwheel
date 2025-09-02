@@ -6,14 +6,11 @@
  * LICENSE-AGPL for a copy of the license.
  */
 
-use sqlx::{Pool, Postgres};
-
-use windmill_common::scripts::ScriptHash;
+use windmill_common::{scripts::ScriptHash, DB};
 
 pub mod git_sync_oss;
 
 pub use git_sync_oss::handle_deployment_metadata;
-pub type DB = Pool<Postgres>;
 
 #[derive(Clone, Debug)]
 pub enum DeployedObject {
@@ -67,7 +64,11 @@ impl DeployedObject {
 
     pub fn get_ignore_regex_filter(&self) -> bool {
         match self {
-            Self::User { .. } | Self::Group { .. } | Self::ResourceType { .. } | Self::Settings { .. } | Self::Key { .. } => true,
+            Self::User { .. }
+            | Self::Group { .. }
+            | Self::ResourceType { .. }
+            | Self::Settings { .. }
+            | Self::Key { .. } => true,
             _ => false,
         }
     }

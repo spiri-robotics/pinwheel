@@ -8,7 +8,7 @@
 
 #[cfg(feature = "http_trigger")]
 use {
-    crate::http_trigger_args::{HttpMethod, RawHttpTriggerArgs},
+    crate::triggers::http::{http_trigger_args::RawHttpTriggerArgs, HttpMethod},
     axum::response::{IntoResponse, Response},
     std::collections::HashMap,
 };
@@ -30,7 +30,7 @@ use crate::mqtt_triggers::{MqttClientVersion, MqttV3Config, MqttV5Config, Subscr
 
 
 #[cfg(feature = "postgres_trigger")]
-use crate::postgres_triggers::{
+use crate::triggers::postgres::{
     create_logical_replication_slot, create_pg_publication, generate_random_string,
     get_default_pg_connection, PublicationData,
 };

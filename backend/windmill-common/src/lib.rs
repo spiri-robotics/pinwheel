@@ -22,7 +22,7 @@ use tokio::sync::broadcast;
 use ee_oss::CriticalErrorChannel;
 use error::Error;
 use scripts::ScriptLang;
-use sqlx::{Pool, Postgres};
+use sqlx::Postgres;
 
 pub mod agent_workers;
 pub mod apps;
@@ -45,7 +45,7 @@ pub mod job_metrics;
 #[cfg(feature = "parquet")]
 pub mod job_s3_helpers_oss;
 
-
+pub mod triggers;
 pub mod jobs;
 pub mod jwt;
 pub mod more_serde;
@@ -65,7 +65,6 @@ pub mod utils;
 pub mod variables;
 pub mod worker;
 pub mod workspaces;
-pub mod triggers;
 pub mod result_stream;
 pub mod stream;
 
@@ -406,7 +405,7 @@ pub async fn connect(
 
 type Tag = String;
 
-pub type DB = Pool<Postgres>;
+pub use db::DB;
 
 #[derive(Clone)]
 pub struct ExpiringLatestVersionId {

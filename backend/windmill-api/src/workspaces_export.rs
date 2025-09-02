@@ -17,6 +17,9 @@ use crate::{
     resources::{Resource, ResourceType},
 };
 
+#[cfg(any(feature = "http_trigger", feature = "websocket", feature = "postgres_trigger", feature = "mqtt_trigger"))]
+use crate::triggers::TriggerCrud;
+
 use axum::{
     extract::{Extension, Path, Query},
     response::IntoResponse,
@@ -537,94 +540,33 @@ pub(crate) async fn tarball_workspace(
     if include_triggers.unwrap_or(false) {
         #[cfg(feature = "http_trigger")]
         {
-            let http_triggers = sqlx::query_as!(
-                crate::http_triggers::HttpTrigger,
-                r#"
-                SELECT 
-                    workspace_id, 
-                    workspaced_route,
-                    path, 
-                    route_path, 
-                    route_path_key, 
-                    authentication_resource_path,
-                    script_path, 
-                    is_flow, 
-                    summary,
-                    description,
-                    edited_by, 
-                    edited_at, 
-                    email, 
-                    extra_perms, 
-                    is_async, 
-                    authentication_method  AS "authentication_method: _", 
-                    http_method AS "http_method: _", 
-                    static_asset_config AS "static_asset_config: _", 
-                    is_static_website,
-                    wrap_body,
-                    raw_string,
-                    error_handler_path,
-                    error_handler_args as "error_handler_args: _",
-                    retry as "retry: _"
-                FROM 
-                    http_trigger
-                WHERE 
-                    workspace_id = $1
-                "#,
-                &w_id
-            )
-            .fetch_all(&mut *tx)
-            .await?;
+            use crate::triggers::http::handler::HttpTrigger;
+            let handler = HttpTrigger;
+            let http_triggers = handler.list_triggers(&mut *tx, &w_id, None).await?;
 
             for trigger in http_triggers {
                 let trigger_str = &to_string_without_metadata(&trigger, false, None).unwrap();
                 archive
-                    .write_to_archive(&trigger_str, &format!("{}.http_trigger.json", trigger.path))
+                    .write_to_archive(
+                        &trigger_str,
+                        &format!("{}.http_trigger.json", trigger.base.path),
+                    )
                     .await?;
             }
         }
 
         #[cfg(feature = "websocket")]
         {
-            let websocket_triggers = sqlx::query_as!(
-                crate::websocket_triggers::WebsocketTrigger,
-                r#"
-                SELECT 
-                    workspace_id,
-                    path,
-                    url,
-                    script_path,
-                    is_flow,
-                    edited_by,
-                    email,
-                    edited_at,
-                    server_id,
-                    last_server_ping,
-                    extra_perms,
-                    error,
-                    enabled,
-                    filters AS "filters: _",
-                    initial_messages AS "initial_messages: _",
-                    url_runnable_args AS "url_runnable_args: _",
-                    can_return_message,
-                    error_handler_path,
-                    error_handler_args as "error_handler_args: _",
-                    retry as "retry: _"
-                FROM 
-                    websocket_trigger
-                WHERE 
-                    workspace_id = $1
-                "#,
-                &w_id
-            )
-            .fetch_all(&mut *tx)
-            .await?;
+            use crate::triggers::websocket::WebsocketTrigger;
+            let handler = WebsocketTrigger;
+            let websocket_triggers = handler.list_triggers(&mut *tx, &w_id, None).await?;
 
             for trigger in websocket_triggers {
                 let trigger_str = &to_string_without_metadata(&trigger, false, None).unwrap();
                 archive
                     .write_to_archive(
                         &trigger_str,
-                        &format!("{}.websocket_trigger.json", trigger.path),
+                        &format!("{}.websocket_trigger.json", trigger.base.path),
                     )
                     .await?;
             }
@@ -636,49 +578,37 @@ pub(crate) async fn tarball_workspace(
 
         #[cfg(feature = "postgres_trigger")]
         {
-            let postgres_triggers = sqlx::query_as!(
-                crate::postgres_triggers::PostgresTrigger,
-                r#"
-                SELECT 
-                    workspace_id,
-                    path,
-                    script_path,
-                    is_flow,
-                    edited_by,
-                    email,
-                    edited_at,
-                    server_id,
-                    last_server_ping,
-                    extra_perms,
-                    error,
-                    enabled,
-                    replication_slot_name,
-                    publication_name,
-                    postgres_resource_path,
-                    error_handler_path,
-                    error_handler_args as "error_handler_args: _",
-                    retry as "retry: _"
-                FROM 
-                    postgres_trigger
-                WHERE 
-                    workspace_id = $1
-                "#,
-                &w_id
-            )
-            .fetch_all(&mut *tx)
-            .await?;
+            use crate::triggers::postgres::PostgresTrigger;
+            let handler = PostgresTrigger;
+            let postgres_triggers = handler.list_triggers(&mut *tx, &w_id, None).await?;
 
             for trigger in postgres_triggers {
                 let trigger_str = &to_string_without_metadata(&trigger, false, None).unwrap();
                 archive
                     .write_to_archive(
                         &trigger_str,
-                        &format!("{}.postgres_trigger.json", trigger.path),
+                        &format!("{}.postgres_trigger.json", trigger.base.path),
                     )
                     .await?;
             }
         }
 
+        #[cfg(feature = "mqtt_trigger")]
+        {
+            use crate::triggers::mqtt::MqttTrigger;
+            let handler = MqttTrigger;
+            let mqtt_triggers = handler.list_triggers(&mut *tx, &w_id, None).await?;
+
+            for trigger in mqtt_triggers {
+                let trigger_str = &to_string_without_metadata(&trigger, false, None).unwrap();
+                archive
+                    .write_to_archive(
+                        &trigger_str,
+                        &format!("{}.mqtt_trigger.json", trigger.base.path),
+                    )
+                    .await?;
+            }
+        }
     }
 
     if include_users.unwrap_or(false) {
