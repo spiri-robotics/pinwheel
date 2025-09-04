@@ -557,10 +557,9 @@ pub async fn run_server(
                     "/w/:workspace_id/capture_u",
                     capture::workspaced_unauthed_service().layer(cors.clone()),
                 )
-                .nest(
-                    "/w/:workspace_id/s3_proxy",
-                    s3_proxy_oss::workspaced_unauthed_service(),
-                )
+                .nest("/w/:workspace_id/s3_proxy", {
+                    s3_proxy_oss::workspaced_unauthed_service()
+                })
                 .nest(
                     "/auth",
                     users::make_unauthed_service().layer(Extension(argon2)),
