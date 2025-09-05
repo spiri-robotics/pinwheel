@@ -494,6 +494,13 @@ pub fn get_latest_deployed_hash_for_path<'e>(
                             ScriptHash(hash),
                         );
                     } else {
+                        let mut conn = db2.acquire().await?;
+                        let exists = get_latest_script_hash(&mut *conn, script_path, w_id)
+                            .await?
+                            .is_some();
+                        if exists {
+                            return Err(Error::NotAuthorized(format!("You are not authorized to access this script: {script_path} (but it exists). Your permissions are: {:?}", authed)));
+                        }
                     }
                     hash
                 } else {
@@ -661,6 +668,17 @@ where
                                 .unwrap_or_else(|| PermsCache::compute_hash(db_authed.authed)),
                             CachedFlowPath(path.to_string()),
                         );
+                    } else {
+                        let mut conn = db.acquire().await?;
+                        let exists = get_latest_flow_version_for_path(&mut *conn, w_id, path)
+                            .await?
+                            .is_some();
+                        if exists {
+                            return Err(Error::NotAuthorized(format!(
+                                "You are not authorized to access this flow: {path} (but it exists). Your permissions are: {:?}",
+                                db_authed.authed
+                            )));
+                        }
                     }
                     r
                 } else {
