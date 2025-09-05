@@ -673,6 +673,7 @@ async fn update_flow(
 ) -> Result<String> {
     let flow_path = flow_path.to_path();
     check_scopes(&authed, || format!("flows:write:{}", flow_path))?;
+
     if nf
         .value
         .get("ws_error_handler_muted")
@@ -686,7 +687,6 @@ async fn update_flow(
     }
 
     let authed = maybe_refresh_folders(&flow_path, &w_id, authed, &db).await;
-
     let mut tx = user_db.clone().begin(&authed).await?;
 
     check_schedule_conflict(&mut tx, &w_id, flow_path).await?;
@@ -699,10 +699,9 @@ async fn update_flow(
     )
     .fetch_optional(&mut *tx)
     .await?;
+
     let old_dep_job = not_found_if_none(old_dep_job, "Flow", flow_path)?;
-
     let is_new_path = nf.path != flow_path;
-
     let schema_str = schema.and_then(|x| serde_json::to_string(&x).ok());
 
     sqlx::query!(
@@ -919,7 +918,7 @@ async fn update_flow(
         JobPayload::FlowDependencies {
             path: nf.path.clone(),
             dedicated_worker: nf.dedicated_worker,
-            version: version,
+            version,
         },
         windmill_queue::PushArgs { args: &args, extra: None },
         &authed.username,
@@ -957,6 +956,7 @@ async fn update_flow(
             "Error updating flow due to updating dependency job field: {e:#}"
         ))
     })?;
+
     if let Some(old_dep_job) = old_dep_job {
         sqlx::query!(
             "UPDATE v2_job_queue SET
