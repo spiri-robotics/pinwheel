@@ -117,6 +117,7 @@ struct HttpTriggerConfig {
 
 
 
+
 #[cfg(feature = "mqtt_trigger")]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MqttTriggerConfig {
