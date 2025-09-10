@@ -1389,6 +1389,7 @@ try {{
                 .envs(reserved_variables)
                 .envs(common_bun_proc_envs)
                 .args(vec!["--preserve-symlinks", &script_path])
+                .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
 
@@ -1419,6 +1420,7 @@ try {{
                 .envs(reserved_variables)
                 .envs(common_bun_proc_envs)
                 .args(args)
+                .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
 
