@@ -239,4 +239,3 @@ pub struct ExpiringCacheEntry<T> {
 lazy_static::lazy_static! {
     static ref DUCKLAKE_INSTANCE_PG_PASSWORD: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
 }
-

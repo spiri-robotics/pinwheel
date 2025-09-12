@@ -26,7 +26,7 @@ use windmill_common::error::Error;
 
 
 #[cfg(feature = "mqtt_trigger")]
-use crate::mqtt_triggers::{MqttClientVersion, MqttV3Config, MqttV5Config, SubscribeTopic};
+use crate::triggers::mqtt::{MqttClientVersion, MqttV3Config, MqttV5Config, SubscribeTopic};
 
 
 #[cfg(feature = "postgres_trigger")]

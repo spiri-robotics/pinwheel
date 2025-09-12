@@ -18,7 +18,7 @@ use crate::smtp_server_oss::SmtpServer;
 
 #[cfg(feature = "mcp")]
 use crate::mcp::{extract_and_store_workspace_id, setup_mcp_server, shutdown_mcp_server};
-use http::StatusCode;
+use crate::triggers::start_all_listeners;
 #[cfg(feature = "mcp")]
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
 use tower_http::catch_panic::CatchPanicLayer;
@@ -90,12 +90,7 @@ mod inkeep_oss;
 mod inputs;
 mod integration;
 mod live_migrations;
-#[cfg(feature = "postgres_trigger")]
-mod postgres_triggers;
 mod s3_proxy_oss;
-
-mod trigger_helpers;
-
 pub mod openapi;
 
 mod approvals;
@@ -103,8 +98,6 @@ mod approvals;
 mod job_helpers_oss;
 pub mod job_metrics;
 pub mod jobs;
-#[cfg(feature = "mqtt_trigger")]
-mod mqtt_triggers;
 #[cfg(feature = "oauth2")]
 pub mod oauth2_oss;
 mod oidc_oss;
@@ -133,8 +126,6 @@ mod utils;
 pub mod var_resource_cache;
 mod variables;
 pub mod webhook_util;
-#[cfg(feature = "websocket")]
-mod websocket_triggers;
 mod workers;
 mod workspaces;
 mod workspaces_export;
@@ -327,27 +318,7 @@ pub async fn run_server(
     let triggers_service = triggers::generate_trigger_routers();
 
     if !*CLOUD_HOSTED && server_mode && !mcp_mode {
-        #[cfg(feature = "websocket")]
-        {
-            let ws_killpill_rx = killpill_rx.resubscribe();
-            websocket_triggers::start_websockets(db.clone(), ws_killpill_rx);
-        }
-
-
-
-        #[cfg(feature = "postgres_trigger")]
-        {
-            let db_killpill_rx = killpill_rx.resubscribe();
-            postgres_triggers::start_database(db.clone(), db_killpill_rx);
-        }
-
-        #[cfg(feature = "mqtt_trigger")]
-        {
-            let mqtt_killpill_rx = killpill_rx.resubscribe();
-            mqtt_triggers::start_mqtt_consumer(db.clone(), mqtt_killpill_rx);
-        }
-
-
+        start_all_listeners(db.clone(), &killpill_rx);
     }
 
     let listener = tokio::net::TcpListener::bind(addr)
@@ -623,7 +594,7 @@ pub async fn run_server(
     let app = app.layer(CatchPanicLayer::custom(|err| {
         tracing::error!("panic in handler, returning 500: {:?}", err);
         Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .status(http::StatusCode::INTERNAL_SERVER_ERROR)
             .body(Body::from("Internal Server Error"))
             .unwrap()
     }));
