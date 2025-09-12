@@ -485,6 +485,7 @@ async fn trigger_runnable_inner(
     error_handler_path: Option<&str>,
     error_handler_args: Option<&sqlx::types::Json<HashMap<String, serde_json::Value>>>,
     trigger_path: String,
+    job_id: Option<Uuid>,
 ) -> Result<(Uuid, Option<bool>, Option<String>)> {
     let error_handler_args = error_handler_args.map(|args| {
         let args = args
@@ -497,7 +498,7 @@ async fn trigger_runnable_inner(
 
     let user_db = user_db.unwrap_or_else(|| UserDB::new(db.clone()));
     let (uuid, delete_after_use, early_return) = if is_flow {
-        let run_query = RunJobQuery::default();
+        let run_query = RunJobQuery { job_id, ..Default::default() };
         let path = StripPath(runnable_path.to_string());
         let (uuid, early_return) = run_flow_by_path_inner(
             authed,
@@ -522,6 +523,7 @@ async fn trigger_runnable_inner(
             error_handler_path,
             error_handler_args.as_ref(),
             trigger_path,
+            job_id,
         )
         .await?;
         (uuid, delete_after_use, None)
@@ -543,6 +545,7 @@ pub async fn trigger_runnable(
     error_handler_path: Option<&str>,
     error_handler_args: Option<&sqlx::types::Json<HashMap<String, serde_json::Value>>>,
     trigger_path: String,
+    job_id: Option<Uuid>,
 ) -> Result<axum::response::Response> {
     let (uuid, _, _) = trigger_runnable_inner(
         db,
@@ -556,6 +559,7 @@ pub async fn trigger_runnable(
         error_handler_path,
         error_handler_args,
         trigger_path,
+        job_id,
     )
     .await?;
     Ok((StatusCode::CREATED, uuid.to_string()).into_response())
@@ -588,6 +592,7 @@ pub async fn trigger_runnable_and_wait_for_result(
         error_handler_path,
         error_handler_args,
         trigger_path,
+        None,
     )
     .await?;
     let (result, success) =
@@ -628,6 +633,7 @@ pub async fn trigger_runnable_and_wait_for_raw_result(
         error_handler_path,
         error_handler_args,
         trigger_path,
+        None,
     )
     .await?;
 
@@ -668,9 +674,10 @@ async fn trigger_script_internal(
     error_handler_path: Option<&str>,
     error_handler_args: Option<&sqlx::types::Json<HashMap<String, Box<RawValue>>>>,
     trigger_path: String,
+    job_id: Option<Uuid>,
 ) -> Result<(Uuid, Option<bool>)> {
     if retry.is_none() && error_handler_path.is_none() {
-        let run_query = RunJobQuery::default();
+        let run_query = RunJobQuery { job_id, ..Default::default() };
         let path = StripPath(script_path.to_string());
         run_script_by_path_inner(
             authed,
@@ -694,6 +701,7 @@ async fn trigger_script_internal(
             error_handler_path,
             error_handler_args,
             trigger_path,
+            job_id,
         )
         .await
     }
@@ -710,6 +718,7 @@ async fn trigger_script_with_retry_and_error_handler(
     error_handler_path: Option<&str>,
     error_handler_args: Option<&sqlx::types::Json<HashMap<String, Box<RawValue>>>>,
     trigger_path: String,
+    job_id: Option<Uuid>,
 ) -> Result<(Uuid, Option<bool>)> {
 
     check_scopes(&authed, || format!("jobs:run:scripts:{script_path}"))?;
@@ -801,7 +810,7 @@ async fn trigger_script_with_retry_and_error_handler(
         None,
         None,
         None,
-        None,
+        job_id,
         false,
         false,
         None,
