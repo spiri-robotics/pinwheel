@@ -1,6 +1,5 @@
 
 use axum::Router;
-use serde::Serialize;
 use uuid::Uuid;
 use windmill_common::s3_helpers::StorageResourceType;
 
@@ -23,11 +22,6 @@ use futures::Stream;
 use axum::response::Response;
 #[cfg(feature = "parquet")]
 use serde::Deserialize;
-
-#[derive(Serialize)]
-pub struct UploadFileResponse {
-    pub file_key: String,
-}
 
 #[derive(Deserialize)]
 pub struct LoadImagePreviewQuery {
