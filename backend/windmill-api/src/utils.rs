@@ -230,11 +230,7 @@ where
 
 
 #[cfg(feature = "http_trigger")]
-#[derive(Clone)]
-pub struct ExpiringCacheEntry<T> {
-    pub value: T,
-    pub expiry: std::time::Instant,
-}
+pub use windmill_common::utils::ExpiringCacheEntry;
 
 lazy_static::lazy_static! {
     static ref DUCKLAKE_INSTANCE_PG_PASSWORD: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
