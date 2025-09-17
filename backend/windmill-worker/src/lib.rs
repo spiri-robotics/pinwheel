@@ -10,6 +10,7 @@ mod java_executor;
 #[cfg(feature = "ruby")]
 mod ruby_executor;
 
+mod ai;
 mod ai_executor;
 mod bun_executor;
 pub mod common;
