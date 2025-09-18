@@ -16,6 +16,7 @@ use crate::{
     common::{
         create_args_and_out_file, get_reserved_variables, parse_npm_config, read_file,
         read_file_content, read_result, start_child_process, write_file_binary, OccupancyMetrics,
+        StreamNotifier,
     },
     handle_child::handle_child,
     BUNFIG_INSTALL_SCOPES, BUN_BUNDLE_CACHE_DIR, BUN_CACHE_DIR, BUN_NO_CACHE, BUN_PATH,
@@ -159,6 +160,7 @@ pub async fn gen_bun_lockfile(
                 None,
                 false,
                 occupancy_metrics,
+                None,
                 None,
             )
             .await?;
@@ -366,6 +368,7 @@ pub async fn install_bun_lockfile(
             false,
             occupancy_metrics,
             None,
+            None,
         )
         .await?;
     } else {
@@ -538,6 +541,7 @@ pub async fn generate_wrapper_mjs(
         false,
         occupancy_metrics,
         None,
+        None,
     )
     .await?;
     fs::rename(
@@ -588,6 +592,7 @@ pub async fn generate_bun_bundle(
             timeout,
             false,
             occupancy_metrics,
+            None,
             None,
         )
         .await?;
@@ -1285,6 +1290,8 @@ try {{
 
             append_logs(&job.id, &job.workspace_id, format!("{init_logs}\n"), conn).await;
 
+            let stream_notifier = StreamNotifier::new(conn, job);
+
             let result = crate::js_eval::eval_fetch_timeout(
                 env_code,
                 inner_content.clone(),
@@ -1300,6 +1307,7 @@ try {{
                 &job.workspace_id,
                 false,
                 occupancy_metrics,
+                stream_notifier,
             )
             .await?;
             tracing::info!(
@@ -1442,6 +1450,8 @@ try {{
         .await?
     };
 
+    let stream_notifier = StreamNotifier::new(conn, job);
+
     let handle_result = handle_child(
         &job.id,
         conn,
@@ -1456,6 +1466,7 @@ try {{
         false,
         &mut Some(occupancy_metrics),
         None,
+        stream_notifier,
     )
     .await?;
 

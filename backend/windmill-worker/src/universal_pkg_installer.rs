@@ -144,6 +144,7 @@ pub async fn par_install_language_dependencies_all_at_once<
             false,
             &mut None,
             pipe_stdout,
+            None,
         )
         .await
         {
@@ -490,6 +491,7 @@ async fn try_install_one_detached<'a, T: Clone + std::marker::Send + Sync + 'a +
         None,
         false,
         &mut None,
+        None,
         None,
     )
     .await

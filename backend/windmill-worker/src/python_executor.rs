@@ -72,7 +72,7 @@ const RELATIVE_PYTHON_LOADER: &str = include_str!("../loader.py");
 use crate::{
     common::{
         create_args_and_out_file, get_reserved_variables, read_file, read_result,
-        start_child_process, OccupancyMetrics,
+        start_child_process, OccupancyMetrics, StreamNotifier,
     },
     handle_child::handle_child,
     worker_utils::ping_job_status,
@@ -318,6 +318,7 @@ pub async fn uv_pip_compile(
             None,
             false,
             occupancy_metrics,
+            None,
             None,
         )
         .await
@@ -797,6 +798,8 @@ mount {{
         start_child_process(python_cmd, &python_path, false).await?
     };
 
+    let stream_notifier = StreamNotifier::new(conn, job);
+
     let handle_result = handle_child(
         &job.id,
         conn,
@@ -811,6 +814,7 @@ mount {{
         false,
         &mut Some(occupancy_metrics),
         None,
+        stream_notifier,
     )
     .await?;
 

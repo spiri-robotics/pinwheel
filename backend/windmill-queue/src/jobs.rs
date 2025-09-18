@@ -3572,6 +3572,7 @@ pub async fn push<'c, 'd>(
                         }),
                         user_states,
                         preprocessor_module: None,
+                        stream_job: None,
                     }
                 }
                 _ => {
@@ -3826,6 +3827,7 @@ pub async fn push<'c, 'd>(
                 }),
                 user_states,
                 preprocessor_module: None,
+                stream_job: None,
             };
             let value = flow_data.value();
             let priority = value.priority;
