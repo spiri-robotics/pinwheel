@@ -116,6 +116,7 @@ mod smtp_server_oss;
 mod teams_approvals_oss;
 
 mod static_assets;
+mod teams_cache_oss;
 mod teams_oss;
 mod token;
 mod tracing_init;
