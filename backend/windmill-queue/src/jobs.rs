@@ -754,7 +754,7 @@ pub async fn add_completed_job<T: Serialize + Send + Sync + ValidableJson>(
     canceled_by: Option<CanceledBy>,
     flow_is_done: bool,
     duration: Option<i64>,
-) -> Result<Uuid, Error> {
+) -> Result<(Uuid, i64), Error> {
     // tracing::error!("Start");
     // let start = tokio::time::Instant::now();
 
@@ -766,7 +766,7 @@ pub async fn add_completed_job<T: Serialize + Send + Sync + ValidableJson>(
     }
 
     let result_columns = result_columns.as_ref();
-    let (opt_uuid, _duration, _skip_downstream_error_handlers) = (|| {
+    let (opt_uuid, duration, _skip_downstream_error_handlers) = (|| {
         commit_completed_job(
             db,
             queued_job,
@@ -795,18 +795,18 @@ pub async fn add_completed_job<T: Serialize + Send + Sync + ValidableJson>(
 
     // if scheduling next job failed, return the job_id early to ensure the job get retried after a timeout
     if let Some(job_id) = opt_uuid {
-        return Ok(job_id);
+        return Ok((job_id, duration));
     }
 
     #[cfg(feature = "cloud")]
-    apply_completed_job_cloud_usage(db, queued_job, _duration);
+    apply_completed_job_cloud_usage(db, queued_job, duration);
 
 
     restart_job_if_perpetual(db, queued_job, &canceled_by).await?;
 
     // tracing::error!("4 {:?}", start.elapsed());
 
-    Ok(queued_job.id)
+    Ok((queued_job.id, duration))
 }
 
 async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
@@ -4443,12 +4443,17 @@ async fn restarted_flows_resolution(
                         if let Some(new_flow_jobs_success) = new_flow_jobs_success.as_mut() {
                             new_flow_jobs_success.truncate(branch_or_iteration_n);
                         }
+                        let mut new_flow_jobs_timeline = module.flow_jobs_duration();
+                        if let Some(new_flow_jobs_timeline) = new_flow_jobs_timeline.as_mut() {
+                            new_flow_jobs_timeline.truncate(branch_or_iteration_n);
+                        }
                         truncated_modules.push(FlowStatusModule::InProgress {
                             id: module.id(),
                             job: new_flow_jobs[new_flow_jobs.len() - 1], // set to last finished job from completed flow
                             iterator: None,
                             flow_jobs: Some(new_flow_jobs),
                             flow_jobs_success: new_flow_jobs_success,
+                            flow_jobs_duration: new_flow_jobs_timeline,
                             branch_chosen: None,
                             branchall: Some(BranchAllStatus {
                                 branch: branch_or_iteration_n - 1, // Doing minus one here as this variable reflects the latest finished job in the iteration
@@ -4483,6 +4488,10 @@ async fn restarted_flows_resolution(
                         if let Some(new_flow_jobs_success) = new_flow_jobs_success.as_mut() {
                             new_flow_jobs_success.truncate(branch_or_iteration_n);
                         }
+                        let mut new_flow_jobs_timeline = module.flow_jobs_duration();
+                        if let Some(new_flow_jobs_timeline) = new_flow_jobs_timeline.as_mut() {
+                            new_flow_jobs_timeline.truncate(branch_or_iteration_n);
+                        }
                         truncated_modules.push(FlowStatusModule::InProgress {
                             id: module.id(),
                             job: new_flow_jobs[new_flow_jobs.len() - 1], // set to last finished job from completed flow
@@ -4492,6 +4501,7 @@ async fn restarted_flows_resolution(
                             }),
                             flow_jobs: Some(new_flow_jobs),
                             flow_jobs_success: new_flow_jobs_success,
+                            flow_jobs_duration: new_flow_jobs_timeline,
                             branch_chosen: None,
                             branchall: None,
                             parallel,
