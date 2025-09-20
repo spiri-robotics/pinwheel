@@ -90,8 +90,8 @@ mod inkeep_oss;
 mod inputs;
 mod integration;
 mod live_migrations;
-mod s3_proxy_oss;
 pub mod openapi;
+mod s3_proxy_oss;
 
 mod approvals;
 #[cfg(feature = "parquet")]
@@ -613,9 +613,10 @@ pub async fn run_server(
         name.map(|x| format!("name={x}")).unwrap_or_default()
     );
 
-    port_tx
-        .send(format!("http://localhost:{}", port))
-        .expect("Failed to send port");
+    if let Err(e) = port_tx.send(format!("http://localhost:{}", port)) {
+        tracing::error!("Failed to send port: {e:#}");
+        return Err(anyhow::anyhow!("Failed to send port, exiting early: {e:#}"));
+    }
 
     let server = server.with_graceful_shutdown(async move {
         killpill_rx.recv().await.ok();
@@ -695,8 +696,11 @@ async fn openapi_json() -> Response {
         .unwrap()
 }
 
-pub async fn migrate_db(db: &DB) -> anyhow::Result<Option<JoinHandle<()>>> {
-    db::migrate(db)
+pub async fn migrate_db(
+    db: &DB,
+    killpill_rx: tokio::sync::broadcast::Receiver<()>,
+) -> anyhow::Result<Option<JoinHandle<()>>> {
+    db::migrate(db, killpill_rx)
         .await
         .map_err(|e| anyhow::anyhow!("Error migrating db: {e:#}"))
 }
