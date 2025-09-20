@@ -1045,9 +1045,6 @@ async fn delete_git_sync_repository(
 }
 
 
-#[derive(Debug, Deserialize)]
-struct EditDeployUIConfig {
-}
 
 async fn edit_deploy_ui_config(
     _authed: ApiAuthed,
