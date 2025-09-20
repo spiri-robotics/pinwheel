@@ -24,14 +24,6 @@ use axum::response::Response;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-pub struct LoadImagePreviewQuery {
-    #[allow(dead_code)]
-    pub file_key: String,
-    #[allow(dead_code)]
-    pub storage: Option<String>,
-}
-
-#[derive(Deserialize)]
 pub struct DownloadFileQuery {
     #[allow(dead_code)]
     pub file_key: String,

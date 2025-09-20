@@ -180,7 +180,6 @@ pub struct AppWithLastVersionAndStarred {
     pub starred: Option<bool>,
 }
 
-
 #[derive(Serialize, Deserialize, FromRow)]
 pub struct AppWithLastVersionAndDraft {
     #[sqlx(flatten)]
