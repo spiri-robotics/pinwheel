@@ -1213,6 +1213,7 @@ Windmill Community Edition {GIT_VERSION}
             }
         }
     }
+    std::process::exit(0);
     Ok(())
 }
 
