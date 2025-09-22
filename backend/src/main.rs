@@ -1214,7 +1214,6 @@ Windmill Community Edition {GIT_VERSION}
         }
     }
     std::process::exit(0);
-    Ok(())
 }
 
 async fn listen_pg(url: &str) -> Option<PgListener> {
