@@ -1,7 +1,6 @@
 use serde::de::DeserializeOwned;
 
 
-
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::{types::Uuid, Pool, Postgres};
@@ -14,17 +13,15 @@ use windmill_api_client::types::{CreateFlowBody, RawScript};
 use windmill_common::flows::InputTransform;
 
 #[cfg(any(feature = "python", feature = "deno_core"))]
-use windmill_common::flow_status::{RestartedFrom};
+use windmill_common::flow_status::RestartedFrom;
 
 use windmill_common::{
-    flows::{ FlowValue},
-    jobs::{ JobPayload, RawCode},
-    scripts::{ScriptLang},
-
+    flows::FlowValue,
+    jobs::{JobPayload, RawCode},
+    scripts::ScriptLang,
 };
 mod common;
 use common::*;
-
 
 
 // async fn _print_job(id: Uuid, db: &Pool<Postgres>) -> Result<(), anyhow::Error> {
@@ -36,7 +33,6 @@ use common::*;
 //     );
 //     Ok(())
 // }
-
 
 #[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
@@ -158,8 +154,6 @@ async fn test_iteration_parallel(db: Pool<Postgres>) -> anyhow::Result<()> {
         .contains("2"));
     Ok(())
 }
-
-
 
 #[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
@@ -333,7 +327,6 @@ use windmill_common::flows::FlowModuleValue;
 #[cfg(feature = "deno_core")]
 #[sqlx::test(fixtures("base"))]
 async fn test_deno_flow_same_worker(db: Pool<Postgres>) -> anyhow::Result<()> {
-
     initialize_tracing().await;
 
     let server = ApiServer::start(db.clone()).await?;
@@ -1129,8 +1122,6 @@ public class Main {
     assert_eq!(job.json_result(), Some(json!("hello world")));
     Ok(())
 }
-
-
 
 #[sqlx::test(fixtures("base"))]
 async fn test_bun_job_datetime(db: Pool<Postgres>) -> anyhow::Result<()> {
@@ -2305,7 +2296,6 @@ async fn test_rust_client(db: Pool<Postgres>) -> anyhow::Result<()> {
 
 
 
-
 #[sqlx::test(fixtures("base", "relative_bun"))]
 async fn test_relative_imports_bun(db: Pool<Postgres>) -> anyhow::Result<()> {
     let content = r#"
@@ -2376,8 +2366,6 @@ export async function main() {
     run_preview_relative_imports(&db, content, ScriptLang::Deno).await?;
     Ok(())
 }
-
-
 
 #[sqlx::test(fixtures("base", "result_format"))]
 async fn test_result_format(db: Pool<Postgres>) -> anyhow::Result<()> {
@@ -2607,4 +2595,3 @@ async fn test_workflow_as_code(db: Pool<Postgres>) -> anyhow::Result<()> {
     .await;
     Ok(())
 }
-

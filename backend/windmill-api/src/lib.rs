@@ -81,7 +81,7 @@ mod drafts;
 pub mod ee_oss;
 pub mod embeddings;
 mod favorite;
-mod flows;
+pub mod flows;
 mod folders;
 mod granular_acls;
 mod groups;
@@ -136,6 +136,7 @@ mod workspaces_oss;
 #[cfg(feature = "mcp")]
 mod mcp;
 
+pub use apps::EditApp;
 pub const DEFAULT_BODY_LIMIT: usize = 2097152 * 100; // 200MB
 
 lazy_static::lazy_static! {
