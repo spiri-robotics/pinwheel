@@ -6245,7 +6245,7 @@ async fn get_job_update(
             &job_id,
             log_offset,
             stream_offset,
-            get_progress,
+            get_progress.unwrap_or(false),
             running,
             true,
             false,
@@ -6349,6 +6349,7 @@ fn start_job_update_sse_stream(
         // Send initial update immediately
         let mut running = running;
         let mut mem_peak = 0;
+
         match get_job_update_data(
             &opt_authed,
             &opt_tokened,
@@ -6357,7 +6358,7 @@ fn start_job_update_sse_stream(
             &job_id,
             log_offset,
             stream_offset,
-            get_progress,
+            false,
             running,
             true,
             true,
@@ -6414,11 +6415,12 @@ fn start_job_update_sse_stream(
             }
         }
 
+        let mut get_progress_m: bool = false;
         // Poll for updates every 1 second
         let mut i = 0;
         let start = Instant::now();
         let mut last_ping = Instant::now();
-
+        let mut last_progress_check = Instant::now();
         loop {
             i += 1;
 
@@ -6453,6 +6455,10 @@ fn start_job_update_sse_stream(
             }
             tokio::time::sleep(std::time::Duration::from_millis(ms_duration)).await;
 
+            // Check progress if the user requested it, and check periodically if the job has progress
+            // Once it has progress, we always check progress
+            let check_progress = get_progress.unwrap_or(false)
+                && (get_progress_m || last_progress_check.elapsed().as_secs() > 5);
             match get_job_update_data(
                 &opt_authed,
                 &opt_tokened,
@@ -6461,7 +6467,7 @@ fn start_job_update_sse_stream(
                 &job_id,
                 log_offset,
                 stream_offset,
-                get_progress,
+                check_progress,
                 running,
                 false,
                 true,
@@ -6481,6 +6487,13 @@ fn start_job_update_sse_stream(
                     }
                     if update.new_logs.as_ref().is_some_and(|x| x.is_empty()) {
                         update.new_logs = None;
+                    }
+                    if check_progress {
+                        if update.progress.is_some() {
+                            get_progress_m = true;
+                        } else {
+                            last_progress_check = Instant::now();
+                        }
                     }
 
                     // if !only_result.unwrap_or(false) {
@@ -6579,7 +6592,7 @@ async fn get_job_update_data(
     job_id: &Uuid,
     log_offset: Option<i32>,
     stream_offset: Option<i32>,
-    get_progress: Option<bool>,
+    get_progress: bool,
     running: Option<bool>,
     log_view: bool,
     get_full_job_on_completion: bool,
@@ -6816,7 +6829,7 @@ async fn get_job_update_data(
             log_offset,
             w_id,
             job_id,
-            get_progress.unwrap_or(false),
+            get_progress,
             running,
             tags.as_ref().map(|v| v.as_slice()) as Option<&[&str]>,
             no_logs.unwrap_or(false),
