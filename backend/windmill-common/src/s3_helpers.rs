@@ -526,6 +526,50 @@ pub async fn build_object_store_client(
     }
 }
 
+
+#[derive(PartialEq)]
+pub enum BundleFormat {
+    Esm,
+    Cjs,
+}
+
+impl BundleFormat {
+   pub fn from_string(s: &str) -> Option<Self> {
+        match s {
+            "esm" => Some(Self::Esm),
+            "cjs" => Some(Self::Cjs),
+            _ => None,
+        }
+    }
+}
+
+pub async fn upload_artifact_to_store(path: &str, data: bytes::Bytes, standalone_dir: &str) -> error::Result<()> {
+    let object_store: Option<()> = None;
+    Ok(if &crate::utils::MODE_AND_ADDONS.mode
+        == &crate::utils::Mode::Standalone
+        && object_store.is_none()
+    {
+        let path = format!("{}/{}", standalone_dir, path);
+        tracing::info!("Writing file to path {path}");
+
+        let split_path = path.split("/").collect::<Vec<&str>>();
+        std::fs::create_dir_all(
+            split_path[..split_path.len() - 1].join("/"),
+        )?;
+
+        crate::worker::write_file_bytes(
+            &path,
+            &data,
+        )?;
+    } else {
+        {
+            return Err(error::Error::ExecutionErr("codebase is an EE feature".to_string()));
+        }
+
+    })
+}
+
+
 #[cfg(feature = "parquet")]
 pub async fn attempt_fetch_bytes(
     client: Arc<dyn ObjectStore>,

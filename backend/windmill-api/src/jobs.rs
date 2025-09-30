@@ -18,6 +18,7 @@ use quick_cache::sync::Cache;
 use serde_json::value::RawValue;
 use serde_json::Value;
 use sqlx::Pool;
+use windmill_common::s3_helpers::{upload_artifact_to_store, BundleFormat};
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::ops::{Deref, DerefMut};
@@ -37,7 +38,6 @@ use windmill_common::utils::{RunnableKind, WarnAfterExt};
 use windmill_common::worker::{Connection, CLOUD_HOSTED, TMP_DIR};
 use windmill_common::DYNAMIC_INPUT_CACHE;
 
-use windmill_common::scripts::PREVIEW_IS_CODEBASE_HASH;
 use windmill_common::variables::get_workspace_key;
 
 use crate::triggers::trigger_helpers::ScriptId;
@@ -3232,6 +3232,7 @@ struct Preview {
     tag: Option<String>,
     dedicated_worker: Option<bool>,
     lock: Option<String>,
+    format: Option<String>
 }
 
 #[derive(Deserialize)]
@@ -5187,6 +5188,7 @@ async fn run_wait_result_preview_script(
     return result;
 }
 
+
 async fn run_bundle_preview_script(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
@@ -5195,7 +5197,6 @@ async fn run_bundle_preview_script(
     Query(run_query): Query<RunJobQuery>,
     mut multipart: axum::extract::Multipart,
 ) -> error::Result<(StatusCode, String)> {
-    use windmill_common::scripts::PREVIEW_IS_TAR_CODEBASE_HASH;
 
     if authed.is_operator {
         return Err(error::Error::NotAuthorized(
@@ -5207,6 +5208,7 @@ async fn run_bundle_preview_script(
     let mut tx = None;
     let mut uploaded = false;
     let mut is_tar = false;
+    let mut format = BundleFormat::Cjs;
 
     while let Some(field) = multipart.next_field().await.unwrap() {
         let name = field.name().unwrap().to_string();
@@ -5214,6 +5216,7 @@ async fn run_bundle_preview_script(
         let data = data.map_err(to_anyhow)?;
         if name == "preview" {
             let preview: Preview = serde_json::from_slice(&data).map_err(to_anyhow)?;
+            format = preview.format.and_then(|s| BundleFormat::from_string(&s)).unwrap_or(BundleFormat::Cjs);
 
             let scheduled_for = run_query.get_scheduled_for(&db).await?;
             let tag = run_query.tag.clone().or(preview.tag.clone());
@@ -5234,11 +5237,7 @@ async fn run_bundle_preview_script(
                 ltx,
                 &w_id,
                 JobPayload::Code(RawCode {
-                    hash: if is_tar {
-                        Some(PREVIEW_IS_TAR_CODEBASE_HASH)
-                    } else {
-                        Some(PREVIEW_IS_CODEBASE_HASH)
-                    },
+                    hash: Some(windmill_common::scripts::codebase_to_hash(is_tar, format == BundleFormat::Esm)),
                     content: preview.content.unwrap_or_default(),
                     path: preview.path,
                     language: preview.language.unwrap_or(ScriptLang::Deno),
@@ -5287,33 +5286,17 @@ async fn run_bundle_preview_script(
 
             // tracing::info!("is_tar 2: {is_tar}");
 
+            if format == BundleFormat::Esm {
+                id = format!("{}.esm", id);
+            }
             if is_tar {
                 id = format!("{}.tar", id);
             }
 
             uploaded = true;
 
-
-            let object_store: Option<()> = None;
-
-            if &windmill_common::utils::MODE_AND_ADDONS.mode
-                == &windmill_common::utils::Mode::Standalone
-                && object_store.is_none()
-            {
-                std::fs::create_dir_all(
-                    windmill_common::worker::ROOT_STANDALONE_BUNDLE_DIR.clone(),
-                )?;
-                windmill_common::worker::write_file_bytes(
-                    &windmill_common::worker::ROOT_STANDALONE_BUNDLE_DIR,
-                    &id,
-                    &data,
-                )?;
-            } else {
-                {
-                    return Err(Error::ExecutionErr("codebase is an EE feature".to_string()));
-                }
-
-            }
+            let path = windmill_common::s3_helpers::bundle(&w_id, &id);
+            upload_artifact_to_store(&path, data, &windmill_common::worker::ROOT_STANDALONE_BUNDLE_DIR).await?;
         }
         // println!("Length of `{}` is {} bytes", name, data.len());
     }
