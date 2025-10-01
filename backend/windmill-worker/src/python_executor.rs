@@ -1798,11 +1798,12 @@ pub async fn handle_python_reqs(
                     (stderr_future.await, stdout_future.await, Box::into_pin(uv_install_proccess.wait()).await)
                 } => match exitstatus {
                     Ok(status) => if !status.success() {
+                        let code = status.code();
                         tracing::warn!(
                             workspace_id = %w_id,
                             "uv install {} did not succeed, exit status: {:?}",
                             &req,
-                            status.code()
+                            code
                         );
 
                         append_logs(
@@ -1810,7 +1811,8 @@ pub async fn handle_python_reqs(
                             w_id,
                             format!(
                                 "\nError while installing {}: \nStderr:\n{stderr_buf}\nStdout:\n{stdout_buf}\nExit status: {:?}",
-                                &req
+                                &req,
+                                code
                             ),
                             &conn,
                         )
