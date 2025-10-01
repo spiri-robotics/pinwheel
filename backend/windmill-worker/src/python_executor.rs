@@ -1809,7 +1809,7 @@ pub async fn handle_python_reqs(
                             &job_id,
                             w_id,
                             format!(
-                                "\nError while installing {}: \nStderr:\n{stderr_buf}\nStdout:\n{stdout_buf}",
+                                "\nError while installing {}: \nStderr:\n{stderr_buf}\nStdout:\n{stdout_buf}\nExit status: {:?}",
                                 &req
                             ),
                             &conn,
