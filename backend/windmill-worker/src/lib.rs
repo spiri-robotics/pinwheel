@@ -26,6 +26,8 @@ mod handle_child;
 pub mod job_logger;
 mod job_logger_oss;
 mod js_eval;
+pub mod memory_common;
+pub mod memory_oss;
 #[cfg(feature = "mysql")]
 mod mysql_executor;
 #[cfg(feature = "nu")]
