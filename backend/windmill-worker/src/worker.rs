@@ -158,8 +158,6 @@ use crate::mysql_executor::do_mysql;
 #[cfg(feature = "duckdb")]
 use crate::duckdb_executor::do_duckdb;
 
-#[cfg(feature = "oracledb")]
-use crate::oracledb_executor::do_oracledb;
 
 
 
