@@ -394,7 +394,6 @@ async fn get_raw_app_data(
     Path((w_id, secret_with_ext)): Path<(String, String)>,
     Extension(db): Extension<DB>,
 ) -> Result<Response> {
-    let object_store: Option<()> = None;
 
     // tracing::info!("secret_with_ext: {}", secret_with_ext);
     let mut splitted = secret_with_ext.split('.');
@@ -423,7 +422,6 @@ async fn get_raw_app_data(
         ));
     };
     // tracing::info!("file_type: {}", file_type);
-    let path = format!("/app_bundles/{}/{}.{}", w_id, id, file_type);
 
     #[allow(unused_assignments)]
     let mut body: Option<Body> = None;
@@ -904,8 +902,6 @@ async fn get_latest_version_secret_id(
     Ok(hx)
 }
 
-use windmill_common::error;
-
 async fn store_raw_app_file<'a>(
     w_id: &str,
     id: &i64,
@@ -913,9 +909,6 @@ async fn store_raw_app_file<'a>(
     data: bytes::Bytes,
     tx: &mut sqlx::Transaction<'a, sqlx::Postgres>,
 ) -> Result<()> {
-    let object_store: Option<()> = None;
-
-    let path = format!("/app_bundles/{}/{}.{}", w_id, id, file_type);
 
     sqlx::query!(
         "INSERT INTO app_bundles (app_version_id, w_id, file_type, data) VALUES ($1, $2, $3, $4)",
