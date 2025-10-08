@@ -1432,6 +1432,7 @@ mod tests {
                         hash: None,
                         tag_override: None,
                         is_trigger: None,
+                        pass_flow_input_directly: None,
                     }),
                     stop_after_if: None,
                     stop_after_all_iters_if: None,
@@ -1447,6 +1448,7 @@ mod tests {
                     continue_on_error: None,
                     skip_if: None,
                     apply_preprocessor: None,
+                    pass_flow_input_directly: None,
                 },
                 FlowModule {
                     id: "b".to_string(),
@@ -1480,6 +1482,7 @@ mod tests {
                     continue_on_error: None,
                     skip_if: None,
                     apply_preprocessor: None,
+                    pass_flow_input_directly: None,
                 },
                 FlowModule {
                     id: "c".to_string(),
@@ -1510,6 +1513,7 @@ mod tests {
                     continue_on_error: None,
                     skip_if: None,
                     apply_preprocessor: None,
+                    pass_flow_input_directly: None,
                 },
             ],
             failure_module: Some(Box::new(FlowModule {
@@ -1520,6 +1524,7 @@ mod tests {
                     hash: None,
                     tag_override: None,
                     is_trigger: None,
+                    pass_flow_input_directly: None,
                 }
                 .into(),
                 stop_after_if: Some(StopAfterIf {
@@ -1539,6 +1544,7 @@ mod tests {
                 continue_on_error: None,
                 skip_if: None,
                 apply_preprocessor: None,
+                pass_flow_input_directly: None,
             })),
             preprocessor_module: None,
             same_worker: false,
