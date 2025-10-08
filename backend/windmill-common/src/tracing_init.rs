@@ -120,9 +120,15 @@ pub fn initialize_tracing(
         file_env_filter.clone()
     };
 
+    // Create a common filter for OTEL logs bridge and tracing layer to respect RUST_LOG
+    let otel_logs_filter = file_env_filter.clone();
+
+
+    let opentelemetry_filtered = opentelemetry;
+
     let base_layer = tracing_subscriber::registry()
-        .with(logs_bridge)
-        .with(opentelemetry);
+        .with(logs_bridge.with_filter(otel_logs_filter))
+        .with(opentelemetry_filtered);
 
     match *JSON_FMT {
         true => {
