@@ -39,6 +39,7 @@ pub mod ee_oss;
 pub mod email_oss;
 pub mod error;
 pub mod external_ip;
+pub mod flow_conversations;
 pub mod flow_status;
 pub mod flows;
 pub mod global_settings;
