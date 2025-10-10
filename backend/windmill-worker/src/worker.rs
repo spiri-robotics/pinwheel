@@ -2947,6 +2947,7 @@ async fn handle_code_execution_job(
             worker_name,
             column_order,
             occupancy_metrics,
+            parent_runnable_path,
         )
         .await;
     } else if language == Some(ScriptLang::Mysql) {
@@ -2966,6 +2967,7 @@ async fn handle_code_execution_job(
             worker_name,
             column_order,
             occupancy_metrics,
+            parent_runnable_path,
         )
         .await;
     } else if language == Some(ScriptLang::Bigquery) {
@@ -3041,6 +3043,7 @@ async fn handle_code_execution_job(
                 worker_name,
                 column_order,
                 occupancy_metrics,
+                parent_runnable_path,
             )
             .await;
         }
