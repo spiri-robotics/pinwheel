@@ -951,17 +951,7 @@ pub async fn handle_ansible_job(
             let mut secret_url = git_repo_resource.get("url").and_then(|s| s.as_str()).map(|s| s.to_string())
                 .ok_or(anyhow!("Failed to get url from git repo resource, please check that the resource has the correct type (git_repository)"))?;
 
-            let is_github_app = git_repo_resource.get("is_github_app").and_then(|s| s.as_bool())
-                .ok_or(anyhow!("Failed to get `is_github_app` field from git repo resource, please check that the resource has the correct type (git_repository)"))?;
 
-            if is_github_app {
-                if let Connection::Sql(db) = conn {
-                    let token = get_github_app_token_internal(db, &client.token).await?;
-                    secret_url = prepend_token_to_github_url(&secret_url, &token)?;
-                } else {
-                    return Err(windmill_common::error::Error::BadRequest("Github App authentication is currently unavailable for agent workers. Contact the windmill team to request this feature".to_string()));
-                }
-            }
 
             let branch = Some(git_repo_resource.get("branch").and_then(|s| s.as_str()).map(|s| s.to_string())
                 .ok_or(anyhow!("Failed to get branch from git repo resource, please check that the resource has the correct type (git_repository)"))?).filter(|s| !s.is_empty());
