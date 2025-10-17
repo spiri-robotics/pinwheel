@@ -6456,7 +6456,7 @@ async fn get_job_update_sse(
 
 #[derive(Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
-enum JobUpdateSSEStream {
+pub enum JobUpdateSSEStream {
     Update(JobUpdate),
     Error { error: String },
     NotFound,
@@ -6469,8 +6469,7 @@ lazy_static::lazy_static! {
         std::env::var("TIMEOUT_SSE_STREAM").unwrap_or("60".to_string()).parse::<u64>().unwrap_or(60);
 }
 
-
-fn start_job_update_sse_stream(
+pub fn start_job_update_sse_stream(
     opt_authed: Option<ApiAuthed>,
     opt_tokened: OptTokened,
     db: DB,
