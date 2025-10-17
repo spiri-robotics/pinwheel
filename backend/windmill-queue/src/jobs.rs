@@ -2283,6 +2283,30 @@ pub async fn pull(
                     (job, false)
                 };
 
+                if let Some(job) = job.as_ref() {
+                    if job.is_flow() || job.is_dependency() {
+                        let per_workspace = per_workspace_tag(&job.workspace_id).await;
+                        let base_tag = if job.is_flow() {
+                            "flow".to_string()
+                        } else {
+                            "dependency".to_string()
+                        };
+                        let tag = if per_workspace {
+                            format!("{}-{}", base_tag, job.workspace_id)
+                        } else {
+                            base_tag
+                        };
+                        sqlx::query!(
+                            "UPDATE v2_job_queue SET tag = $1, running = false WHERE id = $2",
+                            tag,
+                            job.id
+                        )
+                        .execute(db)
+                        .await?;
+                        continue;
+                    }
+                }
+
                 let pulled_job_result = match job {
                     _ => PulledJobResult { job, suspended, missing_concurrency_key: false },
                 };
@@ -2290,29 +2314,6 @@ pub async fn pull(
                 Ok::<_, Error>(pulled_job_result)
             }?;
 
-            if let Some(job) = njob.job.as_ref() {
-                if job.is_flow() || job.is_dependency() {
-                    let per_workspace = per_workspace_tag(&job.workspace_id).await;
-                    let base_tag = if job.is_flow() {
-                        "flow".to_string()
-                    } else {
-                        "dependency".to_string()
-                    };
-                    let tag = if per_workspace {
-                        format!("{}-{}", base_tag, job.workspace_id)
-                    } else {
-                        base_tag
-                    };
-                    sqlx::query!(
-                        "UPDATE v2_job_queue SET tag = $1, running = false WHERE id = $2",
-                        tag,
-                        job.id
-                    )
-                    .execute(db)
-                    .await?;
-                    continue;
-                }
-            }
             return Ok(njob);
         };
 
