@@ -1562,7 +1562,6 @@ pub async fn run_worker(
                                 _ => {}
                             }
                         }
-
                         add_time!(bench, "job pulled from DB");
                         let duration_pull_s = pull_time.elapsed().as_secs_f64();
                         let err_pull = job.is_ok();
