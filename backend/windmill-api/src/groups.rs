@@ -632,6 +632,8 @@ async fn add_user_igroup(
         Some([("email", email.as_str())].into()),
     )
     .await?;
+
+
     tx.commit().await?;
     Ok(format!("Added {} to igroup {}", email, name))
 }
@@ -780,8 +782,10 @@ async fn remove_user_igroup(
         Some([("email", email.as_str())].into()),
     )
     .await?;
+
+
     tx.commit().await?;
-    Ok(format!("Added {} to igroup {}", email, name))
+    Ok(format!("Removed {} from igroup {}", email, name))
 }
 
 async fn remove_user(
