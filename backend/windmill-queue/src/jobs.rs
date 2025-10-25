@@ -2360,7 +2360,7 @@ pub async fn pull(
         }
 
         let has_concurent_limit = false
-            || (job.is_dependency() && false && !*WMDEBUG_NO_DJOB_DEBOUNCING);
+            || (job.is_dependency() && job.concurrent_limit.is_some() && false && !*WMDEBUG_NO_DJOB_DEBOUNCING);
         // if we don't have private flag, we don't have concurrency limit
 
         // concurrency check. If more than X jobs for this path are already running, we re-queue and pull another job from the queue
