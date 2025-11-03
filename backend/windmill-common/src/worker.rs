@@ -159,6 +159,7 @@ lazy_static::lazy_static! {
         "powershell".to_string(),
         "nativets".to_string(),
         "mysql".to_string(),
+        "oracledb".to_string(),
         "bun".to_string(),
         "postgresql".to_string(),
         "bigquery".to_string(),
@@ -187,7 +188,9 @@ lazy_static::lazy_static! {
         "snowflake".to_string(),
         "mssql".to_string(),
         "bigquery".to_string(),
+        "oracledb".to_string(),
         "duckdb".to_string(),
+        // for related places search: ADD_NEW_LANG
     ];
 
     pub static ref DEFAULT_TAGS_PER_WORKSPACE: AtomicBool = AtomicBool::new(false);
