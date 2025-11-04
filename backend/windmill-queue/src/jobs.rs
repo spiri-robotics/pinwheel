@@ -3373,6 +3373,7 @@ pub async fn push<'c, 'd>(
     mut email: &str,
     mut permissioned_as: String,
     token_prefix: Option<&str>,
+    #[allow(unused_mut)]
     mut scheduled_for_o: Option<chrono::DateTime<chrono::Utc>>,
     schedule_path: Option<String>,
     parent_job: Option<Uuid>,
@@ -3572,6 +3573,7 @@ pub async fn push<'c, 'd>(
     }
 
     let mut preprocessed = None;
+    #[allow(unused)] 
     let (
         script_hash,
         script_path,
