@@ -1574,6 +1574,7 @@ mod tests {
             early_return: None,
             concurrency_key: None,
             chat_input_enabled: None,
+            flow_env: None,
             debounce_key: None,
             debounce_delay_s: None,
         };
