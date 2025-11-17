@@ -71,6 +71,7 @@ use windmill_common::error::AppError;
 #[cfg(feature = "agent_worker_server")]
 mod agent_workers_oss;
 mod ai;
+mod bedrock;
 mod apps;
 pub mod args;
 mod assets;
