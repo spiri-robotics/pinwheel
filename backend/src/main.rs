@@ -105,6 +105,7 @@ const DEFAULT_SERVER_BIND_ADDR: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 mod ee_oss;
 mod monitor;
 
+
 pub fn setup_deno_runtime() -> anyhow::Result<()> {
     // https://github.com/denoland/deno/blob/main/cli/main.rs#L477
     #[cfg(feature = "deno_core")]
@@ -199,6 +200,8 @@ lazy_static::lazy_static! {
 }
 
 pub fn main() -> anyhow::Result<()> {
+
+    // Normal execution (console/foreground mode)
     setup_deno_runtime()?;
     create_and_run_current_thread_inner(windmill_main())
 }
