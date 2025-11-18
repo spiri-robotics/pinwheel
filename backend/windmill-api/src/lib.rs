@@ -71,12 +71,12 @@ use windmill_common::error::AppError;
 #[cfg(feature = "agent_worker_server")]
 mod agent_workers_oss;
 mod ai;
-mod bedrock;
 mod apps;
 pub mod args;
 mod assets;
 mod audit;
 pub mod auth;
+mod bedrock;
 mod capture;
 mod concurrency_groups;
 mod configs;
@@ -121,6 +121,7 @@ mod slack_approvals;
 mod smtp_server_oss;
 mod teams_approvals_oss;
 
+mod public_app_layer;
 mod static_assets;
 mod teams_cache_oss;
 mod teams_oss;
@@ -138,7 +139,6 @@ mod workspaces;
 mod workspaces_export;
 mod workspaces_extra;
 mod workspaces_oss;
-mod public_app_layer;
 
 #[cfg(feature = "mcp")]
 mod mcp;
@@ -274,6 +274,11 @@ pub async fn run_server(
     if server_mode {
         #[cfg(feature = "embedding")]
         load_embeddings_db(&db);
+
+        #[cfg(feature = "cloud")]
+        if *CLOUD_HOSTED {
+            windmill_queue::init_usage_buffer(db.clone());
+        }
 
         let mut start_smtp_server = false;
         if let Some(smtp_settings) =
