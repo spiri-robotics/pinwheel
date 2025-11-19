@@ -723,8 +723,8 @@ async fn update_flow(
 
     sqlx::query!(
         "
-        UPDATE 
-            flow 
+        UPDATE
+            flow
         SET
             path = $1,
             summary = $2,
@@ -740,7 +740,7 @@ async fn update_flow(
             schema = $9::text::json,
             edited_by = $10,
             edited_at = now()
-        WHERE 
+        WHERE
             path = $11 AND workspace_id = $12",
         if is_new_path { flow_path } else { &nf.path },
         nf.summary,
@@ -764,8 +764,8 @@ async fn update_flow(
     if is_new_path {
         // if new path, must clone flow to new path and delete old flow for flow_version foreign key constraint
         sqlx::query!(
-            "INSERT INTO flow 
-                (workspace_id, path, summary, description, archived, extra_perms, dependency_job, draft_only, tag, ws_error_handler_muted, dedicated_worker, timeout, visible_to_runner_only, on_behalf_of_email, concurrency_key, versions, value, schema, edited_by, edited_at) 
+            "INSERT INTO flow
+                (workspace_id, path, summary, description, archived, extra_perms, dependency_job, draft_only, tag, ws_error_handler_muted, dedicated_worker, timeout, visible_to_runner_only, on_behalf_of_email, concurrency_key, versions, value, schema, edited_by, edited_at)
             SELECT workspace_id, $1, summary, description, archived, extra_perms, dependency_job, draft_only, tag, ws_error_handler_muted, dedicated_worker, timeout, visible_to_runner_only, on_behalf_of_email, concurrency_key, versions, value, schema, edited_by, edited_at
                 FROM flow
                 WHERE path = $2 AND workspace_id = $3",
@@ -832,6 +832,8 @@ async fn update_flow(
     )
     .warn_after_seconds(10)
     .await??;
+
+    // tracing::error!("Updating flow: {:?}", nf.value.get());
 
     // This will lock anyone who is trying to iterate on flow_versions with given path and parameters.
     let version = sqlx::query_scalar!(
@@ -1083,11 +1085,11 @@ async fn get_flow_by_path(
             favorite.path IS NOT NULL AS starred
         FROM flow
         LEFT JOIN favorite
-            ON favorite.favorite_kind = 'flow' 
-            AND favorite.workspace_id = flow.workspace_id 
-            AND favorite.path = flow.path 
+            ON favorite.favorite_kind = 'flow'
+            AND favorite.workspace_id = flow.workspace_id
+            AND favorite.path = flow.path
             AND favorite.usr = $3
-        LEFT JOIN flow_version 
+        LEFT JOIN flow_version
             ON flow_version.id = flow.versions[array_upper(flow.versions, 1)]
         WHERE flow.path = $1 AND flow.workspace_id = $2
         "#,
@@ -1122,7 +1124,7 @@ async fn get_flow_by_path(
             flow_version.created_by AS edited_by, 
             NULL AS starred
         FROM flow
-        LEFT JOIN flow_version 
+        LEFT JOIN flow_version
             ON flow_version.id = flow.versions[array_upper(flow.versions, 1)]
         WHERE flow.path = $1 AND flow.workspace_id = $2
         "#,
