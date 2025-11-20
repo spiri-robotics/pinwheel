@@ -357,27 +357,78 @@ pub fn parse_postgres_url(url: &str) -> Result<PostgresUrlComponents, Error> {
     })
 }
 
-pub async fn get_database_url() -> Result<String, Error> {
-    use std::env::var;
-    use tokio::fs::File;
-    use tokio::io::AsyncReadExt;
-    match var("DATABASE_URL_FILE") {
-        Ok(file_path) => {
-            let mut file = File::open(file_path).await?;
-            let mut contents = String::new();
-            file.read_to_string(&mut contents).await?;
-            Ok(contents.trim().to_string())
+#[derive(Clone)]
+pub enum DatabaseUrl {
+    Static(String),
+}
+
+impl DatabaseUrl {
+    pub async fn as_str(&self) -> String {
+        match self {
+            DatabaseUrl::Static(url) => url.clone(),
         }
-        Err(_) => var("DATABASE_URL").map_err(|_| {
-            Error::BadConfig(
-                "Either DATABASE_URL_FILE or DATABASE_URL env var is missing".to_string(),
-            )
-        }),
     }
+
+    pub async fn refresh(&self) -> anyhow::Result<()> {
+        match self {
+            DatabaseUrl::Static(_) => Ok(()),
+        }
+    }
+
+
+}
+
+static DATABASE_URL_CACHE: tokio::sync::OnceCell<DatabaseUrl> =
+    tokio::sync::OnceCell::const_new();
+
+pub async fn get_database_url() -> Result<DatabaseUrl, Error> {
+    let database_url = DATABASE_URL_CACHE
+        .get_or_try_init(|| async {
+            use std::env::var;
+            use tokio::fs::File;
+            use tokio::io::AsyncReadExt;
+
+            let url = match var("DATABASE_URL_FILE") {
+                Ok(file_path) => {
+                    let mut file = File::open(file_path).await?;
+                    let mut contents = String::new();
+                    file.read_to_string(&mut contents).await?;
+                    Ok(contents.trim().to_string())
+                }
+                Err(_) => var("DATABASE_URL").map_err(|_| {
+                    Error::BadConfig(
+                        "Either DATABASE_URL_FILE or DATABASE_URL env var is missing".to_string(),
+                    )
+                }),
+            }?;
+
+            let parsed_url = url::Url::parse(&url)?;
+
+            if parsed_url.password().is_some_and(|x| x == "iamrds") {
+                let region = var("AWS_REGION").map_err(|_| {
+                    Error::BadConfig(
+                        "AWS_REGION env var is required for IAM RDS authentication".to_string(),
+                    )
+                })?;
+
+                tracing::info!("iamrds mode detected, generating IAM RDS URL for region: {region}");
+
+                {
+                    return Err(Error::BadConfig("IAM RDS authentication is not enabled in OSS mode".to_string()));
+                }
+            } else {
+                Ok::<DatabaseUrl, Error>(DatabaseUrl::Static(url.to_string()))
+            }
+        })
+        .await?;
+
+
+    // Return the URL string
+    Ok(database_url.clone())
 }
 
 pub async fn initial_connection() -> Result<sqlx::Pool<sqlx::Postgres>, error::Error> {
-    let database_url = get_database_url().await?;
+    let database_url = get_database_url().await?.as_str().await;
     sqlx::postgres::PgPoolOptions::new()
         .max_connections(2)
         .connect_with(sqlx::postgres::PgConnectOptions::from_str(&database_url)?)
@@ -413,11 +464,14 @@ pub async fn connect_db(
         }
     };
 
-    Ok(connect(&database_url, max_connections, worker_mode).await?)
+
+    let pool = connect(database_url.clone(), max_connections, worker_mode).await?;
+
+    Ok(pool)
 }
 
 pub async fn connect(
-    database_url: &str,
+    database_url: DatabaseUrl,
     max_connections: u32,
     worker_mode: bool,
 ) -> Result<sqlx::Pool<sqlx::Postgres>, error::Error> {
@@ -466,7 +520,7 @@ pub async fn connect(
             }
         })
         .connect_with(
-            sqlx::postgres::PgConnectOptions::from_str(database_url)?.statement_cache_capacity(400),
+            sqlx::postgres::PgConnectOptions::from_str(&database_url.as_str().await)?.statement_cache_capacity(400),
         )
         .await
         .map_err(|err| Error::ConnectingToDatabase(err.to_string()))
