@@ -9,8 +9,8 @@ use serde_json::value::RawValue;
 
 use uuid::Uuid;
 use windmill_parser_ts::remove_pinned_imports;
-use windmill_queue::{append_logs, CanceledBy, MiniPulledJob, PrecomputedAgentInfo};
 
+use windmill_queue::{append_logs, CanceledBy, MiniPulledJob, PrecomputedAgentInfo};
 
 use crate::{
     common::{
@@ -35,8 +35,6 @@ use crate::SYSTEM_ROOT;
 use tokio::{fs::File, process::Command};
 
 use tokio::io::AsyncReadExt;
-
-
 
 use windmill_common::{
     error::{self, Result},

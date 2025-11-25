@@ -6,7 +6,7 @@
  * LICENSE-AGPL for a copy of the license.
  */
 
-mod jobs;
+pub mod jobs;
 pub mod jobs_oss;
 pub mod schedule;
 pub use jobs::*;

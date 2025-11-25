@@ -11,6 +11,7 @@
 
 use anyhow::anyhow;
 use futures::TryFutureExt;
+use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tokio::time::timeout;
 use windmill_common::client::AuthedClient;
@@ -57,6 +58,8 @@ use std::{
     time::Duration,
 };
 use windmill_parser::MainArgSignature;
+use windmill_queue::DedicatedWorkerJob;
+use windmill_queue::FlowRunners;
 use windmill_queue::MiniCompletedJob;
 use windmill_queue::PulledJobResultToJobErr;
 
@@ -520,6 +523,8 @@ lazy_static::lazy_static! {
         .ok()
         .and_then(|x| x.parse::<i64>().ok())
         .unwrap_or(1000);
+
+    pub static ref FLOW_RUNNER_RUNNING: Mutex<bool> = Mutex::new(false);
 }
 
 type Envs = Vec<(String, String)>;
@@ -546,14 +551,14 @@ lazy_static::lazy_static! {
 
 #[derive(Debug)]
 pub enum NextJob {
-    Sql(PulledJob),
+    Sql { job: PulledJob, flow_runners: Option<Arc<FlowRunners>> },
     Http(JobAndPerms),
 }
 
 impl NextJob {
     pub fn job(self) -> MiniPulledJob {
         match self {
-            NextJob::Sql(job) => job.job,
+            NextJob::Sql { job, .. } => job.job,
             NextJob::Http(job) => job.job,
         }
     }
@@ -563,7 +568,7 @@ impl std::ops::Deref for NextJob {
     type Target = MiniPulledJob;
     fn deref(&self) -> &Self::Target {
         match self {
-            NextJob::Sql(job) => &job.job,
+            NextJob::Sql { job, .. } => &job.job,
             NextJob::Http(job) => &job.job,
         }
     }
@@ -721,10 +726,10 @@ impl JobCompletedSender {
 impl SameWorkerSender {
     pub async fn send(
         &self,
-        payload: SameWorkerPayload,
+        message: SameWorkerPayload,
     ) -> Result<(), tokio::sync::mpsc::error::SendError<SameWorkerPayload>> {
         self.1.fetch_add(1, Ordering::Relaxed);
-        self.0.send(payload).await
+        self.0.send(message).await
     }
 }
 
@@ -817,18 +822,36 @@ fn add_outstanding_wait_time(
 
 async fn extract_job_and_perms(job: NextJob, conn: &Connection) -> JobAndPerms {
     match (job, conn) {
-        (NextJob::Sql(job), Connection::Sql(db)) => job.get_job_and_perms(db).await,
-        (NextJob::Sql(_), Connection::Http(_)) => panic!("sql job on http connection"),
+        (NextJob::Sql { job, flow_runners, .. }, Connection::Sql(db)) => {
+            JobAndPerms { flow_runners, ..job.get_job_and_perms(db).await }
+        }
+        (NextJob::Sql { .. }, Connection::Http(_)) => panic!("sql job on http connection"),
         (NextJob::Http(job), _) => job,
     }
 }
 
-fn create_span(arc_job: &Arc<MiniPulledJob>, worker_name: &str, hostname: &str) -> Span {
-    let span = tracing::span!(tracing::Level::INFO, "job",
-        job_id = %arc_job.id, root_job = field::Empty, workspace_id = %arc_job.workspace_id,  worker = %worker_name, hostname = %hostname, tag = %arc_job.tag,
+pub fn create_span_with_name(
+    arc_job: &MiniPulledJob,
+    worker_name: &str,
+    hostname: Option<&str>,
+    span_name: &str,
+) -> Span {
+    // The span macro requires a literal, so we use a fixed name and set otel.name dynamically
+    let span = tracing::span!(
+        tracing::Level::INFO,
+        "job",
+        job_id = %arc_job.id,
+        root_job = field::Empty,
+        workspace_id = %arc_job.workspace_id,
+        worker = %worker_name,
+        hostname = field::Empty,
+        tag = %arc_job.tag,
         language = field::Empty,
-        script_path = field::Empty, flow_step_id = field::Empty, parent_job = field::Empty,
-        otel.name = field::Empty);
+        script_path = field::Empty,
+        flow_step_id = field::Empty,
+        parent_job = field::Empty,
+        otel.name = field::Empty
+    );
 
     let rj = arc_job.flow_innermost_root_job.unwrap_or(arc_job.id);
 
@@ -836,10 +859,10 @@ fn create_span(arc_job: &Arc<MiniPulledJob>, worker_name: &str, hostname: &str) 
         span.record("language", lg.as_str());
     }
     if let Some(step_id) = arc_job.flow_step_id.as_ref() {
-        span.record("otel.name", format!("job {}", step_id).as_str());
+        span.record("otel.name", format!("{} {}", span_name, step_id).as_str());
         span.record("flow_step_id", step_id.as_str());
     } else {
-        span.record("otel.name", "job");
+        span.record("otel.name", span_name);
     }
     if let Some(parent_job) = arc_job.parent_job.as_ref() {
         span.record("parent_job", parent_job.to_string().as_str());
@@ -849,6 +872,9 @@ fn create_span(arc_job: &Arc<MiniPulledJob>, worker_name: &str, hostname: &str) 
     }
     if let Some(root_job) = arc_job.flow_innermost_root_job.as_ref() {
         span.record("root_job", root_job.to_string().as_str());
+    }
+    if let Some(hostname) = hostname {
+        span.record("hostname", hostname);
     }
 
     windmill_common::otel_oss::set_span_parent(&span, &rj);
@@ -864,6 +890,7 @@ pub async fn handle_all_job_kind_error(
     worker_dir: &str,
     worker_name: &str,
     job_completed_tx: JobCompletedSender,
+    killpill_rx: &tokio::sync::broadcast::Receiver<()>,
     #[cfg(feature = "benchmark")] bench: &mut BenchmarkIter,
 ) {
     match conn {
@@ -880,6 +907,7 @@ pub async fn handle_all_job_kind_error(
                 &worker_dir,
                 &worker_name,
                 job_completed_tx.clone(),
+                &killpill_rx,
                 #[cfg(feature = "benchmark")]
                 bench,
             )
@@ -903,6 +931,8 @@ pub async fn handle_all_job_kind_error(
                         duration: None,
                         has_stream: Some(false),
                         from_cache: None,
+                        flow_runners: None,
+                        done_tx: None,
                     },
                     false,
                 )
@@ -950,27 +980,21 @@ pub fn start_interactive_worker_shell(
                         .await;
 
                         match job {
-                            Ok(j) => match j.to_pulled_job() {
-                                Ok(j) => Ok(j.clone().map(NextJob::Sql)),
-                                ref e @ (Err(PulledJobResultToJobErr::MissingConcurrencyKey(
-                                    ref jc,
-                                ))
-                                | Err(PulledJobResultToJobErr::ErrorWhilePreprocessing(
-                                    ref jc,
-                                ))) => {
-                                    if let Err(err) =
-                                        job_completed_tx.send_job(jc.clone(), true).await
-                                    {
-                                        let e_fmt = match e {
-                                            Ok(_) => "unknown error".to_owned(),
-                                            Err(e) => e.to_string(),
-                                        };
-
-                                        tracing::error!("An error occurred while sending job completed ({e_fmt}): {:#?}", err)
+                            Ok(j) => {
+                                match j.to_pulled_job() {
+                                    Ok(j) => Ok(j
+                                        .clone()
+                                        .map(|job| NextJob::Sql { flow_runners: None, job })),
+                                    Err(PulledJobResultToJobErr::MissingConcurrencyKey(jc))
+                                    | Err(PulledJobResultToJobErr::ErrorWhilePreprocessing(jc)) => {
+                                        if let Err(err) = job_completed_tx.send_job(jc, true).await
+                                        {
+                                            tracing::error!("An error occurred while sending job completed: {:#?}", err)
+                                        }
+                                        Ok(None)
                                     }
-                                    Ok(None)
                                 }
-                            },
+                            }
                             Err(err) => Err(err),
                         }
                     }
@@ -998,6 +1022,7 @@ pub fn start_interactive_worker_shell(
                             parent_runnable_path,
                             token,
                             precomputed_agent_info: precomputed_bundle,
+                            flow_runners,
                         } = extract_job_and_perms(job, &conn).await;
 
                         let authed_client = AuthedClient::new(
@@ -1027,6 +1052,7 @@ pub fn start_interactive_worker_shell(
                             &mut occupancy_metrics,
                             &mut killpill_rx,
                             precomputed_bundle,
+                            flow_runners,
                             #[cfg(feature = "benchmark")]
                             &mut bench,
                         )
@@ -1465,7 +1491,7 @@ pub async fn run_worker(
 
 
     let (dedicated_workers, is_flow_worker, dedicated_handles): (
-        HashMap<String, Sender<Arc<MiniPulledJob>>>,
+        HashMap<String, Sender<DedicatedWorkerJob>>,
         bool,
         Vec<JoinHandle<()>>,
     ) = (HashMap::new(), false, vec![]);
@@ -1598,7 +1624,7 @@ pub async fn run_worker(
 
             if let Ok(same_worker_job) = same_worker_rx.try_recv() {
                 same_worker_queue_size.fetch_sub(1, Ordering::SeqCst);
-                tracing::debug!(
+                tracing::info!(
                     worker = %worker_name, hostname = %hostname,
                     "received {} from same worker channel",
                     same_worker_job.job_id
@@ -1618,7 +1644,12 @@ pub async fn run_worker(
                                 .expect("send kill to job completed tx");
                             break;
                         } else {
-                            job.map(|x| x.map(NextJob::Sql))
+                            job.map(|x| {
+                                x.map(|job| NextJob::Sql {
+                                    flow_runners: same_worker_job.flow_runners,
+                                    job,
+                                })
+                            })
                         }
                     }
                     Connection::Http(client) => client
@@ -1769,22 +1800,14 @@ pub async fn run_worker(
                         }
                         match job {
                             Ok(pulled_job_result) => match pulled_job_result.to_pulled_job() {
-                                Ok(j) => Ok(j.map(NextJob::Sql)),
-                                ref e @ (Err(PulledJobResultToJobErr::MissingConcurrencyKey(
-                                    ref jc,
-                                ))
-                                | Err(PulledJobResultToJobErr::ErrorWhilePreprocessing(
-                                    ref jc,
-                                ))) => {
-                                    if let Err(err) =
-                                        job_completed_tx.send_job(jc.clone(), true).await
-                                    {
-                                        let e_fmt = match e {
-                                            Ok(_) => "unknown error".to_owned(),
-                                            Err(e) => e.to_string(),
-                                        };
-
-                                        tracing::error!("An error occurred while sending job completed ({e_fmt}): {:#?}", err)
+                                Ok(j) => Ok(j.map(|job| NextJob::Sql { flow_runners: None, job })),
+                                Err(PulledJobResultToJobErr::MissingConcurrencyKey(jc))
+                                | Err(PulledJobResultToJobErr::ErrorWhilePreprocessing(jc)) => {
+                                    if let Err(err) = job_completed_tx.send_job(jc, true).await {
+                                        tracing::error!(
+                                            "An error occurred while sending job completed: {:#?}",
+                                            err
+                                        )
                                     }
                                     Ok(None)
                                 }
@@ -1816,7 +1839,10 @@ pub async fn run_worker(
 
                 tracing::debug!(worker = %worker_name, hostname = %hostname, "started handling of job {}", job.id);
 
-                if matches!(job.kind, JobKind::Script | JobKind::Preview) {
+                if matches!(
+                    job.kind,
+                    JobKind::Script | JobKind::Preview | JobKind::FlowScript
+                ) {
                     if !dedicated_workers.is_empty() {
                         let key_o = if is_flow_worker {
                             job.flow_step_id.as_ref().map(|x| x.to_string())
@@ -1825,14 +1851,89 @@ pub async fn run_worker(
                         };
                         if let Some(key) = key_o {
                             if let Some(dedicated_worker_tx) = dedicated_workers.get(&key) {
-                                if let Err(e) = dedicated_worker_tx.send(Arc::new(job.job())).await
-                                {
+                                let dedicated_job = DedicatedWorkerJob {
+                                    job: Arc::new(job.job()),
+                                    flow_runners: None,
+                                    done_tx: None,
+                                };
+                                if let Err(e) = dedicated_worker_tx.send(dedicated_job).await {
                                     tracing::info!("failed to send jobs to dedicated workers. Likely dedicated worker has been shut down. This is normal: {e:?}");
                                 }
 
                                 #[cfg(feature = "benchmark")]
                                 {
                                     add_time!(bench, "sent to dedicated worker");
+                                    infos.add_iter(bench, true);
+                                }
+
+                                continue;
+                            }
+                        }
+                    }
+
+                    // Extract flow_runners early to use in both dedicated workers and flow runners
+                    let flow_runners = match &job {
+                        NextJob::Sql { flow_runners, .. } => flow_runners.clone(),
+                        NextJob::Http(_) => None,
+                    };
+
+                    if let Some(flow_runners) = flow_runners {
+                        let key_o = job.flow_step_id.as_ref().map(|x| x.to_string());
+                        if let Some(key) = key_o {
+                            if let Some(flow_runner_tx) = flow_runners.runners.get(&key) {
+                                tracing::info!(
+                                    "sending job {} to flow runner step {}",
+                                    job.id,
+                                    key
+                                );
+                                let (done_tx, done_rx) = tokio::sync::oneshot::channel::<()>();
+                                let flow_runners = flow_runners.clone();
+
+                                let job = job.job();
+
+                                let dedicated_job = DedicatedWorkerJob {
+                                    job: Arc::new(job.clone()),
+                                    flow_runners: Some(flow_runners),
+                                    done_tx: Some(done_tx),
+                                };
+
+                                if let Err(e) = flow_runner_tx.send(dedicated_job).await {
+                                    let token = match &conn {
+                                        Connection::Sql(db) => {
+                                            windmill_queue::jobs::create_token(db, &job, None).await
+                                        }
+                                        _ => "".to_string(),
+                                    };
+                                    handle_all_job_kind_error(
+                                        &conn,
+                                        &AuthedClient::new(
+                                            base_internal_url.to_owned(),
+                                            job.workspace_id.clone(),
+                                            token,
+                                            None,
+                                        ),
+                                        MiniCompletedJob::from(job),
+                                        error::Error::InternalErr(format!(
+                                            "failed to send jobs to flow runners: {e:?}"
+                                        )),
+                                        Some(&same_worker_tx),
+                                        &worker_dir,
+                                        &worker_name,
+                                        job_completed_tx.clone(),
+                                        &killpill_rx,
+                                        #[cfg(feature = "benchmark")]
+                                        &mut bench,
+                                    )
+                                    .await;
+                                } else {
+                                    if let Err(err) = done_rx.await {
+                                        tracing::error!("Flow runner done channel has been dropped without being received: {err:?}");
+                                    }
+                                }
+
+                                #[cfg(feature = "benchmark")]
+                                {
+                                    add_time!(bench, "sent to flow runner");
                                     infos.add_iter(bench, true);
                                 }
 
@@ -1859,6 +1960,8 @@ pub async fn run_worker(
                                 duration: None,
                                 has_stream: Some(false),
                                 from_cache: None,
+                                flow_runners: None,
+                                done_tx: None,
                             },
                             true,
                         )
@@ -1990,6 +2093,7 @@ pub async fn run_worker(
                         parent_runnable_path,
                         token,
                         precomputed_agent_info: precomputed_bundle,
+                        flow_runners,
                     } = extract_job_and_perms(job, &conn).await;
 
                     let authed_client = AuthedClient::new(
@@ -2001,7 +2105,7 @@ pub async fn run_worker(
 
                     let arc_job = Arc::new(job);
 
-                    let span = create_span(&arc_job, &worker_name, hostname);
+                    let span = create_span_with_name(&arc_job, &worker_name, Some(hostname), "job");
 
                     let job_result = handle_queued_job(
                         arc_job.clone(),
@@ -2021,6 +2125,7 @@ pub async fn run_worker(
                         &mut occupancy_metrics,
                         &mut killpill_rx2,
                         precomputed_bundle,
+                        flow_runners,
                         #[cfg(feature = "benchmark")]
                         &mut bench,
                     )
@@ -2080,6 +2185,7 @@ pub async fn run_worker(
                                 &worker_dir,
                                 &worker_name,
                                 job_completed_tx.clone(),
+                                &killpill_rx,
                                 #[cfg(feature = "benchmark")]
                                 &mut bench,
                             )
@@ -2235,7 +2341,7 @@ async fn queue_init_bash_maybe<'c>(
     };
     if let Some((uuid, content)) = uuid_content {
         same_worker_tx
-            .send(SameWorkerPayload { job_id: uuid, recoverable: false })
+            .send(SameWorkerPayload { job_id: uuid, recoverable: false, flow_runners: None })
             .await
             .map_err(to_anyhow)?;
         tracing::info!("Creating initial job {uuid} from initial script script: {content}");
@@ -2353,7 +2459,7 @@ async fn queue_periodic_script_bash_maybe<'c>(
     };
 
     same_worker_tx
-        .send(SameWorkerPayload { job_id: uuid, recoverable: false })
+        .send(SameWorkerPayload { job_id: uuid, recoverable: false, flow_runners: None })
         .await
         .map_err(to_anyhow)?;
     tracing::info!("Creating periodic script job {uuid} from periodic script: {content}");
@@ -2365,7 +2471,6 @@ pub struct SendResult {
     pub time: Instant,
 }
 
-#[derive(Clone)]
 pub enum SendResultPayload {
     JobCompleted(JobCompleted),
     UpdateFlow(UpdateFlow),
@@ -2452,6 +2557,7 @@ pub async fn handle_queued_job(
     occupancy_metrics: &mut OccupancyMetrics,
     killpill_rx: &mut tokio::sync::broadcast::Receiver<()>,
     precomputed_agent_info: Option<PrecomputedAgentInfo>,
+    flow_runners: Option<Arc<FlowRunners>>,
     #[cfg(feature = "benchmark")] _bench: &mut BenchmarkIter,
 ) -> windmill_common::error::Result<bool> {
     // Extract the active span from the context
@@ -2578,6 +2684,8 @@ pub async fn handle_queued_job(
                             duration: None,
                             has_stream: Some(false),
                             from_cache: Some(true),
+                            flow_runners: None,
+                            done_tx: None,
                         },
                         true,
                     )
@@ -2613,6 +2721,8 @@ pub async fn handle_queued_job(
                 worker_dir,
                 job_completed_tx.clone(),
                 worker_name,
+                flow_runners,
+                &killpill_rx,
             ))
             .warn_after_seconds(10)
             .await?;
@@ -2842,6 +2952,7 @@ pub async fn handle_queued_job(
             conn,
             Some(started.elapsed().as_millis() as i64),
             has_stream,
+            flow_runners,
         )
         .await
     }

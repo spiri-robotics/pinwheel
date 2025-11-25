@@ -18,6 +18,8 @@ use tokio::{
     sync::Semaphore,
     task,
 };
+use windmill_queue::MiniPulledJob;
+
 use uuid::Uuid;
 use windmill_common::{
     error::{
@@ -479,7 +481,6 @@ pub async fn handle_python_job(
     precomputed_agent_info: Option<PrecomputedAgentInfo>,
     has_stream: &mut bool,
 ) -> windmill_common::error::Result<Box<RawValue>> {
-
     let script_path = crate::common::use_flow_root_path(job.runnable_path());
 
     let annotations = PythonAnnotations::parse(inner_content);
@@ -1946,6 +1947,4 @@ fn get_result_postprocessor<'a>(skip: bool) -> &'a str {
     }
 }
 
-
-use windmill_queue::MiniPulledJob;
 
