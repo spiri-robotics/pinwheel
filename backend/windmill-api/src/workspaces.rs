@@ -1782,6 +1782,13 @@ lazy_static::lazy_static! {
         }
     };
 
+    pub static ref DISABLE_WORKSPACE_FORK: bool = {
+        match std::env::var("DISABLE_WORKSPACE_FORK") {
+            Ok(val) => val == "true",
+            Err(_) => false,
+        }
+    };
+
 }
 
 async fn create_workspace_require_superadmin() -> String {
@@ -2495,6 +2502,10 @@ async fn create_workspace_fork_branch(
         )));
     }
 
+    if *DISABLE_WORKSPACE_FORK {
+        require_super_admin(&db, &authed.email).await?;
+    }
+
     Ok(Json(
         handle_fork_branch_creation(&authed.email, &authed.username, &db, &w_id, &nw.id).await?,
     ))
@@ -2510,6 +2521,10 @@ async fn create_workspace_fork(
         return Err(Error::BadRequest(format!(
             "Forking workspaces is not available on app.windmill.dev"
         )));
+    }
+
+    if *DISABLE_WORKSPACE_FORK {
+        require_super_admin(&db, &authed.email).await?;
     }
 
     let mut tx: Transaction<'_, Postgres> = db.begin().await?;
