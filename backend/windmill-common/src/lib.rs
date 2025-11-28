@@ -47,7 +47,7 @@ pub mod indexer;
 pub mod job_metrics;
 #[cfg(feature = "parquet")]
 pub mod job_s3_helpers_oss;
-pub mod lockfiles;
+pub mod workspace_dependencies;
 
 pub mod git_sync_oss;
 pub mod jobs;

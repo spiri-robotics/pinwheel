@@ -98,6 +98,7 @@ mod live_migrations;
 #[cfg(feature = "http_trigger")]
 mod openapi;
 mod s3_proxy_oss;
+mod workspace_dependencies;
 
 mod approvals;
 #[cfg(feature = "parquet")]
@@ -405,6 +406,10 @@ pub async fn run_server(
                         .nest("/drafts", drafts::workspaced_service())
                         .nest("/favorites", favorite::workspaced_service())
                         .nest("/flows", flows::workspaced_service())
+                        .nest(
+                            "/workspace_dependencies",
+                            workspace_dependencies::workspaced_service(),
+                        )
                         .nest(
                             "/flow_conversations",
                             flow_conversations::workspaced_service(),
