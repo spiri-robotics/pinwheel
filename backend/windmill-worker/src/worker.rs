@@ -3498,22 +3498,33 @@ mount {{
         ))?;
     };
 
-    let maybe_lock = if let Some(lock) = lock.clone() {
-        MaybeLock::Resolved { lock }
-    } else {
-        MaybeLock::Unresolved {
-            workspace_dependencies: WorkspaceDependenciesPrefetched::extract(
-                code,
-                language,
-                &job.workspace_id,
-                // TODO: implement
-                &None,
-                job.runnable_path(),
-                conn.clone(),
-            )
-            .await?,
+    /// Resolves MaybeLock for languages that need workspace dependencies prefetching.
+    /// Only call this for Bun, Bunnative, Go, and Php.
+    async fn resolve_maybe_lock(
+        lock: &Option<String>,
+        code: &str,
+        language: ScriptLang,
+        workspace_id: &str,
+        runnable_path: &str,
+        conn: Connection,
+    ) -> error::Result<MaybeLock> {
+        if let Some(lock) = lock.clone() {
+            Ok(MaybeLock::Resolved { lock })
+        } else {
+            Ok(MaybeLock::Unresolved {
+                workspace_dependencies: WorkspaceDependenciesPrefetched::extract(
+                    code,
+                    language,
+                    workspace_id,
+                    // TODO: implement
+                    &None,
+                    runnable_path,
+                    conn,
+                )
+                .await?,
+            })
         }
-    };
+    }
 
     // Box::pin all language handlers to prevent large match enum on stack
     let result: error::Result<Box<RawValue>> = match language {
@@ -3567,6 +3578,15 @@ mount {{
             .await
         }
         ScriptLang::Bun | ScriptLang::Bunnative => {
+            let maybe_lock = resolve_maybe_lock(
+                &lock,
+                &code,
+                language,
+                &job.workspace_id,
+                job.runnable_path(),
+                conn.clone(),
+            )
+            .await?;
             Box::pin(handle_bun_job(
                 maybe_lock,
                 codebase.as_ref(),
@@ -3590,6 +3610,15 @@ mount {{
             .await
         }
         ScriptLang::Go => {
+            let maybe_lock = resolve_maybe_lock(
+                &lock,
+                &code,
+                language,
+                &job.workspace_id,
+                job.runnable_path(),
+                conn.clone(),
+            )
+            .await?;
             Box::pin(handle_go_job(
                 mem_peak,
                 canceled_by,
@@ -3652,23 +3681,34 @@ mount {{
             ));
 
             #[cfg(feature = "php")]
-            Box::pin(handle_php_job(
-                maybe_lock,
-                mem_peak,
-                canceled_by,
-                job,
-                conn,
-                client,
-                parent_runnable_path,
-                job_dir,
-                &code,
-                base_internal_url,
-                worker_name,
-                envs,
-                &shared_mount,
-                occupancy_metrics,
-            ))
-            .await
+            {
+                let maybe_lock = resolve_maybe_lock(
+                    &lock,
+                    &code,
+                    language,
+                    &job.workspace_id,
+                    job.runnable_path(),
+                    conn.clone(),
+                )
+                .await?;
+                Box::pin(handle_php_job(
+                    maybe_lock,
+                    mem_peak,
+                    canceled_by,
+                    job,
+                    conn,
+                    client,
+                    parent_runnable_path,
+                    job_dir,
+                    &code,
+                    base_internal_url,
+                    worker_name,
+                    envs,
+                    &shared_mount,
+                    occupancy_metrics,
+                ))
+                .await
+            }
         }
         ScriptLang::Rust => {
             #[cfg(not(feature = "rust"))]
