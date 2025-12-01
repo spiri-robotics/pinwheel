@@ -105,6 +105,7 @@ mod approvals;
 mod job_helpers_oss;
 pub mod job_metrics;
 pub mod jobs;
+pub mod jobs_export;
 #[cfg(feature = "oauth2")]
 pub mod oauth2_oss;
 mod oidc_oss;
