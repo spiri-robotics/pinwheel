@@ -843,6 +843,7 @@ async fn trigger_script_with_retry_and_error_handler(
             concurrency_settings,
             debouncing_settings,
             cache_ttl,
+            cache_ignore_s3_path,
             priority,
             apply_preprocessor,
             ..
@@ -856,6 +857,7 @@ async fn trigger_script_with_retry_and_error_handler(
             error_handler_args,
             skip_handler: None,
             cache_ttl,
+            cache_ignore_s3_path,
             priority,
             tag_override: tag.clone(),
             apply_preprocessor,
