@@ -12,13 +12,10 @@ use windmill_common::{
     error::Result,
     flows::{FlowModuleValue, Retry},
     get_latest_deployed_hash_for_path, get_latest_flow_version_info_for_path,
-    jobs::{
-        get_has_preprocessor_from_content_and_lang, script_path_to_payload, JobPayload,
-        JobTriggerKind,
-    },
+    jobs::{get_has_preprocessor_from_content_and_lang, script_path_to_payload, JobPayload},
     scripts::{get_full_hub_script_by_path, ScriptHash, ScriptLang},
     triggers::{
-        HubOrWorkspaceId, RunnableFormat, RunnableFormatVersion, TriggerKind,
+        HubOrWorkspaceId, RunnableFormat, RunnableFormatVersion, TriggerKind, TriggerMetadata,
         RUNNABLE_FORMAT_VERSION_CACHE,
     },
     users::username_to_permissioned_as,
@@ -30,8 +27,9 @@ use windmill_queue::{push, PushArgs, PushArgsOwned, PushIsolationLevel};
 use crate::{
     db::{ApiAuthed, DB},
     jobs::{
-        check_tag_available_for_workspace, delete_job_metadata_after_use, result_to_response,
-        run_flow_by_path_inner, run_script_by_path_inner, run_wait_result_internal, RunJobQuery,
+        check_tag_available_for_workspace, delete_job_metadata_after_use,
+        push_flow_job_by_path_into_queue, push_script_job_by_path_into_queue, result_to_response,
+        run_wait_result_internal, RunJobQuery,
     },
     utils::check_scopes,
     HTTP_CLIENT,
@@ -504,8 +502,9 @@ pub trait TriggerJobArgs {
 }
 
 #[allow(dead_code)]
-pub async fn trigger_runnable_inner(
+pub async fn trigger_runnable_inner<'c>(
     db: &DB,
+    tx_o: Option<sqlx::Transaction<'c, sqlx::Postgres>>,
     user_db: Option<UserDB>,
     authed: ApiAuthed,
     workspace_id: &str,
@@ -517,8 +516,14 @@ pub async fn trigger_runnable_inner(
     error_handler_args: Option<&sqlx::types::Json<HashMap<String, serde_json::Value>>>,
     trigger_path: String,
     job_id: Option<Uuid>,
-    trigger_kind: Option<JobTriggerKind>,
-) -> Result<(Uuid, Option<bool>, Option<String>)> {
+    trigger: TriggerMetadata,
+    suspended_mode: Option<bool>,
+) -> Result<(
+    Uuid,
+    Option<bool>,
+    Option<String>,
+    Option<sqlx::Transaction<'c, sqlx::Postgres>>,
+)> {
     let error_handler_args = error_handler_args.map(|args| {
         let args = args
             .0
@@ -529,24 +534,26 @@ pub async fn trigger_runnable_inner(
     });
 
     let user_db = user_db.unwrap_or_else(|| UserDB::new(db.clone()));
-    let (uuid, delete_after_use, early_return) = if is_flow {
-        let run_query = RunJobQuery { job_id, ..Default::default() };
+    let (uuid, delete_after_use, early_return, tx_out) = if is_flow {
+        let run_query = RunJobQuery { job_id, suspended_mode, ..Default::default() };
         let path = StripPath(runnable_path.to_string());
-        let (uuid, early_return) = run_flow_by_path_inner(
+        let (uuid, early_return, tx_out) = push_flow_job_by_path_into_queue(
             authed,
             db.clone(),
+            tx_o,
             user_db,
             workspace_id.to_string(),
             path,
             run_query,
             args,
-            trigger_kind,
+            Some(trigger),
         )
         .await?;
-        (uuid, None, early_return)
+        (uuid, None, early_return, tx_out)
     } else {
-        let (uuid, delete_after_use) = trigger_script_internal(
+        let (uuid, delete_after_use, tx_out) = trigger_script_internal(
             db,
+            tx_o,
             user_db,
             authed,
             workspace_id,
@@ -557,13 +564,14 @@ pub async fn trigger_runnable_inner(
             error_handler_args.as_ref(),
             trigger_path,
             job_id,
-            trigger_kind,
+            trigger,
+            suspended_mode,
         )
         .await?;
-        (uuid, delete_after_use, None)
+        (uuid, delete_after_use, None, tx_out)
     };
 
-    Ok((uuid, delete_after_use, early_return))
+    Ok((uuid, delete_after_use, early_return, tx_out))
 }
 
 #[allow(dead_code)]
@@ -580,10 +588,12 @@ pub async fn trigger_runnable(
     error_handler_args: Option<&sqlx::types::Json<HashMap<String, serde_json::Value>>>,
     trigger_path: String,
     job_id: Option<Uuid>,
-    trigger_kind: Option<JobTriggerKind>,
+    suspended_mode: bool,
+    trigger: TriggerMetadata,
 ) -> Result<axum::response::Response> {
-    let (uuid, _, _) = trigger_runnable_inner(
+    let uuid = trigger_runnable_inner(
         db,
+        None,
         user_db,
         authed,
         workspace_id,
@@ -595,9 +605,11 @@ pub async fn trigger_runnable(
         error_handler_args,
         trigger_path,
         job_id,
-        trigger_kind,
+        trigger,
+        Some(suspended_mode),
     )
-    .await?;
+    .await?
+    .0;
     Ok((StatusCode::CREATED, uuid.to_string()).into_response())
 }
 
@@ -614,11 +626,12 @@ pub async fn trigger_runnable_and_wait_for_result(
     error_handler_path: Option<&str>,
     error_handler_args: Option<&sqlx::types::Json<HashMap<String, serde_json::Value>>>,
     trigger_path: String,
-    trigger_kind: Option<JobTriggerKind>,
+    trigger: TriggerMetadata,
 ) -> Result<axum::response::Response> {
     let username = authed.username.clone();
-    let (uuid, delete_after_use, early_return) = trigger_runnable_inner(
+    let (uuid, delete_after_use, early_return, _) = trigger_runnable_inner(
         db,
+        None,
         user_db,
         authed,
         workspace_id,
@@ -630,7 +643,8 @@ pub async fn trigger_runnable_and_wait_for_result(
         error_handler_args,
         trigger_path,
         None,
-        trigger_kind,
+        trigger,
+        None,
     )
     .await?;
     let (result, success) =
@@ -656,11 +670,12 @@ pub async fn trigger_runnable_and_wait_for_raw_result(
     error_handler_path: Option<&str>,
     error_handler_args: Option<&sqlx::types::Json<HashMap<String, serde_json::Value>>>,
     trigger_path: String,
-    trigger_kind: Option<JobTriggerKind>,
+    trigger: TriggerMetadata,
 ) -> Result<(Box<RawValue>, bool)> {
     let username = authed.username.clone();
-    let (uuid, delete_after_use, early_return) = trigger_runnable_inner(
+    let (uuid, delete_after_use, early_return, _) = trigger_runnable_inner(
         db,
+        None,
         user_db,
         authed,
         workspace_id,
@@ -672,7 +687,8 @@ pub async fn trigger_runnable_and_wait_for_raw_result(
         error_handler_args,
         trigger_path,
         None,
-        trigger_kind,
+        trigger,
+        None,
     )
     .await?;
 
@@ -706,7 +722,7 @@ pub async fn trigger_runnable_and_wait_for_raw_result_with_error_ctx(
     error_handler_path: Option<&str>,
     error_handler_args: Option<&sqlx::types::Json<HashMap<String, serde_json::Value>>>,
     trigger_path: String,
-    trigger_kind: Option<JobTriggerKind>,
+    trigger: TriggerMetadata,
 ) -> Result<Box<RawValue>> {
     let (result, success) = trigger_runnable_and_wait_for_raw_result(
         db,
@@ -720,7 +736,7 @@ pub async fn trigger_runnable_and_wait_for_raw_result_with_error_ctx(
         error_handler_path,
         error_handler_args,
         trigger_path,
-        trigger_kind,
+        trigger,
     )
     .await?;
 
@@ -735,8 +751,9 @@ pub async fn trigger_runnable_and_wait_for_raw_result_with_error_ctx(
     }
 }
 
-async fn trigger_script_internal(
+async fn trigger_script_internal<'c>(
     db: &DB,
+    tx_o: Option<sqlx::Transaction<'c, sqlx::Postgres>>,
     user_db: UserDB,
     authed: ApiAuthed,
     workspace_id: &str,
@@ -747,25 +764,33 @@ async fn trigger_script_internal(
     error_handler_args: Option<&sqlx::types::Json<HashMap<String, Box<RawValue>>>>,
     trigger_path: String,
     job_id: Option<Uuid>,
-    trigger_kind: Option<JobTriggerKind>,
-) -> Result<(Uuid, Option<bool>)> {
+    trigger: TriggerMetadata,
+    suspended_mode: Option<bool>,
+) -> Result<(
+    Uuid,
+    Option<bool>,
+    Option<sqlx::Transaction<'c, sqlx::Postgres>>,
+)> {
     if retry.is_none() && error_handler_path.is_none() {
-        let run_query = RunJobQuery { job_id, ..Default::default() };
+        let run_query = RunJobQuery { job_id, suspended_mode, ..Default::default() };
         let path = StripPath(script_path.to_string());
-        run_script_by_path_inner(
+        let (uuid, delete_after_use, tx_out) = push_script_job_by_path_into_queue(
             authed,
             db.clone(),
+            tx_o,
             user_db,
             workspace_id.to_string(),
             path,
             run_query,
             args,
-            trigger_kind,
+            Some(trigger),
         )
-        .await
+        .await?;
+        Ok((uuid, delete_after_use, tx_out))
     } else {
-        trigger_script_with_retry_and_error_handler(
+        let (uuid, delete_after_use, tx_out) = trigger_script_with_retry_and_error_handler(
             db,
+            tx_o,
             user_db,
             authed,
             workspace_id,
@@ -776,14 +801,17 @@ async fn trigger_script_internal(
             error_handler_args,
             trigger_path,
             job_id,
-            trigger_kind,
+            trigger,
+            suspended_mode,
         )
-        .await
+        .await?;
+        Ok((uuid, delete_after_use, tx_out))
     }
 }
 
-async fn trigger_script_with_retry_and_error_handler(
+async fn trigger_script_with_retry_and_error_handler<'c>(
     db: &DB,
+    tx_o: Option<sqlx::Transaction<'c, sqlx::Postgres>>,
     user_db: UserDB,
     authed: ApiAuthed,
     workspace_id: &str,
@@ -794,8 +822,13 @@ async fn trigger_script_with_retry_and_error_handler(
     error_handler_args: Option<&sqlx::types::Json<HashMap<String, Box<RawValue>>>>,
     trigger_path: String,
     job_id: Option<Uuid>,
-    trigger_kind: Option<JobTriggerKind>,
-) -> Result<(Uuid, Option<bool>)> {
+    trigger: TriggerMetadata,
+    suspended_mode: Option<bool>,
+) -> Result<(
+    Uuid,
+    Option<bool>,
+    Option<sqlx::Transaction<'c, sqlx::Postgres>>,
+)> {
 
     check_scopes(&authed, || format!("jobs:run:scripts:{script_path}"))?;
 
@@ -817,22 +850,30 @@ async fn trigger_script_with_retry_and_error_handler(
 
     check_tag_available_for_workspace(&db, &workspace_id, &tag, &authed).await?;
 
-    let (email, permissioned_as, push_authed, tx) =
-        if let Some(on_behalf_of) = on_behalf_of.as_ref() {
-            (
-                on_behalf_of.email.as_str(),
-                on_behalf_of.permissioned_as.clone(),
-                None,
-                PushIsolationLevel::IsolatedRoot(db.clone()),
-            )
-        } else {
-            (
-                authed.email.as_str(),
-                username_to_permissioned_as(&authed.username),
-                Some(authed.clone().into()),
-                PushIsolationLevel::Isolated(user_db, authed.clone().into()),
-            )
-        };
+    let return_tx = tx_o.is_some();
+
+    let (email, permissioned_as, push_authed, tx) = if let Some(tx) = tx_o {
+        (
+            authed.email.as_str(),
+            username_to_permissioned_as(&authed.username),
+            Some(authed.clone().into()),
+            PushIsolationLevel::Transaction(tx),
+        )
+    } else if let Some(on_behalf_of) = on_behalf_of.as_ref() {
+        (
+            on_behalf_of.email.as_str(),
+            on_behalf_of.permissioned_as.clone(),
+            None,
+            PushIsolationLevel::IsolatedRoot(db.clone()),
+        )
+    } else {
+        (
+            authed.email.as_str(),
+            username_to_permissioned_as(&authed.username),
+            Some(authed.clone().into()),
+            PushIsolationLevel::Isolated(user_db, authed.clone().into()),
+        )
+    };
 
     let push_args = PushArgs { args: &args.args, extra: args.extra };
 
@@ -861,7 +902,7 @@ async fn trigger_script_with_retry_and_error_handler(
             priority,
             tag_override: tag.clone(),
             apply_preprocessor,
-            trigger_path: Some(trigger_path),
+            trigger_path: Some(trigger_path.clone()),
             concurrency_settings,
             debouncing_settings,
         },
@@ -872,7 +913,6 @@ async fn trigger_script_with_retry_and_error_handler(
             )))
         }
     };
-
     let (uuid, tx) = push(
         &db,
         tx,
@@ -901,10 +941,16 @@ async fn trigger_script_with_retry_and_error_handler(
         false,
         None,
         None,
-        trigger_kind,
+        Some(trigger),
+        suspended_mode,
     )
     .await?;
-    tx.commit().await?;
 
-    Ok((uuid, delete_after_use))
+    // If we were given a transaction, return it; otherwise commit it
+    if return_tx {
+        Ok((uuid, delete_after_use, Some(tx)))
+    } else {
+        tx.commit().await?;
+        Ok((uuid, delete_after_use, None))
+    }
 }
