@@ -1,3 +1,8 @@
+use windmill_common::{
+    audit::AuditAuthor,
+    db::{Authable, DbWithOptAuthed},
+};
+
 
 /*
  * Author: Ruben Fiszel
@@ -15,6 +20,27 @@ use {
         utils::Pagination,
     },
 };
+
+impl<'a, T: Authable + AuditAuthorable + Sync> AuditAuthorable for DbWithOptAuthed<'a, T> {
+    fn email(&self) -> &str {
+        match self {
+            DbWithOptAuthed::UserDB { authed, .. } => AuditAuthorable::email(*authed),
+            DbWithOptAuthed::DB { audit_author, .. } => audit_author.email(),
+        }
+    }
+    fn username(&self) -> &str {
+        match self {
+            DbWithOptAuthed::UserDB { authed, .. } => AuditAuthorable::username(*authed),
+            DbWithOptAuthed::DB { audit_author, .. } => audit_author.username(),
+        }
+    }
+    fn username_override(&self) -> Option<&str> {
+        match self {
+            DbWithOptAuthed::UserDB { authed, .. } => AuditAuthorable::username_override(*authed),
+            DbWithOptAuthed::DB { .. } => None,
+        }
+    }
+}
 
 impl AuditAuthorable for AuditAuthor {
     fn email(&self) -> &str {
@@ -41,14 +67,6 @@ pub trait AuditAuthorable {
     fn token_prefix(&self) -> Option<&str> {
         None
     }
-}
-
-#[derive(Clone)]
-pub struct AuditAuthor {
-    pub username: String,
-    pub email: String,
-    pub username_override: Option<String>,
-    pub token_prefix: Option<String>,
 }
 
 #[tracing::instrument(level = "trace", skip_all)]
