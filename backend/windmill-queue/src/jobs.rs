@@ -756,6 +756,7 @@ pub async fn add_completed_job_error(
         false,
         false,
     )
+    .warn_after_seconds(10)
     .await?;
     Ok(result)
 }
@@ -812,6 +813,7 @@ pub async fn add_completed_job<T: Serialize + Send + Sync + ValidableJson>(
             has_stream,
             from_cache,
         )
+        .warn_after_seconds(10)
     })
     .retry(
         ConstantBuilder::default()
@@ -862,7 +864,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
 ) -> windmill_common::error::Result<(Option<Uuid>, i64, bool)> {
     // let start = std::time::Instant::now();
 
-    let mut tx = db.begin().await?;
+    let mut tx = db.begin().warn_after_seconds(10).await?;
 
     let job_id = queued_job.id;
     // tracing::error!("1 {:?}", start.elapsed());
@@ -917,6 +919,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
             /* $10 */ result_columns as Option<&Vec<String>>,
         )
         .fetch_optional(&mut *tx)
+        .warn_after_seconds(10)
         .await
         .map_err(|e| Error::internal_err(format!("Could not add completed job {job_id}: {e:#}")))?;
 
@@ -928,6 +931,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
             job_id
         )
         .fetch_one(&mut *tx)
+        .warn_after_seconds(10)
         .await
         .map_err(|e| Error::internal_err(format!("Could not add completed job {job_id}: {e:#}")))?
         .unwrap_or(false);
@@ -953,6 +957,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
             labels as Vec<String>
         )
         .execute(&mut *tx)
+        .warn_after_seconds(10)
         .await
         .map_err(|e| Error::InternalErr(format!("Could not update job labels: {e:#}")))?;
     }
@@ -976,6 +981,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
                 parent_job
             )
             .execute(&mut *tx)
+            .warn_after_seconds(10)
             .await
             .inspect_err(|e| {
                 tracing::error!(
@@ -988,7 +994,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
     // tracing::error!("Added completed job {:#?}", queued_job);
 
     let mut _skip_downstream_error_handlers = false;
-    tx = delete_job(tx, &job_id).await?;
+    tx = delete_job(tx, &job_id).warn_after_seconds(10).await?;
     // tracing::error!("3 {:?}", start.elapsed());
 
     if queued_job.is_flow_step() {
@@ -1009,13 +1015,14 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
                 &queued_job.workspace_id
             )
             .execute(&mut *tx)
+            .warn_after_seconds(10)
             .await?;
             if flow_is_done {
                 let r = sqlx::query_scalar!(
                     "UPDATE parallel_monitor_lock SET last_ping = now() WHERE parent_flow_id = $1 and job_id = $2 RETURNING 1",
                     parent_job,
                     &queued_job.id
-                ).fetch_optional(&mut *tx).await?;
+                ).fetch_optional(&mut *tx).warn_after_seconds(10).await?;
                 if r.is_some() {
                     tracing::info!(
                             "parallel flow iteration is done, setting parallel monitor last ping lock for job {}",
@@ -1029,8 +1036,9 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
             let schedule_path = queued_job.schedule_path().unwrap();
             let script_path = queued_job.runnable_path.as_ref().unwrap();
 
-            let schedule =
-                get_schedule_opt(&mut *tx, &queued_job.workspace_id, &schedule_path).await?;
+            let schedule = get_schedule_opt(&mut *tx, &queued_job.workspace_id, &schedule_path)
+                .warn_after_seconds(10)
+                .await?;
 
             if let Some(schedule) = schedule {
 
@@ -1058,6 +1066,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
                             &queued_job.workspace_id
                         )
                         .fetch_optional(&mut *tx)
+                        .warn_after_seconds(10)
                         .await?
                         .flatten()
                         .unwrap_or(false);
@@ -1070,6 +1079,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
                         &script_path,
                         &queued_job.workspace_id,
                     ))
+                    .warn_after_seconds(10)
                     .await
                     {
                         match err {
@@ -1101,6 +1111,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
                 queued_job.id.hyphenated().to_string(),
             )
             .execute(&mut *tx)
+            .warn_after_seconds(10)
             .await
             .map_err(|e| {
                 Error::internal_err(format!(
@@ -1115,6 +1126,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
             queued_job.id,
         )
         .execute(&mut *tx)
+        .warn_after_seconds(10)
         .await
         {
             tracing::error!(
@@ -1127,15 +1139,17 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
 
     sqlx::query!("DELETE FROM job_perms WHERE job_id = $1", job_id)
         .execute(&mut *tx)
+        .warn_after_seconds(10)
         .await?;
 
     if !success || has_stream {
         sqlx::query!("DELETE FROM job_result_stream_v2 WHERE job_id = $1", job_id)
             .execute(&mut *tx)
+            .warn_after_seconds(10)
             .await?;
     }
 
-    tx.commit().await?;
+    tx.commit().warn_after_seconds(10).await?;
 
     tracing::info!(
         %job_id,
