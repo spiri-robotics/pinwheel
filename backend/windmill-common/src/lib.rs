@@ -59,6 +59,7 @@ pub mod oauth2;
 pub mod otel_oss;
 pub mod queue;
 pub mod result_stream;
+pub mod runnable_settings;
 pub mod s3_helpers;
 pub mod schedule;
 pub mod schema;
@@ -143,7 +144,7 @@ lazy_static::lazy_static! {
     pub static ref DEPLOYED_SCRIPT_HASH_CACHE: Cache<(String, String), ExpiringLatestVersionId> = Cache::new(1000);
     pub static ref FLOW_VERSION_CACHE: Cache<(String, String), ExpiringLatestVersionId> = Cache::new(1000);
     pub static ref DYNAMIC_INPUT_CACHE: Cache<String, Arc<jobs::DynamicInput>> = Cache::new(1000);
-    pub static ref DEPLOYED_SCRIPT_INFO_CACHE: Cache<(String, i64), ScriptHashInfo> = Cache::new(1000);
+    pub static ref DEPLOYED_SCRIPT_INFO_CACHE: Cache<(String, i64), ScriptHashInfo<ScriptRunnableSettingsHandle>> = Cache::new(1000);
     pub static ref FLOW_INFO_CACHE: Cache<(String, i64), FlowVersionInfo> = Cache::new(1000);
 
     pub static ref QUIET_LOGS: bool = std::env::var("QUIET_LOGS").map(|s| s.parse::<bool>().unwrap_or(false)).unwrap_or(false);
@@ -324,7 +325,9 @@ pub fn parse_postgres_url(url: &str) -> Result<PostgresUrlComponents, Error> {
 
     let scheme = parsed_url.scheme().to_string();
     let username = parsed_url.username().to_string();
-    let username = urlencoding::decode(&username).map_err(to_anyhow)?.to_string();
+    let username = urlencoding::decode(&username)
+        .map_err(to_anyhow)?
+        .to_string();
     let password = parsed_url.password().map(|p| p.to_string());
     let password = match password {
         Some(p) => Some(urlencoding::decode(&p).map_err(to_anyhow)?.to_string()),
@@ -375,12 +378,9 @@ impl DatabaseUrl {
             DatabaseUrl::Static(_) => Ok(()),
         }
     }
-
-
 }
 
-static DATABASE_URL_CACHE: tokio::sync::OnceCell<DatabaseUrl> =
-    tokio::sync::OnceCell::const_new();
+static DATABASE_URL_CACHE: tokio::sync::OnceCell<DatabaseUrl> = tokio::sync::OnceCell::const_new();
 
 pub async fn get_database_url() -> Result<DatabaseUrl, Error> {
     let database_url = DATABASE_URL_CACHE
@@ -415,7 +415,9 @@ pub async fn get_database_url() -> Result<DatabaseUrl, Error> {
                 tracing::info!("iamrds mode detected, generating IAM RDS URL for region: {region}");
 
                 {
-                    return Err(Error::BadConfig("IAM RDS authentication is not enabled in OSS mode".to_string()));
+                    return Err(Error::BadConfig(
+                        "IAM RDS authentication is not enabled in OSS mode".to_string(),
+                    ));
                 }
             } else {
                 Ok::<DatabaseUrl, Error>(DatabaseUrl::Static(url.to_string()))
@@ -464,7 +466,6 @@ pub async fn connect_db(
             }
         }
     };
-
 
     let pool = connect(database_url.clone(), max_connections, worker_mode).await?;
 
@@ -521,7 +522,8 @@ pub async fn connect(
             }
         })
         .connect_with(
-            sqlx::postgres::PgConnectOptions::from_str(&database_url.as_str().await)?.statement_cache_capacity(400),
+            sqlx::postgres::PgConnectOptions::from_str(&database_url.as_str().await)?
+                .statement_cache_capacity(400),
         )
         .await
         .map_err(|err| Error::ConnectingToDatabase(err.to_string()))
@@ -532,7 +534,7 @@ type Tag = String;
 pub use db::DB;
 
 use crate::{
-    auth::{FLOW_PERMS_CACHE, HASH_PERMS_CACHE, PermsCache}, db::{AuthedRef, UserDbWithAuthed}, error::to_anyhow, scripts::ScriptHash
+    auth::{PermsCache, FLOW_PERMS_CACHE, HASH_PERMS_CACHE}, db::{AuthedRef, UserDbWithAuthed}, error::to_anyhow, runnable_settings::RunnableSettings, scripts::{ScriptHash, ScriptRunnableSettingsHandle, ScriptRunnableSettingsInline}
 };
 
 #[derive(Clone)]
@@ -541,16 +543,11 @@ pub struct ExpiringLatestVersionId {
     expires_at: std::time::Instant,
 }
 
-#[derive(Clone, Debug)]
-pub struct ScriptHashInfo {
+#[derive(Clone, Debug, sqlx::FromRow)]
+pub struct ScriptHashInfo<SR> {
     pub path: String,
     pub hash: i64,
     pub tag: Option<String>,
-    pub concurrency_key: Option<String>,
-    pub concurrent_limit: Option<i32>,
-    pub concurrency_time_window_s: Option<i32>,
-    pub debounce_key: Option<String>,
-    pub debounce_delay_s: Option<i32>,
     pub cache_ttl: Option<i32>,
     pub cache_ignore_s3_path: Option<bool>,
     pub language: ScriptLang,
@@ -561,6 +558,50 @@ pub struct ScriptHashInfo {
     pub has_preprocessor: Option<bool>,
     pub on_behalf_of_email: Option<String>,
     pub created_by: String,
+    #[sqlx(flatten)]
+    pub runnable_settings: SR,
+}
+
+impl ScriptHashInfo<ScriptRunnableSettingsHandle> {
+    pub async fn prefetch_cached<'a>(self, db: &DB) -> error::Result<ScriptHashInfo<ScriptRunnableSettingsInline>> {
+
+    let (debouncing_settings, concurrency_settings) =
+        RunnableSettings::from_runnable_settings_handle(
+            self.runnable_settings.runnable_settings_handle,
+            db,
+        )
+        .await?
+        .prefetch_cached(db)
+        .await?;
+
+    Ok(
+        ScriptHashInfo {
+            path: self.path,
+            hash: self.hash,
+            tag: self.tag,
+            cache_ttl: self.cache_ttl,
+            cache_ignore_s3_path: self.cache_ignore_s3_path,
+            language: self.language,
+            dedicated_worker: self.dedicated_worker,
+            priority: self.priority,
+            delete_after_use: self.delete_after_use,
+            timeout: self.timeout,
+            has_preprocessor: self.has_preprocessor,
+            on_behalf_of_email: self.on_behalf_of_email,
+            created_by: self.created_by,
+            runnable_settings: ScriptRunnableSettingsInline{
+            concurrency_settings: concurrency_settings
+                .maybe_fallback(
+                    self.runnable_settings.concurrency_key,
+                    self.runnable_settings.concurrent_limit,
+                    self.runnable_settings.concurrency_time_window_s,
+                ),
+            debouncing_settings: debouncing_settings
+                .maybe_fallback(self.runnable_settings.debounce_key, self.runnable_settings.debounce_delay_s),
+            },
+                
+        })
+    }
 }
 
 pub fn get_latest_deployed_hash_for_path<'e>(
@@ -568,7 +609,7 @@ pub fn get_latest_deployed_hash_for_path<'e>(
     db2: DB,
     w_id: &'e str,
     script_path: &'e str,
-) -> impl Future<Output = error::Result<ScriptHashInfo>> + Send + 'e {
+) -> impl Future<Output = error::Result<ScriptHashInfo<ScriptRunnableSettingsHandle>>> + Send + 'e {
     async move {
         let cache_key = (w_id.to_string(), script_path.to_string());
         let mut computed_hash = None;
@@ -651,7 +692,7 @@ pub async fn get_script_info_for_hash<'e, E: sqlx::PgExecutor<'e>>(
     db: E,
     w_id: &str,
     hash: i64,
-) -> error::Result<ScriptHashInfo> {
+) -> error::Result<ScriptHashInfo<ScriptRunnableSettingsHandle>> {
     let key = (w_id.to_string(), hash);
 
     let mut computed_hash = None;
@@ -695,13 +736,32 @@ async fn get_script_info_for_hash_inner<'e, E: sqlx::PgExecutor<'e>>(
     db: E,
     w_id: &str,
     hash: i64,
-) -> error::Result<Option<ScriptHashInfo>> {
-    let r = sqlx::query_as!(
-        ScriptHashInfo,
-        "select hash, tag, concurrency_key, concurrent_limit, concurrency_time_window_s, debounce_key, debounce_delay_s, cache_ttl, cache_ignore_s3_path, language as \"language: ScriptLang\", dedicated_worker, priority, delete_after_use, timeout, has_preprocessor, on_behalf_of_email, created_by, path from script where hash = $1 AND workspace_id = $2",
-        hash,
-        w_id
+) -> error::Result<Option<ScriptHashInfo<ScriptRunnableSettingsHandle>>> {
+    let r = sqlx::query_as::<_, ScriptHashInfo<ScriptRunnableSettingsHandle>>(
+        "SELECT
+                hash,
+                tag,
+                concurrency_key,
+                concurrent_limit,
+                concurrency_time_window_s,
+                debounce_key,
+                debounce_delay_s,
+                runnable_settings_handle,
+                cache_ttl,
+                cache_ignore_s3_path,
+                language,
+                dedicated_worker,
+                priority,
+                delete_after_use,
+                timeout,
+                has_preprocessor,
+                on_behalf_of_email,
+                created_by,
+                path
+            FROM script WHERE hash = $1 AND workspace_id = $2",
     )
+    .bind(hash)
+    .bind(w_id)
     .fetch_optional(db)
     .await?;
     Ok(r)
@@ -923,9 +983,10 @@ pub async fn get_latest_hash_for_path<'c, E: sqlx::PgExecutor<'c>>(
     Option<i32>,
     Option<String>,
     String,
+    Option<i64>,
 )> {
     let r_o = sqlx::query!(
-            "select hash, tag, concurrency_key, concurrent_limit, concurrency_time_window_s, debounce_key, debounce_delay_s, cache_ttl, cache_ignore_s3_path, language as \"language: ScriptLang\", dedicated_worker, priority, timeout, on_behalf_of_email, created_by FROM script
+            "select hash, tag, concurrency_key, concurrent_limit, concurrency_time_window_s, debounce_key, debounce_delay_s, cache_ttl, cache_ignore_s3_path, runnable_settings_handle, language as \"language: ScriptLang\", dedicated_worker, priority, timeout, on_behalf_of_email, created_by FROM script
              WHERE path = $1 AND workspace_id = $2 AND archived = false AND (lock IS NOT NULL OR $3 = false)
              ORDER BY created_at DESC LIMIT 1",
             script_path,
@@ -953,6 +1014,7 @@ pub async fn get_latest_hash_for_path<'c, E: sqlx::PgExecutor<'c>>(
         script.timeout,
         script.on_behalf_of_email,
         script.created_by,
+        script.runnable_settings_handle,
     ))
 }
 
