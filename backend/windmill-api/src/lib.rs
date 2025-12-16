@@ -87,11 +87,11 @@ pub mod embeddings;
 mod favorite;
 mod flow_conversations;
 pub mod flows;
-mod folders;
 mod folder_history;
+mod folders;
 mod granular_acls;
-mod groups;
 mod group_history;
+mod groups;
 mod indexer_oss;
 mod inkeep_oss;
 mod inputs;
@@ -591,30 +591,22 @@ pub async fn run_server(
                     #[cfg(not(feature = "oauth2"))]
                     Router::new()
                 })
-                .nest(
-                    "/r",
+                .nest("/r", {
+                    #[cfg(feature = "http_trigger")]
                     {
-                        #[cfg(feature = "http_trigger")]
-                        {
-                            triggers::http::handler::http_route_trigger_handler()
-                        }
+                        triggers::http::handler::http_route_trigger_handler()
+                    }
 
-                        #[cfg(not(feature = "http_trigger"))]
-                        {
-                            Router::new()
-                        }
-                    }
-                    .layer(from_extractor::<OptAuthed>()),
-                )
-                .nest(
-                    "/gcp/w/:workspace_id",
+                    #[cfg(not(feature = "http_trigger"))]
                     {
-                        {
-                            Router::new()
-                        }
+                        Router::new()
                     }
-                    .layer(from_extractor::<OptAuthed>()),
-                )
+                })
+                .nest("/gcp/w/:workspace_id", {
+                    {
+                        Router::new()
+                    }
+                })
                 .route("/version", get(git_v))
                 .route("/uptodate", get(is_up_to_date))
                 .route("/ee_license", get(ee_license))
