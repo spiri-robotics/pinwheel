@@ -857,7 +857,8 @@ func main(derp string) (string, error) {
         cache_ttl: None,
         cache_ignore_s3_path: None,
         dedicated_worker: None,
-        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default().into(),
+        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default()
+            .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
     }))
     .arg("derp", json!("world"))
@@ -892,7 +893,8 @@ fn main(world: String) -> Result<String, String> {
         lock: None,
         language: ScriptLang::Rust,
         cache_ignore_s3_path: None,
-        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default().into(),
+        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default()
+            .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         cache_ttl: None,
         dedicated_worker: None,
@@ -970,7 +972,8 @@ echo "hello $msg"
         cache_ttl: None,
         cache_ignore_s3_path: None,
         dedicated_worker: None,
-        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default().into(),
+        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default()
+            .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
     }))
     .arg("msg", json!("world"))
@@ -1003,7 +1006,8 @@ def main [ msg: string ] {
         cache_ttl: None,
         cache_ignore_s3_path: None,
         dedicated_worker: None,
-        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default().into(),
+        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default()
+            .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
     }))
     .arg("msg", json!("world"))
@@ -1056,7 +1060,8 @@ def main [
         cache_ttl: None,
         cache_ignore_s3_path: None,
         dedicated_worker: None,
-        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default().into(),
+        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default()
+            .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
     }))
     .arg("a", json!("3"))
@@ -1118,7 +1123,8 @@ public class Main {
         cache_ttl: None,
         cache_ignore_s3_path: None,
         dedicated_worker: None,
-        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default().into(),
+        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default()
+            .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
     }))
     .arg("a", json!(3))
@@ -1153,7 +1159,8 @@ export async function main(a: Date) {
         cache_ttl: None,
         cache_ignore_s3_path: None,
         dedicated_worker: None,
-        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default().into(),
+        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default()
+            .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
     }))
     .arg("a", json!("2024-09-24T10:00:00.000Z"))
@@ -1188,7 +1195,8 @@ export async function main(a: Date) {
         cache_ttl: None,
         cache_ignore_s3_path: None,
         dedicated_worker: None,
-        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default().into(),
+        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default()
+            .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
     }))
     .arg("a", json!("2024-09-24T10:00:00.000Z"))
@@ -1224,7 +1232,8 @@ def main(a: datetime, b: bytes):
         cache_ttl: None,
         cache_ignore_s3_path: None,
         dedicated_worker: None,
-        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default().into(),
+        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default()
+            .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
     }))
     .arg("a", json!("2024-09-24T10:00:00.000Z"))
@@ -2271,6 +2280,7 @@ async fn test_complex_flow_restart(db: Pool<Postgres>) -> anyhow::Result<()> {
             flow_job_id: first_run_result.id,
             step_id: "h".to_owned(),
             branch_or_iteration_n: None,
+            flow_version: None,
         }),
     })
     .run_until_complete(&db, false, port)

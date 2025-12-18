@@ -154,11 +154,7 @@ pub fn workspaced_service() -> Router {
                 .layer(ce_headers.clone()),
         )
         .route(
-            "/restart/f/:job_id/from/:step_id",
-            post(restart_flow).head(|| async { "" }).layer(cors.clone()),
-        )
-        .route(
-            "/restart/f/:job_id/from/:step_id/:branch_of_iteration_n",
+            "/restart/f/:job_id",
             post(restart_flow).head(|| async { "" }).layer(cors.clone()),
         )
         .route(
@@ -4077,6 +4073,7 @@ pub async fn restart_flow(
         "Restarting a flow is a feature only available in enterprise version".to_string(),
     ));
 }
+
 
 
 pub async fn run_script_by_path(
