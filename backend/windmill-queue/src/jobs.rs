@@ -7,6 +7,7 @@
  */
 
 use std::future::Future;
+use std::time::Duration;
 use std::{collections::HashMap, sync::Arc, vec};
 
 use anyhow::Context;
@@ -27,6 +28,7 @@ use sqlx::{Encode, PgExecutor};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
+use tokio::time::timeout;
 use tokio::{sync::RwLock, time::sleep};
 use ulid::Ulid;
 use uuid::Uuid;
@@ -2829,19 +2831,26 @@ pub async fn pull(
                 let job = if query_suspended.is_empty() {
                     None
                 } else {
-                    sqlx::query_as::<_, PulledJob>(query_suspended)
-                        .bind(worker_name)
-                        .fetch_optional(db)
-                        .await?
+                    timeout(
+                        Duration::from_secs(15),
+                        sqlx::query_as::<_, PulledJob>(query_suspended)
+                            .bind(worker_name)
+                            .fetch_optional(db),
+                    )
+                    .await??
                 };
 
                 let (job, suspended) = if let Some(job) = job {
                     (Some(job), true)
                 } else {
-                    let job = sqlx::query_as::<_, PulledJob>(query_no_suspend)
-                        .bind(worker_name)
-                        .fetch_optional(db)
-                        .await?;
+                    let job = timeout(
+                        Duration::from_secs(15),
+                        sqlx::query_as::<_, PulledJob>(query_no_suspend)
+                            .bind(worker_name)
+                            .fetch_optional(db),
+                    )
+                    .await??;
+
                     (job, false)
                 };
 
@@ -2885,14 +2894,17 @@ pub async fn pull(
             return Ok(njob);
         };
 
-        let (job, suspended) = pull_single_job_and_mark_as_running_no_concurrency_limit(
-            db,
-            suspend_first,
-            worker_name,
-            #[cfg(feature = "benchmark")]
-            bench,
+        let (job, suspended) = timeout(
+            Duration::from_secs(15),
+            pull_single_job_and_mark_as_running_no_concurrency_limit(
+                db,
+                suspend_first,
+                worker_name,
+                #[cfg(feature = "benchmark")]
+                bench,
+            ),
         )
-        .await?;
+        .await??;
         let Some(job) = job else {
             return Ok(PulledJobResult {
                 job: None,
