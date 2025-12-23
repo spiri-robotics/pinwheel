@@ -33,8 +33,10 @@ use sqlx::{FromRow, Postgres, Transaction};
 use windmill_audit::audit_oss::audit_log;
 use windmill_audit::ActionKind;
 use windmill_common::runnable_settings::RunnableSettingsTrait;
-use windmill_common::utils::{query_elems_from_hub, WarnAfterExt};
-use windmill_common::worker::{to_raw_value, CLOUD_HOSTED, MIN_VERSION_SUPPORTS_DEBOUNCING};
+use windmill_common::utils::query_elems_from_hub;
+use windmill_common::worker::{
+    to_raw_value, CLOUD_HOSTED, MIN_VERSION_SUPPORTS_DEBOUNCING, MIN_VERSION_SUPPORTS_DEBOUNCING_V2,
+};
 use windmill_common::HUB_BASE_URL;
 use windmill_common::{
     db::UserDB,
@@ -46,6 +48,7 @@ use windmill_common::{
     utils::{http_get_from_hub, not_found_if_none, paginate, Pagination, RunnableKind, StripPath},
 };
 use windmill_git_sync::{handle_deployment_metadata, DeployedObject};
+use windmill_queue::WMDEBUG_FORCE_NO_LEGACY_DEBOUNCING_COMPAT;
 use windmill_queue::{push, schedule::push_scheduled_job, PushIsolationLevel};
 use windmill_worker::scoped_dependency_map::ScopedDependencyMap;
 
@@ -481,6 +484,7 @@ async fn create_flow(
             path: nf.path.clone(),
             dedicated_worker: nf.dedicated_worker,
             version: version,
+            debouncing_settings: Default::default(),
         },
         windmill_queue::PushArgs { args: &args, extra: None },
         &authed.username,
@@ -503,7 +507,6 @@ async fn create_flow(
         None,
         Some(&authed.clone().into()),
         false,
-        None,
         None,
         None,
         None,
@@ -908,14 +911,6 @@ async fn update_flow(
         .await?;
     }
 
-    // Row lock debounce key for path. We need this to make all updates of runnables sequential and predictable.
-    tokio::time::timeout(
-        core::time::Duration::from_secs(60),
-        windmill_common::jobs::lock_debounce_key(&w_id, &nf.path, &mut tx),
-    )
-    .warn_after_seconds(10)
-    .await??;
-
     // tracing::error!("Updating flow: {:?}", nf.value.get());
 
     // This will lock anyone who is trying to iterate on flow_versions with given path and parameters.
@@ -1027,6 +1022,7 @@ async fn update_flow(
             path: nf.path.clone(),
             dedicated_worker: nf.dedicated_worker,
             version,
+            debouncing_settings: Default::default(),
         },
         windmill_queue::PushArgs { args: &args, extra: None },
         &authed.username,
@@ -1049,7 +1045,6 @@ async fn update_flow(
         None,
         Some(&authed.clone().into()),
         false,
-        None,
         None,
         None,
         None,
@@ -1428,6 +1423,20 @@ async fn guard_flow_from_debounce_data(nf: &NewFlow) -> Result<()> {
             "Flow debouncing configuration rejected: workers are behind minimum required version for debouncing feature"
         );
         Err(Error::WorkersAreBehind { feature: "Debouncing".into(), min_version: "1.566.0".into() })
+    } else if !*MIN_VERSION_SUPPORTS_DEBOUNCING_V2.read().await
+        && !nf
+            .parse_flow_value()?
+            .debouncing_settings
+            .is_legacy_compatible()
+        && !*WMDEBUG_FORCE_NO_LEGACY_DEBOUNCING_COMPAT
+    {
+        tracing::warn!(
+            "Flow debouncing configuration rejected: workers are behind minimum required version for debouncing feature"
+        );
+        Err(Error::WorkersAreBehind {
+            feature: "V2 Debouncing".into(),
+            min_version: "1.597.0".into(),
+        })
     } else {
         Ok(())
     }
