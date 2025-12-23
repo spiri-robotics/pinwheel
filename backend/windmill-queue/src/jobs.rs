@@ -2714,7 +2714,7 @@ async fn clone_runnable(j: &mut PulledJob, db: &DB) -> error::Result<()> {
                     .map(|args| args.insert("base_hash".to_owned(), to_raw_value(&*base_hash)));
 
                 windmill_common::scripts::clone_script(
-                    base_hash,
+                    j.runnable_path(),
                     &j.workspace_id,
                     deployment_message,
                     db,
