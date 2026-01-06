@@ -75,6 +75,7 @@ use windmill_common::{
     flows::FlowNodeId,
     jobs::JobKind,
     scripts::{get_full_hub_script_by_path, ScriptHash, ScriptLang},
+    tracing_init::{QUIET_MODE, VERBOSE_TARGET},
     utils::StripPath,
     worker::{CLOUD_HOSTED, NO_LOGS, WORKER_CONFIG, WORKER_GROUP},
     DB, IS_READY,
@@ -1076,7 +1077,7 @@ pub fn start_interactive_worker_shell(
 
                 match pulled_job {
                     Ok(Some(job)) => {
-                        tracing::debug!(worker = %worker_name, hostname = %hostname, "started handling of job {}", job.id);
+                        tracing::debug!(target: VERBOSE_TARGET, worker = %worker_name, hostname = %hostname, "started handling of job {}", job.id);
                         let job_dir = create_job_dir(&worker_dir, job.id).await;
                         #[cfg(feature = "benchmark")]
                         let mut bench = windmill_common::bench::BenchmarkIter::new();
@@ -1898,7 +1899,7 @@ pub async fn run_worker(
                 last_executed_job = None;
                 jobs_executed += 1;
 
-                tracing::debug!(worker = %worker_name, hostname = %hostname, "started handling of job {}", job.id);
+                tracing::debug!(target: VERBOSE_TARGET, worker = %worker_name, hostname = %hostname, "started handling of job {}", job.id);
 
                 if matches!(
                     job.kind,
@@ -2820,6 +2821,10 @@ pub async fn handle_queued_job(
 
         if *SLOW_LOGS {
             logs.push_str("Logs are 10x less frequent for this worker\n");
+        }
+
+        if *QUIET_MODE {
+            logs.push_str("Quiet mode enabled: verbose service logs are suppressed\n");
         }
 
         if let Connection::Sql(db) = conn {
