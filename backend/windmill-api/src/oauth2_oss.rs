@@ -15,7 +15,7 @@ use hmac::Mac;
 #[cfg(feature = "oauth2")]
 use itertools::Itertools;
 #[cfg(feature = "oauth2")]
-use oauth2::{Client as OClient, *};
+use windmill_oauth::{OClient, AccessToken, RefreshToken, Scope, helpers};
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, Transaction};
 #[cfg(feature = "oauth2")]
