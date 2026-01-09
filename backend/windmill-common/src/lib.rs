@@ -54,7 +54,6 @@ pub mod workspace_dependencies;
 pub mod git_sync_oss;
 pub mod jobs;
 pub mod jwt;
-pub mod mcp_client;
 pub mod more_serde;
 pub mod oauth2;
 pub mod otel_oss;
