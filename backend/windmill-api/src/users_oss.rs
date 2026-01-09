@@ -41,6 +41,12 @@ pub async fn set_password(
     ))
 }
 
+pub fn hash_password(_argon2: Arc<Argon2<'_>>, _password: String) -> Result<String> {
+    Err(Error::internal_err(
+        "Not implemented in Windmill's Open Source repository".to_string(),
+    ))
+}
+
 pub fn send_email_if_possible(_subject: &str, _content: &str, _to: &str) {
     tracing::warn!(
         "send_email_if_possible is not implemented in Windmill's Open Source repository"
@@ -53,7 +59,6 @@ pub struct OnboardingData {
     pub touch_point: String,
     pub use_case: String,
 }
-
 
 pub async fn submit_onboarding_data(
     _authed: ApiAuthed,
