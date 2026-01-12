@@ -60,7 +60,7 @@ use crate::{
     concurrency_groups::join_concurrency_key,
     db::{ApiAuthed, DB},
     triggers::trigger_helpers::RunnableId,
-    users::{get_scope_tags, require_owner_of_path, OptAuthed},
+    users::{get_scope_tags, require_owner_of_path, require_path_read_access_for_preview, OptAuthed},
     utils::{check_scopes, content_plain, require_super_admin},
 };
 use anyhow::Context;
@@ -5591,6 +5591,7 @@ async fn run_preview_script(
             "Operators cannot run preview jobs for security reasons".to_string(),
         ));
     }
+    require_path_read_access_for_preview(&authed, &preview.path)?;
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
     let tag = run_query.tag.clone().or(preview.tag.clone());
     check_tag_available_for_workspace(&db, &w_id, &tag, &authed).await?;
@@ -5733,6 +5734,7 @@ async fn run_bundle_preview_script(
         let data = data.map_err(to_anyhow)?;
         if name == "preview" {
             let preview: Preview = serde_json::from_slice(&data).map_err(to_anyhow)?;
+            require_path_read_access_for_preview(&authed, &preview.path)?;
             format = preview
                 .format
                 .and_then(|s| BundleFormat::from_string(&s))
@@ -6344,6 +6346,7 @@ async fn run_preview_flow_job(
             "Operators cannot run preview jobs for security reasons".to_string(),
         ));
     }
+    require_path_read_access_for_preview(&authed, &raw_flow.path)?;
     let scheduled_for = run_query.get_scheduled_for(&db).await?;
     let tag = run_query.tag.clone().or(raw_flow.tag.clone());
     check_tag_available_for_workspace(&db, &w_id, &tag, &authed).await?;
