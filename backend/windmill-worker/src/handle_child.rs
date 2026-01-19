@@ -36,6 +36,7 @@ use std::{io, panic, time::Duration};
 use tracing::{trace_span, Instrument};
 use uuid::Uuid;
 
+use windmill_common::job_metrics;
 
 #[cfg(target_os = "linux")]
 use tokio::io::AsyncWriteExt;
@@ -694,6 +695,8 @@ where
 
     let mut i = 0;
 
+    let mut memory_metric_id: Result<String, Error> =
+        Err(Error::NotFound("not yet initialized".to_string()));
 
     loop {
         tokio::select!(
@@ -726,8 +729,51 @@ where
 
 
                 let update_job_row = i == 2 || (!*SLOW_LOGS && (i < 20 || (i < 120 && i % 5 == 0) || i % 10 == 0)) || i % 20 == 0;
-                if update_job_row {
-            }
+                if update_job_row && job_id != Uuid::nil() {
+                    if let Connection::Sql(ref db) = conn {
+                        // tracking metric starting at i >= 2 b/c first point it useless and we don't want to track metric for super fast jobs
+                        if i == 2 {
+                            memory_metric_id = job_metrics::register_metric_for_job(
+                                &db,
+                                w_id.to_string(),
+                                job_id,
+                                "memory_kb".to_string(),
+                                job_metrics::MetricKind::TimeseriesInt,
+                                Some("Job Memory Footprint (kB)".to_string()),
+                            )
+                            .await;
+                        }
+                        if let Ok(ref metric_id) = memory_metric_id {
+                            if let Err(err) = job_metrics::record_metric(&db, w_id.to_string(), job_id, metric_id.to_owned(), job_metrics::MetricNumericValue::Integer(current_mem)).await {
+                                tracing::error!("Unable to save memory stat for job {} in workspace {}. Error was: {:?}", job_id, w_id, err);
+                            }
+                        }
+                    }
+                    if matches!(conn, Connection::Http(_)) {
+                        if i % 4 != 0 {
+                            // only ping every 4th time (2s) on http agent mode
+                            continue;
+                        }
+                    }
+                    let ping_job_status = ping_job_status(&conn, &job_id, Some(*mem_peak), if current_mem > 0 { Some(current_mem) } else { None }).await.unwrap_or_else(|e| {
+                        tracing::error!("Unable to ping job status for job {job_id}. Error was: {:?}", e);
+                        PingJobStatusResponse {
+                            canceled_by: None,
+                            canceled_reason: None,
+                            already_completed: false,
+                        }
+                    });
+                    if ping_job_status.already_completed {
+                        return UpdateJobPollingExit::AlreadyCompleted
+                    }
+                    if ping_job_status.canceled_by.is_some() {
+                        canceled_by_ref.replace(CanceledBy {
+                            username: ping_job_status.canceled_by.clone(),
+                            reason: ping_job_status.canceled_reason.clone(),
+                        });
+                        break
+                    }
+                }
             },
         );
     }
