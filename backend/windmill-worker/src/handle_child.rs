@@ -120,6 +120,7 @@ pub async fn handle_child(
 ) -> error::Result<HandleChildResult> {
     let start = Instant::now();
 
+
     let pid = child.id();
     #[cfg(target_os = "linux")]
     if let Some(pid) = pid {

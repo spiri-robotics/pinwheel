@@ -40,7 +40,7 @@ use windmill_common::{
         EXPOSE_DEBUG_METRICS_SETTING, EXPOSE_METRICS_SETTING, EXTRA_PIP_INDEX_URL_SETTING,
         HUB_API_SECRET_SETTING, HUB_BASE_URL_SETTING, INDEXER_SETTING,
         INSTANCE_PYTHON_VERSION_SETTING, JOB_DEFAULT_TIMEOUT_SECS_SETTING, JWT_SECRET_SETTING,
-        KEEP_JOB_DIR_SETTING, LICENSE_KEY_SETTING, MAVEN_REPOS_SETTING,
+        KEEP_JOB_DIR_SETTING, LICENSE_KEY_SETTING, MAVEN_REPOS_SETTING, OTEL_TRACING_PROXY_SETTING,
         MONITOR_LOGS_ON_OBJECT_STORE_SETTING, NO_DEFAULT_MAVEN_SETTING,
         NPM_CONFIG_REGISTRY_SETTING, NUGET_CONFIG_SETTING, OAUTH_SETTING, OTEL_SETTING,
         PIP_INDEX_URL_SETTING, POWERSHELL_REPO_PAT_SETTING, POWERSHELL_REPO_URL_SETTING,
@@ -93,9 +93,9 @@ use crate::monitor::{
     reload_bunfig_install_scopes_setting, reload_critical_alert_mute_ui_setting,
     reload_critical_error_channels_setting, reload_extra_pip_index_url_setting,
     reload_hub_api_secret_setting, reload_hub_base_url_setting, reload_job_default_timeout_setting,
-    reload_jwt_secret_setting, reload_license_key, reload_npm_config_registry_setting,
-    reload_pip_index_url_setting, reload_retention_period_setting, reload_scim_token_setting,
-    reload_smtp_config, reload_worker_config, MonitorIteration,
+    reload_jwt_secret_setting, reload_license_key, reload_otel_tracing_proxy_setting,
+    reload_npm_config_registry_setting, reload_pip_index_url_setting, reload_retention_period_setting,
+    reload_scim_token_setting, reload_smtp_config, reload_worker_config, MonitorIteration,
 };
 
 #[cfg(feature = "parquet")]
@@ -418,6 +418,7 @@ async fn windmill_main() -> anyhow::Result<()> {
             .unwrap_or(DEFAULT_NUM_WORKERS as i32)
     };
 
+    // TODO: maybe gate behind debug_assertions?
     if num_workers > 1 && !std::env::var("WORKER_GROUP").is_ok_and(|x| x == "native") {
         println!(
             "We STRONGLY recommend using at most 1 worker per container, use at your own risks"
@@ -725,6 +726,7 @@ Windmill Community Edition {GIT_VERSION}
 
         #[cfg(not(all(feature = "tantivy", feature = "parquet")))]
         let log_indexer_f = async { Ok(()) as anyhow::Result<()> };
+
 
         let server_f = async {
             if !is_agent {
@@ -1080,6 +1082,13 @@ Windmill Community Edition {GIT_VERSION}
                                                         KEEP_JOB_DIR_SETTING => {
                                                             load_keep_job_dir(&conn).await;
                                                         },
+                                                        OTEL_TRACING_PROXY_SETTING => {
+                                                            reload_otel_tracing_proxy_setting(&conn).await;
+                                                            if worker_mode {
+                                                                tracing::info!("OTEL tracing proxy setting changed, restarting worker");
+                                                                send_delayed_killpill(&tx, 4, "OTEL tracing proxy setting change").await;
+                                                            }
+                                                        },
                                                         REQUIRE_PREEXISTING_USER_FOR_OAUTH_SETTING => {
                                                             load_require_preexisting_user(&db).await;
                                                         },
@@ -1269,6 +1278,11 @@ Windmill Community Edition {GIT_VERSION}
             Ok(()) as anyhow::Result<()>
         };
 
+        let otel_tracing_proxy_f = async {
+
+            Ok(()) as anyhow::Result<()>
+        };
+
         if server_mode {
             if let Some(db) = conn.as_sql() {
                 schedule_stats(&db, &HTTP_CLIENT).await;
@@ -1283,6 +1297,7 @@ Windmill Community Edition {GIT_VERSION}
                 monitor_f,
                 server_f,
                 metrics_f,
+                otel_tracing_proxy_f,
                 indexer_f,
                 log_indexer_f
             )?;

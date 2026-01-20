@@ -26,6 +26,7 @@ mod global_cache;
 mod go_executor;
 mod graphql_executor;
 mod handle_child;
+mod otel_tracing_proxy_oss;
 pub mod job_logger;
 mod job_logger_oss;
 mod js_eval;
@@ -64,6 +65,7 @@ pub use worker::*;
 pub use worker_lockfiles::{
     process_relative_imports, trigger_dependents_to_recompute_dependencies,
 };
+pub use otel_tracing_proxy_oss::start_otel_tracing_proxy;
 
 pub use result_processor::handle_job_error;
 
