@@ -136,6 +136,7 @@ pub struct DeleteS3FileQuery {
 
 pub async fn get_workspace_s3_resource_and_check_paths<'c>(
     _db_with_opt_authed: &DbWithOptAuthed<'c, ApiAuthed>,
+    _authed_api: Option<&ApiAuthed>,
     _w_id: &str,
     _storage: Option<String>,
     _paths: &[(&str, windmill_common::s3_helpers::S3Permission)],
