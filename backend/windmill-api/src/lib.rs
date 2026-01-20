@@ -74,6 +74,7 @@ pub mod args;
 mod assets;
 mod audit;
 pub mod auth;
+mod azure_proxy_oss;
 mod bedrock;
 mod capture;
 mod concurrency_groups;
@@ -118,8 +119,8 @@ mod schedule;
 mod scim_oss;
 mod scopes;
 mod scripts;
-mod service_logs;
 mod secret_backend_ext;
+mod service_logs;
 mod settings;
 mod slack_approvals;
 #[cfg(feature = "smtp")]
