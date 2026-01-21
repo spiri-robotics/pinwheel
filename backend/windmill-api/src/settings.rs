@@ -618,7 +618,11 @@ async fn setup_custom_instance_pg_database_inner(
             "Cannot use reserved PostgreSQL database names".to_string(),
         ));
     }
-    if wmill_pg_creds.dbname.trim().eq_ignore_ascii_case(dbname.trim()) {
+    if wmill_pg_creds
+        .dbname
+        .trim()
+        .eq_ignore_ascii_case(dbname.trim())
+    {
         return Err(error::Error::BadRequest(
             "Database name cannot be the same as the main database".to_string(),
         ));
@@ -633,10 +637,7 @@ async fn setup_custom_instance_pg_database_inner(
     .await?
     .unwrap_or(false);
 
-    let pg_creds = PgDatabase {
-        dbname: dbname.to_string(),
-        ..wmill_pg_creds
-    };
+    let pg_creds = PgDatabase { dbname: dbname.to_string(), ..wmill_pg_creds };
 
     logs.created_database = "SKIP".to_string();
     if !db_exists {
@@ -659,7 +660,8 @@ async fn setup_custom_instance_pg_database_inner(
              GRANT CREATE ON SCHEMA public TO custom_instance_user;
              GRANT CREATE ON DATABASE \"{dbname}\" TO custom_instance_user;
              ALTER DEFAULT PRIVILEGES IN SCHEMA public
-                 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO custom_instance_user;"
+                 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO custom_instance_user;
+             ALTER ROLE custom_instance_user CREATEROLE;"
         ))
         .await
         .map_err(|e| {
