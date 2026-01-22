@@ -47,6 +47,7 @@ pub mod flows;
 pub mod global_settings;
 pub mod indexer;
 pub mod job_metrics;
+pub mod min_version;
 #[cfg(feature = "parquet")]
 pub mod job_s3_helpers_oss;
 pub mod workspace_dependencies;
