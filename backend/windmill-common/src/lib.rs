@@ -493,9 +493,25 @@ pub enum DatabaseUrl {
 }
 
 impl DatabaseUrl {
+    /// Get the database URL as a string.
+    /// Note: For IAM RDS, this returns the original URL (for metadata extraction).
+    /// For actual database connections, use connect_options() instead.
     pub async fn as_str(&self) -> String {
         match self {
             DatabaseUrl::Static(url) => url.clone(),
+        }
+    }
+
+    /// Get PgConnectOptions for this database URL.
+    /// For IAM RDS, this returns options built directly from the token to avoid double-encoding
+    /// issues with temporary credentials (IRSA/Pod Identity).
+    /// For static URLs, this parses the URL string.
+    pub async fn connect_options(&self) -> Result<sqlx::postgres::PgConnectOptions, Error> {
+        match self {
+            DatabaseUrl::Static(url) => {
+                sqlx::postgres::PgConnectOptions::from_str(url)
+                    .map_err(|e| Error::InternalErr(format!("Failed to parse database URL: {}", e)))
+            }
         }
     }
 
@@ -557,10 +573,10 @@ pub async fn get_database_url() -> Result<DatabaseUrl, Error> {
 }
 
 pub async fn initial_connection() -> Result<sqlx::Pool<sqlx::Postgres>, error::Error> {
-    let database_url = get_database_url().await?.as_str().await;
+    let connect_options = get_database_url().await?.connect_options().await?;
     sqlx::postgres::PgPoolOptions::new()
         .max_connections(2)
-        .connect_with(sqlx::postgres::PgConnectOptions::from_str(&database_url)?)
+        .connect_with(connect_options)
         .await
         .map_err(|err| Error::ConnectingToDatabase(err.to_string()))
 }
@@ -648,7 +664,7 @@ pub async fn connect(
             }
         })
         .connect_with(
-            sqlx::postgres::PgConnectOptions::from_str(&database_url.as_str().await)?
+            database_url.connect_options().await?
                 .statement_cache_capacity(400),
         )
         .await
