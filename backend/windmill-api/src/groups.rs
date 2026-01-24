@@ -735,10 +735,10 @@ async fn list_igroups_with_workspaces(Extension(db): Extension<DB>) -> JsonResul
             ig.name as group_name,
             ws.workspace_id,
             w.name as workspace_name,
-            ws.auto_add_instance_groups_roles->ig.name as role
+            ws.auto_invite->'instance_groups_roles'->ig.name as role
         FROM instance_group ig
-        INNER JOIN workspace_settings ws ON ws.auto_add_instance_groups IS NOT NULL
-            AND ig.name = ANY(ws.auto_add_instance_groups)
+        INNER JOIN workspace_settings ws ON ws.auto_invite->'instance_groups' IS NOT NULL
+            AND ws.auto_invite->'instance_groups' ? ig.name
         INNER JOIN workspace w ON w.id = ws.workspace_id AND w.deleted = false
         ORDER BY ig.name, ws.workspace_id
         "#
