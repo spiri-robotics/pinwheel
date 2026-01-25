@@ -105,6 +105,7 @@ const DEFAULT_NUM_WORKERS: usize = 1;
 const DEFAULT_PORT: u16 = 8000;
 const DEFAULT_SERVER_BIND_ADDR: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 
+#[cfg(target_os = "linux")]
 mod cgroups;
 mod ee_oss;
 mod monitor;
