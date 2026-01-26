@@ -75,6 +75,7 @@ mod assets;
 mod audit;
 pub mod auth;
 mod azure_proxy_oss;
+#[cfg(feature = "bedrock")]
 mod bedrock;
 mod capture;
 mod concurrency_groups;
