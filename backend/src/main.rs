@@ -631,6 +631,8 @@ async fn windmill_main() -> anyhow::Result<()> {
                 .flatten()
                 .unwrap_or_else(|| "UNKNOWN".to_string())
         );
+
+
         load_otel(&db).await;
 
         println!("Database connected");

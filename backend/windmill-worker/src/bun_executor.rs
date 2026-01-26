@@ -1311,6 +1311,7 @@ try {{
 
             let stream_notifier = StreamNotifier::new(conn, job);
 
+
             let result = crate::js_eval::eval_fetch_timeout(
                 env_code,
                 inner_content.clone(),

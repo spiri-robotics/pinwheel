@@ -1130,6 +1130,7 @@ pub async fn eval_fetch_timeout(
         let mut js_runtime: JsRuntime = JsRuntime::new(options);
         // tracing::info!("ttc: {:?}", instant.elapsed());
 
+
         js_runtime.add_near_heap_limit_callback(move |x,y| {
             tracing::error!("heap limit reached: {x} {y}");
 
