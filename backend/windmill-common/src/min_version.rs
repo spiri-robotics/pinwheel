@@ -19,17 +19,23 @@ pub const MIN_VERSION_IS_AT_LEAST_1_427: VC = vc(1, 427, 0, "Flow version lite t
 // workers below this version should be terminated automatically.
 
 /// Minimum version workers must have to stay connected.
-/// Served via: GET /api/settings/min_keep_alive_version
+/// Served via: GET /api/min_keep_alive_version (returns { worker, agent })
 /// Also used by vc() for compile-time checks.
 pub const MIN_KEEP_ALIVE_VERSION: (u64, u64, u64) = (1, 400, 0);
 
-// Compile-time check: must lag at least 50 minor versions behind current.
-// NOTE: The 50 version lag is a constant and should NEVER be changed. If this check
+/// Minimum version agent workers must have to stay connected.
+/// Served via: GET /api/min_keep_alive_version (returns { worker, agent })
+pub const AGENT_MIN_KEEP_ALIVE_VERSION: (u64, u64, u64) = (1, 0, 0);
+
+// Compile-time check: MIN_KEEP_ALIVE_VERSION must lag at least 50 minor versions behind current,
+// AGENT_MIN_KEEP_ALIVE_VERSION must lag at least 100 minor versions behind current.
+// NOTE: These version lags are constants and should NEVER be changed. If this check
 // fails, wait until enough versions have passed rather than reducing the lag requirement.
 // Skip check if GIT_VERSION is "unknown-version" (no git tags available during build)
 const _: () = assert!(
     !const_str::contains!(crate::utils::GIT_VERSION, ".") ||
-    const_str::parse!(const_str::split!(crate::utils::GIT_VERSION, ".")[1], u64) - MIN_KEEP_ALIVE_VERSION.1 >= 50
+    (const_str::parse!(const_str::split!(crate::utils::GIT_VERSION, ".")[1], u64) - MIN_KEEP_ALIVE_VERSION.1 >= 50
+    && const_str::parse!(const_str::split!(crate::utils::GIT_VERSION, ".")[1], u64) - AGENT_MIN_KEEP_ALIVE_VERSION.1 >= 100)
 );
 
 // ============ Implementation ============
@@ -124,8 +130,8 @@ pub async fn get_min_version(conn: &Connection) -> error::Result<Version> {
 }
 
 /// Updates MIN_VERSION and optionally checks min keep-alive version for workers.
-/// If `_worker_mode` is true, fetches min keep-alive version from server and sends alerts for each worker.
-/// If `initial_load` is true, skips the HTTP fetch to min_keep_alive_version endpoint (server may not be ready).
+/// If `_worker_mode` is true, checks min keep-alive version and sends critical alerts.
+/// If `initial_load` is true, skips the min keep-alive check (server may not be ready).
 pub async fn update_min_version(conn: &Connection, _worker_mode: bool, _worker_names: Vec<String>, _initial_load: bool) {
     // Update MIN_VERSION
     match get_min_version(conn).await {
@@ -141,4 +147,22 @@ pub async fn update_min_version(conn: &Connection, _worker_mode: bool, _worker_n
         Err(e) => tracing::error!("Failed to fetch min version: {:#?}", e),
     }
 
+}
+
+/// Stores the min keep-alive version in global_settings.
+/// Called by server on startup, NOT by workers.
+pub async fn store_min_keep_alive_version(db: &sqlx::Pool<sqlx::Postgres>) {
+    let version = format!(
+        "{}.{}.{}",
+        MIN_KEEP_ALIVE_VERSION.0,
+        MIN_KEEP_ALIVE_VERSION.1,
+        MIN_KEEP_ALIVE_VERSION.2
+    );
+    if let Err(e) = crate::global_settings::set_value_in_global_settings(
+        db,
+        crate::global_settings::MIN_KEEP_ALIVE_VERSION_SETTING,
+        serde_json::json!(version),
+    ).await {
+        tracing::error!("Failed to store min keep-alive version in global_settings: {:#?}", e);
+    }
 }
