@@ -35,7 +35,7 @@ use crate::{
     indexer::TantivyIndexerSettings,
     server::Smtp,
     utils::{merge_nested_raw_values_to_array, merge_raw_values_to_array},
-    KillpillSender, BASE_INTERNAL_URL, DB,
+    KillpillSender, DB,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -265,6 +265,8 @@ pub const ROOT_CACHE_NOMOUNT_DIR: &str = concatcp!(TMP_DIR, "/cache_nomount/");
 
 pub static MIN_VERSION_IS_LATEST: AtomicBool = AtomicBool::new(false);
 
+const DEFAULT_BASE_INTERNAL_URL: &str = "http://localhost:8000";
+
 #[derive(Clone)]
 pub struct HttpClient {
     pub client: ClientWithMiddleware,
@@ -289,7 +291,7 @@ impl HttpClient {
         let base_url = self
             .base_internal_url
             .clone()
-            .unwrap_or(BASE_INTERNAL_URL.clone().to_owned());
+            .unwrap_or(DEFAULT_BASE_INTERNAL_URL.to_owned());
 
         let response_builder = self.client.post(format!("{}{}", base_url, url)).json(body);
 
@@ -318,7 +320,7 @@ impl HttpClient {
         let base_url = self
             .base_internal_url
             .clone()
-            .unwrap_or(BASE_INTERNAL_URL.clone().to_owned());
+            .unwrap_or(DEFAULT_BASE_INTERNAL_URL.to_owned());
 
         let response = self
             .client
@@ -1091,7 +1093,6 @@ pub fn get_windmill_memory_usage() -> Option<i64> {
         None
     }
 }
-
 
 #[derive(Serialize, Deserialize)]
 pub enum PingType {
