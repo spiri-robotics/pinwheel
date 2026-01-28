@@ -1322,6 +1322,10 @@ async fn eval_fetch(
         .context("failed to load module")?;
 
     let main_override = script_entrypoint_override.unwrap_or("main".to_string());
+
+
+    let otel_context_inject = "";
+
     let script = js_runtime
         .execute_script(
             "<anon>",
@@ -1334,7 +1338,7 @@ function isAsyncIterable(obj) {{
 
 function processStreamIterative(res) {{
     const iterator = res[Symbol.asyncIterator]();
-    
+
     function processLoop() {{
         return new Promise(function(resolve) {{
             function step() {{
@@ -1354,9 +1358,11 @@ function processStreamIterative(res) {{
             step();
         }});
     }}
-    
+
     return processLoop();
 }}
+
+{otel_context_inject}
 
 let args = Deno.core.ops.op_get_static_args().map(JSON.parse)
 import("file:///eval.ts").then((module) => module.{main_override}(...args))

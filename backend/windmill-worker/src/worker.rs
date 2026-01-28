@@ -633,7 +633,6 @@ pub async fn get_proxy_envs_for_lang(
 }
 
 
-
 #[cfg(windows)]
 lazy_static::lazy_static! {
     pub static ref SYSTEM_ROOT: String = std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string());
@@ -2607,7 +2606,6 @@ async fn do_nativets(
 
     let stream_notifier = StreamNotifier::new(conn, job);
 
-
     Ok(eval_fetch_timeout(
         env_code,
         code.clone(),
@@ -3021,6 +3019,7 @@ pub async fn handle_queued_job(
                     RawData::Script(data) => Some(data),
                     _ => None,
                 });
+
 
                 // Box::pin to move large future to heap
                 let r = Box::pin(handle_code_execution_job(
