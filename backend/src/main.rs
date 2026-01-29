@@ -30,7 +30,7 @@ use windmill_api::HTTP_CLIENT;
 
 
 use windmill_common::{
-    agent_workers::build_agent_http_client,
+    agent_workers::AgentConfig,
     global_settings::{
         APP_WORKSPACED_ROUTE_SETTING, BASE_URL_SETTING, BUNFIG_INSTALL_SCOPES_SETTING,
         CRITICAL_ALERTS_ON_DB_OVERSIZE_SETTING, CRITICAL_ALERT_MUTE_UI_SETTING,
@@ -39,13 +39,14 @@ use windmill_common::{
         EXPOSE_DEBUG_METRICS_SETTING, EXPOSE_METRICS_SETTING, EXTRA_PIP_INDEX_URL_SETTING,
         HUB_API_SECRET_SETTING, HUB_BASE_URL_SETTING, INDEXER_SETTING,
         INSTANCE_PYTHON_VERSION_SETTING, JOB_DEFAULT_TIMEOUT_SECS_SETTING, JWT_SECRET_SETTING,
-        KEEP_JOB_DIR_SETTING, LICENSE_KEY_SETTING, MAVEN_REPOS_SETTING, OTEL_TRACING_PROXY_SETTING,
+        KEEP_JOB_DIR_SETTING, LICENSE_KEY_SETTING, MAVEN_REPOS_SETTING,
         MONITOR_LOGS_ON_OBJECT_STORE_SETTING, NO_DEFAULT_MAVEN_SETTING,
         NPM_CONFIG_REGISTRY_SETTING, NUGET_CONFIG_SETTING, OAUTH_SETTING, OTEL_SETTING,
-        PIP_INDEX_URL_SETTING, POWERSHELL_REPO_PAT_SETTING, POWERSHELL_REPO_URL_SETTING,
-        REQUEST_SIZE_LIMIT_SETTING, REQUIRE_PREEXISTING_USER_FOR_OAUTH_SETTING,
-        RETENTION_PERIOD_SECS_SETTING, RUBY_REPOS_SETTING, SAML_METADATA_SETTING,
-        SCIM_TOKEN_SETTING, SMTP_SETTING, TEAMS_SETTING, TIMEOUT_WAIT_RESULT_SETTING,
+        OTEL_TRACING_PROXY_SETTING, PIP_INDEX_URL_SETTING, POWERSHELL_REPO_PAT_SETTING,
+        POWERSHELL_REPO_URL_SETTING, REQUEST_SIZE_LIMIT_SETTING,
+        REQUIRE_PREEXISTING_USER_FOR_OAUTH_SETTING, RETENTION_PERIOD_SECS_SETTING,
+        RUBY_REPOS_SETTING, SAML_METADATA_SETTING, SCIM_TOKEN_SETTING, SMTP_SETTING, TEAMS_SETTING,
+        TIMEOUT_WAIT_RESULT_SETTING,
     },
     scripts::ScriptLang,
     stats_oss::schedule_stats,
@@ -93,9 +94,10 @@ use crate::monitor::{
     reload_bunfig_install_scopes_setting, reload_critical_alert_mute_ui_setting,
     reload_critical_error_channels_setting, reload_extra_pip_index_url_setting,
     reload_hub_api_secret_setting, reload_hub_base_url_setting, reload_job_default_timeout_setting,
-    reload_jwt_secret_setting, reload_license_key, reload_otel_tracing_proxy_setting,
-    reload_npm_config_registry_setting, reload_pip_index_url_setting, reload_retention_period_setting,
-    reload_scim_token_setting, reload_smtp_config, reload_worker_config, MonitorIteration,
+    reload_jwt_secret_setting, reload_license_key, reload_npm_config_registry_setting,
+    reload_otel_tracing_proxy_setting, reload_pip_index_url_setting,
+    reload_retention_period_setting, reload_scim_token_setting, reload_smtp_config,
+    reload_worker_config, MonitorIteration,
 };
 
 #[cfg(feature = "parquet")]
@@ -390,7 +392,10 @@ pub async fn sync_cached_resource_types(db: &sqlx::Pool<sqlx::Postgres>) -> anyh
     let cache_path = format!("{}/{}", HUB_RT_CACHE_DIR, HUB_RT_CACHE_FILE);
 
     if tokio::fs::metadata(&cache_path).await.is_err() {
-        tracing::info!("No cached resource types found at {}, skipping sync", cache_path);
+        tracing::info!(
+            "No cached resource types found at {}, skipping sync",
+            cache_path
+        );
         return Ok(());
     }
 
@@ -400,8 +405,8 @@ pub async fn sync_cached_resource_types(db: &sqlx::Pool<sqlx::Postgres>) -> anyh
         .await
         .with_context(|| format!("Failed to read cache file from {}", cache_path))?;
 
-    let cached_types: Vec<HubResourceType> = serde_json::from_str(&content)
-        .with_context(|| "Failed to parse cached resource types")?;
+    let cached_types: Vec<HubResourceType> =
+        serde_json::from_str(&content).with_context(|| "Failed to parse cached resource types")?;
 
     tracing::info!("Found {} cached resource types", cached_types.len());
 
@@ -413,11 +418,13 @@ pub async fn sync_cached_resource_types(db: &sqlx::Pool<sqlx::Postgres>) -> anyh
     .await
     .with_context(|| "Failed to fetch existing resource types")?;
 
-    let existing_map: std::collections::HashMap<String, (Option<serde_json::Value>, Option<String>)> =
-        existing_types
-            .into_iter()
-            .map(|(name, schema, desc)| (name, (schema, desc)))
-            .collect();
+    let existing_map: std::collections::HashMap<
+        String,
+        (Option<serde_json::Value>, Option<String>),
+    > = existing_types
+        .into_iter()
+        .map(|(name, schema, desc)| (name, (schema, desc)))
+        .collect();
 
     let mut synced_count = 0;
     let mut skipped_count = 0;
@@ -458,36 +465,45 @@ pub async fn sync_cached_resource_types(db: &sqlx::Pool<sqlx::Postgres>) -> anyh
 }
 
 fn print_help() {
-	println!("Windmill - a fast, open-source workflow engine and job runner.");
-	println!();
-	println!("Usage:");
-	println!("  windmill [SUBCOMMAND]");
-	println!();
-	println!("Subcommands:");
-	println!("  help | -h | --help   Show this help information and exit");
-	println!("  version              Show Windmill version and exit");
-	println!("  cache [hubPaths.json]  Pre-cache hub scripts (default: ./hubPaths.json)");
-	println!("  cache-rt             Pre-cache hub resource types");
-	println!();
-	println!("Environment variables (name = default):");
-	println!("  DATABASE_URL = <required>              The Postgres database url.");
-	println!("  MODE = standalone                      Mode: standalone | worker | server | agent");
-	println!("  BASE_URL = http://localhost:8000       Public base URL of your instance (overridden by instance settings)");
-	println!("  PORT = {}                              HTTP port (server/indexer/MCP modes)", DEFAULT_PORT);
-	println!("  SERVER_BIND_ADDR = <mode dependent>    IP to bind to (server: {}, worker: {})", DEFAULT_SERVER_BIND_ADDR, DEFAULT_WORKER_BIND_ADDR);
-	println!("  NUM_WORKERS = {}                       Number of workers (standalone/worker modes)", DEFAULT_NUM_WORKERS);
-	println!("  WORKER_GROUP = default                 Worker group this worker belongs to",);
-	println!("  JSON_FMT = false                       Output logs in JSON instead of logfmt");
-	println!("  METRICS_ADDR = None                    (EE only) Prometheus metrics addr at /metrics; set \"true\" to use :8001");
-	println!("  SUPERADMIN_SECRET = None               Virtual superadmin token (server)");
-	println!("  LICENSE_KEY = None                     (EE only) Enterprise license key (workers require valid key)");
-	println!("  RUN_UPDATE_CA_CERTIFICATE_AT_START = false  Run system CA update at startup");
-	println!("  RUN_UPDATE_CA_CERTIFICATE_PATH = /usr/sbin/update-ca-certificates  Path to CA update tool");
-	println!("  SYNC_CACHED_RT = false                 Sync cached resource types to admins workspace on server start");
-	println!();
-	println!("Notes:");
-	println!("- Advanced and less commonly used settings are managed via the database and are omitted here.");
-	println!("- At startup, Windmill logs currently set configuration keys for visibility.");
+    println!("Windmill - a fast, open-source workflow engine and job runner.");
+    println!();
+    println!("Usage:");
+    println!("  windmill [SUBCOMMAND]");
+    println!();
+    println!("Subcommands:");
+    println!("  help | -h | --help   Show this help information and exit");
+    println!("  version              Show Windmill version and exit");
+    println!("  cache [hubPaths.json]  Pre-cache hub scripts (default: ./hubPaths.json)");
+    println!("  cache-rt             Pre-cache hub resource types");
+    println!();
+    println!("Environment variables (name = default):");
+    println!("  DATABASE_URL = <required>              The Postgres database url.");
+    println!("  MODE = standalone                      Mode: standalone | worker | server | agent");
+    println!("  BASE_URL = http://localhost:8000       Public base URL of your instance (overridden by instance settings)");
+    println!(
+        "  PORT = {}                              HTTP port (server/indexer/MCP modes)",
+        DEFAULT_PORT
+    );
+    println!(
+        "  SERVER_BIND_ADDR = <mode dependent>    IP to bind to (server: {}, worker: {})",
+        DEFAULT_SERVER_BIND_ADDR, DEFAULT_WORKER_BIND_ADDR
+    );
+    println!(
+        "  NUM_WORKERS = {}                       Number of workers (standalone/worker modes)",
+        DEFAULT_NUM_WORKERS
+    );
+    println!("  WORKER_GROUP = default                 Worker group this worker belongs to",);
+    println!("  JSON_FMT = false                       Output logs in JSON instead of logfmt");
+    println!("  METRICS_ADDR = None                    (EE only) Prometheus metrics addr at /metrics; set \"true\" to use :8001");
+    println!("  SUPERADMIN_SECRET = None               Virtual superadmin token (server)");
+    println!("  LICENSE_KEY = None                     (EE only) Enterprise license key (workers require valid key)");
+    println!("  RUN_UPDATE_CA_CERTIFICATE_AT_START = false  Run system CA update at startup");
+    println!("  RUN_UPDATE_CA_CERTIFICATE_PATH = /usr/sbin/update-ca-certificates  Path to CA update tool");
+    println!("  SYNC_CACHED_RT = false                 Sync cached resource types to admins workspace on server start");
+    println!();
+    println!("Notes:");
+    println!("- Advanced and less commonly used settings are managed via the database and are omitted here.");
+    println!("- At startup, Windmill logs currently set configuration keys for visibility.");
 }
 
 async fn windmill_main() -> anyhow::Result<()> {
@@ -607,15 +623,23 @@ async fn windmill_main() -> anyhow::Result<()> {
         .and_then(|x| x.parse().ok())
         .unwrap_or(IpAddr::from(default_bind_addr));
 
-    let (conn, first_suffix) = if mode == Mode::Agent {
+    let (conn, first_suffix, agent_config) = if mode == Mode::Agent {
+        let agent_config = match AgentConfig::from_env() {
+            Ok(config) => config,
+            Err(e) => {
+                tracing::error!("{e}");
+                std::process::exit(1);
+            }
+        };
         tracing::info!(
             "Creating http client for cluster using base internal url {}",
-            std::env::var("BASE_INTERNAL_URL").unwrap_or_default()
+            agent_config.base_internal_url
         );
         let suffix = create_default_worker_suffix(&hostname);
         (
-            Connection::Http(build_agent_http_client(&suffix, None, None)),
+            Connection::Http(agent_config.build_http_client(&suffix)),
             Some(suffix),
+            Some(agent_config),
         )
     } else {
         println!("Connecting to database...");
@@ -636,7 +660,7 @@ async fn windmill_main() -> anyhow::Result<()> {
         load_otel(&db).await;
 
         println!("Database connected");
-        (Connection::Sql(db), None)
+        (Connection::Sql(db), None, None)
     };
 
     let environment = if let Ok(environment) = std::env::var("OTEL_ENVIRONMENT") {
@@ -960,7 +984,12 @@ Windmill Community Edition {GIT_VERSION}
                             conn: if i == 0 || mode != Mode::Agent {
                                 conn.clone()
                             } else {
-                                Connection::Http(build_agent_http_client(&suffix, None, None))
+                                Connection::Http(
+                                    agent_config
+                                        .as_ref()
+                                        .expect("agent_config must be set in agent mode")
+                                        .build_http_client(&suffix),
+                                )
                             },
                             worker_name: worker_name_with_suffix(
                                 mode == Mode::Agent,
