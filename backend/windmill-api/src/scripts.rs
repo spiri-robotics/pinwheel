@@ -560,6 +560,7 @@ struct HandleDeploymentMetadata {
     w_id: String,
     obj: DeployedObject,
     deployment_message: Option<String>,
+    renamed_from: Option<String>,
 }
 
 impl HandleDeploymentMetadata {
@@ -572,6 +573,7 @@ impl HandleDeploymentMetadata {
             self.obj,
             self.deployment_message,
             false,
+            self.renamed_from.as_deref(),
         )
         .await
     }
@@ -1190,9 +1192,10 @@ async fn create_script_internal<'c>(
                 obj: DeployedObject::Script {
                     hash: hash.clone(),
                     path: script_path.clone(),
-                    parent_path: p_path_opt,
+                    parent_path: p_path_opt.clone(),
                 },
                 deployment_message: ns.deployment_message,
+                renamed_from: p_path_opt,
             }),
         ))
     }
@@ -1911,6 +1914,7 @@ async fn archive_script_by_path(
         },
         Some(format!("Script '{}' archived", path)),
         true,
+        None,
     )
     .await?;
 
@@ -2132,6 +2136,7 @@ async fn delete_script_by_path(
         },
         Some(format!("Script '{}' deleted", path)),
         true,
+        None,
     )
     .await?;
 
@@ -2236,6 +2241,7 @@ async fn delete_scripts_bulk(
             DeployedObject::Script { hash: ScriptHash(0), path: path.clone(), parent_path: None },
             Some(format!("Script '{}' deleted", path)),
             true,
+            None,
         )
     }))
     .await?;

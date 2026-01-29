@@ -778,6 +778,7 @@ async fn create_resource(
         DeployedObject::Resource { path: resource.path.clone(), parent_path: None },
         Some(format!("Resource '{}' created", resource.path.clone())),
         true,
+        None,
     )
     .await?;
 
@@ -839,6 +840,7 @@ async fn delete_resource(
         DeployedObject::Resource { path: path.to_string(), parent_path: Some(path.to_string()) },
         Some(format!("Resource '{}' deleted", path)),
         true,
+        None,
     )
     .await?;
 
@@ -897,6 +899,7 @@ async fn delete_resources_bulk(
             },
             Some(format!("Resource '{}' deleted", path)),
             true,
+            None,
         )
     }))
     .await?;
@@ -1007,6 +1010,9 @@ async fn update_resource(
     .await?;
     tx.commit().await?;
 
+    // Detect if this was a rename operation
+    let old_path_if_renamed = if npath != path { Some(path) } else { None };
+
     handle_deployment_metadata(
         &authed.email,
         &authed.username,
@@ -1015,6 +1021,7 @@ async fn update_resource(
         DeployedObject::Resource { path: npath.to_string(), parent_path: Some(path.to_string()) },
         Some(format!("Resource '{}' updated", npath)),
         true,
+        old_path_if_renamed,
     )
     .await?;
 
@@ -1075,6 +1082,7 @@ async fn update_resource_value(
         DeployedObject::Resource { path: path.to_string(), parent_path: Some(path.to_string()) },
         None,
         true,
+        None,
     )
     .await?;
 
@@ -1236,6 +1244,7 @@ async fn create_resource_type(
             resource_type.name.clone()
         )),
         true,
+        None,
     )
     .await?;
 
@@ -1313,6 +1322,7 @@ async fn delete_resource_type(
         DeployedObject::ResourceType { path: name.clone() },
         None,
         true,
+        None,
     )
     .await?;
 
@@ -1368,6 +1378,7 @@ async fn update_resource_type(
         DeployedObject::ResourceType { path: name.clone() },
         None,
         true,
+        None,
     )
     .await?;
 

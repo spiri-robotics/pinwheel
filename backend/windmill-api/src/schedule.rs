@@ -323,6 +323,7 @@ async fn create_schedule(
         DeployedObject::Schedule { path: ns.path.clone() },
         Some(format!("Schedule '{}' created", ns.path.clone())),
         true,
+        None,
     )
     .await?;
 
@@ -473,6 +474,7 @@ async fn edit_schedule(
         DeployedObject::Schedule { path: path.to_string() },
         None,
         true,
+        None,
     )
     .await?;
 
@@ -738,6 +740,7 @@ pub async fn set_enabled(
         DeployedObject::Schedule { path: path.to_string() },
         None,
         true,
+        None,
     )
     .await?;
 
@@ -858,6 +861,7 @@ async fn delete_schedule(
         DeployedObject::Schedule { path: path.to_string() },
         Some(format!("Schedule '{}' deleted", path)),
         true,
+        None,
     )
     .await?;
 
@@ -994,7 +998,8 @@ async fn set_default_error_handler(
                 DeployedObject::Schedule { path: updated_schedule_path },
                 None,
                 true,
-            )
+        None,
+    )
             .await?;
         }
     }
