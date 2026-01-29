@@ -30,6 +30,10 @@ mod otel_tracing_proxy_oss;
 pub mod job_logger;
 mod job_logger_oss;
 mod js_eval;
+#[cfg(feature = "quickjs")]
+pub mod js_eval_quickjs;
+#[cfg(test)]
+mod js_eval_parity_tests;
 pub mod memory_common;
 pub mod memory_oss;
 #[cfg(feature = "mysql")]
