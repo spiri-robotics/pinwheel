@@ -11,10 +11,13 @@ use sqlx::FromRow;
 use tower_cookies::Cookies;
 use tracing::Span;
 
-use crate::db::{ApiAuthed, DB};
-use std::sync::{
-    atomic::{AtomicI64, AtomicU64, Ordering},
-    Arc,
+use crate::db::{ApiAuthed, OptJobAuthed, DB};
+use std::{
+    str::FromStr,
+    sync::{
+        atomic::{AtomicI64, AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 use windmill_common::{
@@ -43,6 +46,7 @@ pub fn invalidate_token_from_cache(token: &str) {
 pub struct ExpiringAuthCache {
     pub authed: ApiAuthed,
     pub expiry: chrono::DateTime<chrono::Utc>,
+    pub job_id: Option<uuid::Uuid>,
 }
 
 pub struct AuthCache {
@@ -66,14 +70,22 @@ impl AuthCache {
     }
 
     pub async fn get_authed(&self, w_id: Option<String>, token: &str) -> Option<ApiAuthed> {
+        Some(self.get_opt_job_authed(w_id, token).await?.authed)
+    }
+
+    pub async fn get_opt_job_authed(
+        &self,
+        w_id: Option<String>,
+        token: &str,
+    ) -> Option<OptJobAuthed> {
         let key = (
             w_id.as_ref().unwrap_or(&"".to_string()).to_string(),
             token.to_string(),
         );
         let s = AUTH_CACHE.get(&key).map(|c| c.to_owned());
         match s {
-            Some(ExpiringAuthCache { authed, expiry }) if expiry > chrono::Utc::now() => {
-                Some(authed)
+            Some(ExpiringAuthCache { authed, expiry, job_id }) if expiry > chrono::Utc::now() => {
+                Some(OptJobAuthed { authed, job_id })
             }
             _ if token.starts_with("jwt_") => {
                 let jwt_token = token.trim_start_matches("jwt_");
@@ -87,6 +99,7 @@ impl AuthCache {
                             return None;
                         }
                         let username_override = username_override_from_label(claims.label);
+
                         let authed = crate::db::ApiAuthed {
                             email: claims.email,
                             username: claims.username,
@@ -98,17 +111,18 @@ impl AuthCache {
                             username_override,
                             token_prefix: claims.audit_span,
                         };
-
+                        let job_id = claims.job_id.and_then(|j| uuid::Uuid::from_str(&j).ok());
                         AUTH_CACHE.insert(
                             key,
                             ExpiringAuthCache {
                                 authed: authed.clone(),
                                 expiry: chrono::Utc
                                     .timestamp_nanos(claims.exp as i64 * 1_000_000_000),
+                                job_id,
                             },
                         );
 
-                        Some(authed)
+                        Some(OptJobAuthed { authed, job_id })
                     }
                     Err(err) => {
                         tracing::error!("JWT auth error: {:?}", err);
@@ -313,17 +327,18 @@ impl AuthCache {
                                 authed: authed.clone(),
                                 expiry: chrono::Utc::now()
                                     + chrono::Duration::try_seconds(120).unwrap(),
+                                job_id: None,
                             },
                         );
                     }
-                    authed_o
+                    authed_o.map(|authed| OptJobAuthed { authed, job_id: None })
                 } else if self
                     .superadmin_secret
                     .as_ref()
                     .map(|x| x == token)
                     .unwrap_or(false)
                 {
-                    Some(ApiAuthed {
+                    let authed = ApiAuthed {
                         email: SUPERADMIN_SECRET_EMAIL.to_string(),
                         username: "superadmin_secret".to_string(),
                         is_admin: true,
@@ -333,7 +348,8 @@ impl AuthCache {
                         scopes: None,
                         username_override: None,
                         token_prefix: Some(token[0..TOKEN_PREFIX_LEN].to_string()),
-                    })
+                    };
+                    Some(OptJobAuthed { authed, job_id: None })
                 } else {
                     None
                 }
@@ -521,10 +537,26 @@ where
         parts: &mut Parts,
         state: &S,
     ) -> std::result::Result<Self, Self::Rejection> {
+        let opt_job_authed = OptJobAuthed::from_request_parts(parts, state).await?;
+        Ok(opt_job_authed.authed)
+    }
+}
+
+#[async_trait]
+impl<S> FromRequestParts<S> for OptJobAuthed
+where
+    S: Send + Sync,
+{
+    type Rejection = Error;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &S,
+    ) -> std::result::Result<Self, Self::Rejection> {
         if parts.method == http::Method::OPTIONS {
-            return Ok(ApiAuthed::default());
+            return Ok(OptJobAuthed::default());
         };
-        let already_authed = parts.extensions.get::<ApiAuthed>();
+        let already_authed = parts.extensions.get::<OptJobAuthed>();
 
         if let Some(authed) = already_authed {
             return Ok(authed.clone());
@@ -548,7 +580,10 @@ where
                 let path_vec: Vec<&str> = original_uri.path().split("/").collect();
                 let workspace_id = maybe_get_workspace_id_from_path(&path_vec);
 
-                if let Some(mut authed) = cache.get_authed(workspace_id.clone(), &token).await {
+                if let Some(mut opt_job_authed) =
+                    cache.get_opt_job_authed(workspace_id.clone(), &token).await
+                {
+                    let authed = &mut opt_job_authed.authed;
                     if authed.scopes.is_some() {
                         transform_old_scope_to_new_scope(authed.scopes.as_mut());
 
@@ -572,7 +607,7 @@ where
                     if let Some(workspace_id) = workspace_id {
                         Span::current().record("workspace_id", &workspace_id);
                     }
-                    return Ok(authed);
+                    return Ok(opt_job_authed);
                 }
             }
         }
