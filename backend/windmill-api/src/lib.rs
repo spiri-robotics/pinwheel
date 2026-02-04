@@ -131,6 +131,7 @@ mod teams_approvals_oss;
 #[cfg(feature = "native_trigger")]
 pub mod native_triggers;
 mod public_app_layer;
+mod public_app_rate_limit;
 mod static_assets;
 mod teams_cache_oss;
 mod teams_oss;
