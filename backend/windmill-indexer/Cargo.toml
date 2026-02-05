@@ -10,7 +10,7 @@ path = "src/lib.rs"
 
 [features]
 default = []
-parquet = ["dep:object_store"]
+parquet = ["dep:object_store", "windmill-common/parquet"]
 
 [dependencies]
 windmill-common.workspace = true
