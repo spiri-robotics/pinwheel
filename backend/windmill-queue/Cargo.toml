@@ -12,6 +12,7 @@ path = "src/lib.rs"
 default = []
 cloud = []
 benchmark = ["windmill-common/benchmark"]
+failpoints = []
 prometheus = ["dep:prometheus"]
 smtp = []
 
