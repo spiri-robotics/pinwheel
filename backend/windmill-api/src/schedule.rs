@@ -998,8 +998,8 @@ async fn set_default_error_handler(
                 DeployedObject::Schedule { path: updated_schedule_path },
                 None,
                 true,
-        None,
-    )
+                None,
+            )
             .await?;
         }
     }

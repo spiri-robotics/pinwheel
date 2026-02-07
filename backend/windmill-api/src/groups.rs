@@ -270,15 +270,8 @@ async fn create_group(
     )
     .await?;
 
-    log_group_permission_change(
-        &mut *tx,
-        &w_id,
-        &ng.name,
-        &authed.username,
-        "create",
-        None,
-    )
-    .await?;
+    log_group_permission_change(&mut *tx, &w_id, &ng.name, &authed.username, "create", None)
+        .await?;
 
     tx.commit().await?;
 
@@ -605,7 +598,10 @@ async fn add_user(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Ok(format!("{} is already a member of group {}", user_username, name));
+        return Ok(format!(
+            "{} is already a member of group {}",
+            user_username, name
+        ));
     }
 
     audit_log(
@@ -721,7 +717,9 @@ async fn list_igroups(Extension(db): Extension<DB>) -> JsonResult<Vec<IGroup>> {
     return Ok(Json(groups));
 }
 
-async fn list_igroups_with_workspaces(Extension(db): Extension<DB>) -> JsonResult<Vec<IGroupWithWorkspaces>> {
+async fn list_igroups_with_workspaces(
+    Extension(db): Extension<DB>,
+) -> JsonResult<Vec<IGroupWithWorkspaces>> {
     let mut tx: Transaction<'_, Postgres> = db.begin().await?;
 
     // Get all instance groups with their emails first
@@ -751,9 +749,11 @@ async fn list_igroups_with_workspaces(Extension(db): Extension<DB>) -> JsonResul
     .await?;
 
     // Create a map of group_name -> Vec<WorkspaceInfo>
-    let mut workspaces_by_group: std::collections::HashMap<String, Vec<WorkspaceInfo>> = std::collections::HashMap::new();
+    let mut workspaces_by_group: std::collections::HashMap<String, Vec<WorkspaceInfo>> =
+        std::collections::HashMap::new();
     for mapping in workspace_mappings {
-        let role = mapping.role
+        let role = mapping
+            .role
             .and_then(|r| r.as_str().map(|s| s.to_string()))
             .unwrap_or_else(|| "developer".to_string());
 
@@ -771,7 +771,10 @@ async fn list_igroups_with_workspaces(Extension(db): Extension<DB>) -> JsonResul
 
     let mut result = Vec::new();
     for group in groups {
-        let workspaces = workspaces_by_group.get(&group.name).cloned().unwrap_or_default();
+        let workspaces = workspaces_by_group
+            .get(&group.name)
+            .cloned()
+            .unwrap_or_default();
 
         result.push(IGroupWithWorkspaces {
             name: group.name,

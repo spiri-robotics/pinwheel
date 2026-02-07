@@ -8,6 +8,3 @@ pub async fn validate_license_key(
     Err(anyhow!("License can't be validated in Windmill CE"))
 }
 
-
-
-

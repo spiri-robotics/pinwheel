@@ -32,4 +32,3 @@ pub async fn run_teams_message_test_job() -> Result<StatusCode, Error> {
     ));
 }
 
-

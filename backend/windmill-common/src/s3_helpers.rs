@@ -774,10 +774,7 @@ pub async fn build_s3_client(s3_resource_ref: &S3Resource) -> error::Result<Arc<
 
     let store = store_builder.build().map_err(|err| {
         tracing::error!("Error building object store client: {:?}", err);
-        error::Error::internal_err(format!(
-            "Error building object store client: {:?}",
-            err
-        ))
+        error::Error::internal_err(format!("Error building object store client: {:?}", err))
     })?;
 
     return Ok(Arc::new(store));
@@ -841,10 +838,7 @@ fn build_azure_blob_client(
 
     let store = store_builder.build().map_err(|err| {
         tracing::error!("Error building object store client: {:?}", err);
-        error::Error::internal_err(format!(
-            "Error building object store client: {:?}",
-            err
-        ))
+        error::Error::internal_err(format!("Error building object store client: {:?}", err))
     })?;
 
     return Ok(Arc::new(store));
@@ -881,10 +875,7 @@ async fn build_gcs_client(gcs_resource_ref: &GcsResource) -> error::Result<Arc<d
         })?
         .map_err(|err| {
             tracing::error!("Error building GCS object store client: {:?}", err);
-            error::Error::internal_err(format!(
-                "Error building GCS object store client: {:?}",
-                err
-            ))
+            error::Error::internal_err(format!("Error building GCS object store client: {:?}", err))
         })?;
 
     return Ok(Arc::new(store));

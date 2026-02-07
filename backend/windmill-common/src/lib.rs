@@ -27,15 +27,14 @@ use scripts::ScriptLang;
 use sqlx::{Acquire, Postgres};
 
 pub mod agent_workers;
-pub mod ai_providers;
-pub mod ai_types;
 #[cfg(feature = "bedrock")]
 pub mod ai_bedrock;
+pub mod ai_providers;
+pub mod ai_types;
 pub mod apps;
-pub mod audit;
 pub mod assets;
+pub mod audit;
 pub mod auth;
-pub mod runtime_assets;
 #[cfg(feature = "benchmark")]
 pub mod bench;
 pub mod cache;
@@ -51,10 +50,11 @@ pub mod flows;
 pub mod global_settings;
 pub mod indexer;
 pub mod job_metrics;
-pub mod min_version;
-pub mod notify_events;
 #[cfg(feature = "parquet")]
 pub mod job_s3_helpers_oss;
+pub mod min_version;
+pub mod notify_events;
+pub mod runtime_assets;
 pub mod workspace_dependencies;
 
 pub mod git_sync_oss;
@@ -68,9 +68,9 @@ pub mod result_stream;
 pub mod runnable_settings;
 pub mod s3_helpers;
 pub mod schedule;
-pub mod secret_backend;
 pub mod schema;
 pub mod scripts;
+pub mod secret_backend;
 pub mod server;
 pub mod stats_oss;
 pub mod stream;
@@ -80,6 +80,7 @@ pub mod triggers;
 pub mod users;
 pub mod utils;
 pub mod variables;
+pub mod webhook;
 pub mod worker;
 pub mod worker_group_job_stats;
 pub mod workspaces;
@@ -340,16 +341,22 @@ pub struct PgDatabase {
 
 // Wrapper enum to hold either Tls or NoTls connection
 pub enum TokioPgConnection {
-    Tls(tokio_postgres::Connection<tokio_postgres::Socket, postgres_native_tls::TlsStream<tokio_postgres::Socket>>),
+    Tls(
+        tokio_postgres::Connection<
+            tokio_postgres::Socket,
+            postgres_native_tls::TlsStream<tokio_postgres::Socket>,
+        >,
+    ),
     NoTls(tokio_postgres::Connection<tokio_postgres::Socket, tokio_postgres::tls::NoTlsStream>),
 }
 
-
-impl Future for TokioPgConnection
-{
+impl Future for TokioPgConnection {
     type Output = Result<(), tokio_postgres::Error>;
 
-    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut core::task::Context<'_>) -> core::task::Poll<Self::Output> {
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut core::task::Context<'_>,
+    ) -> core::task::Poll<Self::Output> {
         // SAFETY: We're simply projecting the Pin from the outer enum to the inner connection field.
         // The inner connection is never moved out, so this is safe.
         unsafe {
@@ -360,7 +367,6 @@ impl Future for TokioPgConnection
         }
     }
 }
-
 
 impl PgDatabase {
     pub fn to_uri(&self) -> String {
@@ -385,32 +391,46 @@ impl PgDatabase {
         format!(
             "dbname={dbname} {user} host={host} {password} {port} {sslmode}",
             dbname = self.dbname,
-            user = self.user.as_ref().map(|u| format!("user={}", urlencoding::encode(u))).unwrap_or_default(),
+            user = self
+                .user
+                .as_ref()
+                .map(|u| format!("user={}", urlencoding::encode(u)))
+                .unwrap_or_default(),
             host = self.host,
-            password = self.password
-                .as_ref().map(|p| format!("password={}", urlencoding::encode(p)))
+            password = self
+                .password
+                .as_ref()
+                .map(|p| format!("password={}", urlencoding::encode(p)))
                 .unwrap_or_default(),
             port = self.port.map(|p| format!("port={}", p)).unwrap_or_default(),
-            sslmode = self.sslmode
-                .as_ref().map(|s| format!("sslmode={}", s.clone()))
+            sslmode = self
+                .sslmode
+                .as_ref()
+                .map(|s| format!("sslmode={}", s.clone()))
                 .unwrap_or_default(),
         )
     }
 
-    pub async fn connect(&self) -> Result<(tokio_postgres::Client, TokioPgConnection), error::Error> {
-        use tokio_postgres::tls::{ NoTls };
-        use postgres_native_tls::MakeTlsConnector;
+    pub async fn connect(
+        &self,
+    ) -> Result<(tokio_postgres::Client, TokioPgConnection), error::Error> {
         use native_tls::{Certificate, TlsConnector};
-        let ssl_mode_is_require = matches!(self.sslmode.as_deref(), Some("require") | Some("verify-ca") | Some("verify-full")); 
-        
+        use postgres_native_tls::MakeTlsConnector;
+        use tokio_postgres::tls::NoTls;
+        let ssl_mode_is_require = matches!(
+            self.sslmode.as_deref(),
+            Some("require") | Some("verify-ca") | Some("verify-full")
+        );
+
         if ssl_mode_is_require {
             tracing::info!("Creating new connection");
             let mut connector = TlsConnector::builder();
             if let Some(root_certificate_pem) = &self.root_certificate_pem {
                 if !root_certificate_pem.is_empty() {
                     connector.add_root_certificate(
-                        Certificate::from_pem(root_certificate_pem.as_bytes())
-                            .map_err(|e| error::Error::BadConfig(format!("Invalid Certs: {e:#}")))?,
+                        Certificate::from_pem(root_certificate_pem.as_bytes()).map_err(|e| {
+                            error::Error::BadConfig(format!("Invalid Certs: {e:#}"))
+                        })?,
                     );
                 } else {
                     connector.danger_accept_invalid_certs(true);
@@ -421,7 +441,7 @@ impl PgDatabase {
                     .danger_accept_invalid_certs(true)
                     .danger_accept_invalid_hostnames(true);
             }
-    
+
             let (client, connection) = tokio::time::timeout(
                 std::time::Duration::from_secs(20),
                 tokio_postgres::connect(
@@ -432,7 +452,7 @@ impl PgDatabase {
             .await
             .map_err(to_anyhow)?
             .map_err(to_anyhow)?;
-    
+
             Ok((client, TokioPgConnection::Tls(connection)))
         } else {
             tracing::info!("Creating new connection");
@@ -443,17 +463,19 @@ impl PgDatabase {
             .await
             .map_err(to_anyhow)?
             .map_err(to_anyhow)?;
-    
+
             Ok((client, TokioPgConnection::NoTls(connection)))
         }
     }
 
     pub fn parse_uri(url: &str) -> Result<Self, Error> {
-        let parsed_url =
-            url::Url::parse(url).map_err(|_| Error::BadConfig("Invalid PostgreSQL URL".to_string()))?;
+        let parsed_url = url::Url::parse(url)
+            .map_err(|_| Error::BadConfig("Invalid PostgreSQL URL".to_string()))?;
 
         let username = parsed_url.username().to_string();
-        let username = urlencoding::decode(&username).map_err(to_anyhow)?.to_string();
+        let username = urlencoding::decode(&username)
+            .map_err(to_anyhow)?
+            .to_string();
         let password = parsed_url.password().map(|p| p.to_string());
         let password = match password {
             Some(p) => Some(urlencoding::decode(&p).map_err(to_anyhow)?.to_string()),
@@ -509,10 +531,8 @@ impl DatabaseUrl {
     /// For static URLs, this parses the URL string.
     pub async fn connect_options(&self) -> Result<sqlx::postgres::PgConnectOptions, Error> {
         match self {
-            DatabaseUrl::Static(url) => {
-                sqlx::postgres::PgConnectOptions::from_str(url)
-                    .map_err(|e| Error::InternalErr(format!("Failed to parse database URL: {}", e)))
-            }
+            DatabaseUrl::Static(url) => sqlx::postgres::PgConnectOptions::from_str(url)
+                .map_err(|e| Error::InternalErr(format!("Failed to parse database URL: {}", e))),
         }
     }
 
@@ -665,7 +685,9 @@ pub async fn connect(
             }
         })
         .connect_with(
-            database_url.connect_options().await?
+            database_url
+                .connect_options()
+                .await?
                 .statement_cache_capacity(400),
         )
         .await
@@ -677,7 +699,11 @@ type Tag = String;
 pub use db::DB;
 
 use crate::{
-    auth::{PermsCache, FLOW_PERMS_CACHE, HASH_PERMS_CACHE}, db::{AuthedRef, UserDbWithAuthed}, error::to_anyhow, runnable_settings::RunnableSettings, scripts::{ScriptHash, ScriptRunnableSettingsHandle, ScriptRunnableSettingsInline}
+    auth::{PermsCache, FLOW_PERMS_CACHE, HASH_PERMS_CACHE},
+    db::{AuthedRef, UserDbWithAuthed},
+    error::to_anyhow,
+    runnable_settings::RunnableSettings,
+    scripts::{ScriptHash, ScriptRunnableSettingsHandle, ScriptRunnableSettingsInline},
 };
 
 #[derive(Clone)]
@@ -706,19 +732,20 @@ pub struct ScriptHashInfo<SR> {
 }
 
 impl ScriptHashInfo<ScriptRunnableSettingsHandle> {
-    pub async fn prefetch_cached<'a>(self, db: &DB) -> error::Result<ScriptHashInfo<ScriptRunnableSettingsInline>> {
+    pub async fn prefetch_cached<'a>(
+        self,
+        db: &DB,
+    ) -> error::Result<ScriptHashInfo<ScriptRunnableSettingsInline>> {
+        let (debouncing_settings, concurrency_settings) =
+            RunnableSettings::from_runnable_settings_handle(
+                self.runnable_settings.runnable_settings_handle,
+                db,
+            )
+            .await?
+            .prefetch_cached(db)
+            .await?;
 
-    let (debouncing_settings, concurrency_settings) =
-        RunnableSettings::from_runnable_settings_handle(
-            self.runnable_settings.runnable_settings_handle,
-            db,
-        )
-        .await?
-        .prefetch_cached(db)
-        .await?;
-
-    Ok(
-        ScriptHashInfo {
+        Ok(ScriptHashInfo {
             path: self.path,
             hash: self.hash,
             tag: self.tag,
@@ -732,17 +759,17 @@ impl ScriptHashInfo<ScriptRunnableSettingsHandle> {
             has_preprocessor: self.has_preprocessor,
             on_behalf_of_email: self.on_behalf_of_email,
             created_by: self.created_by,
-            runnable_settings: ScriptRunnableSettingsInline{
-            concurrency_settings: concurrency_settings
-                .maybe_fallback(
+            runnable_settings: ScriptRunnableSettingsInline {
+                concurrency_settings: concurrency_settings.maybe_fallback(
                     self.runnable_settings.concurrency_key,
                     self.runnable_settings.concurrent_limit,
                     self.runnable_settings.concurrency_time_window_s,
                 ),
-            debouncing_settings: debouncing_settings
-                .maybe_fallback(self.runnable_settings.debounce_key, self.runnable_settings.debounce_delay_s),
+                debouncing_settings: debouncing_settings.maybe_fallback(
+                    self.runnable_settings.debounce_key,
+                    self.runnable_settings.debounce_delay_s,
+                ),
             },
-                
         })
     }
 }
@@ -1213,4 +1240,3 @@ impl KillpillSender {
     //     self.already_sent.load(Ordering::SeqCst)
     // }
 }
-

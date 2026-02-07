@@ -10,8 +10,6 @@ use crate::db::ApiAuthed;
 #[cfg(feature = "embedding")]
 use crate::embeddings::load_embeddings_db;
 #[cfg(feature = "oauth2")]
-use crate::oauth2_oss::AllClients;
-#[cfg(feature = "oauth2")]
 use crate::oauth2_oss::SlackVerifier;
 #[cfg(feature = "smtp")]
 use crate::smtp_server_oss::SmtpServer;
@@ -39,8 +37,6 @@ use axum::response::Response;
 use axum::{middleware::from_extractor, routing::get, routing::post, Extension, Json, Router};
 use db::DB;
 use reqwest::Client;
-#[cfg(feature = "oauth2")]
-use std::collections::HashMap;
 use tokio::task::JoinHandle;
 use windmill_common::global_settings::load_value_from_global_settings;
 use windmill_common::global_settings::EMAIL_DOMAIN_SETTING;
@@ -118,7 +114,6 @@ mod resources;
 mod saml_oss;
 mod schedule;
 mod scim_oss;
-mod scopes;
 mod scripts;
 mod secret_backend_ext;
 mod service_logs;
@@ -141,7 +136,6 @@ pub mod triggers;
 mod users;
 mod users_oss;
 mod utils;
-pub mod var_resource_cache;
 mod variables;
 pub mod webhook_util;
 mod workers;
@@ -181,14 +175,10 @@ lazy_static::lazy_static! {
 }
 
 #[cfg(feature = "oauth2")]
+pub use windmill_oauth::OAUTH_CLIENTS;
+
+#[cfg(feature = "oauth2")]
 lazy_static::lazy_static! {
-    pub static ref OAUTH_CLIENTS: Arc<RwLock<AllClients>> = Arc::new(RwLock::new(AllClients {
-        logins: HashMap::new(),
-        connects: HashMap::new(),
-        slack: None
-    }));
-
-
     pub static ref SLACK_SIGNING_SECRET: Option<SlackVerifier> = std::env::var("SLACK_SIGNING_SECRET")
         .ok()
         .map(|x| SlackVerifier::new(x).unwrap());

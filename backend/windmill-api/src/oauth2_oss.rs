@@ -14,12 +14,12 @@ use hmac::Mac;
 
 #[cfg(feature = "oauth2")]
 use itertools::Itertools;
-#[cfg(feature = "oauth2")]
-use windmill_oauth::{OClient, AccessToken, RefreshToken, Scope, helpers};
 use serde::{Deserialize, Serialize};
 use sqlx::{Postgres, Transaction};
 #[cfg(feature = "oauth2")]
 use windmill_common::more_serde::maybe_number_opt;
+#[cfg(feature = "oauth2")]
+use windmill_oauth::{helpers, AccessToken, RefreshToken, Scope};
 
 #[cfg(feature = "oauth2")]
 use crate::OAUTH_CLIENTS;
@@ -40,45 +40,9 @@ pub fn workspaced_service() -> Router {
 }
 
 #[cfg(feature = "oauth2")]
-#[derive(Debug, Clone)]
-pub struct ClientWithScopes {
-    _client: OClient,
-    _scopes: Vec<String>,
-    _extra_params: Option<HashMap<String, String>>,
-    _extra_params_callback: Option<HashMap<String, String>>,
-    _allowed_domains: Option<Vec<String>>,
-    _userinfo_url: Option<String>,
-}
-#[cfg(feature = "oauth2")]
-pub type BasicClientsMap = HashMap<String, ClientWithScopes>;
+pub use windmill_oauth::{AllClients, BasicClientsMap, ClientWithScopes};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct OAuthConfig {
-    auth_url: String,
-    token_url: String,
-    userinfo_url: Option<String>,
-    scopes: Option<Vec<String>>,
-    extra_params: Option<HashMap<String, String>>,
-    extra_params_callback: Option<HashMap<String, String>>,
-    req_body_auth: Option<bool>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct OAuthClient {
-    id: String,
-    secret: String,
-    allowed_domains: Option<Vec<String>>,
-    connect_config: Option<OAuthConfig>,
-    login_config: Option<OAuthConfig>,
-}
-
-#[cfg(feature = "oauth2")]
-#[derive(Debug)]
-pub struct AllClients {
-    pub logins: BasicClientsMap,
-    pub connects: BasicClientsMap,
-    pub slack: Option<OClient>,
-}
+pub use windmill_oauth::{OAuthClient, OAuthConfig};
 
 #[cfg(feature = "oauth2")]
 pub async fn build_oauth_clients(
