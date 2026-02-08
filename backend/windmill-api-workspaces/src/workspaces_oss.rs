@@ -1,8 +1,7 @@
 
-use crate::{
-    db::{ApiAuthed, DB},
-    workspaces::EditAutoInvite,
-};
+use crate::workspaces::EditAutoInvite;
+use windmill_api_auth::ApiAuthed;
+use windmill_common::DB;
 
 pub async fn edit_auto_invite(
     _authed: ApiAuthed,

@@ -30,3 +30,9 @@ pub async fn send_email_plain_text(
 ) -> crate::error::Result<()> {
     Ok(())
 }
+
+pub fn send_email_if_possible(_subject: &str, _content: &str, _to: &str) {
+    tracing::warn!(
+        "send_email_if_possible is not implemented in Windmill's Open Source repository"
+    );
+}

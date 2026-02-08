@@ -77,6 +77,7 @@ pub mod stream;
 pub mod teams_oss;
 pub mod tracing_init;
 pub mod triggers;
+pub mod usernames;
 pub mod users;
 pub mod utils;
 pub mod variables;
