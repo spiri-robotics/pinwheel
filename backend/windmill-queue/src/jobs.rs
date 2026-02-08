@@ -1126,7 +1126,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
     }
 
     if completed_job.concurrent_limit.is_some()
-        || RunnableSettings::prefetch_cached_from_handle(completed_job.runnable_settings_handle, db)
+        || windmill_common::runnable_settings::prefetch_cached_from_handle(completed_job.runnable_settings_handle, db)
             .await?
             .1
             .concurrent_limit
@@ -2796,7 +2796,7 @@ impl PulledJobResult {
         };
 
         let DebouncingSettings { debounce_delay_s, debounce_args_to_accumulate, .. } =
-            RunnableSettings::prefetch_cached_from_handle(j.runnable_settings_handle, db)
+            windmill_common::runnable_settings::prefetch_cached_from_handle(j.runnable_settings_handle, db)
                 .await?
                 .0;
 
@@ -3122,9 +3122,7 @@ pub async fn pull(
         };
 
         let concurrency_settings =
-            RunnableSettings::from_runnable_settings_handle(job.runnable_settings_handle, db)
-                .await?
-                .prefetch_cached(db)
+            windmill_common::runnable_settings::prefetch_cached_from_handle(job.runnable_settings_handle, db)
                 .await?
                 .1
                 .maybe_fallback(None, job.concurrent_limit, job.concurrency_time_window_s);
@@ -5237,11 +5235,10 @@ pub async fn push<'c, 'd>(
         (job_kind, scheduled_for_o)
     };
 
-    let runnable_settings_handle = RunnableSettings {
+    let runnable_settings_handle = windmill_common::runnable_settings::insert_rs(RunnableSettings {
         debouncing_settings: debouncing_settings.insert_cached(_db).await?,
         concurrency_settings: concurrency_settings.insert_cached(_db).await?,
-    }
-    .insert_cached(_db)
+    }, _db)
     .await?;
 
     let (guarded_concurrent_limit, guarded_concurrency_time_window_s) =
