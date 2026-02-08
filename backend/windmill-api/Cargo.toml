@@ -39,6 +39,7 @@ mcp = ["dep:windmill-mcp", "windmill-mcp/server", "windmill-mcp/auth", "windmill
 bedrock = ["dep:aws-sdk-bedrock", "dep:aws-sdk-bedrockruntime", "windmill-common/bedrock", "dep:aws-config", "dep:aws-credential-types", "dep:aws-smithy-types"]
 python = ["windmill-dep-map/python", "dep:windmill-parser-py", "dep:windmill-parser-py-imports", "windmill-api-scripts/python", "windmill-trigger/python", "windmill-common/python"]
 no_auth = ["windmill-api-auth/no_auth", "windmill-store/no_auth", "windmill-api-users/no_auth"]
+quickjs = ["windmill-jseval/quickjs"]
 
 [dependencies]
 windmill-mcp = { workspace = true, optional = true }
@@ -61,7 +62,7 @@ windmill-parser-py = { workspace = true, optional = true }
 windmill-parser-py-imports = { workspace = true, optional = true }
 windmill-git-sync.workspace = true
 windmill-indexer = { workspace = true, optional = true }
-windmill-autoscaling.workspace = true
+windmill-autoscaling = { workspace = true, optional = true }
 windmill-worker = { workspace = true, optional = true }
 windmill-dep-map.workspace = true
 tokio.workspace = true
