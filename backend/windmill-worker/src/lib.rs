@@ -26,14 +26,13 @@ mod global_cache;
 mod go_executor;
 mod graphql_executor;
 mod handle_child;
-mod otel_tracing_proxy_oss;
 pub mod job_logger;
 mod job_logger_oss;
 mod js_eval;
-#[cfg(feature = "quickjs")]
-pub mod js_eval_quickjs;
 #[cfg(test)]
 mod js_eval_parity_tests;
+#[cfg(feature = "quickjs")]
+pub mod js_eval_quickjs;
 pub mod memory_common;
 pub mod memory_oss;
 #[cfg(feature = "mysql")]
@@ -43,9 +42,11 @@ mod nu_executor;
 #[cfg(feature = "oracledb")]
 mod oracledb_executor;
 mod otel_oss;
+mod otel_tracing_proxy_oss;
 mod pg_executor;
 #[cfg(feature = "php")]
 mod php_executor;
+mod prepare_deps;
 #[cfg(feature = "python")]
 mod python_executor;
 #[cfg(feature = "python")]
@@ -55,27 +56,19 @@ pub mod result_processor;
 mod rust_executor;
 mod sanitized_sql_params;
 mod schema;
-pub mod scoped_dependency_map;
 pub mod sql_utils;
 mod universal_pkg_installer;
-mod prepare_deps;
 mod worker;
 mod worker_flow;
 mod worker_lockfiles;
 mod worker_utils;
-pub mod workspace_dependencies;
 
 pub use worker::*;
-pub use worker_lockfiles::{
-    process_relative_imports, trigger_dependents_to_recompute_dependencies,
-};
-
-pub use result_processor::handle_job_error;
 
 pub use bun_executor::{
     build_loader, compute_bundle_local_and_remote_path, generate_dedicated_worker_wrapper,
     get_common_bun_proc_envs, install_bun_lockfile, prebundle_bun_script, prepare_job_dir,
-    BUN_DEDICATED_WORKER_ARGS, LoaderMode, RELATIVE_BUN_BUILDER, RELATIVE_BUN_LOADER,
+    LoaderMode, BUN_DEDICATED_WORKER_ARGS, RELATIVE_BUN_BUILDER, RELATIVE_BUN_LOADER,
 };
 pub use deno_executor::generate_deno_lock;
 pub use prepare_deps::run_prepare_deps_cli;

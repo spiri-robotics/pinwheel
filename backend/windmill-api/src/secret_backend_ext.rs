@@ -15,10 +15,7 @@
 //! The OSS version only supports the database backend.
 
 
-use windmill_common::{
-    db::DB,
-    error::Result,
-};
+use windmill_common::{db::DB, error::Result};
 
 
 

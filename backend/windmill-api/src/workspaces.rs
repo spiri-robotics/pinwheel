@@ -50,10 +50,10 @@ use windmill_common::{
     oauth2::WORKSPACE_SLACK_BOT_TOKEN_PATH,
     utils::{paginate, rd_string, require_admin, Pagination},
 };
-use windmill_git_sync::{handle_deployment_metadata, handle_fork_branch_creation, DeployedObject};
-use windmill_worker::scoped_dependency_map::{
+use windmill_dep_map::scoped_dependency_map::{
     DependencyDependent, DependencyMap, ScopedDependencyMap,
 };
+use windmill_git_sync::{handle_deployment_metadata, handle_fork_branch_creation, DeployedObject};
 
 
 use hyper::StatusCode;

@@ -329,7 +329,11 @@ async fn handle_full_regex(
             // Use .ok() to match deno_core op_get_id behavior: return null for non-existent steps
             // instead of throwing an error
             let res = authed_client
-                .get_result_by_id::<Option<Box<RawValue>>>(&by_id.flow_job.to_string(), obj_key, query)
+                .get_result_by_id::<Option<Box<RawValue>>>(
+                    &by_id.flow_job.to_string(),
+                    obj_key,
+                    query,
+                )
                 .await
                 .ok()
                 .flatten();
