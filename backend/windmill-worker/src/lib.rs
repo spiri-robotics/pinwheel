@@ -29,10 +29,6 @@ mod handle_child;
 pub mod job_logger;
 mod job_logger_oss;
 mod js_eval;
-#[cfg(test)]
-mod js_eval_parity_tests;
-#[cfg(feature = "quickjs")]
-pub mod js_eval_quickjs;
 pub mod memory_common;
 pub mod memory_oss;
 #[cfg(feature = "mysql")]
