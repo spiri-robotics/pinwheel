@@ -1575,6 +1575,11 @@ pub async fn run_worker(
     #[cfg(feature = "benchmark")]
     let mut infos = BenchmarkInfo::new();
 
+    #[cfg(feature = "benchmark")]
+    if let Some(db) = conn.as_sql() {
+        infos.init_pool_stats(db.size());
+    }
+
     let vacuum_shift = rand::rng().random_range(0..VACUUM_PERIOD);
 
     IS_READY.store(true, Ordering::Relaxed);
@@ -1979,6 +1984,9 @@ pub async fn run_worker(
                             #[cfg(feature = "benchmark")]
                             {
                                 add_time!(bench, "sent to dedicated worker");
+                                if let Some(db) = conn.as_sql() {
+                                    infos.sample_pool(db.size(), db.num_idle() as u32);
+                                }
                                 infos.add_iter(bench, true);
                             }
 
@@ -2049,6 +2057,9 @@ pub async fn run_worker(
                                 #[cfg(feature = "benchmark")]
                                 {
                                     add_time!(bench, "sent to flow runner");
+                                    if let Some(db) = conn.as_sql() {
+                                        infos.sample_pool(db.size(), db.num_idle() as u32);
+                                    }
                                     infos.add_iter(bench, true);
                                 }
 
@@ -2349,6 +2360,9 @@ pub async fn run_worker(
                 {
                     if started {
                         add_time!(bench, "job processed");
+                        if let Some(db) = conn.as_sql() {
+                            infos.sample_pool(db.size(), db.num_idle() as u32);
+                        }
                         infos.add_iter(bench, true);
                     }
                 }
@@ -2377,6 +2391,9 @@ pub async fn run_worker(
                 #[cfg(feature = "benchmark")]
                 {
                     add_time!(bench, "sleep because empty job queue");
+                    if let Some(db) = conn.as_sql() {
+                        infos.sample_pool(db.size(), db.num_idle() as u32);
+                    }
                     infos.add_iter(bench, false);
                 }
                 #[cfg(feature = "prometheus")]
