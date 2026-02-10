@@ -50,6 +50,7 @@ pub fn global_service() -> Router {
         .route("/test_smtp", post(test_email))
         .route("/test_license_key", post(test_license_key))
         .route("/send_stats", post(send_stats))
+        .route("/get_stats", get(get_stats))
         .route(
             "/latest_key_renewal_attempt",
             get(get_latest_key_renewal_attempt),
@@ -396,6 +397,13 @@ pub async fn send_stats(Extension(db): Extension<DB>, authed: ApiAuthed) -> Resu
     .await?;
 
     Ok("Sent stats".to_string())
+}
+
+
+pub async fn get_stats() -> Result<String> {
+    Err(error::Error::BadRequest(
+        "Downloading telemetry is only available on enterprise edition".to_string(),
+    ))
 }
 
 #[derive(serde::Serialize)]
