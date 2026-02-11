@@ -45,6 +45,7 @@ quickjs = ["windmill-jseval/quickjs"]
 windmill-mcp = { workspace = true, optional = true }
 windmill-api-auth.workspace = true
 windmill-api-scripts.workspace = true
+windmill-api-flows.workspace = true
 windmill-api-users.workspace = true
 windmill-api-workspaces.workspace = true
 windmill-api-groups.workspace = true
