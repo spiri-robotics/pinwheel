@@ -10,6 +10,8 @@ path = "src/lib.rs"
 
 [features]
 default = []
+deno_core = ["windmill-test-utils/deno_core"]
+mcp = []
 
 [dependencies]
 windmill-test-utils.workspace = true
