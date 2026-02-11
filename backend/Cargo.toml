@@ -160,7 +160,7 @@ oss_core = [
 ce_core = ["oss_core"]
 ee_core = [
     "stripe", "prometheus", "cloud",
-    "kafka", "sqs_trigger", "nats", "gcp_trigger",
+    "kafka", "kafka-gssapi", "sqs_trigger", "nats", "gcp_trigger",
     "jemalloc", "otel"
 ]
 ee_server = ["tantivy", "agent_worker_server", "local_reports"]
