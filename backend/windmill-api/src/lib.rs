@@ -13,6 +13,7 @@ use crate::embeddings::load_embeddings_db;
 use crate::oauth2_oss::SlackVerifier;
 #[cfg(feature = "smtp")]
 use crate::smtp_server_oss::SmtpServer;
+use windmill_store::resources::public_service;
 
 #[cfg(feature = "mcp")]
 use crate::mcp::{extract_and_store_workspace_id, setup_mcp_server};
@@ -143,6 +144,9 @@ pub mod webhook_util;
 mod workers;
 mod workspaces;
 mod workspaces_export;
+
+#[cfg(feature = "mcp")]
+mod mcp_tools;
 
 #[cfg(feature = "mcp")]
 mod mcp;
@@ -615,7 +619,7 @@ pub async fn run_server(
                 })
                 .nest(
                     "/w/:workspace_id/resources_u",
-                    resources::public_service().layer(cors.clone()),
+                    public_service().layer(cors.clone()),
                 )
                 .nest(
                     "/w/:workspace_id/capture_u",
