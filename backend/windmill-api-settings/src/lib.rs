@@ -8,12 +8,14 @@
 
 use std::{collections::HashMap, time::Duration};
 
-use crate::{
-    db::{ApiAuthed, DB},
-    ee_oss::validate_license_key,
-    utils::{generate_instance_username_for_all_users, require_super_admin},
-    HTTP_CLIENT,
-};
+pub mod ee_oss;
+
+use windmill_api_auth::{require_super_admin, ApiAuthed};
+use windmill_common::utils::HTTP_CLIENT_PERMISSIVE as HTTP_CLIENT;
+use windmill_common::DB;
+
+use ee_oss::validate_license_key;
+use windmill_common::usernames::generate_instance_username_for_all_users;
 
 use axum::{
     extract::{Extension, Path},
@@ -22,7 +24,6 @@ use axum::{
 };
 
 use serde_json::json;
-
 
 use serde::{Deserialize, Serialize};
 use windmill_common::{

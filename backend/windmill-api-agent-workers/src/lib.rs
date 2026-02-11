@@ -7,7 +7,7 @@
  * LICENSE-AGPL for a copy of the license.
  */
 
-use crate::db::DB;
+use windmill_common::DB;
 
 use axum::Router;
 

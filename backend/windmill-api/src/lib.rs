@@ -27,7 +27,7 @@ use crate::{
     webhook_util::WebhookShared,
 };
 #[cfg(feature = "agent_worker_server")]
-use agent_workers_oss::AgentCache;
+use windmill_api_agent_workers::AgentCache;
 
 use anyhow::Context;
 use argon2::Argon2;
@@ -37,7 +37,6 @@ use axum::http::HeaderValue;
 use axum::response::Response;
 use axum::{middleware::from_extractor, routing::get, routing::post, Extension, Json, Router};
 use db::DB;
-use reqwest::Client;
 use tokio::task::JoinHandle;
 use windmill_common::global_settings::load_value_from_global_settings;
 use windmill_common::global_settings::EMAIL_DOMAIN_SETTING;
@@ -58,19 +57,16 @@ use windmill_common::worker::CLOUD_HOSTED;
 #[allow(unused_imports)]
 pub(crate) use windmill_common::BASE_URL;
 use windmill_common::{
-    utils::{configure_client, GIT_VERSION},
+    utils::GIT_VERSION,
     INSTANCE_NAME,
 };
 
 use crate::scim_oss::has_scim_token;
 use windmill_common::error::AppError;
 
-#[cfg(feature = "agent_worker_server")]
-mod agent_workers_oss;
 mod ai;
 mod apps;
 pub mod args;
-mod assets;
 mod audit;
 pub mod auth;
 mod azure_proxy_oss;
@@ -78,14 +74,12 @@ mod azure_proxy_oss;
 mod bedrock;
 mod capture;
 mod concurrency_groups;
-mod configs;
 mod db;
-pub mod debug;
+
 mod drafts;
 pub mod ee_oss;
 pub mod embeddings;
 mod favorite;
-mod flow_conversations;
 pub mod flows;
 mod folder_history;
 mod folders;
@@ -94,12 +88,8 @@ mod group_history;
 mod groups;
 mod indexer_oss;
 mod inkeep_oss;
-mod inputs;
 mod integration;
 mod live_migrations;
-mod npm_proxy;
-#[cfg(feature = "http_trigger")]
-mod openapi;
 mod s3_proxy_oss;
 mod workspace_dependencies;
 
@@ -115,12 +105,10 @@ mod oidc_oss;
 mod raw_apps;
 mod resources;
 mod saml_oss;
-mod schedule;
 mod scim_oss;
 mod scripts;
 mod secret_backend_ext;
 mod service_logs;
-mod settings;
 mod slack_approvals;
 #[cfg(feature = "smtp")]
 mod smtp_server_oss;
@@ -141,7 +129,6 @@ mod users_oss;
 mod utils;
 mod variables;
 pub mod webhook_util;
-mod workers;
 mod workspaces;
 mod workspaces_export;
 
@@ -165,16 +152,9 @@ lazy_static::lazy_static! {
 
 
     // COOKIE_DOMAIN and IS_SECURE are now in windmill_common::utils
-
-    pub static ref HTTP_CLIENT: Client = configure_client(reqwest::ClientBuilder::new()
-        .user_agent("windmill/beta")
-        .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_secs(30))
-        .danger_accept_invalid_certs(std::env::var("ACCEPT_INVALID_CERTS").is_ok()))
-        .build().unwrap();
-
-
 }
+
+pub use windmill_common::utils::HTTP_CLIENT_PERMISSIVE as HTTP_CLIENT;
 
 pub use windmill_common::utils::{COOKIE_DOMAIN, IS_SECURE};
 
@@ -250,7 +230,7 @@ pub async fn run_server(
     let argon2 = Arc::new(Argon2::default());
 
     // Initialize debug signing key for debugger authentication
-    debug::init_debug_signing_key().await;
+    windmill_api_debug::init_debug_signing_key().await;
 
     let disable_response_logs = std::env::var("DISABLE_RESPONSE_LOGS")
         .ok()
@@ -390,7 +370,7 @@ pub async fn run_server(
     #[cfg(feature = "agent_worker_server")]
     let (agent_workers_router, agent_workers_bg_processor, agent_workers_job_completed_tx) =
         if server_mode {
-            agent_workers_oss::workspaced_service(db.clone(), _base_internal_url.clone())
+            windmill_api_agent_workers::workspaced_service(db.clone(), _base_internal_url.clone())
         } else {
             (Router::new(), vec![], None)
         };
@@ -409,7 +389,7 @@ pub async fn run_server(
                         // Reordered alphabetically
                         .nest("/acls", granular_acls::workspaced_service())
                         .nest("/apps", apps::workspaced_service())
-                        .nest("/assets", assets::workspaced_service())
+                        .nest("/assets", windmill_api_assets::workspaced_service())
                         .nest("/audit", audit::workspaced_service())
                         .nest("/capture", capture::workspaced_service())
                         .nest(
@@ -426,17 +406,17 @@ pub async fn run_server(
                         )
                         .nest(
                             "/flow_conversations",
-                            flow_conversations::workspaced_service(),
+                            windmill_api_flow_conversations::workspaced_service(),
                         )
                         .nest("/folders", folders::workspaced_service())
                         .nest("/folders_history", folder_history::workspaced_service())
                         .nest("/groups", groups::workspaced_service())
                         .nest("/groups_history", group_history::workspaced_service())
-                        .nest("/inputs", inputs::workspaced_service())
+                        .nest("/inputs", windmill_api_inputs::workspaced_service())
                         .nest("/job_metrics", job_metrics::workspaced_service())
                         .nest("/job_helpers", job_helpers_service)
                         .nest("/jobs", jobs::workspaced_service())
-                        .nest("/debug", debug::workspaced_service())
+                        .nest("/debug", windmill_api_debug::workspaced_service())
                         .nest("/native_triggers", {
                             #[cfg(feature = "native_trigger")]
                             {
@@ -469,23 +449,23 @@ pub async fn run_server(
                             Router::new()
                         })
                         .nest("/ai", ai::workspaced_service())
-                        .nest("/npm_proxy", npm_proxy::workspaced_service())
+                        .nest("/npm_proxy", windmill_api_npm_proxy::workspaced_service())
                         .nest("/raw_apps", raw_apps::workspaced_service())
                         .nest("/resources", resources::workspaced_service())
-                        .nest("/schedules", schedule::workspaced_service())
+                        .nest("/schedules", windmill_api_schedule::workspaced_service())
                         .nest("/scripts", scripts::workspaced_service())
                         .nest(
                             "/users",
                             users::workspaced_service().layer(Extension(argon2.clone())),
                         )
                         .nest("/variables", variables::workspaced_service())
-                        .nest("/workers", workers::workspaced_service())
+                        .nest("/workers", windmill_api_workers::workspaced_service())
                         .nest("/workspaces", workspaces::workspaced_service())
                         .nest("/oidc", oidc_oss::workspaced_service())
                         .nest("/openapi", {
                             #[cfg(feature = "http_trigger")]
                             {
-                                openapi::openapi_service()
+                                windmill_api_openapi::openapi_service()
                             }
 
                             #[cfg(not(feature = "http_trigger"))]
@@ -500,16 +480,16 @@ pub async fn run_server(
                     "/users",
                     users::global_service().layer(Extension(argon2.clone())),
                 )
-                .nest("/settings", settings::global_service())
-                .nest("/workers", workers::global_service())
+                .nest("/settings", windmill_api_settings::global_service())
+                .nest("/workers", windmill_api_workers::global_service())
                 .nest("/service_logs", service_logs::global_service())
-                .nest("/configs", configs::global_service())
+                .nest("/configs", windmill_api_configs::global_service())
                 .nest("/scripts", scripts::global_service())
                 .nest("/integrations", integration::global_service())
                 .nest("/groups", groups::global_service())
                 .nest("/flows", flows::global_service())
                 .nest("/apps", apps::global_service().layer(cors.clone()))
-                .nest("/schedules", schedule::global_service())
+                .nest("/schedules", windmill_api_schedule::global_service())
                 .nest("/embeddings", embeddings::global_service())
                 .nest("/ai", ai::global_service())
                 .nest("/inkeep", inkeep_oss::global_service())
@@ -534,7 +514,7 @@ pub async fn run_server(
                 )
                 .nest("/srch/index", indexer_oss::global_service())
                 .nest("/oidc", oidc_oss::global_service())
-                .nest("/debug", debug::global_service())
+                .nest("/debug", windmill_api_debug::global_service())
                 .nest(
                     "/saml",
                     saml_oss::global_service().layer(Extension(Arc::clone(&sp_extension))),
@@ -569,7 +549,7 @@ pub async fn run_server(
                         if let Some(agent_workers_job_completed_tx) =
                             agent_workers_job_completed_tx.clone()
                         {
-                            agent_workers_oss::global_service(agent_workers_job_completed_tx)
+                            windmill_api_agent_workers::global_service(agent_workers_job_completed_tx)
                                 .layer(Extension(agent_cache.clone()))
                         } else {
                             Router::new()
@@ -713,7 +693,7 @@ pub async fn run_server(
             },
         )
         // JWKS endpoint for HashiCorp Vault JWT authentication (must be outside /api prefix)
-        .route("/.well-known/jwks.json", get(settings::get_jwks))
+        .route("/.well-known/jwks.json", get(windmill_api_settings::get_jwks))
         .fallback(static_assets::static_handler)
         .layer(middleware_stack);
 
