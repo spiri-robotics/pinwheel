@@ -7,8 +7,7 @@ use serde_json::json;
 use sqlx::{Pool, Postgres};
 use windmill_common::workspaces::invalidate_protection_rules_cache;
 
-mod common;
-use common::*;
+use windmill_test_utils::*;
 
 fn client() -> reqwest::Client {
     reqwest::Client::new()
@@ -51,7 +50,7 @@ fn new_flow(path: &str, summary: &str) -> serde_json::Value {
 
 /// Comprehensive test for protection rules functionality.
 /// Tests all essential cases in a single test to avoid cache interference.
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_protection_rules(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
     invalidate_protection_rules_cache("test-workspace");

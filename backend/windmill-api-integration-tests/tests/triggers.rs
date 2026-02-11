@@ -12,14 +12,13 @@ use serde::Deserialize;
 use serde_json::json;
 use sqlx::{Pool, Postgres};
 
-mod common;
-use common::*;
+use windmill_test_utils::*;
 
 // ============================================================================
 // Capture Config Tests (direct DB)
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_capture_config_insert_and_query(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -56,7 +55,7 @@ async fn test_capture_config_insert_and_query(db: Pool<Postgres>) -> anyhow::Res
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_capture_config_upsert(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -104,7 +103,7 @@ async fn test_capture_config_upsert(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_capture_config_ping_updates_timestamp(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -159,7 +158,7 @@ async fn test_capture_config_ping_updates_timestamp(db: Pool<Postgres>) -> anyho
 // Capture Payload Tests (direct DB)
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_capture_insert_and_list(db: Pool<Postgres>) -> anyhow::Result<()> {
     for i in 0..2 {
         sqlx::query!(
@@ -192,7 +191,7 @@ async fn test_capture_insert_and_list(db: Pool<Postgres>) -> anyhow::Result<()> 
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_capture_delete(db: Pool<Postgres>) -> anyhow::Result<()> {
     let id = sqlx::query_scalar!(
         r#"
@@ -227,7 +226,7 @@ async fn test_capture_delete(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_capture_filter_by_trigger_kind(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -304,7 +303,7 @@ struct CaptureResponse {
     main_args: serde_json::Value,
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_capture_api_set_config_and_list(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
 
@@ -348,7 +347,7 @@ async fn test_capture_api_set_config_and_list(db: Pool<Postgres>) -> anyhow::Res
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_capture_api_list_captures(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
 
@@ -394,7 +393,7 @@ async fn test_capture_api_list_captures(db: Pool<Postgres>) -> anyhow::Result<()
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_capture_api_get_single(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
 
@@ -441,7 +440,7 @@ async fn test_capture_api_get_single(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_capture_api_delete(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
 
@@ -493,7 +492,7 @@ async fn test_capture_api_delete(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_capture_api_pagination(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
 
@@ -555,7 +554,7 @@ async fn test_capture_api_pagination(db: Pool<Postgres>) -> anyhow::Result<()> {
 // HTTP Trigger Tests (direct DB)
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_http_trigger_insert_and_query(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -610,7 +609,7 @@ async fn test_http_trigger_insert_and_query(db: Pool<Postgres>) -> anyhow::Resul
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_http_trigger_multiple_methods(db: Pool<Postgres>) -> anyhow::Result<()> {
     let methods = ["get", "post", "put", "delete", "patch"];
 
@@ -657,7 +656,7 @@ async fn test_http_trigger_multiple_methods(db: Pool<Postgres>) -> anyhow::Resul
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_http_trigger_authentication_methods(db: Pool<Postgres>) -> anyhow::Result<()> {
     let auth_methods = ["none", "windmill", "api_key", "basic_http", "signature"];
 
@@ -708,7 +707,7 @@ async fn test_http_trigger_authentication_methods(db: Pool<Postgres>) -> anyhow:
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_http_trigger_update(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -761,7 +760,7 @@ async fn test_http_trigger_update(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_http_trigger_delete(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -813,7 +812,7 @@ async fn test_http_trigger_delete(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_http_trigger_mode_filtering(db: Pool<Postgres>) -> anyhow::Result<()> {
     let modes = ["enabled", "disabled", "suspended"];
 
@@ -870,7 +869,7 @@ async fn test_http_trigger_mode_filtering(db: Pool<Postgres>) -> anyhow::Result<
 // Other Trigger Types Tests (DB schema validation)
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_websocket_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -909,7 +908,7 @@ async fn test_websocket_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()>
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_kafka_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -952,7 +951,7 @@ async fn test_kafka_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_postgres_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -995,7 +994,7 @@ async fn test_postgres_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> 
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_nats_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -1038,7 +1037,7 @@ async fn test_nats_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_sqs_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -1089,7 +1088,7 @@ async fn test_sqs_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> {
 // Cross-trigger tests
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_server_state_tracking(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -1144,7 +1143,7 @@ async fn test_trigger_server_state_tracking(db: Pool<Postgres>) -> anyhow::Resul
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_mode_filtering(db: Pool<Postgres>) -> anyhow::Result<()> {
     let modes = ["enabled", "disabled", "enabled"];
 
@@ -1191,7 +1190,7 @@ async fn test_trigger_mode_filtering(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_multiple_capture_configs_per_path(db: Pool<Postgres>) -> anyhow::Result<()> {
     let trigger_kinds = ["webhook", "email", "kafka"];
 
@@ -1229,7 +1228,7 @@ async fn test_multiple_capture_configs_per_path(db: Pool<Postgres>) -> anyhow::R
 // Schedule Tests (DB-level)
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_schedule_insert_and_query(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -1277,7 +1276,7 @@ async fn test_schedule_insert_and_query(db: Pool<Postgres>) -> anyhow::Result<()
 // MQTT Trigger Tests (DB-level)
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_mqtt_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query(
         r#"
@@ -1321,7 +1320,7 @@ async fn test_mqtt_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_mqtt_trigger_update(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query(
         r#"
@@ -1366,7 +1365,7 @@ async fn test_mqtt_trigger_update(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_mqtt_trigger_delete(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query(
         r#"
@@ -1414,7 +1413,7 @@ async fn test_mqtt_trigger_delete(db: Pool<Postgres>) -> anyhow::Result<()> {
 // GCP Trigger Tests (DB-level)
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_gcp_trigger_insert_pull(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query(
         r#"
@@ -1465,7 +1464,7 @@ async fn test_gcp_trigger_insert_pull(db: Pool<Postgres>) -> anyhow::Result<()> 
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_gcp_trigger_insert_push(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query(
         r#"
@@ -1515,7 +1514,7 @@ async fn test_gcp_trigger_insert_push(db: Pool<Postgres>) -> anyhow::Result<()> 
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_gcp_trigger_unique_constraint(db: Pool<Postgres>) -> anyhow::Result<()> {
     let insert_query = r#"
         INSERT INTO gcp_trigger (
@@ -1569,7 +1568,7 @@ async fn test_gcp_trigger_unique_constraint(db: Pool<Postgres>) -> anyhow::Resul
 // Email Trigger Tests (DB-level)
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_email_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -1612,7 +1611,7 @@ async fn test_email_trigger_insert(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_email_trigger_update(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -1658,7 +1657,7 @@ async fn test_email_trigger_update(db: Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_email_trigger_delete(db: Pool<Postgres>) -> anyhow::Result<()> {
     sqlx::query!(
         r#"

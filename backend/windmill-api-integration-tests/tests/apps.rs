@@ -1,8 +1,7 @@
 use serde_json::json;
 use sqlx::{Pool, Postgres};
 
-mod common;
-use common::*;
+use windmill_test_utils::*;
 
 fn app_url(port: u16, endpoint: &str, path: &str) -> String {
     format!("http://localhost:{port}/api/w/test-workspace/apps/{endpoint}/{path}")
@@ -40,7 +39,7 @@ fn new_app(path: &str, summary: &str) -> serde_json::Value {
     })
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_app_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
     let server = ApiServer::start(db.clone()).await?;

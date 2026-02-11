@@ -1,8 +1,7 @@
 use serde_json::json;
 use sqlx::{Pool, Postgres};
 
-mod common;
-use common::*;
+use windmill_test_utils::*;
 
 fn variable_url(port: u16, endpoint: &str, path: &str) -> String {
     format!("http://localhost:{port}/api/w/test-workspace/variables/{endpoint}/{path}")
@@ -23,7 +22,7 @@ async fn authed_get(port: u16, endpoint: &str, path: &str) -> reqwest::Response 
         .unwrap()
 }
 
-#[sqlx::test(fixtures("base", "variables_test"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base", "variables_test"))]
 async fn test_variable_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
     let server = ApiServer::start(db.clone()).await?;

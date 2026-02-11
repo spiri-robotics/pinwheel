@@ -11,8 +11,6 @@
 use sqlx::{Pool, Postgres};
 use windmill_common::notify_events::{cleanup_old_events, get_latest_event_id, poll_notify_events};
 
-mod common;
-
 /// Helper to insert a test event directly
 async fn insert_test_event(db: &Pool<Postgres>, channel: &str, payload: &str) -> i64 {
     sqlx::query_scalar::<_, i64>(
@@ -39,7 +37,7 @@ async fn count_events_for_channel(db: &Pool<Postgres>, channel: &str) -> i64 {
 // Basic Functionality Tests
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_get_latest_event_id_returns_valid_id(db: Pool<Postgres>) {
     // Get current latest id
     let latest_id = get_latest_event_id(&db).await.expect("Should get latest event id");
@@ -51,7 +49,7 @@ async fn test_get_latest_event_id_returns_valid_id(db: Pool<Postgres>) {
     assert!(new_latest_id >= new_id, "Latest id should be >= new event id");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_get_latest_event_id_with_events(db: Pool<Postgres>) {
     let _id1 = insert_test_event(&db, "test_channel_1", "payload1").await;
     let _id2 = insert_test_event(&db, "test_channel_2", "payload2").await;
@@ -61,7 +59,7 @@ async fn test_get_latest_event_id_with_events(db: Pool<Postgres>) {
     assert!(latest_id >= id3, "Latest id should be >= last inserted id");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_poll_notify_events_no_new_events(db: Pool<Postgres>) {
     // Get latest id first
     let latest_id = get_latest_event_id(&db).await.unwrap();
@@ -71,7 +69,7 @@ async fn test_poll_notify_events_no_new_events(db: Pool<Postgres>) {
     assert!(events.is_empty(), "Should return empty vec when polling from latest id");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_poll_notify_events_returns_new_events(db: Pool<Postgres>) {
     let before_id = get_latest_event_id(&db).await.unwrap();
 
@@ -92,7 +90,7 @@ async fn test_poll_notify_events_returns_new_events(db: Pool<Postgres>) {
     assert!(our_events[0].id < our_events[1].id, "Events should be ordered by id ascending");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_poll_notify_events_respects_last_event_id(db: Pool<Postgres>) {
     let id1 = insert_test_event(&db, "test_respect_id", "payload1").await;
     let _id2 = insert_test_event(&db, "test_respect_id", "payload2").await;
@@ -109,7 +107,7 @@ async fn test_poll_notify_events_respects_last_event_id(db: Pool<Postgres>) {
     assert!(our_events.iter().all(|e| e.id > id1), "All events should have id > id1");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_cleanup_old_events(db: Pool<Postgres>) {
     // Use unique channel names to avoid interference from other tests
     let old_channel = format!("test_cleanup_old_{}", uuid::Uuid::new_v4());
@@ -156,7 +154,7 @@ async fn test_cleanup_old_events(db: Pool<Postgres>) {
 // Database Trigger Tests - Verify triggers insert events correctly
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_notify_config_change(db: Pool<Postgres>) {
     let before_id = get_latest_event_id(&db).await.unwrap();
 
@@ -178,7 +176,7 @@ async fn test_trigger_notify_config_change(db: Pool<Postgres>) {
     assert!(!config_events.is_empty(), "Should have notify_config_change event");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_notify_global_setting_change_insert(db: Pool<Postgres>) {
     let before_id = get_latest_event_id(&db).await.unwrap();
 
@@ -201,7 +199,7 @@ async fn test_trigger_notify_global_setting_change_insert(db: Pool<Postgres>) {
     assert!(!setting_events.is_empty(), "Should have notify_global_setting_change event on insert");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_notify_global_setting_change_update(db: Pool<Postgres>) {
     // Use a unique setting name for testing
     let setting_name = format!("test_setting_update_{}", uuid::Uuid::new_v4());
@@ -231,7 +229,7 @@ async fn test_trigger_notify_global_setting_change_update(db: Pool<Postgres>) {
     assert!(!setting_events.is_empty(), "Should have notify_global_setting_change event on update");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_notify_global_setting_change_delete(db: Pool<Postgres>) {
     // Use a unique setting name for testing
     let setting_name = format!("test_setting_delete_{}", uuid::Uuid::new_v4());
@@ -261,7 +259,7 @@ async fn test_trigger_notify_global_setting_change_delete(db: Pool<Postgres>) {
     assert!(!setting_events.is_empty(), "Should have notify_global_setting_change event on delete");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_notify_workspace_envs_change(db: Pool<Postgres>) {
     let before_id = get_latest_event_id(&db).await.unwrap();
 
@@ -283,7 +281,7 @@ async fn test_trigger_notify_workspace_envs_change(db: Pool<Postgres>) {
     assert!(!env_events.is_empty(), "Should have notify_workspace_envs_change event");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_notify_workspace_key_change(db: Pool<Postgres>) {
     let before_id = get_latest_event_id(&db).await.unwrap();
 
@@ -305,7 +303,7 @@ async fn test_trigger_notify_workspace_key_change(db: Pool<Postgres>) {
     assert!(!key_events.is_empty(), "Should have notify_workspace_key_change event");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_notify_token_invalidation(db: Pool<Postgres>) {
     // First insert a session token
     let token = format!("test_token_{}", uuid::Uuid::new_v4());
@@ -336,7 +334,7 @@ async fn test_trigger_notify_token_invalidation(db: Pool<Postgres>) {
     assert!(!token_events.is_empty(), "Should have notify_token_invalidation event");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_notify_webhook_change(db: Pool<Postgres>) {
     let before_id = get_latest_event_id(&db).await.unwrap();
 
@@ -355,7 +353,7 @@ async fn test_trigger_notify_webhook_change(db: Pool<Postgres>) {
     assert!(!webhook_events.is_empty(), "Should have notify_webhook_change event");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_notify_workspace_premium_change(db: Pool<Postgres>) {
     let before_id = get_latest_event_id(&db).await.unwrap();
 
@@ -378,7 +376,7 @@ async fn test_trigger_notify_workspace_premium_change(db: Pool<Postgres>) {
 // HTTP Trigger Tests
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_notify_http_trigger_change(db: Pool<Postgres>) {
     let before_id = get_latest_event_id(&db).await.unwrap();
 
@@ -408,7 +406,7 @@ async fn test_trigger_notify_http_trigger_change(db: Pool<Postgres>) {
 // Script/Flow Version Change Tests
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_notify_runnable_version_change_script(db: Pool<Postgres>) {
     // First create a script without lock
     let script_path = format!("f/test/script_{}", uuid::Uuid::new_v4());
@@ -449,7 +447,7 @@ async fn test_trigger_notify_runnable_version_change_script(db: Pool<Postgres>) 
     assert_eq!(parts[1], "script", "Second part should be 'script'");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_trigger_notify_runnable_version_change_flow(db: Pool<Postgres>) {
     // First create a flow with empty versions array
     let flow_path = format!("f/test/flow_{}", uuid::Uuid::new_v4());
@@ -494,7 +492,7 @@ async fn test_trigger_notify_runnable_version_change_flow(db: Pool<Postgres>) {
 // Concurrent Access Tests
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_concurrent_event_insertion(db: Pool<Postgres>) {
     // Use a unique channel name for this test run
     let channel = format!("test_concurrent_{}", uuid::Uuid::new_v4());
@@ -536,7 +534,7 @@ async fn test_concurrent_event_insertion(db: Pool<Postgres>) {
     assert_eq!(ids.len(), 10, "All events should have unique IDs");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_polling_isolation(db: Pool<Postgres>) {
     // Use a unique channel name for this test
     let channel = format!("test_isolation_{}", uuid::Uuid::new_v4());
@@ -591,7 +589,7 @@ async fn test_polling_isolation(db: Pool<Postgres>) {
 // Edge Case Tests
 // ============================================================================
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_empty_payload(db: Pool<Postgres>) {
     let before_id = get_latest_event_id(&db).await.unwrap();
 
@@ -607,7 +605,7 @@ async fn test_empty_payload(db: Pool<Postgres>) {
     assert_eq!(empty_events[0].payload, "", "Payload should be empty string");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_large_payload(db: Pool<Postgres>) {
     let before_id = get_latest_event_id(&db).await.unwrap();
 
@@ -625,7 +623,7 @@ async fn test_large_payload(db: Pool<Postgres>) {
     assert_eq!(large_events[0].payload.len(), 1024, "Payload should be preserved");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_special_characters_in_payload(db: Pool<Postgres>) {
     let before_id = get_latest_event_id(&db).await.unwrap();
 
@@ -642,7 +640,7 @@ async fn test_special_characters_in_payload(db: Pool<Postgres>) {
     assert_eq!(special_events[0].payload, special_payload, "Special characters should be preserved");
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_cleanup_with_no_old_events(db: Pool<Postgres>) {
     // Use a unique channel name for this test
     let channel = format!("test_no_old_{}", uuid::Uuid::new_v4());

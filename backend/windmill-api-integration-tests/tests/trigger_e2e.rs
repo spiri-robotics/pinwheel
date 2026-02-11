@@ -24,8 +24,7 @@ use serde_json::json;
 use sqlx::{Pool, Postgres};
 use std::time::Duration;
 
-mod common;
-use common::*;
+use windmill_test_utils::*;
 
 // ============================================================================
 // Helpers
@@ -137,7 +136,7 @@ async fn insert_resource(
 ///     -- --ignored --nocapture
 /// ```
 #[ignore = "requires running MQTT broker on localhost:1883"]
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_mqtt_e2e(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
 
@@ -230,7 +229,7 @@ async fn test_mqtt_e2e(db: Pool<Postgres>) -> anyhow::Result<()> {
 ///     -- --ignored --nocapture
 /// ```
 #[ignore = "requires running WebSocket echo server on localhost:8765"]
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_websocket_e2e(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
 
@@ -286,7 +285,7 @@ async fn test_websocket_e2e(db: Pool<Postgres>) -> anyhow::Result<()> {
 ///     -- --ignored --nocapture
 /// ```
 #[ignore = "requires PostgreSQL with wal_level=logical"]
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_postgres_e2e(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
 

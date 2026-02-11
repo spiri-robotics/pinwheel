@@ -1,8 +1,7 @@
 use serde_json::json;
 use sqlx::{Pool, Postgres};
 
-mod common;
-use common::*;
+use windmill_test_utils::*;
 
 fn user_url(port: u16, endpoint: &str, name: &str) -> String {
     format!("http://localhost:{port}/api/w/test-workspace/users/{endpoint}/{name}")
@@ -16,7 +15,7 @@ fn authed(builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
     builder.header("Authorization", "Bearer SECRET_TOKEN")
 }
 
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_user_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
     let server = ApiServer::start(db.clone()).await?;

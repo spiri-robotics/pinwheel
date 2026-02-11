@@ -27,8 +27,6 @@ use windmill_common::secret_backend::{
     SecretBackend, VaultSettings,
 };
 
-mod common;
-
 fn test_vault_settings() -> VaultSettings {
     VaultSettings {
         address: std::env::var("VAULT_ADDR").unwrap_or_else(|_| "http://127.0.0.1:8200".to_string()),
@@ -42,7 +40,7 @@ fn test_vault_settings() -> VaultSettings {
 }
 
 /// Test that we can connect to Vault
-#[sqlx::test(fixtures("base", "secret_backend"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base", "secret_backend"))]
 #[ignore = "requires running Vault instance"]
 async fn test_vault_connection_works(db: Pool<Postgres>) {
     let settings = test_vault_settings();
@@ -53,7 +51,7 @@ async fn test_vault_connection_works(db: Pool<Postgres>) {
 }
 
 /// Test migration from database to Vault
-#[sqlx::test(fixtures("base", "secret_backend"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base", "secret_backend"))]
 #[ignore = "requires running Vault instance"]
 async fn test_migrate_db_to_vault(db: Pool<Postgres>) {
     let settings = test_vault_settings();
@@ -119,7 +117,7 @@ async fn test_migrate_db_to_vault(db: Pool<Postgres>) {
 }
 
 /// Test migration from Vault to database
-#[sqlx::test(fixtures("base", "secret_backend"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base", "secret_backend"))]
 #[ignore = "requires running Vault instance"]
 async fn test_migrate_vault_to_db(db: Pool<Postgres>) {
     let settings = test_vault_settings();
@@ -196,7 +194,7 @@ async fn test_migrate_vault_to_db(db: Pool<Postgres>) {
 }
 
 /// Test full round-trip migration: DB -> Vault -> DB
-#[sqlx::test(fixtures("base", "secret_backend"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base", "secret_backend"))]
 #[ignore = "requires running Vault instance"]
 async fn test_full_round_trip_migration(db: Pool<Postgres>) {
     let settings = test_vault_settings();
@@ -276,7 +274,7 @@ async fn test_full_round_trip_migration(db: Pool<Postgres>) {
 }
 
 /// Test that workspace isolation is maintained during migration
-#[sqlx::test(fixtures("base", "secret_backend"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base", "secret_backend"))]
 #[ignore = "requires running Vault instance"]
 async fn test_workspace_isolation(db: Pool<Postgres>) {
     let settings = test_vault_settings();

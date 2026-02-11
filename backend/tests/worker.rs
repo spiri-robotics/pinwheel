@@ -19,8 +19,7 @@ use windmill_common::{
     jobs::{JobPayload, RawCode},
     scripts::ScriptLang,
 };
-mod common;
-use common::*;
+use windmill_test_utils::*;
 
 use windmill_common::flows::FlowModule;
 use windmill_common::flows::FlowModuleValue;

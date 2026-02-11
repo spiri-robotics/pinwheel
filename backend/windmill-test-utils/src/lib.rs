@@ -568,7 +568,6 @@ pub async fn test_for_versions<F: Future<Output = ()>>(
 
 use futures::StreamExt;
 
-// #[cfg(feature = "python")]
 pub async fn assert_lockfile(
     db: &Pool<Postgres>,
     script_content: String,

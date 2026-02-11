@@ -1,5 +1,3 @@
-mod common;
-
 mod schedule_push {
     use chrono::Utc;
     use sqlx::{Pool, Postgres};
@@ -118,7 +116,7 @@ mod schedule_push {
     // push_scheduled_job: basic script schedule
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_script_schedule(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|_| {});
         let authed = make_authed();
@@ -140,7 +138,7 @@ mod schedule_push {
     // push_scheduled_job: flow schedule
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_flow_schedule(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.is_flow = true;
@@ -164,7 +162,7 @@ mod schedule_push {
     // push_scheduled_job: on_behalf_of_email (script)
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_script_on_behalf_of_email(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.script_path = "f/system/obo_script".to_string();
@@ -191,7 +189,7 @@ mod schedule_push {
     // push_scheduled_job: on_behalf_of_email (flow)
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_flow_on_behalf_of_email(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.is_flow = true;
@@ -218,7 +216,7 @@ mod schedule_push {
     // push_scheduled_job: with retry wraps in SingleStepFlow
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_script_with_retry(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.retry = Some(serde_json::json!({
@@ -247,7 +245,7 @@ mod schedule_push {
     // push_scheduled_job: duplicate detection (same schedule + time = skip)
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_duplicate_skipped(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|_| {});
         let authed = make_authed();
@@ -270,7 +268,7 @@ mod schedule_push {
     // push_scheduled_job: invalid timezone
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_invalid_timezone(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.timezone = "Invalid/Timezone".to_string();
@@ -288,7 +286,7 @@ mod schedule_push {
     // push_scheduled_job: invalid cron expression
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_invalid_cron(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.schedule = "not a cron".to_string();
@@ -306,7 +304,7 @@ mod schedule_push {
     // push_scheduled_job: invalid args (not a dict)
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_invalid_args(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             let raw = serde_json::value::RawValue::from_string("[1,2,3]".to_string()).unwrap();
@@ -325,7 +323,7 @@ mod schedule_push {
     // push_scheduled_job: with schedule args passed to job
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_with_args(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             let raw =
@@ -353,7 +351,7 @@ mod schedule_push {
     // push_scheduled_job: script not found
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_script_not_found(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.script_path = "f/system/nonexistent".to_string();
@@ -371,7 +369,7 @@ mod schedule_push {
     // push_scheduled_job: flow not found
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_flow_not_found(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.is_flow = true;
@@ -390,7 +388,7 @@ mod schedule_push {
     // push_scheduled_job: paused schedule (paused_until in future)
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_paused_schedule(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.paused_until = Some(Utc::now() + chrono::Duration::hours(1));
@@ -417,7 +415,7 @@ mod schedule_push {
     // push_scheduled_job: clock shift detection (now_cutoff >= now)
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_clock_shift(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|_| {});
         let authed = make_authed();
@@ -445,7 +443,7 @@ mod schedule_push {
     // try_schedule_next_job: disabled schedule does not push
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_handle_disabled_schedule(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.enabled = false;
@@ -471,7 +469,7 @@ mod schedule_push {
     // try_schedule_next_job: script path mismatch does not push
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_handle_path_mismatch(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|_| {});
         let job = make_completed_job(&schedule);
@@ -495,7 +493,7 @@ mod schedule_push {
     // try_schedule_next_job: enabled + matching path pushes next job
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_handle_enabled_pushes_next_job(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|_| {});
         let job = make_completed_job(&schedule);
@@ -524,7 +522,7 @@ mod schedule_push {
     // try_schedule_next_job: on_behalf_of_email via handle path
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_handle_on_behalf_of_email(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.script_path = "f/system/obo_script".to_string();
@@ -559,7 +557,7 @@ mod schedule_push {
     // (caller is responsible for retry + eventual disable)
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_handle_push_failure_disables_schedule(db: Pool<Postgres>) -> anyhow::Result<()> {
         sqlx::query(
             "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -604,7 +602,7 @@ mod schedule_push {
     // If the caller commits, both the next tick and any prior writes persist.
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_success_atomic_with_commit(db: Pool<Postgres>) -> anyhow::Result<()> {
         sqlx::query(
             "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -646,7 +644,7 @@ mod schedule_push {
     // Ensures no next tick leaks when the outer tx is not committed.
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_success_rolls_back_on_drop(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|_| {});
         let job = make_completed_job(&schedule);
@@ -675,7 +673,7 @@ mod schedule_push {
     // The schedule must stay enabled when the caller doesn't commit.
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_failure_disable_rolls_back_on_drop(db: Pool<Postgres>) -> anyhow::Result<()> {
         sqlx::query(
             "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -721,7 +719,7 @@ mod schedule_push {
     // The caller can perform additional writes on the returned tx.
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_tx_usable_after_success(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|_| {});
         let job = make_completed_job(&schedule);
@@ -759,7 +757,7 @@ mod schedule_push {
     // The caller can still write on the returned tx after a schedule disable.
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_tx_usable_after_failure(db: Pool<Postgres>) -> anyhow::Result<()> {
         sqlx::query(
             "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -815,7 +813,7 @@ mod schedule_push {
     // try_schedule_next_job: flow schedule pushes next job
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_try_schedule_flow(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.is_flow = true;
@@ -847,7 +845,7 @@ mod schedule_push {
     // try_schedule_next_job: script with retry wraps in SingleStepFlow
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_try_schedule_with_retry(db: Pool<Postgres>) -> anyhow::Result<()> {
         let schedule = make_schedule(|s| {
             s.retry = Some(serde_json::json!({
@@ -882,7 +880,7 @@ mod schedule_push {
     // try_schedule_next_job: push failure error message is stored on schedule
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_failure_stores_error_message(db: Pool<Postgres>) -> anyhow::Result<()> {
         sqlx::query(
             "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -927,7 +925,7 @@ mod schedule_push {
     // try_schedule_next_job: disabled schedule leaves no side effects
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_disabled_schedule_no_side_effects(db: Pool<Postgres>) -> anyhow::Result<()> {
         sqlx::query(
             "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -970,7 +968,7 @@ mod schedule_push {
     // try_schedule_next_job: path mismatch leaves schedule unchanged
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_path_mismatch_no_side_effects(db: Pool<Postgres>) -> anyhow::Result<()> {
         sqlx::query(
             "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -1012,7 +1010,7 @@ mod schedule_push {
     // doesn't error. The function should return (tx, None).
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_push_failure_schedule_not_in_db(db: Pool<Postgres>) -> anyhow::Result<()> {
         // Do NOT insert a schedule row — the disable UPDATE will match 0 rows
         let schedule = make_schedule(|s| {
@@ -1044,7 +1042,7 @@ mod schedule_push {
     // unmodified enabled state are committed together.
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_invariant_success_means_tick_committed(db: Pool<Postgres>) -> anyhow::Result<()> {
         sqlx::query(
             "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -1089,7 +1087,7 @@ mod schedule_push {
     // enabled and no next tick.
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_invariant_failure_means_disabled_after_commit(
         db: Pool<Postgres>,
     ) -> anyhow::Result<()> {
@@ -1139,7 +1137,7 @@ mod schedule_push {
     // enabled so that zombie retry can re-attempt.
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_invariant_rollback_preserves_schedule_for_retry(
         db: Pool<Postgres>,
     ) -> anyhow::Result<()> {
@@ -1187,6 +1185,7 @@ mod schedule_push {
     // Failpoint tests — feature-gated, only compiled under `failpoints`
     // ===================================================================
 
+    #[cfg(feature = "failpoints")]
     mod failpoint_tests {
         use super::*;
         use windmill_queue::jobs::schedule_failpoints::{ScheduleFailPoint, ACTIVE};
@@ -1195,7 +1194,7 @@ mod schedule_push {
         // SavepointCreate failpoint → schedule disabled, 0 jobs
         // ---------------------------------------------------------------
 
-        #[sqlx::test(fixtures("base", "schedule_push"))]
+        #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
         async fn test_failpoint_savepoint_create_disables(db: Pool<Postgres>) -> anyhow::Result<()> {
             sqlx::query(
                 "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -1232,7 +1231,7 @@ mod schedule_push {
         // Push failpoint → schedule disabled, 0 jobs
         // ---------------------------------------------------------------
 
-        #[sqlx::test(fixtures("base", "schedule_push"))]
+        #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
         async fn test_failpoint_push_disables(db: Pool<Postgres>) -> anyhow::Result<()> {
             sqlx::query(
                 "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -1269,7 +1268,7 @@ mod schedule_push {
         // SavepointCommit failpoint → schedule disabled, 0 jobs
         // ---------------------------------------------------------------
 
-        #[sqlx::test(fixtures("base", "schedule_push"))]
+        #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
         async fn test_failpoint_savepoint_commit_disables(db: Pool<Postgres>) -> anyhow::Result<()> {
             sqlx::query(
                 "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -1306,7 +1305,7 @@ mod schedule_push {
         // ScheduleDisable failpoint → returns Some(err), caller doesn't commit
         // ---------------------------------------------------------------
 
-        #[sqlx::test(fixtures("base", "schedule_push"))]
+        #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
         async fn test_failpoint_schedule_disable_returns_err(db: Pool<Postgres>) -> anyhow::Result<()> {
             sqlx::query(
                 "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -1335,7 +1334,7 @@ mod schedule_push {
         // ScheduleDisable failpoint + tx drop → schedule stays enabled
         // ---------------------------------------------------------------
 
-        #[sqlx::test(fixtures("base", "schedule_push"))]
+        #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
         async fn test_failpoint_disable_failure_rollback(db: Pool<Postgres>) -> anyhow::Result<()> {
             sqlx::query(
                 "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -1375,7 +1374,7 @@ mod schedule_push {
         // no error handler notification (QuotaExceeded is silenced)
         // ---------------------------------------------------------------
 
-        #[sqlx::test(fixtures("base", "schedule_push"))]
+        #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
         async fn test_failpoint_push_quota_exceeded_script(db: Pool<Postgres>) -> anyhow::Result<()> {
             sqlx::query(
                 "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -1414,7 +1413,7 @@ mod schedule_push {
         // PushQuotaExceeded failpoint (flow) → schedule disabled, 0 jobs
         // ---------------------------------------------------------------
 
-        #[sqlx::test(fixtures("base", "schedule_push"))]
+        #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
         async fn test_failpoint_push_quota_exceeded_flow(db: Pool<Postgres>) -> anyhow::Result<()> {
             sqlx::query(
                 "INSERT INTO schedule (workspace_id, path, edited_by, edited_at, schedule, timezone, enabled, script_path, is_flow, email, extra_perms, ws_error_handler_muted, no_flow_overlap)
@@ -1470,7 +1469,7 @@ mod schedule_push {
     // 4. The schedule remains enabled for retry on next flow execution
     // -----------------------------------------------------------------------
 
-    #[sqlx::test(fixtures("base", "schedule_push"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
     async fn test_zombie_flow_after_schedule_push_failure_meets_restart_criteria(
         db: Pool<Postgres>,
     ) -> anyhow::Result<()> {

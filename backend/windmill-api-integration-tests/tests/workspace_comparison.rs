@@ -1,8 +1,7 @@
 use serde_json::json;
 use sqlx::{Pool, Postgres};
 
-mod common;
-use common::*;
+use windmill_test_utils::*;
 
 /// Comprehensive integration test for the compare_workspaces endpoint.
 ///
@@ -12,7 +11,7 @@ use common::*;
 /// 3. Making various changes in both workspaces (new items, modifications, conflicts, deletions, renames)
 /// 4. Populating the workspace_diff table to simulate Git sync tracking
 /// 5. Calling compare_workspaces and verifying all aspects of the comparison
-#[sqlx::test(fixtures("base"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
 async fn test_compare_workspaces_comprehensive(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
 

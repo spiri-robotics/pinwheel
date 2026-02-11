@@ -1,8 +1,7 @@
 use serde_json::json;
 use sqlx::{Pool, Postgres};
 
-mod common;
-use common::*;
+use windmill_test_utils::*;
 
 /// Helper to create a client authenticated as a specific user
 async fn create_client_for_user(_port: u16, token: &str) -> reqwest::Client {
@@ -44,7 +43,7 @@ async fn can_write(client: &reqwest::Client, url: &str, body: serde_json::Value)
 /// `cargo test --features deno_core permissions -- --ignored`
 #[ignore]
 #[cfg(feature = "deno_core")]
-#[sqlx::test(fixtures("base", "permissions_test"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base", "permissions_test"))]
 async fn test_permissions_exhaustive(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
     let server = ApiServer::start(db.clone()).await?;
@@ -477,7 +476,7 @@ async fn test_permissions_exhaustive(db: Pool<Postgres>) -> anyhow::Result<()> {
 /// Additional test for verifying group permission inheritance
 #[ignore]
 #[cfg(feature = "deno_core")]
-#[sqlx::test(fixtures("base", "permissions_test"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base", "permissions_test"))]
 async fn test_group_permission_inheritance(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
     let server = ApiServer::start(db.clone()).await?;
@@ -547,7 +546,7 @@ async fn test_group_permission_inheritance(db: Pool<Postgres>) -> anyhow::Result
 /// Test that permissions work correctly for all item types
 #[ignore]
 #[cfg(feature = "deno_core")]
-#[sqlx::test(fixtures("base", "permissions_test"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base", "permissions_test"))]
 async fn test_all_item_types_permissions(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
     let server = ApiServer::start(db.clone()).await?;
@@ -588,7 +587,7 @@ async fn test_all_item_types_permissions(db: Pool<Postgres>) -> anyhow::Result<(
 /// Operators have limited permissions - they can execute but cannot manage resources
 #[ignore]
 #[cfg(feature = "deno_core")]
-#[sqlx::test(fixtures("base", "permissions_test"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base", "permissions_test"))]
 async fn test_operator_cannot_create_update(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
     let server = ApiServer::start(db.clone()).await?;

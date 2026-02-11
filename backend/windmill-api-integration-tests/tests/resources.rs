@@ -1,8 +1,7 @@
 use serde_json::json;
 use sqlx::{Pool, Postgres};
 
-mod common;
-use common::*;
+use windmill_test_utils::*;
 
 fn resource_url(port: u16, endpoint: &str, path: &str) -> String {
     format!("http://localhost:{port}/api/w/test-workspace/resources/{endpoint}/{path}")
@@ -23,7 +22,7 @@ async fn authed_get(port: u16, endpoint: &str, path: &str) -> reqwest::Response 
         .unwrap()
 }
 
-#[sqlx::test(fixtures("base", "resources_test"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base", "resources_test"))]
 async fn test_resource_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
     let server = ApiServer::start(db.clone()).await?;
@@ -400,7 +399,7 @@ async fn test_resource_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
 }
 
 #[cfg(feature = "mcp")]
-#[sqlx::test(fixtures("base", "resources_test"))]
+#[sqlx::test(migrations = "../migrations", fixtures("base", "resources_test"))]
 async fn test_mcp_tools(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
     let server = ApiServer::start(db.clone()).await?;
