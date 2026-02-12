@@ -83,9 +83,10 @@ use crate::{
     },
     get_proxy_envs_for_lang,
     handle_child::handle_child,
+    is_sandboxing_enabled,
     worker_utils::ping_job_status,
-    PyV, DISABLE_NSJAIL, DISABLE_NUSER, HOME_ENV, NSJAIL_PATH, PATH_ENV, PIP_EXTRA_INDEX_URL,
-    PIP_INDEX_URL, PROXY_ENVS, PY_INSTALL_DIR, TRACING_PROXY_CA_CERT_PATH, TZ_ENV, UV_CACHE_DIR,
+    PyV, DISABLE_NUSER, HOME_ENV, NSJAIL_PATH, PATH_ENV, PIP_EXTRA_INDEX_URL, PIP_INDEX_URL,
+    PROXY_ENVS, PY_INSTALL_DIR, TRACING_PROXY_CA_CERT_PATH, TZ_ENV, UV_CACHE_DIR,
     UV_INDEX_STRATEGY,
 };
 use windmill_common::client::AuthedClient;
@@ -252,7 +253,6 @@ pub async fn uv_pip_compile(
 
         #[cfg(unix)]
         let uv_cmd = UV_PATH.as_str();
-
 
         let mut child_cmd = Command::new(uv_cmd);
         child_cmd
@@ -709,7 +709,7 @@ except BaseException as e:
     #[cfg(windows)]
     let additional_python_paths_folders = additional_python_paths_folders.replace(":", ";");
 
-    if !*DISABLE_NSJAIL {
+    if is_sandboxing_enabled() {
         let shared_deps = additional_python_paths
             .into_iter()
             .map(|pp| {
@@ -753,7 +753,7 @@ mount {{
         job.id
     );
 
-    let child = if !*DISABLE_NSJAIL {
+    let child = if is_sandboxing_enabled() {
         let mut nsjail_cmd = Command::new(NSJAIL_PATH.as_str());
         nsjail_cmd
             .current_dir(job_dir)
@@ -818,7 +818,7 @@ mount {{
         mem_peak,
         canceled_by,
         child,
-        !*DISABLE_NSJAIL,
+        is_sandboxing_enabled(),
         worker_name,
         &job.workspace_id,
         "python run",
@@ -1241,9 +1241,11 @@ async fn spawn_uv_install(
     worker_dir: &str,
 ) -> Result<Box<dyn TokioChildWrapper>, Error> {
     let uv_index_strategy_guard = UV_INDEX_STRATEGY.read().await.clone();
-    let uv_index_strategy = uv_index_strategy_guard.as_deref().unwrap_or("unsafe-best-match");
+    let uv_index_strategy = uv_index_strategy_guard
+        .as_deref()
+        .unwrap_or("unsafe-best-match");
 
-    if !*DISABLE_NSJAIL {
+    if is_sandboxing_enabled() {
         tracing::info!(
             workspace_id = %w_id,
             "starting nsjail"
@@ -1588,7 +1590,7 @@ pub async fn handle_python_reqs(
                         let mut local_mem_peak = 0;
                         for pid_o in pids.lock().await.iter() {
                             if pid_o.is_some(){
-                                let mem = crate::handle_child::get_mem_peak(*pid_o, !*DISABLE_NSJAIL).await;
+                                let mem = crate::handle_child::get_mem_peak(*pid_o, is_sandboxing_enabled()).await;
                                 if mem < 0 {
                                     tracing::warn!(
                                         workspace_id = %w_id_2,
@@ -1698,7 +1700,7 @@ pub async fn handle_python_reqs(
         }
 
         // Do we use Nsjail?
-        if !*DISABLE_NSJAIL {
+        if is_sandboxing_enabled() {
             logs.push_str(&format!(
                 "\nStarting isolated installation... ({} tasks in parallel) \n",
                 parallel_limit
@@ -1895,7 +1897,7 @@ pub async fn handle_python_reqs(
 
             let s3_push = false;
 
-            if !*DISABLE_NSJAIL {
+            if is_sandboxing_enabled() {
                 let _ = std::fs::remove_file(format!("{job_dir}/{req}.config.proto"));
             }
 
