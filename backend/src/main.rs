@@ -1108,11 +1108,15 @@ Windmill Community Edition {GIT_VERSION}
                                         .await;
                                     }
 
-                                    if server_mode {
-                                        if !*windmill_common::QUIET_LOGS {
-                                            tracing::info!("monitor task started");
-                                        }
-                                    }
+                                    let monitor_start = Instant::now();
+                                    let warn_handle = if server_mode {
+                                        Some(tokio::spawn(async move {
+                                            tokio::time::sleep(Duration::from_secs(5)).await;
+                                            tracing::warn!("monitor task has been running for more than 5s");
+                                        }))
+                                    } else {
+                                        None
+                                    };
                                     monitor_db(
                                         &conn,
                                         &base_internal_url,
@@ -1127,10 +1131,12 @@ Windmill Community Edition {GIT_VERSION}
                                     )
                                     .await;
                                     monitor_iteration += 1;
-                                    if server_mode {
-                                        if !*windmill_common::QUIET_LOGS {
-                                            tracing::info!("monitor task finished");
-                                        }
+                                    if let Some(handle) = warn_handle {
+                                        handle.abort();
+                                    }
+                                    let elapsed = monitor_start.elapsed();
+                                    if server_mode && elapsed >= Duration::from_secs(5) {
+                                        tracing::info!("monitor task finished in {elapsed:.1?}");
                                     }
                                 },
                             }
