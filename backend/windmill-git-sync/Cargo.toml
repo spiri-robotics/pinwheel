@@ -9,6 +9,7 @@ name = "windmill_git_sync"
 path = "./src/lib.rs"
 
 [features]
+all_sqlx_features = []
 default = []
 
 [dependencies]
