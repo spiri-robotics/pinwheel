@@ -49,6 +49,7 @@ pub mod flow_status;
 pub mod flows;
 pub mod global_settings;
 pub mod indexer;
+pub mod instance_config;
 pub mod job_metrics;
 #[cfg(feature = "parquet")]
 pub mod job_s3_helpers_oss;

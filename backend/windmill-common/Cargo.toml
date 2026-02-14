@@ -6,6 +6,7 @@ edition.workspace = true
 
 [features]
 default = []
+instance_config_schema = ["dep:schemars"]
 local_reports = ["dep:rsa", "dep:aes-gcm"]
 jemalloc = ["dep:tikv-jemalloc-ctl"]
 tantivy = []
@@ -94,6 +95,7 @@ windmill-parser.workspace = true
 jsonwebtoken.workspace = true
 backon.workspace = true
 openidconnect = { workspace = true, optional = true }
+schemars = { workspace = true, optional = true }
 strum.workspace = true
 strum_macros.workspace = true
 windmill-types.workspace = true
