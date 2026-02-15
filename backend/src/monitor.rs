@@ -1337,24 +1337,10 @@ pub async fn reload_maven_settings_xml_setting(conn: &Connection) {
     )
     .await;
 
-    let settings_xml = MAVEN_SETTINGS_XML.read().await.clone();
-    match settings_xml {
-        Some(ref content) if !content.trim().is_empty() => {
-            let m2_dir = format!("{JAVA_HOME_DIR}/.m2");
-            if let Err(e) = tokio::fs::create_dir_all(&m2_dir).await {
-                tracing::error!("Failed to create .m2 directory: {e:#}");
-                return;
-            }
-            let settings_path = format!("{m2_dir}/settings.xml");
-            if let Err(e) = tokio::fs::write(&settings_path, content).await {
-                tracing::error!("Failed to write Maven settings.xml: {e:#}");
-            }
-        }
-        _ => {
-            let settings_path = format!("{JAVA_HOME_DIR}/.m2/settings.xml");
-            let _ = tokio::fs::remove_file(&settings_path).await;
-        }
+    {
+        return;
     }
+
 }
 
 pub async fn reload_no_default_maven_setting(conn: &Connection) {
