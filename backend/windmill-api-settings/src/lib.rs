@@ -18,7 +18,7 @@ use ee_oss::validate_license_key;
 use windmill_common::usernames::generate_instance_username_for_all_users;
 
 use axum::{
-    extract::{Extension, Path, Query},
+    extract::{Extension, Path},
     routing::{get, post},
     Json, Router,
 };
