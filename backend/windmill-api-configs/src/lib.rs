@@ -128,10 +128,11 @@ async fn update_config(
     require_devops_role(&db, &authed.email).await?;
 
     let config = if name.starts_with("worker__") {
-        // In CE, only allow setting worker_tags (and cache_clear for cache management)
+        // In CE, only allow setting worker_tags, cache_clear, and init_bash
         serde_json::json!({
             "worker_tags": config.get("worker_tags"),
-            "cache_clear": config.get("cache_clear")
+            "cache_clear": config.get("cache_clear"),
+            "init_bash": config.get("init_bash")
         })
     } else {
         config
