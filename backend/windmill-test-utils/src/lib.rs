@@ -8,7 +8,6 @@ use serde_json::json;
 use sqlx::{postgres::PgListener, Pool, Postgres};
 use uuid::Uuid;
 use windmill_api_client::types::NewScript;
-#[cfg(feature = "python")]
 use windmill_common::flow_status::FlowStatusModule;
 use windmill_common::{
     jobs::{JobKind, JobPayload, RawCode},
@@ -418,7 +417,6 @@ pub async fn listen_for_completed_jobs(db: &Pool<Postgres>) -> impl Stream<Item 
     listen_for_uuid_on(db, "completed").await
 }
 
-#[cfg(feature = "deno_core")]
 pub async fn listen_for_queue(db: &Pool<Postgres>) -> impl Stream<Item = Uuid> + Unpin {
     listen_for_uuid_on(db, "queued").await
 }
@@ -480,7 +478,6 @@ pub trait StreamFind: futures::Stream + Unpin + Sized {
 
 impl<T: futures::Stream + Unpin + Sized> StreamFind for T {}
 
-#[cfg(feature = "python")]
 pub fn get_module(cjob: &CompletedJob, id: &str) -> Option<FlowStatusModule> {
     cjob.flow_status.clone().and_then(|fs| {
         use windmill_common::flow_status::FlowStatus;
@@ -492,7 +489,6 @@ pub fn get_module(cjob: &CompletedJob, id: &str) -> Option<FlowStatusModule> {
     })
 }
 
-#[cfg(feature = "python")]
 fn find_module_in_vec(modules: Vec<FlowStatusModule>, id: &str) -> Option<FlowStatusModule> {
     modules.into_iter().find(|s| s.id() == id)
 }
