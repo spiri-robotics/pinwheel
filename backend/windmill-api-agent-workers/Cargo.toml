@@ -11,7 +11,7 @@ path = "src/lib.rs"
 [features]
 default = []
 python = ["dep:windmill-parser-py-imports"]
-benchmark = []
+benchmark = ["windmill-queue/benchmark"]
 
 [dependencies]
 windmill-api-auth.workspace = true
