@@ -40,7 +40,8 @@ use windmill_common::runnable_settings::{
 };
 #[cfg(feature = "inline_preview")]
 use windmill_common::runtime_assets::{register_runtime_asset, InsertRuntimeAssetParams};
-use windmill_common::s3_helpers::{upload_artifact_to_store, BundleFormat};
+use windmill_types::s3::BundleFormat;
+use windmill_object_store::upload_artifact_to_store;
 use windmill_common::scripts::ScriptRunnableSettingsInline;
 use windmill_common::triggers::TriggerMetadata;
 use windmill_common::utils::{RunnableKind, WarnAfterExt};
@@ -4430,7 +4431,7 @@ async fn run_bundle_preview_script(
 
             uploaded = true;
 
-            let path = windmill_common::s3_helpers::bundle(&w_id, &id);
+            let path = windmill_object_store::bundle(&w_id, &id);
             upload_artifact_to_store(
                 &path,
                 data,

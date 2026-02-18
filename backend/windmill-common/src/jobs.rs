@@ -250,7 +250,6 @@ pub async fn get_logs_from_disk(
     return None;
 }
 
-
 lazy_static::lazy_static! {
     pub static ref TAGS_ARE_SENSITIVE: bool = std::env::var("TAGS_ARE_SENSITIVE").map(
         |v| v.parse().unwrap()

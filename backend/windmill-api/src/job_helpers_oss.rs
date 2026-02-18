@@ -1,17 +1,18 @@
 
 use axum::Router;
 use uuid::Uuid;
-use windmill_common::s3_helpers::StorageResourceType;
+use windmill_types::s3::StorageResourceType;
 
 #[cfg(feature = "parquet")]
 use crate::db::{ApiAuthed, OptJobAuthed, DB};
 #[cfg(feature = "parquet")]
-use object_store::{ObjectStore, PutMultipartOpts, PutResult};
+use windmill_object_store::object_store_reexports::{ObjectStore, PutMultipartOpts, PutResult};
+use windmill_object_store::ObjectStoreResource;
 #[cfg(feature = "parquet")]
 use std::sync::Arc;
 use windmill_common::error;
 #[cfg(feature = "parquet")]
-use windmill_common::{db::UserDB, s3_helpers::ObjectStoreResource};
+use windmill_common::db::UserDB;
 
 #[cfg(feature = "parquet")]
 use bytes::Bytes;
@@ -139,11 +140,11 @@ pub async fn get_workspace_s3_resource_and_check_paths<'c>(
     _authed_api: Option<&ApiAuthed>,
     _w_id: &str,
     _storage: Option<String>,
-    _paths: &[(&str, windmill_common::s3_helpers::S3Permission)],
+    _paths: &[(&str, windmill_types::s3::S3Permission)],
     _job_id: Option<uuid::Uuid>,
 ) -> windmill_common::error::Result<(
     Option<bool>,
-    Option<windmill_common::s3_helpers::ObjectStoreResource>,
+    Option<windmill_types::s3::ObjectStoreResource>,
 )> {
     Err(windmill_common::error::Error::internal_err(
         "Not implemented in Windmill's Open Source repository".to_string(),

@@ -893,52 +893,6 @@ pub fn copy_dir_recursively(src: &Path, dst: &Path) -> error::Result<()> {
     Ok(())
 }
 
-pub async fn load_cache(bin_path: &str, _remote_path: &str, is_dir: bool) -> (bool, String) {
-    if tokio::fs::metadata(&bin_path).await.is_ok() {
-        (true, format!("loaded from local cache: {}\n", bin_path))
-    } else {
-        let _ = is_dir;
-        (false, "".to_string())
-    }
-}
-
-pub async fn exists_in_cache(bin_path: &str, _remote_path: &str) -> bool {
-    if tokio::fs::metadata(&bin_path).await.is_ok() {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-pub async fn save_cache(
-    local_cache_path: &str,
-    _remote_cache_path: &str,
-    origin: &str,
-    is_dir: bool,
-) -> crate::error::Result<String> {
-    let mut _cached_to_s3 = false;
-
-    // if !*CLOUD_HOSTED {
-    if true {
-        if is_dir {
-            copy_dir_recursively(&PathBuf::from(origin), &PathBuf::from(local_cache_path))?;
-        } else {
-            std::fs::copy(origin, local_cache_path)?;
-        }
-        Ok(format!(
-            "\nwrote cached binary: {} (backed by EE distributed object store: {_cached_to_s3})\n",
-            local_cache_path
-        ))
-    } else if _cached_to_s3 {
-        Ok(format!(
-            "wrote cached binary to object store {}\n",
-            local_cache_path
-        ))
-    } else {
-        Ok("".to_string())
-    }
-}
-
 
 #[cfg(not(windows))]
 fn get_cgroupv2_path() -> Option<String> {
