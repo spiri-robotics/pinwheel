@@ -960,8 +960,7 @@ pub async fn handle_bun_job(
             }
         };
 
-        let (cache, logs) =
-            crate::global_cache::load_cache(&local_path, &remote_path, false).await;
+        let (cache, logs) = crate::global_cache::load_cache(&local_path, &remote_path, false).await;
         (cache, logs, local_path, remote_path)
     } else {
         (false, "".to_string(), "".to_string(), "".to_string())
@@ -1383,13 +1382,7 @@ try {{
 
         #[cfg(feature = "deno_core")]
         {
-            let env_code = format!(
-            "const process = {{ env: {{}} }};\nconst BASE_URL = '{base_internal_url}';\nconst BASE_INTERNAL_URL = '{base_internal_url}';\nprocess.env['BASE_URL'] = BASE_URL;process.env['BASE_INTERNAL_URL'] = BASE_INTERNAL_URL;\n{}",
-            reserved_variables
-                .iter()
-                .map(|(k, v)| format!("process.env['{}'] = '{}';\n", k, v))
-                .collect::<Vec<String>>()
-                .join("\n"));
+            let env_code = build_nativets_env_code(base_internal_url, &reserved_variables);
             let js_code = read_file_content(&format!("{job_dir}/main.js")).await?;
             let started_at = Instant::now();
             let args = crate::common::build_args_map(job, client, conn)
@@ -1643,6 +1636,22 @@ pub async fn get_common_bun_proc_envs(base_internal_url: Option<&str>) -> HashMa
 
     return bun_envs;
 }
+
+#[cfg(feature = "deno_core")]
+pub fn build_nativets_env_code(
+    base_internal_url: &str,
+    reserved_variables: &HashMap<String, String>,
+) -> String {
+    format!(
+        "const process = {{ env: {{}} }};\nconst BASE_URL = '{base_internal_url}';\nconst BASE_INTERNAL_URL = '{base_internal_url}';\nprocess.env['BASE_URL'] = BASE_URL;process.env['BASE_INTERNAL_URL'] = BASE_INTERNAL_URL;\n{}",
+        reserved_variables
+            .iter()
+            .map(|(k, v)| format!("process.env['{}'] = '{}';", k, v))
+            .collect::<Vec<String>>()
+            .join("\n")
+    )
+}
+
 
 
 
