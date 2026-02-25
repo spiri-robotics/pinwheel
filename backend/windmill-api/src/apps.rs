@@ -39,8 +39,6 @@ use itertools::Itertools;
 use lazy_static::lazy_static;
 use magic_crypt::MagicCryptTrait;
 #[cfg(feature = "parquet")]
-use windmill_object_store::object_store_reexports::{Attribute, Attributes};
-#[cfg(feature = "parquet")]
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, value::RawValue};
@@ -67,6 +65,8 @@ use windmill_common::{
     workspaces::{check_user_against_rule, ProtectionRuleKind, RuleCheckResult},
     HUB_BASE_URL,
 };
+#[cfg(feature = "parquet")]
+use windmill_object_store::object_store_reexports::{Attribute, Attributes};
 use windmill_store::resources::get_resource_value_interpolated_internal;
 
 use windmill_git_sync::{handle_deployment_metadata, DeployedObject};
@@ -75,11 +75,7 @@ use windmill_queue::{push, PushArgs, PushArgsOwned, PushIsolationLevel};
 #[cfg(feature = "parquet")]
 use hmac::Mac;
 #[cfg(feature = "parquet")]
-use windmill_common::{
-    jwt,
-    oauth2::HmacSha256,
-    variables::get_workspace_key,
-};
+use windmill_common::{jwt, oauth2::HmacSha256, variables::get_workspace_key};
 #[cfg(feature = "parquet")]
 use windmill_types::s3::{S3Object, S3Permission};
 
@@ -279,6 +275,7 @@ pub struct CreateApp {
     pub draft_only: Option<bool>,
     pub deployment_message: Option<String>,
     pub custom_path: Option<String>,
+    pub preserve_on_behalf_of: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -289,6 +286,7 @@ pub struct EditApp {
     pub policy: Option<Policy>,
     pub deployment_message: Option<String>,
     pub custom_path: Option<String>,
+    pub preserve_on_behalf_of: Option<bool>,
 }
 
 #[derive(Serialize, FromRow)]
@@ -1140,8 +1138,14 @@ async fn create_app_internal<'a>(
         }
     }
     let mut tx = user_db.clone().begin(&authed).await?;
-    app.policy.on_behalf_of = Some(username_to_permissioned_as(&authed.username));
-    app.policy.on_behalf_of_email = Some(authed.email.clone());
+    let should_preserve = app.preserve_on_behalf_of.unwrap_or(false)
+        && windmill_common::can_preserve_on_behalf_of(&authed)
+        && app.policy.on_behalf_of.is_some();
+
+    if !should_preserve {
+        app.policy.on_behalf_of = Some(username_to_permissioned_as(&authed.username));
+        app.policy.on_behalf_of_email = Some(authed.email.clone());
+    }
     let path = app.path.clone();
     if &app.path == "" {
         return Err(Error::BadRequest("App path cannot be empty".to_string()));
@@ -1232,6 +1236,22 @@ async fn create_app_internal<'a>(
         None,
     )
     .await?;
+    if should_preserve {
+        if let Some(ref obo_email) = app.policy.on_behalf_of_email {
+            if obo_email != &authed.email {
+                audit_log(
+                    &mut *tx,
+                    &authed,
+                    "apps.on_behalf_of",
+                    ActionKind::Create,
+                    w_id,
+                    Some(&app.path),
+                    Some([("on_behalf_of", obo_email.as_str()), ("action", "create")].into()),
+                )
+                .await?;
+            }
+        }
+    }
     let mut args: HashMap<String, Box<serde_json::value::RawValue>> = HashMap::new();
     if let Some(dm) = &app.deployment_message {
         args.insert("deployment_message".to_string(), to_raw_value(&dm));
@@ -1561,6 +1581,7 @@ async fn update_app_internal<'a>(
     use sql_builder::prelude::*;
     let mut tx = user_db.clone().begin(&authed).await?;
 
+    let mut preserved_on_behalf_of: Option<String> = None;
     let npath = if ns.policy.is_some()
         || ns.path.is_some()
         || ns.summary.is_some()
@@ -1626,8 +1647,20 @@ async fn update_app_internal<'a>(
         }
 
         if let Some(mut npolicy) = ns.policy {
-            npolicy.on_behalf_of = Some(username_to_permissioned_as(&authed.username));
-            npolicy.on_behalf_of_email = Some(authed.email.clone());
+            let should_preserve = ns.preserve_on_behalf_of.unwrap_or(false)
+                && windmill_common::can_preserve_on_behalf_of(&authed)
+                && npolicy.on_behalf_of.is_some();
+
+            if should_preserve {
+                if let Some(ref obo_email) = npolicy.on_behalf_of_email {
+                    if obo_email != &authed.email {
+                        preserved_on_behalf_of = Some(obo_email.clone());
+                    }
+                }
+            } else {
+                npolicy.on_behalf_of = Some(username_to_permissioned_as(&authed.username));
+                npolicy.on_behalf_of_email = Some(authed.email.clone());
+            }
             sqlb.set(
                 "policy",
                 quote(serde_json::to_string(&json!(npolicy)).map_err(|e| {
@@ -1709,6 +1742,24 @@ async fn update_app_internal<'a>(
         None,
     )
     .await?;
+    if let Some(on_behalf_of) = preserved_on_behalf_of {
+        audit_log(
+            &mut *tx,
+            &authed,
+            "apps.on_behalf_of",
+            ActionKind::Update,
+            w_id,
+            Some(&npath),
+            Some(
+                [
+                    ("on_behalf_of", on_behalf_of.as_str()),
+                    ("action", "update"),
+                ]
+                .into(),
+            ),
+        )
+        .await?;
+    }
     let tx = PushIsolationLevel::Transaction(tx);
     let mut args: HashMap<String, Box<serde_json::value::RawValue>> = HashMap::new();
     if let Some(dm) = ns.deployment_message {
