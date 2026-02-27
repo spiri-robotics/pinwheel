@@ -11,7 +11,7 @@ path = "src/lib.rs"
 [features]
 default = []
 stripe = []
-inline_preview = ["dep:windmill-worker", "windmill-api-configs/inline_preview"]
+run_inline = ["dep:windmill-worker", "windmill-api-configs/run_inline"]
 agent_worker_server = ["dep:windmill-worker", "dep:windmill-api-agent-workers"]
 benchmark = []
 embedding = ["windmill-api-embeddings/embedding"]
