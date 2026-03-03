@@ -8,3 +8,7 @@ pub fn workspaced_service() -> Router {
 pub fn global_service() -> Router {
     Router::new()
 }
+
+pub fn management_service() -> Router {
+    Router::new()
+}
