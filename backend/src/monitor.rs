@@ -69,7 +69,7 @@ use windmill_common::{
         load_periodic_bash_script_interval_from_env, load_whitelist_env_vars_from_env,
         load_worker_config, reload_custom_tags_setting, store_pull_query,
         store_suspended_pull_query, Connection, WorkerConfig, DEFAULT_TAGS_PER_WORKSPACE,
-        DEFAULT_TAGS_WORKSPACES, INDEXER_CONFIG, SCRIPT_TOKEN_EXPIRY, SMTP_CONFIG, TMP_DIR,
+        DEFAULT_TAGS_WORKSPACES, INDEXER_CONFIG, SCRIPT_TOKEN_EXPIRY, SMTP_CONFIG, WINDMILL_DIR,
         WORKER_CONFIG, WORKER_GROUP,
     },
     KillpillSender, BASE_URL, CRITICAL_ALERTS_ON_DB_OVERSIZE, CRITICAL_ALERT_MUTE_UI_ENABLED,
@@ -589,7 +589,7 @@ async fn sleep_until_next_minute_start_plus_one_s() {
 
 use windmill_common::tracing_init::TMP_WINDMILL_LOGS_SERVICE;
 async fn find_two_highest_files(hostname: &str) -> (Option<String>, Option<String>) {
-    let log_dir = format!("{}/{}/", TMP_WINDMILL_LOGS_SERVICE, hostname);
+    let log_dir = format!("{}/{}/", *TMP_WINDMILL_LOGS_SERVICE, hostname);
     let rd_dir = tokio::fs::read_dir(log_dir).await;
     if let Ok(mut log_files) = rd_dir {
         let mut highest_file: Option<String> = None;
@@ -608,7 +608,8 @@ async fn find_two_highest_files(hostname: &str) -> (Option<String>, Option<Strin
         (highest_file, second_highest_file)
     } else {
         tracing::error!(
-            "Error reading log files: {TMP_WINDMILL_LOGS_SERVICE}, {:#?}",
+            "Error reading log files: {}, {:#?}",
+            *TMP_WINDMILL_LOGS_SERVICE,
             rd_dir.unwrap_err()
         );
         (None, None)
@@ -710,7 +711,7 @@ async fn send_log_file_to_object_store(
         let s3_client = windmill_object_store::get_object_store().await;
         #[cfg(feature = "parquet")]
         if let Some(s3_client) = s3_client {
-            let path = std::path::Path::new(TMP_WINDMILL_LOGS_SERVICE)
+            let path = std::path::Path::new(&*TMP_WINDMILL_LOGS_SERVICE)
                 .join(hostname)
                 .join(&highest_file);
 
@@ -929,7 +930,7 @@ pub async fn delete_expired_items(db: &DB) -> () {
                     .iter()
                     .map(|f| format!("{}/{}", f.hostname, f.file_path))
                     .collect();
-                delete_log_files_from_disk_and_store(paths, TMP_WINDMILL_LOGS_SERVICE, windmill_common::tracing_init::LOGS_SERVICE).await;
+                delete_log_files_from_disk_and_store(paths, &*TMP_WINDMILL_LOGS_SERVICE, windmill_common::tracing_init::LOGS_SERVICE).await;
 
         }
         Err(e) => tracing::error!("Error deleting log file: {:?}", e),
@@ -1131,7 +1132,7 @@ async fn delete_expired_jobs_batch(
                     .filter_map(|opt| opt)
                     .flat_map(|inner_vec| inner_vec.into_iter())
                     .collect();
-                delete_log_files_from_disk_and_store(paths, TMP_DIR, "").await;
+                delete_log_files_from_disk_and_store(paths, &*WINDMILL_DIR, "").await;
             }
             Err(e) => tracing::error!("Error deleting job logs: {:?}", e),
         }
