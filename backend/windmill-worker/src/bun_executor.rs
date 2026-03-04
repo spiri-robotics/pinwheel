@@ -51,7 +51,14 @@ use crate::global_cache::{exists_in_cache, save_cache};
 
 use windmill_parser::Typ;
 
+// The Windows loader uses a virtual "windmill-url" namespace instead of writing .url
+// files to disk, which avoids Windows path issues. The virtual namespace approach is
+// likely better on all fronts but we keep the original .url-file loader on Linux to
+// avoid breaking back-compat.
+#[cfg(not(windows))]
 pub const RELATIVE_BUN_LOADER: &str = include_str!("../loader.bun.js");
+#[cfg(windows)]
+pub const RELATIVE_BUN_LOADER: &str = include_str!("../loader.bun.windows.js");
 
 pub const RELATIVE_BUN_BUILDER: &str = include_str!("../loader_builder.bun.js");
 
@@ -525,6 +532,8 @@ pub async fn build_loader(
     current_path: &str,
     mode: LoaderMode,
 ) -> Result<()> {
+    // Use forward slashes in JS strings to avoid backslash escape issues on Windows
+    let job_dir_js = job_dir.replace('\\', "/");
     let loader = RELATIVE_BUN_LOADER
         .replace("W_ID", w_id)
         .replace("BASE_INTERNAL_URL", base_internal_url)
@@ -547,13 +556,13 @@ import {{ readdir }} from "node:fs/promises";
 
 let fileNames = []
 try {{
-    fileNames = await readdir("{job_dir}/node_modules")
+    fileNames = await readdir("{job_dir_js}/node_modules")
 }} catch (e) {{
 }}
 
 try {{
     await Bun.build({{
-        entrypoints: ["{job_dir}/wrapper.mjs"],
+        entrypoints: ["{job_dir_js}/wrapper.mjs"],
         outdir: "./",
         target: "node",
         plugins: [p],
@@ -595,7 +604,7 @@ plugin(p)
 
 try {{
     await Bun.build({{
-        entrypoints: ["{job_dir}/main.ts"],
+        entrypoints: ["{job_dir_js}/main.ts"],
         outdir: "./",
         target: "{}",
         plugins: [p],
