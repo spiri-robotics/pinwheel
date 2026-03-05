@@ -6,13 +6,13 @@ use windmill_types::s3::StorageResourceType;
 #[cfg(feature = "parquet")]
 use crate::db::{ApiAuthed, OptJobAuthed, DB};
 #[cfg(feature = "parquet")]
-use windmill_object_store::object_store_reexports::{ObjectStore, PutMultipartOpts, PutResult};
-use windmill_object_store::ObjectStoreResource;
-#[cfg(feature = "parquet")]
 use std::sync::Arc;
-use windmill_common::error;
 #[cfg(feature = "parquet")]
 use windmill_common::db::UserDB;
+use windmill_common::error;
+#[cfg(feature = "parquet")]
+use windmill_object_store::object_store_reexports::{ObjectStore, PutMultipartOpts, PutResult};
+use windmill_object_store::ObjectStoreResource;
 
 #[cfg(feature = "parquet")]
 use bytes::Bytes;

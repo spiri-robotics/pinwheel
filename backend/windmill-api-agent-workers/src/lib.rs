@@ -40,4 +40,12 @@ impl AgentCache {
     pub fn new() -> Self {
         AgentCache {}
     }
+
+    pub async fn extract_worker_name(
+        &self,
+        _token: &str,
+        _db: &windmill_common::DB,
+    ) -> Option<String> {
+        None
+    }
 }
