@@ -55,6 +55,7 @@ mod schema;
 pub mod sql_utils;
 mod universal_pkg_installer;
 mod volume_oss;
+pub mod wac_executor;
 mod worker;
 mod worker_flow;
 mod worker_lockfiles;
