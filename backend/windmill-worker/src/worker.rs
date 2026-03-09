@@ -3778,7 +3778,7 @@ pub async fn run_language_executor(
     run_inline: bool,
 ) -> error::Result<Box<RawValue>> {
     if language == Some(ScriptLang::Postgresql) {
-        return do_postgresql(
+        return Box::pin(do_postgresql(
             job,
             &client,
             &code,
@@ -3790,7 +3790,7 @@ pub async fn run_language_executor(
             occupancy_metrics,
             parent_runnable_path,
             run_inline,
-        )
+        ))
         .await;
     } else if language == Some(ScriptLang::Mysql) {
         #[cfg(not(feature = "mysql"))]
@@ -3805,7 +3805,7 @@ pub async fn run_language_executor(
                     "Inline execution is not yet supported for this language".to_string(),
                 ));
             }
-            return do_mysql(
+            return Box::pin(do_mysql(
                 job,
                 &client,
                 &code,
@@ -3816,7 +3816,7 @@ pub async fn run_language_executor(
                 column_order,
                 occupancy_metrics,
                 parent_runnable_path,
-            )
+            ))
             .await;
         }
     } else if language == Some(ScriptLang::Bigquery) {
@@ -3882,7 +3882,7 @@ pub async fn run_language_executor(
 
         #[cfg(feature = "duckdb")]
         {
-            return do_duckdb(
+            return Box::pin(do_duckdb(
                 job,
                 &client,
                 &code,
@@ -3894,7 +3894,7 @@ pub async fn run_language_executor(
                 occupancy_metrics,
                 parent_runnable_path,
                 run_inline,
-            )
+            ))
             .await;
         }
     } else if language == Some(ScriptLang::Graphql) {
@@ -3903,7 +3903,7 @@ pub async fn run_language_executor(
                 "Inline execution is not yet supported for this language".to_string(),
             ));
         }
-        return do_graphql(
+        return Box::pin(do_graphql(
             job,
             &client,
             &code,
@@ -3912,7 +3912,7 @@ pub async fn run_language_executor(
             canceled_by,
             worker_name,
             occupancy_metrics,
-        )
+        ))
         .await;
     } else if language == Some(ScriptLang::Nativets) {
         if run_inline {
@@ -3939,7 +3939,7 @@ pub async fn run_language_executor(
                 .collect::<Vec<String>>()
                 .join("\n"));
 
-        let result = do_nativets(
+        let result = Box::pin(do_nativets(
             job,
             &client,
             env_code,
@@ -3950,7 +3950,7 @@ pub async fn run_language_executor(
             worker_name,
             occupancy_metrics,
             has_stream,
-        )
+        ))
         .await?;
         return Ok(result);
     }
