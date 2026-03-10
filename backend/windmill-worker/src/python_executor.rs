@@ -613,6 +613,7 @@ pub async fn handle_python_job(
         String::new()
     };
     let main_override = main_name.unwrap_or_else(|| "main".to_string());
+    let res_to_json_body = python_res_to_json_body(postprocessor);
     let wrapper_content: String = if is_wac_v2 {
         format!(
             r#"
@@ -701,19 +702,7 @@ replace_invalid_fields = re.compile(r'(?:\bNaN\b|\\*\\u0000|Infinity|\-Infinity)
 result_json = os.path.join(os.path.abspath(os.path.dirname(__file__)), "result.json")
 
 def res_to_json(res, typ):
-    if typ.__name__ == 'DataFrame':
-        if typ.__module__ == 'pandas.core.frame':
-            res = res.values.tolist()
-        elif typ.__module__ == 'polars.dataframe.frame':
-            res = res.rows()
-    elif typ.__name__ == 'bytes':
-        res = to_b_64(res)
-    elif typ.__name__ == 'dict':
-        for k, v in res.items():
-            if type(v).__name__ == 'bytes':
-                res[k] = to_b_64(v)
-    unprocessed = json.dumps(res, separators=(',', ':'), default=str).replace('\n', '')
-    return {postprocessor}
+{res_to_json_body}
 
 try:
     {preprocessor}
@@ -960,6 +949,30 @@ mount {{
     Ok(result)
 }
 
+/// Generate Python code to spread preprocessor args from `kwargs` into `pre_args`.
+/// The `indent` parameter controls the join separator for multi-arg spreads.
+fn python_preprocessor_spread(sig: windmill_parser::MainArgSignature, indent: &str) -> String {
+    if sig.star_kwargs {
+        "pre_args = kwargs".to_string()
+    } else {
+        sig.args
+            .into_iter()
+            .map(|x| {
+                let name = &x.name;
+                if x.default.is_none() {
+                    format!("pre_args[\"{name}\"] = kwargs.get(\"{name}\")")
+                } else {
+                    format!(
+                        r#"pre_args["{name}"] = kwargs.get("{name}")
+{indent}if pre_args["{name}"] is None:
+{indent}    del pre_args["{name}"]"#
+                    )
+                }
+            })
+            .join(&format!("\n{indent}"))
+    }
+}
+
 async fn prepare_wrapper(
     job_dir: &str,
     job_flow_step_id: Option<&str>,
@@ -1126,31 +1139,7 @@ async fn prepare_wrapper(
             .join("\n    ")
     };
 
-    let pre_spread = if let Some(pre_sig) = pre_sig {
-        let spread = if pre_sig.star_kwargs {
-            "pre_args = kwargs".to_string()
-        } else {
-            pre_sig
-                .args
-                .into_iter()
-                .map(|x| {
-                    let name = &x.name;
-                    if x.default.is_none() {
-                        format!("pre_args[\"{name}\"] = kwargs.get(\"{name}\")")
-                    } else {
-                        format!(
-                            r#"pre_args["{name}"] = kwargs.get("{name}")
-        if pre_args["{name}"] is None:
-            del pre_args["{name}"]"#
-                        )
-                    }
-                })
-                .join("\n        ")
-        };
-        Some(spread)
-    } else {
-        None
-    };
+    let pre_spread = pre_sig.map(|sig| python_preprocessor_spread(sig, "        "));
 
     let module_dir_dot = dirs.replace("/", ".").replace("-", "_");
 
@@ -2152,6 +2141,26 @@ This is not normal behavior, please make sure all workers have enough memory.\n
     } else {
         Ok(req_paths)
     };
+}
+
+/// Python function body for `res_to_json(res, typ)`.
+/// Handles DataFrame, bytes, dict coercion + JSON serialization.
+fn python_res_to_json_body(postprocessor: &str) -> String {
+    format!(
+        r#"    if typ.__name__ == 'DataFrame':
+        if typ.__module__ == 'pandas.core.frame':
+            res = res.values.tolist()
+        elif typ.__module__ == 'polars.dataframe.frame':
+            res = res.rows()
+    elif typ.__name__ == 'bytes':
+        res = to_b_64(res)
+    elif typ.__name__ == 'dict':
+        for k, v in res.items():
+            if type(v).__name__ == 'bytes':
+                res[k] = to_b_64(v)
+    unprocessed = json.dumps(res, separators=(',', ':'), default=str).replace('\n', '')
+    return {postprocessor}"#
+    )
 }
 
 // Returns code snippet that needs to be injected into wrapper to post-process results or leave unprocessed
