@@ -532,6 +532,7 @@ pub async fn send_stats(Extension(db): Extension<DB>, authed: ApiAuthed) -> Resu
         &HTTP_CLIENT,
         &db,
         windmill_common::stats_oss::SendStatsReason::Manual,
+        false,
     )
     .await?;
 
