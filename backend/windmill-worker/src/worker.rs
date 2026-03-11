@@ -291,7 +291,7 @@ pub struct PowershellRepo {
 
 lazy_static::lazy_static! {
 
-    pub static ref SLEEP_QUEUE: u64 = std::env::var("SLEEP_QUEUE")
+    static ref SLEEP_QUEUE_BASE: u64 = std::env::var("SLEEP_QUEUE")
     .ok()
         .and_then(|x| x.parse::<u64>().ok())
         .unwrap_or_else(|| {
@@ -633,6 +633,14 @@ lazy_static::lazy_static! {
         .unwrap_or(1000);
 
     pub static ref FLOW_RUNNER_RUNNING: Mutex<bool> = Mutex::new(false);
+}
+
+pub fn sleep_queue() -> u64 {
+    if NATIVE_MODE_RESOLVED.load(std::sync::atomic::Ordering::Relaxed) {
+        300
+    } else {
+        *SLEEP_QUEUE_BASE
+    }
 }
 
 type Envs = Vec<(String, String)>;
@@ -1304,7 +1312,7 @@ fn start_interactive_worker_shell(
                         {
                             Duration::from_secs(WORKER_SHELL_NAP_TIME_DURATION)
                         }
-                        _ => Duration::from_millis(*SLEEP_QUEUE * 10),
+                        _ => Duration::from_millis(sleep_queue() * 10),
                     };
                     tokio::select! {
                         _ = tokio::time::sleep(nap_time) => {
@@ -1317,7 +1325,7 @@ fn start_interactive_worker_shell(
 
                 Err(err) => {
                     tracing::error!(worker = %worker_name, hostname = %hostname, "Failed to pull jobs: {}", err);
-                    tokio::time::sleep(Duration::from_millis(*SLEEP_QUEUE * 20)).await;
+                    tokio::time::sleep(Duration::from_millis(sleep_queue() * 20)).await;
                 }
             };
         }
@@ -2584,7 +2592,7 @@ pub async fn run_worker(
                     None
                 };
 
-                tokio::time::sleep(Duration::from_millis(*SLEEP_QUEUE)).await;
+                tokio::time::sleep(Duration::from_millis(sleep_queue())).await;
 
                 #[cfg(feature = "benchmark")]
                 {
@@ -2605,7 +2613,7 @@ pub async fn run_worker(
             }
             Err(err) => {
                 tracing::error!(worker = %worker_name, hostname = %hostname, "Failed to pull jobs: {}", err);
-                tokio::time::sleep(Duration::from_millis(*SLEEP_QUEUE * 5)).await;
+                tokio::time::sleep(Duration::from_millis(sleep_queue() * 5)).await;
             }
         };
     }
