@@ -835,6 +835,7 @@ async fn http_payload(
         .to_v2_preprocessor_args(
             &http_trigger_config.route_path,
             &route_path,
+            "",
             &params,
             headers,
             query,
