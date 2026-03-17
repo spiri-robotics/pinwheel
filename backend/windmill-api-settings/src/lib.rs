@@ -541,8 +541,14 @@ pub async fn send_stats(Extension(db): Extension<DB>, authed: ApiAuthed) -> Resu
     Ok("Sent stats".to_string())
 }
 
+#[derive(serde::Serialize)]
+pub struct StatsDownload {
+    pub signature: String,
+    pub data: String,
+}
 
-pub async fn get_stats() -> Result<String> {
+
+pub async fn get_stats() -> error::JsonResult<StatsDownload> {
     Err(error::Error::BadRequest(
         "Downloading telemetry is only available on enterprise edition".to_string(),
     ))

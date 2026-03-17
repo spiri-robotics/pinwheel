@@ -53,7 +53,7 @@ pub async fn get_stats_payload(
     Ok(Stats {})
 }
 
-pub fn encrypt_stats(_stats: &Stats) -> Result<String> {
+pub fn sign_stats(_json: &str) -> String {
     // stats details are closed source
-    Ok(String::new())
+    String::new()
 }
