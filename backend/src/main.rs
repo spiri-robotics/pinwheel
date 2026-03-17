@@ -272,6 +272,7 @@ async fn cache_hub_scripts(file_path: Option<String>) -> anyhow::Result<()> {
                     envs.clone(),
                     false,
                     &mut None,
+                    false,
                 )
                 .await?;
 
