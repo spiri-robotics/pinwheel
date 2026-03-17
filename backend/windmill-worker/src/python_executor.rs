@@ -84,7 +84,7 @@ use crate::{
     },
     get_proxy_envs_for_lang,
     handle_child::handle_child,
-    is_sandboxing_enabled, read_ee_registry,
+    is_sandboxing_enabled, read_ee_registry_with_workspace_override,
     worker_utils::ping_job_status,
     PyV, DISABLE_NUSER, HOME_ENV, NSJAIL_AVAILABLE, NSJAIL_PATH, PATH_ENV, PIP_EXTRA_INDEX_URL,
     PIP_INDEX_URL, PROXY_ENVS, PY_INSTALL_DIR, TRACING_PROXY_CA_CERT_PATH, TZ_ENV, UV_CACHE_DIR,
@@ -169,7 +169,11 @@ pub async fn uv_pip_compile(
     let requirements = format!("# py: {}\n{}", py_version.to_string(), requirements);
 
 
-    let req_hash = format!("py-{}-{uv_index_strategy}", calculate_hash(&requirements));
+    let ws_suffix = crate::workspace_registry_cache_suffix(w_id).await;
+    let req_hash = format!(
+        "py-{}-{uv_index_strategy}{ws_suffix}",
+        calculate_hash(&requirements)
+    );
 
     if !no_cache {
         if let Some(db) = conn.as_sql() {
@@ -220,8 +224,9 @@ pub async fn uv_pip_compile(
         if no_cache {
             args.extend(["--no-cache"]);
         }
-        let pip_extra_index_url = read_ee_registry(
+        let pip_extra_index_url = read_ee_registry_with_workspace_override(
             PIP_EXTRA_INDEX_URL.read().await.clone(),
+            "pip_extra_index_url",
             "pip extra index url",
             job_id,
             w_id,
@@ -234,8 +239,9 @@ pub async fn uv_pip_compile(
                 args.extend(["--extra-index-url", url]);
             });
         }
-        let pip_index_url = read_ee_registry(
+        let pip_index_url = read_ee_registry_with_workspace_override(
             PIP_INDEX_URL.read().await.clone(),
+            "pip_index_url",
             "pip index url",
             job_id,
             w_id,
@@ -1638,8 +1644,9 @@ pub async fn handle_python_reqs(
     );
 
     let pip_indexes = (
-        read_ee_registry(
+        read_ee_registry_with_workspace_override(
             PIP_EXTRA_INDEX_URL.read().await.clone(),
+            "pip_extra_index_url",
             "pip extra index url",
             job_id,
             w_id,
@@ -1647,8 +1654,9 @@ pub async fn handle_python_reqs(
         )
         .await
         .map(handle_ephemeral_token),
-        read_ee_registry(
+        read_ee_registry_with_workspace_override(
             PIP_INDEX_URL.read().await.clone(),
+            "pip_index_url",
             "pip index url",
             job_id,
             w_id,
