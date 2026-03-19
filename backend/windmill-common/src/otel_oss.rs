@@ -46,3 +46,41 @@ pub(crate) fn init_meter_provider(_mode: &Mode, _hostname: &str, _env: &str) -> 
 }
 
 pub fn add_root_flow_job_to_otlp(_queued_job: &QueuedJob, _success: bool) {}
+
+// ── OTel metric recording stubs (OSS) ───────────────────────────────────────
+
+pub fn otel_incr_queue_push_count() {}
+
+pub fn otel_incr_queue_delete_count() {}
+
+pub fn otel_incr_queue_pull_count() {}
+
+pub fn otel_incr_zombie_restart_count(_count: u64) {}
+
+pub fn otel_incr_zombie_delete_count(_count: u64) {}
+
+pub fn otel_set_queue_count(_tag: &str, _count: i64) {}
+
+pub fn otel_set_queue_running_count(_tag: &str, _count: i64) {}
+
+pub fn otel_incr_worker_execution_count(_tag: &str) {}
+
+pub fn otel_record_worker_execution_duration(_tag: &str, _secs: f64) {}
+
+pub fn otel_set_worker_busy(_worker: &str, _busy: i64) {}
+
+pub fn otel_record_worker_pull_duration(_worker: &str, _has_job: bool, _secs: f64) {}
+
+pub fn otel_incr_worker_execution_failed(_tag: &str) {}
+
+pub fn otel_set_db_pool(_active: i64, _idle: i64, _max: i64) {}
+
+pub fn otel_set_health_db_latency(_ms: f64) {}
+
+pub fn otel_incr_worker_started() {}
+
+pub fn otel_set_worker_uptime(_worker: &str, _secs: f64) {}
+
+pub fn otel_set_health_status_phase(_phase: &str) {}
+
+pub fn otel_set_health_db_unresponsive(_unresponsive: bool) {}
