@@ -239,9 +239,7 @@ impl AuthCache {
                                             folders,
                                             scopes: None,
                                             username_override,
-                                            token_prefix: Some(
-                                                safe_token_prefix(token),
-                                            ),
+                                            token_prefix: Some(safe_token_prefix(token)),
                                         })
                                     } else {
                                         let groups = vec![name.to_string()];
@@ -256,16 +254,17 @@ impl AuthCache {
                                         .unwrap_or_default();
                                         Some(ApiAuthed {
                                             email: email,
-                                            username: format!("group-{name}"),
+                                            username: format!(
+                                                "{}{name}",
+                                                windmill_common::users::USERNAME_GROUP_PREFIX
+                                            ),
                                             is_admin: false,
                                             groups,
                                             is_operator: false,
                                             folders,
                                             scopes: None,
                                             username_override,
-                                            token_prefix: Some(
-                                                safe_token_prefix(token),
-                                            ),
+                                            token_prefix: Some(safe_token_prefix(token)),
                                         })
                                     }
                                 } else {
@@ -328,9 +327,7 @@ impl AuthCache {
                                                 folders,
                                                 scopes,
                                                 username_override,
-                                                token_prefix: Some(
-                                                    safe_token_prefix(token),
-                                                ),
+                                                token_prefix: Some(safe_token_prefix(token)),
                                             })
                                         }
                                         None if super_admin => Some(ApiAuthed {
@@ -342,9 +339,7 @@ impl AuthCache {
                                             folders: vec![],
                                             scopes,
                                             username_override,
-                                            token_prefix: Some(
-                                                safe_token_prefix(token),
-                                            ),
+                                            token_prefix: Some(safe_token_prefix(token)),
                                         }),
                                         None => None,
                                     }
