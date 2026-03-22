@@ -71,6 +71,7 @@ pub mod schema;
 pub mod scripts;
 pub mod secret_backend;
 pub mod server;
+pub mod ssrf;
 pub mod stats_oss;
 pub mod stream;
 pub mod teams_oss;

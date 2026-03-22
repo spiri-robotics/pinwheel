@@ -20,6 +20,10 @@ pub fn global_service() -> Router {
     Router::new().route("/acs", post(acs))
 }
 
+pub fn authed_service() -> Router {
+    Router::new()
+}
+
 pub async fn acs() -> String {
     // Implementation is not open source as it is a Windmill Enterprise Edition feature
     "SAML available only in enterprise version".to_string()
