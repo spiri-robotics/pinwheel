@@ -292,6 +292,7 @@ async fn cache_hub_scripts(file_path: Option<String>) -> anyhow::Result<()> {
                     "cache_init",
                     "",
                     &mut None,
+                    &None,
                 )
                 .await
                 {
