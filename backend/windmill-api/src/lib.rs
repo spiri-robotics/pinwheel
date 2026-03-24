@@ -88,6 +88,7 @@ mod health;
 mod indexer_oss;
 mod inkeep_oss;
 mod integration;
+mod internal_db;
 mod live_migrations;
 mod s3_proxy_oss;
 mod workspace_dependencies;
@@ -500,6 +501,7 @@ pub async fn run_server(
                         .nest("/groups", groups::workspaced_service())
                         .nest("/groups_history", group_history::workspaced_service())
                         .nest("/inputs", windmill_api_inputs::workspaced_service())
+                        .nest("/internal_db", internal_db::workspaced_service())
                         .nest("/job_metrics", job_metrics::workspaced_service())
                         .nest("/job_helpers", job_helpers_service)
                         .nest("/jobs", jobs::workspaced_service())

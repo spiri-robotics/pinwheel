@@ -63,6 +63,7 @@ pub mod jwt;
 pub mod more_serde;
 pub mod oauth2;
 pub mod otel_oss;
+pub mod query_builders;
 pub mod queue;
 pub mod result_stream;
 pub mod runnable_settings;
