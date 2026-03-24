@@ -201,6 +201,7 @@ async fn test_deno_flow(db: Pool<Postgres>) -> anyhow::Result<()> {
                     skip_if: None,
                     apply_preprocessor: None,
                     pass_flow_input_directly: None,
+                    debouncing: None,
                 },
                 FlowModule {
                     id: "b".to_string(),
@@ -247,6 +248,7 @@ async fn test_deno_flow(db: Pool<Postgres>) -> anyhow::Result<()> {
                             skip_if: None,
                             apply_preprocessor: None,
                             pass_flow_input_directly: None,
+                            debouncing: None,
                         }],
                         modules_node: None,
                     }
@@ -267,6 +269,7 @@ async fn test_deno_flow(db: Pool<Postgres>) -> anyhow::Result<()> {
                     skip_if: None,
                     apply_preprocessor: None,
                     pass_flow_input_directly: None,
+                    debouncing: None,
                 },
             ],
             same_worker: false,
@@ -381,6 +384,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) -> anyhow::Result<()> {
                     skip_if: None,
                     apply_preprocessor: None,
                     pass_flow_input_directly: None,
+                    debouncing: None,
                 },
                 FlowModule {
                     id: "b".to_string(),
@@ -436,6 +440,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) -> anyhow::Result<()> {
                                 skip_if: None,
                                 apply_preprocessor: None,
                                 pass_flow_input_directly: None,
+                                debouncing: None,
                             },
                             FlowModule {
                                 id: "e".to_string(),
@@ -477,6 +482,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) -> anyhow::Result<()> {
                                 skip_if: None,
                                 apply_preprocessor: None,
                                 pass_flow_input_directly: None,
+                                debouncing: None,
                             },
                         ],
                         modules_node: None,
@@ -497,6 +503,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) -> anyhow::Result<()> {
                     skip_if: None,
                     apply_preprocessor: None,
                     pass_flow_input_directly: None,
+                    debouncing: None,
                 },
                 FlowModule {
                     id: "c".to_string(),
@@ -544,6 +551,7 @@ async fn test_deno_flow_same_worker(db: Pool<Postgres>) -> anyhow::Result<()> {
                     skip_if: None,
                     apply_preprocessor: None,
                     pass_flow_input_directly: None,
+                    debouncing: None,
                 },
             ],
             same_worker: true,
