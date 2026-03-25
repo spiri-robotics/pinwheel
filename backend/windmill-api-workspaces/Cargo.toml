@@ -12,9 +12,11 @@ path = "src/lib.rs"
 default = []
 cloud = ["windmill-common/cloud"]
 no_auth = ["windmill-api-auth/no_auth"]
+parquet = ["windmill-object-store/parquet"]
 
 [dependencies]
 windmill-common = { workspace = true, default-features = false }
+windmill-object-store = { workspace = true, optional = true }
 windmill-types.workspace = true
 windmill-api-auth.workspace = true
 windmill-api-users.workspace = true

@@ -3260,6 +3260,11 @@ async fn clone_apps(
         .fetch_all(&mut **tx)
         .await?;
 
+        let mut cloned_from_db: std::collections::HashSet<(i64, String)> = HashSet::new();
+        for bundle in &bundles {
+            cloned_from_db.insert((bundle.app_version_id, bundle.file_type.clone()));
+        }
+
         for bundle in bundles {
             if let Some(&new_version_id) = version_id_mapping.get(&bundle.app_version_id) {
                 sqlx::query!(
@@ -3274,6 +3279,7 @@ async fn clone_apps(
                 .await?;
             }
         }
+
     }
 
     // Update app versions arrays
