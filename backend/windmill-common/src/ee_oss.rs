@@ -10,6 +10,7 @@ lazy_static::lazy_static! {
   pub static ref LICENSE_KEY: Arc<RwLock<String>> = Arc::new(RwLock::new("".to_string()));
 }
 
+#[derive(PartialEq, Eq)]
 pub enum LicensePlan {
     Community,
     Pro,

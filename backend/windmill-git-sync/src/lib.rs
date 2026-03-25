@@ -267,7 +267,10 @@ mod tests {
             path: "f/folder/script".to_string(),
             parent_path: Some("f/folder/old_script".to_string()),
         };
-        assert_eq!(obj.get_parent_path(), Some("f/folder/old_script".to_string()));
+        assert_eq!(
+            obj.get_parent_path(),
+            Some("f/folder/old_script".to_string())
+        );
     }
 
     #[test]
@@ -308,21 +311,13 @@ mod tests {
 
     #[test]
     fn test_get_kind_flow() {
-        let obj = DeployedObject::Flow {
-            path: "test".to_string(),
-            parent_path: None,
-            version: 1,
-        };
+        let obj = DeployedObject::Flow { path: "test".to_string(), parent_path: None, version: 1 };
         assert_eq!(obj.get_kind(), "flow");
     }
 
     #[test]
     fn test_get_kind_app() {
-        let obj = DeployedObject::App {
-            path: "test".to_string(),
-            version: 1,
-            parent_path: None,
-        };
+        let obj = DeployedObject::App { path: "test".to_string(), version: 1, parent_path: None };
         assert_eq!(obj.get_kind(), "app");
     }
 
@@ -341,7 +336,8 @@ mod tests {
             "http_trigger"
         );
         assert_eq!(
-            DeployedObject::WebsocketTrigger { path: "t".to_string(), parent_path: None }.get_kind(),
+            DeployedObject::WebsocketTrigger { path: "t".to_string(), parent_path: None }
+                .get_kind(),
             "websocket_trigger"
         );
         assert_eq!(

@@ -35,6 +35,7 @@ use windmill_common::variables::{
     build_crypt, decrypt, encrypt, SECRET_SALT, WORKSPACE_CRYPT_CACHE,
 };
 use windmill_common::worker::{to_raw_value, CLOUD_HOSTED};
+use windmill_common::workspaces::GitRepositorySettings;
 use windmill_common::workspaces::{
     check_user_against_rule, get_datatable_resource_from_db_unchecked, DataTable,
     DataTableCatalogResourceType, ProtectionRuleKind, ProtectionRules, ProtectionRuleset,
@@ -111,6 +112,7 @@ pub fn workspaced_service() -> Router {
         .route("/list_datatables", get(list_datatables))
         .route("/list_datatable_schemas", get(list_datatable_schemas))
         .route("/edit_datatable_config", post(edit_datatable_config))
+        .route("/git_sync_enabled", get(get_git_sync_enabled))
         .route("/edit_git_sync_config", post(edit_git_sync_config))
         .route("/edit_git_sync_repository", post(edit_git_sync_repository))
         .route(
@@ -1524,47 +1526,441 @@ async fn edit_datatable_config(
 
 #[derive(Deserialize)]
 pub struct EditGitSyncConfig {
+    pub git_sync_settings: Option<WorkspaceGitSyncSettings>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct EditGitSyncRepository {
+    pub git_repo_resource_path: String,
+    pub repository: GitRepositorySettings,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct DeleteGitSyncRepositoryRequest {
+    pub git_repo_resource_path: String,
+}
+
+fn validate_git_repo_resource_path(path: &str) -> Result<()> {
+    // Resource paths should follow the pattern: $res:f/<folder>/<name> or $res:u/<username>/<name>
+    if path.is_empty() {
+        return Err(Error::BadRequest(
+            "Resource path cannot be empty".to_string(),
+        ));
+    }
+
+    // Must start with $res: prefix
+    if !path.starts_with("$res:") {
+        return Err(Error::BadRequest(
+            "Resource path must start with '$res:'".to_string(),
+        ));
+    }
+
+    // Extract the actual path after $res:
+    let actual_path = &path[5..]; // Remove "$res:" prefix
+
+    // Basic validation: must start with f/ or u/ and contain at least one slash
+    if !actual_path.starts_with("f/") && !actual_path.starts_with("u/") {
+        return Err(Error::BadRequest(
+            "Resource path must start with '$res:f/' or '$res:u/'".to_string(),
+        ));
+    }
+
+    // Must have at least 3 parts (type, folder/user, name)
+    let parts: Vec<&str> = actual_path.split('/').collect();
+    if parts.len() < 3 || parts.iter().any(|part| part.is_empty()) {
+        return Err(Error::BadRequest(
+            "Invalid resource path format".to_string(),
+        ));
+    }
+
+    // Resource name validation (last part)
+    let resource_name = parts.last().unwrap();
+    if !resource_name
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    {
+        return Err(Error::BadRequest(
+            "Resource name can only contain alphanumeric characters, underscores, and hyphens"
+                .to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn cleanup_legacy_git_sync_settings_in_memory(
+    git_sync_settings: &mut windmill_common::workspaces::WorkspaceGitSyncSettings,
+    workspace_id: &str,
+) {
+    // Check if all repositories are in new format (have settings field)
+    let all_repos_migrated = git_sync_settings
+        .repositories
+        .iter()
+        .all(|repo| repo.settings.is_some());
+
+    // If all repos are migrated and we still have legacy workspace-level settings
+    if all_repos_migrated
+        && (git_sync_settings.include_path.is_some() || git_sync_settings.include_type.is_some())
+    {
+        tracing::info!(
+            workspace_id = workspace_id,
+            "All git sync repositories migrated to new format, cleaning up legacy workspace-level settings"
+        );
+
+        // Remove workspace-level legacy fields
+        git_sync_settings.include_path = None;
+        git_sync_settings.include_type = None;
+    }
+}
+
+const CE_GIT_SYNC_MAX_USERS: i64 = 2;
+
+
+async fn check_git_sync_access(db: &DB, w_id: &str) -> Result<()> {
+    let user_count: i64 = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM usr WHERE workspace_id = $1 AND disabled = false",
+        w_id
+    )
+    .fetch_one(db)
+    .await?
+    .unwrap_or(0);
+
+    if user_count > CE_GIT_SYNC_MAX_USERS {
+        return Err(Error::BadRequest(format!(
+            "Git sync is available for workspaces with up to {} members. \
+             Upgrade to Windmill Enterprise Edition for unlimited workspace members.",
+            CE_GIT_SYNC_MAX_USERS
+        )));
+    }
+    Ok(())
 }
 
 
+async fn get_git_sync_enabled(
+    _authed: ApiAuthed,
+    Extension(db): Extension<DB>,
+    Path(w_id): Path<String>,
+) -> JsonResult<serde_json::Value> {
+    let user_count: i64 = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM usr WHERE workspace_id = $1 AND disabled = false",
+        &w_id
+    )
+    .fetch_one(&db)
+    .await?
+    .unwrap_or(0);
 
-
+    let enabled = user_count <= CE_GIT_SYNC_MAX_USERS;
+    Ok(Json(serde_json::json!({
+        "enabled": enabled,
+        "reason": if enabled { Some("free_tier") } else { None::<&str> },
+        "max_repos": if enabled { Some(1) } else { None::<i32> },
+        "user_count": user_count,
+        "max_users": CE_GIT_SYNC_MAX_USERS,
+    })))
+}
 
 async fn edit_git_sync_config(
-    _authed: ApiAuthed,
-    Extension(_db): Extension<DB>,
-    Path(_w_id): Path<String>,
-    Json(_new_config): Json<EditGitSyncConfig>,
+    authed: ApiAuthed,
+    Extension(db): Extension<DB>,
+    Path(w_id): Path<String>,
+    ApiAuthed { is_admin, username, .. }: ApiAuthed,
+    Json(new_config): Json<EditGitSyncConfig>,
 ) -> Result<String> {
-    return Err(Error::BadRequest(
-        "Git sync is only available on Windmill Enterprise Edition".to_string(),
-    ));
-}
+    require_admin(is_admin, &username)?;
+    check_git_sync_access(&db, &w_id).await?;
 
+    let mut tx = db.begin().await?;
+
+    let args_for_audit = format!("{:?}", new_config.git_sync_settings);
+    audit_log(
+        &mut *tx,
+        &authed,
+        "workspaces.edit_git_sync_config",
+        ActionKind::Update,
+        &w_id,
+        Some(&authed.email),
+        Some([("git_sync_settings", args_for_audit.as_str())].into()),
+    )
+    .await?;
+
+    if let Some(mut git_sync_settings) = new_config.git_sync_settings {
+        // Clean up legacy workspace-level settings if all repos are migrated
+        cleanup_legacy_git_sync_settings_in_memory(&mut git_sync_settings, &w_id);
+
+        let serialized_config = serde_json::to_value::<WorkspaceGitSyncSettings>(git_sync_settings)
+            .map_err(|err| Error::internal_err(err.to_string()))?;
+
+        sqlx::query!(
+            "UPDATE workspace_settings SET git_sync = $1 WHERE workspace_id = $2",
+            serialized_config,
+            &w_id
+        )
+        .execute(&mut *tx)
+        .await?;
+    } else {
+        sqlx::query!(
+            "UPDATE workspace_settings SET git_sync = NULL WHERE workspace_id = $1",
+            &w_id,
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
+    // Trigger git sync for git sync settings changes
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Settings { setting_type: "git_sync".to_string() },
+        Some("Git sync configuration updated".to_string()),
+        false,
+        None,
+    )
+    .await?;
+
+    Ok(format!("Edit git sync config for workspace {}", &w_id))
+}
 
 async fn edit_git_sync_repository(
-    _authed: ApiAuthed,
-    Extension(_db): Extension<DB>,
-    Path(_w_id): Path<String>,
-    Json(_new_config): Json<serde_json::Value>,
+    authed: ApiAuthed,
+    Extension(db): Extension<DB>,
+    Path(w_id): Path<String>,
+    ApiAuthed { is_admin, username, .. }: ApiAuthed,
+    Json(new_config): Json<EditGitSyncRepository>,
 ) -> Result<String> {
-    return Err(Error::BadRequest(
-        "Git sync is only available on Windmill Enterprise Edition".to_string(),
-    ));
-}
+    require_admin(is_admin, &username)?;
+    check_git_sync_access(&db, &w_id).await?;
 
+    // Validate the resource path format
+    validate_git_repo_resource_path(&new_config.git_repo_resource_path)?;
+
+    // Promotion mode: EE only
+    if new_config.repository.use_individual_branch.unwrap_or(false) {
+        return Err(Error::BadRequest(
+            "Promotion mode is an Enterprise Edition feature".to_string(),
+        ));
+    }
+
+    let mut tx = db.begin().await?;
+
+    // First, get the current git sync settings
+    let current_settings = sqlx::query!(
+        "SELECT git_sync FROM workspace_settings WHERE workspace_id = $1",
+        &w_id
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let mut git_sync_settings = if let Some(row) = current_settings {
+        if let Some(git_sync) = row.git_sync {
+            serde_json::from_value::<WorkspaceGitSyncSettings>(git_sync)
+                .map_err(|err| Error::internal_err(err.to_string()))?
+        } else {
+            WorkspaceGitSyncSettings::default()
+        }
+    } else {
+        WorkspaceGitSyncSettings::default()
+    };
+
+    // Multi-repo: EE only
+    {
+        let is_new = !git_sync_settings
+            .repositories
+            .iter()
+            .any(|r| r.git_repo_resource_path == new_config.git_repo_resource_path);
+        if is_new && !git_sync_settings.repositories.is_empty() {
+            return Err(Error::BadRequest(
+                "Multiple git sync repositories is an Enterprise Edition feature".to_string(),
+            ));
+        }
+    }
+
+    // Audit log before we move the repository
+    audit_log(
+        &mut *tx,
+        &authed,
+        "workspaces.edit_git_sync_repository",
+        ActionKind::Update,
+        &w_id,
+        Some(&authed.email),
+        Some(
+            [
+                (
+                    "repository_path",
+                    new_config.git_repo_resource_path.as_str(),
+                ),
+                ("repository_data", &format!("{:?}", new_config.repository)),
+            ]
+            .into(),
+        ),
+    )
+    .await?;
+
+    // Check if repository exists before modifying
+    let repo_exists = git_sync_settings
+        .repositories
+        .iter()
+        .any(|repo| repo.git_repo_resource_path == new_config.git_repo_resource_path);
+
+    // Find and update the specific repository, or add it if it doesn't exist
+    let repo_found = git_sync_settings
+        .repositories
+        .iter_mut()
+        .find(|repo| repo.git_repo_resource_path == new_config.git_repo_resource_path);
+
+    if let Some(existing_repo) = repo_found {
+        // Update existing repository
+        *existing_repo = new_config.repository;
+    } else {
+        // Repository doesn't exist, add it as a new repository
+        git_sync_settings.repositories.push(new_config.repository);
+    }
+
+    // Clean up legacy workspace-level settings if all repos are migrated
+    cleanup_legacy_git_sync_settings_in_memory(&mut git_sync_settings, &w_id);
+
+    // Save the updated configuration
+    let serialized_config = serde_json::to_value::<WorkspaceGitSyncSettings>(git_sync_settings)
+        .map_err(|err| Error::internal_err(err.to_string()))?;
+
+    sqlx::query!(
+        "UPDATE workspace_settings SET git_sync = $1 WHERE workspace_id = $2",
+        serialized_config,
+        &w_id
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    // Trigger git sync for individual repository update/add
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Settings { setting_type: "git_sync".to_string() },
+        Some(format!(
+            "Git sync repository '{}' {}",
+            new_config.git_repo_resource_path,
+            if repo_exists { "updated" } else { "added" }
+        )),
+        false,
+        None,
+    )
+    .await?;
+
+    Ok(format!(
+        "{} git sync repository '{}' for workspace {}",
+        if repo_exists { "Updated" } else { "Added" },
+        new_config.git_repo_resource_path,
+        &w_id
+    ))
+}
 
 async fn delete_git_sync_repository(
-    _authed: ApiAuthed,
-    Extension(_db): Extension<DB>,
-    Path(_w_id): Path<String>,
-    Json(_request): Json<serde_json::Value>,
+    authed: ApiAuthed,
+    Extension(db): Extension<DB>,
+    Path(w_id): Path<String>,
+    ApiAuthed { is_admin, username, .. }: ApiAuthed,
+    Json(request): Json<DeleteGitSyncRepositoryRequest>,
 ) -> Result<String> {
-    return Err(Error::BadRequest(
-        "Git sync is only available on Windmill Enterprise Edition".to_string(),
-    ));
-}
+    require_admin(is_admin, &username)?;
 
+    // No check_git_sync_access here — admins should always be able to delete/clean up repos
+    if request.git_repo_resource_path.is_empty() {
+        return Err(Error::BadRequest(
+            "Resource path cannot be empty".to_string(),
+        ));
+    }
+
+    let mut tx = db.begin().await?;
+
+    // First, get the current git sync settings
+    let current_settings = sqlx::query!(
+        "SELECT git_sync FROM workspace_settings WHERE workspace_id = $1",
+        &w_id
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let mut git_sync_settings = if let Some(row) = current_settings {
+        if let Some(git_sync) = row.git_sync {
+            serde_json::from_value::<WorkspaceGitSyncSettings>(git_sync)
+                .map_err(|err| Error::internal_err(err.to_string()))?
+        } else {
+            WorkspaceGitSyncSettings::default()
+        }
+    } else {
+        WorkspaceGitSyncSettings::default()
+    };
+
+    // Check if repository exists and remove it
+    let original_count = git_sync_settings.repositories.len();
+    git_sync_settings
+        .repositories
+        .retain(|repo| repo.git_repo_resource_path != request.git_repo_resource_path);
+
+    if git_sync_settings.repositories.len() == original_count {
+        return Err(Error::BadRequest(format!(
+            "Repository with path '{}' not found in git sync configuration",
+            request.git_repo_resource_path
+        )));
+    }
+
+    // Audit log
+    audit_log(
+        &mut *tx,
+        &authed,
+        "workspaces.delete_git_sync_repository",
+        ActionKind::Delete,
+        &w_id,
+        Some(&authed.email),
+        Some([("repository_path", request.git_repo_resource_path.as_str())].into()),
+    )
+    .await?;
+
+    // Clean up legacy workspace-level settings if all repos are migrated
+    cleanup_legacy_git_sync_settings_in_memory(&mut git_sync_settings, &w_id);
+
+    // Save the updated configuration
+    let serialized_config = serde_json::to_value::<WorkspaceGitSyncSettings>(git_sync_settings)
+        .map_err(|err| Error::internal_err(err.to_string()))?;
+
+    sqlx::query!(
+        "UPDATE workspace_settings SET git_sync = $1 WHERE workspace_id = $2",
+        serialized_config,
+        &w_id
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    // Trigger git sync for repository deletion
+    handle_deployment_metadata(
+        &authed.email,
+        &authed.username,
+        &db,
+        &w_id,
+        windmill_git_sync::DeployedObject::Settings { setting_type: "git_sync".to_string() },
+        Some(format!(
+            "Git sync repository '{}' deleted",
+            request.git_repo_resource_path
+        )),
+        false,
+        None,
+    )
+    .await?;
+
+    Ok(format!(
+        "Deleted git sync repository '{}' from workspace {}",
+        request.git_repo_resource_path, &w_id
+    ))
+}
 
 
 async fn edit_deploy_ui_config(
