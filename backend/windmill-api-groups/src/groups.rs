@@ -655,6 +655,7 @@ async fn delete_group(
     )
     .execute(&mut *tx)
     .await?;
+
     audit_log(
         &mut *tx,
         &authed,
