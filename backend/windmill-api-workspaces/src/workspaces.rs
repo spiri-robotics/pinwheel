@@ -1616,6 +1616,7 @@ fn cleanup_legacy_git_sync_settings_in_memory(
 const CE_GIT_SYNC_MAX_USERS: i64 = 2;
 
 
+
 async fn check_git_sync_access(db: &DB, w_id: &str) -> Result<()> {
     let user_count: i64 = sqlx::query_scalar!(
         "SELECT COUNT(*) FROM usr WHERE workspace_id = $1 AND disabled = false",
