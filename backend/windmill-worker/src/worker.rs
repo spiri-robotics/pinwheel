@@ -2629,6 +2629,8 @@ pub async fn run_worker(
 
                     let arc_job = Arc::new(job);
 
+                    windmill_common::sensitive_log_masks::register_running_job(arc_job.id);
+
                     let span = create_span_with_name(&arc_job, &worker_name, Some(hostname), "job");
 
                     let job_result = handle_queued_job(
@@ -2727,6 +2729,8 @@ pub async fn run_worker(
                         }
                         _ => {}
                     }
+
+                    windmill_common::sensitive_log_masks::unregister_running_job(job_id);
 
                     #[cfg(feature = "prometheus")]
                     if let Some(duration) = _timer.map(|x| x.stop_and_record()) {
