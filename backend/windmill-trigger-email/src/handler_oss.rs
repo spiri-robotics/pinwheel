@@ -3,7 +3,7 @@ use windmill_trigger::TriggerData;
 
 use {
     super::EmailTrigger,
-    axum::async_trait,
+    async_trait::async_trait,
     sqlx::PgConnection,
     windmill_api_auth::ApiAuthed,
     windmill_common::{

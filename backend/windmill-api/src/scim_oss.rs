@@ -7,8 +7,7 @@
  * LICENSE-AGPL for a copy of the license.
  */
 
-use axum::{middleware::Next, response::Response, routing::get, Router};
-use hyper::Request;
+use axum::{extract::Request, middleware::Next, response::Response, routing::get, Router};
 
 pub fn global_service() -> Router {
     Router::new().route("/ee", get(ee))
@@ -18,7 +17,7 @@ pub async fn ee() -> String {
     return "Enterprise Edition".to_string();
 }
 
-pub async fn has_scim_token<B>(_request: Request<B>, _next: Next) -> Response {
+pub async fn has_scim_token(_request: Request, _next: Next) -> Response {
     //Not implemented in open-source version
     todo!()
 }

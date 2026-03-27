@@ -68,29 +68,29 @@ pub fn workspaced_service() -> Router {
     Router::new()
         .route("/set_config", post(set_config))
         .route(
-            "/ping_config/:trigger_kind/:runnable_kind/*path",
+            "/ping_config/{trigger_kind}/{runnable_kind}/{*path}",
             post(ping_config),
         )
-        .route("/get_configs/:runnable_kind/*path", get(get_configs))
-        .route("/list/:runnable_kind/*path", get(list_captures))
+        .route("/get_configs/{runnable_kind}/{*path}", get(get_configs))
+        .route("/list/{runnable_kind}/{*path}", get(list_captures))
         .route(
-            "/move/:runnable_kind/*path",
+            "/move/{runnable_kind}/{*path}",
             post(move_captures_and_configs),
         )
-        .route("/:id", delete(delete_capture))
-        .route("/:id", get(get_capture))
+        .route("/{id}", delete(delete_capture))
+        .route("/{id}", get(get_capture))
 }
 
 pub fn workspaced_unauthed_service() -> Router {
     let router = Router::new().route(
-        "/webhook/:runnable_kind/*path",
+        "/webhook/{runnable_kind}/{*path}",
         head(|| async {}).post(webhook_payload),
     );
 
     #[cfg(feature = "http_trigger")]
     {
         #[cfg(feature = "http_trigger")]
-        let router = router.route("/http/:runnable_kind/:path/*route_path", {
+        let router = router.route("/http/{runnable_kind}/{path}/{*route_path}", {
             head(|| async {}).fallback(http_payload)
         });
 

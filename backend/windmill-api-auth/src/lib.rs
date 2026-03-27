@@ -10,8 +10,7 @@ pub mod auth;
 pub mod ee_oss;
 pub mod scopes;
 
-use axum::async_trait;
-use axum::extract::FromRequestParts;
+use axum::extract::{FromRequestParts, OptionalFromRequestParts};
 use http::request::Parts;
 
 use windmill_audit::audit_oss::AuditAuthorable;
@@ -343,7 +342,6 @@ pub async fn maybe_refresh_folders(
 
 // ------------ FromRequestParts impls (direct call to auth module) ------------
 
-#[async_trait]
 impl<S> FromRequestParts<S> for ApiAuthed
 where
     S: Send + Sync,
@@ -359,7 +357,24 @@ where
     }
 }
 
-#[async_trait]
+impl<S> OptionalFromRequestParts<S> for ApiAuthed
+where
+    S: Send + Sync,
+{
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &S,
+    ) -> std::result::Result<Option<Self>, Self::Rejection> {
+        Ok(
+            <Self as FromRequestParts<S>>::from_request_parts(parts, state)
+                .await
+                .ok(),
+        )
+    }
+}
+
 impl<S> FromRequestParts<S> for OptJobAuthed
 where
     S: Send + Sync,
@@ -395,7 +410,6 @@ fn empty_parts() -> Parts {
 #[derive(Clone, Debug)]
 pub struct OptAuthed(pub Option<ApiAuthed>);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for OptAuthed
 where
     S: Send + Sync,
@@ -406,7 +420,7 @@ where
         parts: &mut Parts,
         state: &S,
     ) -> std::result::Result<Self, Self::Rejection> {
-        ApiAuthed::from_request_parts(parts, state)
+        <ApiAuthed as FromRequestParts<S>>::from_request_parts(parts, state)
             .await
             .map(|authed| Self(Some(authed)))
             .or_else(|_| Ok(Self(None)))
