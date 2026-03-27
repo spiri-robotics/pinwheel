@@ -184,7 +184,15 @@ impl AuthCache {
                     t_hash,
                     w_id.as_ref(),
                 )
-                .map(|x| (x.owner, x.email, x.super_admin, x.scopes, x.label))
+                .map(|x| {
+                    (
+                        x.owner,
+                        x.email,
+                        x.super_admin,
+                        x.scopes,
+                        x.label,
+                    )
+                })
                 .fetch_optional(&self.db)
                 .await
                 .ok()
@@ -193,7 +201,13 @@ impl AuthCache {
                 if let Some(user) = user_o {
                     let authed_o = {
                         match user {
-                            (Some(owner), Some(email), super_admin, _, label) if w_id.is_some() => {
+                            (
+                                Some(owner),
+                                Some(email),
+                                super_admin,
+                                _,
+                                label,
+                            ) if w_id.is_some() => {
                                 let username_override = username_override_from_label(label);
                                 if let Some((prefix, name)) = owner.split_once('/') {
                                     if prefix == "u" {
