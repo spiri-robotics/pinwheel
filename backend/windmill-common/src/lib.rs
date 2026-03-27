@@ -388,6 +388,8 @@ pub struct PgDatabase {
     pub sslmode: Option<String>,
     pub dbname: String,
     pub root_certificate_pem: Option<String>,
+    pub use_iam_auth: Option<bool>,
+    pub region: Option<String>,
 }
 
 // Wrapper enum to hold either Tls or NoTls connection
@@ -495,6 +497,7 @@ impl PgDatabase {
         }
     }
 
+
     pub fn parse_uri(url: &str) -> Result<Self, Error> {
         let parsed_url = url::Url::parse(url)
             .map_err(|_| Error::BadConfig("Invalid PostgreSQL URL".to_string()))?;
@@ -533,6 +536,8 @@ impl PgDatabase {
             dbname,
             sslmode,
             root_certificate_pem: None,
+            use_iam_auth: None,
+            region: None,
         })
     }
 }
