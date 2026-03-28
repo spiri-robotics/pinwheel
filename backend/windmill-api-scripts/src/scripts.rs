@@ -1443,7 +1443,7 @@ async fn get_script_history(
     check_scopes(&authed, || format!("scripts:read:{}", path))?;
     let mut tx = user_db.begin(&authed).await?;
     let query_result = sqlx::query!(
-        "SELECT s.hash as hash, dm.deployment_msg as deployment_msg 
+        "SELECT s.hash as hash, dm.deployment_msg as deployment_msg, s.created_at as created_at
         FROM script s LEFT JOIN deployment_metadata dm ON s.hash = dm.script_hash
         WHERE s.workspace_id = $1 AND s.path = $2
         ORDER by s.created_at DESC",
@@ -1459,6 +1459,7 @@ async fn get_script_history(
         .map(|row| ScriptHistory {
             script_hash: ScriptHash(row.hash),
             deployment_msg: row.deployment_msg,
+            created_at: Some(row.created_at),
         })
         .collect();
     return Ok(Json(result));
@@ -1473,7 +1474,7 @@ async fn get_latest_version(
     check_scopes(&authed, || format!("scripts:read:{}", path))?;
     let mut tx = user_db.begin(&authed).await?;
     let row_o = sqlx::query!(
-        "SELECT s.hash as hash, dm.deployment_msg as deployment_msg 
+        "SELECT s.hash as hash, dm.deployment_msg as deployment_msg, s.created_at as created_at
         FROM script s LEFT JOIN deployment_metadata dm ON s.hash = dm.script_hash
         WHERE s.workspace_id = $1 AND s.path = $2
         ORDER by s.created_at DESC LIMIT 1",
@@ -1487,7 +1488,8 @@ async fn get_latest_version(
     if let Some(row) = row_o {
         let result = ScriptHistory {
             script_hash: ScriptHash(row.hash),
-            deployment_msg: row.deployment_msg, //
+            deployment_msg: row.deployment_msg,
+            created_at: Some(row.created_at),
         };
         return Ok(Json(Some(result)));
     } else {
