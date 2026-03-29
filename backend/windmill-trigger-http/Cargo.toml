@@ -44,3 +44,4 @@ itertools.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 hex.workspace = true
+chrono.workspace = true
