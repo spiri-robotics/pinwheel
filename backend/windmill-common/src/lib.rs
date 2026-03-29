@@ -61,6 +61,7 @@ pub mod workspace_dependencies;
 pub mod git_sync_oss;
 pub mod jobs;
 pub mod jwt;
+pub mod login_rate_limit;
 pub mod more_serde;
 pub mod oauth2;
 pub mod otel_oss;
