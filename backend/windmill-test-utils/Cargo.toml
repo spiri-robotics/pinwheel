@@ -12,6 +12,7 @@ path = "src/lib.rs"
 default = []
 python = ["windmill-common/python"]
 deno_core = ["dep:windmill-runtime-nativets"]
+mcp = ["windmill-api/mcp"]
 agent_worker_server = ["dep:windmill-api-agent-workers"]
 run_inline = ["windmill-api/run_inline"]
 duckdb = ["windmill-worker/duckdb"]
