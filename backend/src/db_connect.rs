@@ -41,6 +41,7 @@ pub async fn connect_db(
 
     let pool = connect(database_url.clone(), max_connections, worker_mode).await?;
 
+
     Ok(pool)
 }
 

@@ -42,6 +42,7 @@ pub mod bench;
 pub mod cache;
 pub mod client;
 pub mod db;
+pub mod db_params;
 pub mod ee_oss;
 pub mod email_oss;
 pub mod error;
@@ -550,7 +551,7 @@ pub enum DatabaseUrl {
 
 impl DatabaseUrl {
     /// Get the database URL as a string.
-    /// Note: For IAM RDS, this returns the original URL (for metadata extraction).
+    /// For token-based auth, this returns the original URL (for metadata extraction).
     /// For actual database connections, use connect_options() instead.
     pub async fn as_str(&self) -> String {
         match self {
@@ -559,8 +560,8 @@ impl DatabaseUrl {
     }
 
     /// Get PgConnectOptions for this database URL.
-    /// For IAM RDS, this returns options built directly from the token to avoid double-encoding
-    /// issues with temporary credentials (IRSA/Pod Identity).
+    /// For token-based auth (IAM RDS, Entra ID), this returns options built directly from the
+    /// token to avoid double-encoding issues with temporary credentials.
     /// For static URLs, this parses the URL string.
     pub async fn connect_options(&self) -> Result<sqlx::postgres::PgConnectOptions, Error> {
         match self {
@@ -573,6 +574,22 @@ impl DatabaseUrl {
         match self {
             DatabaseUrl::Static(_) => Ok(()),
         }
+    }
+
+    pub async fn needs_refresh(&self) -> bool {
+        match self {
+            DatabaseUrl::Static(_) => false,
+        }
+    }
+
+    /// Double-checked refresh: read-lock to check, then write-lock to refresh if still needed.
+    pub async fn refresh_if_needed(&self) -> Result<(), Error> {
+        if self.needs_refresh().await {
+            self.refresh().await.map_err(|e| {
+                Error::InternalErr(format!("Failed to refresh database token: {}", e))
+            })?;
+        }
+        Ok(())
     }
 }
 
@@ -601,7 +618,9 @@ pub async fn get_database_url() -> Result<DatabaseUrl, Error> {
 
             let parsed_url = url::Url::parse(&url)?;
 
-            if parsed_url.password().is_some_and(|x| x == "iamrds") {
+            let password = parsed_url.password().unwrap_or_default();
+
+            if password == "iamrds" {
                 let region = var("AWS_REGION").map_err(|_| {
                     Error::BadConfig(
                         "AWS_REGION env var is required for IAM RDS authentication".to_string(),
@@ -615,14 +634,31 @@ pub async fn get_database_url() -> Result<DatabaseUrl, Error> {
                         "IAM RDS authentication is not enabled in OSS mode".to_string(),
                     ));
                 }
+            } else if password == "entraid" {
+                let tenant_id = var("AZURE_TENANT_ID").map_err(|_| {
+                    Error::BadConfig(
+                        "AZURE_TENANT_ID env var is required for Entra ID authentication"
+                            .to_string(),
+                    )
+                })?;
+
+                tracing::info!(
+                    "entraid mode detected, generating Entra ID URL for tenant: {tenant_id}"
+                );
+
+                {
+                    return Err(Error::BadConfig(
+                        "Entra ID authentication is not enabled in OSS mode".to_string(),
+                    ));
+                }
             } else {
                 Ok::<DatabaseUrl, Error>(DatabaseUrl::Static(url.to_string()))
             }
         })
         .await?;
 
+    database_url.refresh_if_needed().await?;
 
-    // Return the URL string
     Ok(database_url.clone())
 }
 
