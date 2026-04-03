@@ -42,7 +42,7 @@ mod nu_executor;
 mod oracledb_executor;
 mod otel_oss;
 mod otel_tracing_proxy_oss;
-mod pg_executor;
+pub mod pg_executor;
 #[cfg(feature = "php")]
 mod php_executor;
 mod prepare_deps;
