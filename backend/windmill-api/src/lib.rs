@@ -22,6 +22,7 @@ use tower_http::catch_panic::CatchPanicLayer;
 
 use crate::tracing_init::MyOnFailure;
 use crate::{
+    s3_log_batching::{s3_proxy_log_middleware, FLUSH_INTERVAL_MS},
     tracing_init::{MyMakeSpan, MyOnResponse},
     users::OptAuthed,
     webhook_util::WebhookShared,
@@ -120,6 +121,7 @@ mod teams_approvals_oss;
 pub mod native_triggers;
 mod public_app_layer;
 mod public_app_rate_limit;
+mod s3_log_batching;
 mod static_assets;
 mod teams_cache_oss;
 mod teams_oss;
@@ -865,13 +867,24 @@ pub async fn run_server(
     let app = if disable_response_logs {
         app
     } else {
-        app.layer(
-            TraceLayer::new_for_http()
-                .on_response(MyOnResponse {})
-                .make_span_with(MyMakeSpan {})
-                .on_request(())
-                .on_failure(MyOnFailure {}),
-        )
+        tokio::spawn(async {
+            let mut interval =
+                tokio::time::interval(std::time::Duration::from_millis(FLUSH_INTERVAL_MS));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+            loop {
+                interval.tick().await;
+                crate::s3_log_batching::flush_s3_batches();
+            }
+        });
+
+        app.layer(axum::middleware::from_fn(s3_proxy_log_middleware))
+            .layer(
+                TraceLayer::new_for_http()
+                    .on_response(MyOnResponse {})
+                    .make_span_with(MyMakeSpan {})
+                    .on_request(())
+                    .on_failure(MyOnFailure {}),
+            )
     };
 
     let app = if let Some(domain) = public_app_layer::PUBLIC_APP_DOMAIN.as_ref() {
