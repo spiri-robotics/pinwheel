@@ -16,12 +16,16 @@ pub mod database;
 
 
 pub mod vault_oss;
+pub mod azure_kv_oss;
 
 #[cfg(test)]
 mod tests;
 
 
 pub use vault_oss::*;
+
+
+pub use azure_kv_oss::*;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -75,6 +79,8 @@ pub enum SecretBackendConfig {
     Database,
     /// Store secrets in HashiCorp Vault (Enterprise Edition only)
     HashiCorpVault(VaultSettings),
+    /// Store secrets in Azure Key Vault (Enterprise Edition only)
+    AzureKeyVault(AzureKeyVaultSettings),
 }
 
 impl Default for SecretBackendConfig {
@@ -99,6 +105,23 @@ pub struct VaultSettings {
     pub namespace: Option<String>,
     /// Static Vault token for testing/development (optional)
     /// If provided, this is used instead of JWT authentication
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AzureKeyVaultSettings {
+    /// Azure Key Vault URL (e.g., "https://myvault.vault.azure.net")
+    pub vault_url: String,
+    /// Azure AD tenant ID
+    pub tenant_id: String,
+    /// Azure AD application (client) ID
+    pub client_id: String,
+    /// Azure AD client secret
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_secret: Option<String>,
+    /// Static Bearer token for testing/development (optional)
+    /// If provided, this is used instead of OAuth2 client credentials authentication
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
 }

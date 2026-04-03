@@ -27,6 +27,11 @@ use windmill_common::{db::DB, error::Result};
 
 
 
+
+
+
+
+
 /// Bulk rename secrets in Vault when a path prefix changes (e.g., user rename)
 /// EE only feature.
 ///

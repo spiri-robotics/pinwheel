@@ -27,6 +27,8 @@ use windmill_common::{
 
 
 
+
+
 /// Get the current secret backend based on global settings
 ///
 /// OSS: Always returns DatabaseBackend
@@ -34,6 +36,7 @@ use windmill_common::{
 pub async fn get_secret_backend(db: &DB) -> Result<Arc<dyn SecretBackend>> {
     Ok(Arc::new(DatabaseBackend::new(db.clone())))
 }
+
 
 
 
@@ -70,6 +73,9 @@ pub async fn get_secret_value(
             // Fetch from Vault directly
             backend.get_secret(workspace_id, path).await
         }
+        "azure_key_vault" => {
+            backend.get_secret(workspace_id, path).await
+        }
         _ => Err(Error::internal_err(format!(
             "Unknown backend: {}",
             backend.backend_name()
@@ -99,6 +105,10 @@ pub async fn store_secret_value(
             // Store in Vault and return a marker for DB
             backend.set_secret(workspace_id, path, plain_value).await?;
             Ok(format!("$vault:{}", path))
+        }
+        "azure_key_vault" => {
+            backend.set_secret(workspace_id, path, plain_value).await?;
+            Ok(format!("$azure_kv:{}", path))
         }
         _ => Err(Error::internal_err(format!(
             "Unknown backend: {}",
@@ -130,6 +140,16 @@ pub fn is_vault_stored_value(value: &str) -> bool {
     value.starts_with("$vault:")
 }
 
+/// Check if a value is stored in Azure Key Vault (indicated by the $azure_kv: prefix)
+pub fn is_azure_kv_stored_value(value: &str) -> bool {
+    value.starts_with("$azure_kv:")
+}
+
+/// Check if a value is stored in any external secret backend
+pub fn is_external_stored_value(value: &str) -> bool {
+    is_vault_stored_value(value) || is_azure_kv_stored_value(value)
+}
+
 /// Rename a secret in Vault when a variable path changes (EE only)
 pub async fn rename_vault_secret(
     _db: &DB,
@@ -145,6 +165,14 @@ pub async fn rename_vault_secret(
             new_path
         );
         return Ok(Some(format!("$vault:{}", new_path)));
+    }
+    if is_azure_kv_stored_value(current_value) {
+        tracing::warn!(
+            "Variable has $azure_kv: prefix but Azure Key Vault requires Enterprise Edition. \
+             Updating DB reference to {}",
+            new_path
+        );
+        return Ok(Some(format!("$azure_kv:{}", new_path)));
     }
     Ok(None)
 }
