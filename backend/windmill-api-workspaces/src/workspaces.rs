@@ -3759,6 +3759,12 @@ async fn invite_user(
 ) -> Result<(StatusCode, String)> {
     require_admin(is_admin, &username)?;
 
+    if w_id == "admins" {
+        return Err(Error::BadRequest(
+            "The admins workspace is reserved for superadmins. Members cannot be added to it without an enterprise license.".to_string(),
+        ));
+    }
+
     nu.email = nu.email.to_lowercase();
 
     let mut tx = db.begin().await?;
@@ -3824,6 +3830,13 @@ async fn add_user(
     Json(mut nu): Json<NewWorkspaceUser>,
 ) -> Result<(StatusCode, String)> {
     require_admin(authed.is_admin, &authed.username)?;
+
+    if w_id == "admins" {
+        return Err(Error::BadRequest(
+            "The admins workspace is reserved for superadmins. Members cannot be added to it without an enterprise license.".to_string(),
+        ));
+    }
+
     nu.email = nu.email.to_lowercase();
 
     let mut tx = db.begin().await?;
