@@ -159,12 +159,7 @@ async fn test_app_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
         .send()
         .await
         .unwrap();
-    assert_eq!(
-        resp.status(),
-        200,
-        "public_app: {}",
-        resp.text().await?
-    );
+    assert_eq!(resp.status(), 200, "public_app: {}", resp.text().await?);
 
     // --- secret_of_latest_version ---
     let resp = authed_get(port, "secret_of_latest_version", "u/test-user/test_app").await;
@@ -186,7 +181,6 @@ async fn test_app_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
         resp.text().await?
     );
 
-
     // --- history_update ---
     let app_body = authed_get(port, "get/p", "u/test-user/test_app").await;
     let app = app_body.json::<serde_json::Value>().await?;
@@ -198,12 +192,7 @@ async fn test_app_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
     .send()
     .await
     .unwrap();
-    assert_eq!(
-        resp.status(),
-        200,
-        "history_update: {}",
-        resp.text().await?
-    );
+    assert_eq!(resp.status(), 200, "history_update: {}", resp.text().await?);
 
     // --- update ---
     let resp = authed(client().post(app_url(port, "update", "u/test-user/test_app")))
@@ -239,12 +228,10 @@ async fn test_app_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
     // ===== Hub endpoints (require external network, expect 500 or 200) =====
 
     // --- hub/list ---
-    let resp = authed(client().get(format!(
-        "http://localhost:{port}/api/apps/hub/list"
-    )))
-    .send()
-    .await
-    .unwrap();
+    let resp = authed(client().get(format!("http://localhost:{port}/api/apps/hub/list")))
+        .send()
+        .await
+        .unwrap();
     assert!(
         resp.status() == 200 || resp.status() == 500,
         "hub/list: unexpected status {}",
@@ -252,12 +239,10 @@ async fn test_app_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
     );
 
     // --- hub/get ---
-    let resp = authed(client().get(format!(
-        "http://localhost:{port}/api/apps/hub/get/1"
-    )))
-    .send()
-    .await
-    .unwrap();
+    let resp = authed(client().get(format!("http://localhost:{port}/api/apps/hub/get/1")))
+        .send()
+        .await
+        .unwrap();
     assert!(
         resp.status() == 200 || resp.status() == 500,
         "hub/get: unexpected status {}",
@@ -265,12 +250,10 @@ async fn test_app_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
     );
 
     // --- hub/get_raw ---
-    let resp = authed(client().get(format!(
-        "http://localhost:{port}/api/apps/hub/get_raw/1"
-    )))
-    .send()
-    .await
-    .unwrap();
+    let resp = authed(client().get(format!("http://localhost:{port}/api/apps/hub/get_raw/1")))
+        .send()
+        .await
+        .unwrap();
     assert!(
         resp.status() == 200 || resp.status() == 500,
         "hub/get_raw: unexpected status {}",
@@ -279,3 +262,4 @@ async fn test_app_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
 
     Ok(())
 }
+
