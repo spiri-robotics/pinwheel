@@ -78,6 +78,7 @@ postgres-native-tls.workspace = true
 native-tls.workspace = true
 
 aws-smithy-types-convert = { workspace = true, optional = true }
+aws-sdk-secretsmanager = { workspace = true, optional = true }
 aws-sdk-rds = { workspace = true, optional = true }
 indexmap.workspace = true
 bytes.workspace = true
