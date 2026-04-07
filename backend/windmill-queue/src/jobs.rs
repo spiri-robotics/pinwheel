@@ -3530,7 +3530,8 @@ pub fn resolve_debounce_key<'b>(
                 .join(":"),
         ));
 
-    tracing::debug!("Original debounce key: {}", original_debounce_key);
+    tracing::debug!("Original debounce key (len={}): {}", original_debounce_key.len(), original_debounce_key);
+
 
     // If debounce_key is not too long (< 255 chars), keep it as is, otherwise hash it.
     // On cloud, we prepend "{workspace_id}:" so we must reserve space for that prefix
@@ -3562,7 +3563,7 @@ pub fn resolve_debounce_key<'b>(
 
     let resolved = format!("{prefix}{resolved}");
 
-    tracing::debug!("Final debounce key: {}", resolved);
+    tracing::debug!("Final debounce key (len={}): {}", resolved.len(), resolved);
     resolved
 }
 
