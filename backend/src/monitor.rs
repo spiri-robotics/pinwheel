@@ -1199,6 +1199,7 @@ pub async fn delete_expired_items(db: &DB) -> () {
     }
 }
 
+
 pub async fn check_expiring_tokens(db: &DB) {
     // Find tokens expiring within 7 days that still have a pending notification row.
     // The notification table stores token_hash (not plaintext) so the join works
@@ -2269,6 +2270,9 @@ pub async fn monitor_db(
         }
     };
 
+    let cleanup_scheduled_job_deletions_f = async {
+    };
+
     join!(
         expired_items_f,
         zombie_jobs_f,
@@ -2292,6 +2296,7 @@ pub async fn monitor_db(
         cleanup_notify_events_f,
         check_expiring_tokens_f,
         manage_audit_partitions_f,
+        cleanup_scheduled_job_deletions_f,
     );
 }
 

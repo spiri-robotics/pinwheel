@@ -3661,21 +3661,54 @@ async fn push_next_flow_job(
             }
         }
 
-        if payload_tag.delete_after_use {
-            let uuid_singleton_json = serde_json::to_value(&[uuid]).map_err(|e| {
-                error::Error::internal_err(format!("Unable to serialize uuid: {e:#}"))
-            })?;
-
-            sqlx::query!(
-                 "UPDATE v2_job_status
-                 SET flow_status = JSONB_SET(flow_status, ARRAY['cleanup_module', 'flow_jobs_to_clean'], COALESCE(flow_status->'cleanup_module'->'flow_jobs_to_clean', '[]'::jsonb) || $1)
-                 WHERE id = $2",
-                 uuid_singleton_json,
-                 flow_innermost_root_job.unwrap_or(flow_job.id)
-             )
-             .execute(&mut *inner_tx)
-             .warn_after_seconds(3)
-             .await?;
+        {
+            use windmill_common::jobs::resolve_delete_after_secs;
+            let resolved = resolve_delete_after_secs(
+                payload_tag.delete_after_use.then_some(true),
+                payload_tag.delete_after_secs,
+            );
+            let root_id = flow_innermost_root_job.unwrap_or(flow_job.id);
+            match resolved {
+                Some(0) => {
+                    // Immediate deletion: track in flow_jobs_to_clean (existing behavior)
+                    let uuid_singleton_json = serde_json::to_value(&[uuid]).map_err(|e| {
+                        error::Error::internal_err(format!("Unable to serialize uuid: {e:#}"))
+                    })?;
+                    sqlx::query!(
+                        "UPDATE v2_job_status
+                         SET flow_status = JSONB_SET(flow_status, ARRAY['cleanup_module', 'flow_jobs_to_clean'], COALESCE(flow_status->'cleanup_module'->'flow_jobs_to_clean', '[]'::jsonb) || $1)
+                         WHERE id = $2",
+                        uuid_singleton_json,
+                        root_id
+                    )
+                    .execute(&mut *inner_tx)
+                    .warn_after_seconds(3)
+                    .await?;
+                }
+                Some(secs) => {
+                    // Scheduled deletion: track in flow_jobs_to_schedule_clean
+                    let entry = windmill_types::flow_status::FlowJobScheduledClean {
+                        id: uuid,
+                        delete_after_secs: secs,
+                    };
+                    let entry_json = serde_json::to_value(&[entry]).map_err(|e| {
+                        error::Error::internal_err(format!(
+                            "Unable to serialize scheduled clean entry: {e:#}"
+                        ))
+                    })?;
+                    sqlx::query!(
+                        "UPDATE v2_job_status
+                         SET flow_status = JSONB_SET(flow_status, ARRAY['cleanup_module', 'flow_jobs_to_schedule_clean'], COALESCE(flow_status->'cleanup_module'->'flow_jobs_to_schedule_clean', '[]'::jsonb) || $1)
+                         WHERE id = $2",
+                        entry_json,
+                        root_id
+                    )
+                    .execute(&mut *inner_tx)
+                    .warn_after_seconds(3)
+                    .await?;
+                }
+                None => {}
+            }
         }
 
         tx = inner_tx;
@@ -4070,6 +4103,7 @@ pub struct JobPayloadWithTag {
     pub payload: JobPayload,
     pub tag: Option<String>,
     pub delete_after_use: bool,
+    pub delete_after_secs: Option<i32>,
     pub timeout: Option<i32>,
     pub on_behalf_of: Option<OnBehalfOf>,
 }
@@ -4171,6 +4205,7 @@ async fn compute_next_flow_transform(
                 payload: JobPayload::Identity,
                 tag: None,
                 delete_after_use: false,
+                delete_after_secs: None,
                 timeout: None,
                 on_behalf_of: None,
             }),
@@ -4183,6 +4218,7 @@ async fn compute_next_flow_transform(
                 payload,
                 tag: None,
                 delete_after_use: false,
+                delete_after_secs: None,
                 timeout: None,
                 on_behalf_of: None,
             }),
@@ -4190,6 +4226,7 @@ async fn compute_next_flow_transform(
         ))
     };
     let delete_after_use = module.delete_after_use.unwrap_or(false);
+    let delete_after_secs = module.delete_after_secs;
 
     tracing::debug!(id = %flow_job.id, "computing next flow transform for {:?}", &module.value);
     if is_skipped {
@@ -4199,8 +4236,14 @@ async fn compute_next_flow_transform(
     match module.get_value()? {
         FlowModuleValue::Identity => trivial_next_job(JobPayload::Identity),
         FlowModuleValue::Flow { path, .. } => {
-            let payload =
-                flow_to_payload(path, delete_after_use, &flow_job.workspace_id, db).await?;
+            let payload = flow_to_payload(
+                path,
+                delete_after_use,
+                delete_after_secs,
+                &flow_job.workspace_id,
+                db,
+            )
+            .await?;
             Ok(NextFlowTransform::Continue(
                 ContinuePayload::SingleJob(payload),
                 NextStatus::NextStep,
@@ -4214,6 +4257,7 @@ async fn compute_next_flow_transform(
                     payload,
                     tag: None,
                     delete_after_use,
+                    delete_after_secs,
                     timeout: None,
                     on_behalf_of: None,
                 }),
@@ -4256,6 +4300,7 @@ async fn compute_next_flow_transform(
                 module,
                 tag,
                 delete_after_use,
+                delete_after_secs,
             );
             Ok(NextFlowTransform::Continue(
                 ContinuePayload::SingleJob(payload),
@@ -4283,6 +4328,7 @@ async fn compute_next_flow_transform(
                 },
                 tag: tag.clone(),
                 delete_after_use,
+                delete_after_secs,
                 timeout: None,
                 on_behalf_of: None,
             };
@@ -4426,6 +4472,7 @@ async fn compute_next_flow_transform(
                                 payload,
                                 tag: None,
                                 delete_after_use,
+                                delete_after_secs,
                                 timeout: None,
                                 on_behalf_of: None,
                             })
@@ -4523,6 +4570,7 @@ async fn compute_next_flow_transform(
                     payload,
                     tag: None,
                     delete_after_use,
+                    delete_after_secs,
                     timeout: None,
                     on_behalf_of: None,
                 }),
@@ -4558,6 +4606,7 @@ async fn compute_next_flow_transform(
                                         payload,
                                         tag: None,
                                         delete_after_use,
+                                        delete_after_secs,
                                         timeout: None,
                                         on_behalf_of: None,
                                     })
@@ -4636,6 +4685,7 @@ async fn compute_next_flow_transform(
                     payload,
                     tag: None,
                     delete_after_use,
+                    delete_after_secs,
                     timeout: None,
                     on_behalf_of: None,
                 }),
@@ -4700,6 +4750,7 @@ async fn next_loop_iteration(
             payload,
             tag: None,
             delete_after_use,
+            delete_after_secs: None,
             timeout: None,
             on_behalf_of: None,
         }),
@@ -4894,9 +4945,17 @@ async fn payload_from_simple_module(
     inner_path: String,
 ) -> Result<JobPayloadWithTag, Error> {
     let delete_after_use = module.delete_after_use.unwrap_or(false);
+    let delete_after_secs = module.delete_after_secs;
     Ok(match value {
         FlowModuleValue::Flow { path, .. } => {
-            flow_to_payload(path, delete_after_use, &flow_job.workspace_id, db).await?
+            flow_to_payload(
+                path,
+                delete_after_use,
+                delete_after_secs,
+                &flow_job.workspace_id,
+                db,
+            )
+            .await?
         }
         FlowModuleValue::Script { path: script_path, hash: script_hash, tag_override, .. } => {
             script_to_payload(
@@ -4927,6 +4986,7 @@ async fn payload_from_simple_module(
             module,
             tag,
             delete_after_use,
+            delete_after_secs,
         ),
         FlowModuleValue::FlowScript {
             id, // flow_node(id).
@@ -4946,6 +5006,7 @@ async fn payload_from_simple_module(
             },
             tag,
             delete_after_use,
+            delete_after_secs,
             timeout: None, // timeout evaluation handled at higher level
             on_behalf_of: None,
         },
@@ -4962,6 +5023,7 @@ pub fn raw_script_to_payload(
     module: &FlowModule,
     tag: Option<String>,
     delete_after_use: bool,
+    delete_after_secs: Option<i32>,
 ) -> JobPayloadWithTag {
     JobPayloadWithTag {
         payload: JobPayload::Code(RawCode {
@@ -4980,6 +5042,7 @@ pub fn raw_script_to_payload(
         }),
         tag,
         delete_after_use,
+        delete_after_secs,
         timeout: None, // timeout evaluation handled at higher level
         on_behalf_of: None,
     }
@@ -4988,6 +5051,7 @@ pub fn raw_script_to_payload(
 async fn flow_to_payload(
     path: String,
     delete_after_use: bool,
+    delete_after_secs: Option<i32>,
     w_id: &str,
     db: &DB,
 ) -> Result<JobPayloadWithTag, Error> {
@@ -5005,7 +5069,14 @@ async fn flow_to_payload(
         version,
         labels: None,
     };
-    Ok(JobPayloadWithTag { payload, tag, delete_after_use, timeout: None, on_behalf_of })
+    Ok(JobPayloadWithTag {
+        payload,
+        tag,
+        delete_after_use,
+        delete_after_secs,
+        timeout: None,
+        on_behalf_of,
+    })
 }
 
 pub async fn script_to_payload(
@@ -5022,75 +5093,80 @@ pub async fn script_to_payload(
     } else {
         tag_override
     };
-    let (payload, tag, delete_after_use, script_timeout, on_behalf_of) = if script_hash.is_none() {
-        let (jp, tag, delete_after_use, script_timeout, on_behalf_of) = script_path_to_payload(
-            &script_path,
-            None,
-            db.clone(),
-            &flow_job.workspace_id,
-            Some(true),
-        )
-        .await?;
-        (
-            jp,
-            tag_override.to_owned().or(tag),
-            delete_after_use,
-            script_timeout,
-            on_behalf_of,
-        )
-    } else {
-        let hash = script_hash.unwrap();
-
-        let ScriptHashInfo {
-            tag,
-            cache_ttl,
-            language,
-            dedicated_worker,
-            priority,
-            delete_after_use,
-            timeout,
-            on_behalf_of_email,
-            created_by,
-            runnable_settings:
-                ScriptRunnableSettingsInline { concurrency_settings, debouncing_settings },
-            ..
-        } = get_script_info_for_hash(None, db, &flow_job.workspace_id, hash.0)
-            .await?
-            .prefetch_cached(&db)
-            .await?;
-
-        let on_behalf_of = if let Some(email) = on_behalf_of_email {
-            Some(OnBehalfOf { email, permissioned_as: username_to_permissioned_as(&created_by) })
+    let (payload, tag, delete_after_use, delete_after_secs, script_timeout, on_behalf_of) =
+        if script_hash.is_none() {
+            let (jp, tag, delete_after_use, delete_after_secs, script_timeout, on_behalf_of) =
+                script_path_to_payload(
+                    &script_path,
+                    None,
+                    db.clone(),
+                    &flow_job.workspace_id,
+                    Some(true),
+                )
+                .await?;
+            (
+                jp,
+                tag_override.to_owned().or(tag),
+                delete_after_use,
+                delete_after_secs,
+                script_timeout,
+                on_behalf_of,
+            )
         } else {
-            None
-        };
-        (
-            // We only apply the preprocessor if it's explicitly set to true in the module,
-            // which can only happen if the the flow is a SingleStepFlow triggered by a trigger with retries or error handling.
-            // In that case, apply_preprocessor is still only set to true if the script has a preprocesor.
-            // We only check for script hash because SingleStepFlow triggers specifies the script hash
-            JobPayload::ScriptHash {
-                hash,
-                path: script_path,
-                concurrency_settings,
-                debouncing_settings,
-                cache_ttl: module.cache_ttl.map(|x| x as i32).ok_or(cache_ttl).ok(),
-                cache_ignore_s3_path: module.cache_ignore_s3_path,
+            let hash = script_hash.unwrap();
+
+            let ScriptHashInfo {
+                tag,
+                cache_ttl,
                 language,
                 dedicated_worker,
                 priority,
-                apply_preprocessor: apply_preprocessor.unwrap_or(false),
-                labels: None,
-            },
-            tag_override.to_owned().or(tag),
-            delete_after_use,
-            timeout,
-            on_behalf_of,
-        )
-    };
-    // the module value overrides the value set at the script level. Defaults to false if both are unset.
-    let final_delete_after_user =
+                delete_after_use,
+                delete_after_secs,
+                timeout,
+                on_behalf_of_email,
+                created_by,
+                runnable_settings:
+                    ScriptRunnableSettingsInline { concurrency_settings, debouncing_settings },
+                ..
+            } = get_script_info_for_hash(None, db, &flow_job.workspace_id, hash.0)
+                .await?
+                .prefetch_cached(&db)
+                .await?;
+
+            let on_behalf_of = if let Some(email) = on_behalf_of_email {
+                Some(OnBehalfOf {
+                    email,
+                    permissioned_as: username_to_permissioned_as(&created_by),
+                })
+            } else {
+                None
+            };
+            (
+                JobPayload::ScriptHash {
+                    hash,
+                    path: script_path,
+                    concurrency_settings,
+                    debouncing_settings,
+                    cache_ttl: module.cache_ttl.map(|x| x as i32).ok_or(cache_ttl).ok(),
+                    cache_ignore_s3_path: module.cache_ignore_s3_path,
+                    language,
+                    dedicated_worker,
+                    priority,
+                    apply_preprocessor: apply_preprocessor.unwrap_or(false),
+                    labels: None,
+                },
+                tag_override.to_owned().or(tag),
+                delete_after_use,
+                delete_after_secs,
+                timeout,
+                on_behalf_of,
+            )
+        };
+    // Module-level delete_after_secs takes precedence over script-level, then fall back to booleans
+    let final_delete_after_use =
         module.delete_after_use.unwrap_or(false) || delete_after_use.unwrap_or(false);
+    let final_delete_after_secs = module.delete_after_secs.or(delete_after_secs);
 
     let flow_step_timeout = if module.timeout.is_some() {
         None
@@ -5100,7 +5176,8 @@ pub async fn script_to_payload(
     Ok(JobPayloadWithTag {
         payload,
         tag,
-        delete_after_use: final_delete_after_user,
+        delete_after_use: final_delete_after_use,
+        delete_after_secs: final_delete_after_secs,
         timeout: flow_step_timeout,
         on_behalf_of,
     })

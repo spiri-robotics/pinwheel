@@ -29,7 +29,7 @@ use windmill_api_jobs::{
     execution::{
         check_tag_available_for_workspace, delete_job_metadata_after_use,
         push_flow_job_by_path_into_queue, push_script_job_by_path_into_queue, result_to_response,
-        run_wait_result_internal,
+        run_wait_result_internal, schedule_job_deletion,
     },
     types::RunJobQuery,
 };
@@ -520,7 +520,7 @@ pub async fn trigger_runnable_inner<'c>(
     suspended_mode: Option<bool>,
 ) -> Result<(
     Uuid,
-    Option<bool>,
+    Option<i32>,
     Option<String>,
     Option<sqlx::Transaction<'c, sqlx::Postgres>>,
 )> {
@@ -534,7 +534,7 @@ pub async fn trigger_runnable_inner<'c>(
     });
 
     let user_db = user_db.unwrap_or_else(|| UserDB::new(db.clone()));
-    let (uuid, delete_after_use, early_return, tx_out) = if is_flow {
+    let (uuid, resolved_delete_secs, early_return, tx_out) = if is_flow {
         let run_query = RunJobQuery { job_id, suspended_mode, ..Default::default() };
         let path = StripPath(runnable_path.to_string());
         let (uuid, early_return, tx_out) = push_flow_job_by_path_into_queue(
@@ -551,7 +551,7 @@ pub async fn trigger_runnable_inner<'c>(
         .await?;
         (uuid, None, early_return, tx_out)
     } else {
-        let (uuid, delete_after_use, tx_out) = trigger_script_internal(
+        let (uuid, resolved_delete_secs, tx_out) = trigger_script_internal(
             db,
             tx_o,
             user_db,
@@ -568,10 +568,10 @@ pub async fn trigger_runnable_inner<'c>(
             suspended_mode,
         )
         .await?;
-        (uuid, delete_after_use, None, tx_out)
+        (uuid, resolved_delete_secs, None, tx_out)
     };
 
-    Ok((uuid, delete_after_use, early_return, tx_out))
+    Ok((uuid, resolved_delete_secs, early_return, tx_out))
 }
 
 #[allow(dead_code)]
@@ -629,7 +629,7 @@ pub async fn trigger_runnable_and_wait_for_result(
     trigger: TriggerMetadata,
 ) -> Result<axum::response::Response> {
     let username = authed.username.clone();
-    let (uuid, delete_after_use, early_return, _) = trigger_runnable_inner(
+    let (uuid, resolved_delete_secs, early_return, _) = trigger_runnable_inner(
         db,
         None,
         user_db,
@@ -650,8 +650,10 @@ pub async fn trigger_runnable_and_wait_for_result(
     let (result, success) =
         run_wait_result_internal(db, uuid, &workspace_id, early_return, &username).await?;
 
-    if delete_after_use.unwrap_or(false) {
-        delete_job_metadata_after_use(&db, uuid).await?;
+    match resolved_delete_secs {
+        Some(0) => delete_job_metadata_after_use(&db, uuid).await?,
+        Some(secs) => schedule_job_deletion(&db, uuid, &workspace_id, secs).await?,
+        None => {}
     }
 
     result_to_response(result, success)
@@ -673,7 +675,7 @@ pub async fn trigger_runnable_and_wait_for_raw_result(
     trigger: TriggerMetadata,
 ) -> Result<(Box<RawValue>, bool)> {
     let username = authed.username.clone();
-    let (uuid, delete_after_use, early_return, _) = trigger_runnable_inner(
+    let (uuid, resolved_delete_secs, early_return, _) = trigger_runnable_inner(
         db,
         None,
         user_db,
@@ -703,8 +705,10 @@ pub async fn trigger_runnable_and_wait_for_raw_result(
                 )
             })?;
 
-    if delete_after_use.unwrap_or(false) {
-        delete_job_metadata_after_use(&db, uuid).await?;
+    match resolved_delete_secs {
+        Some(0) => delete_job_metadata_after_use(&db, uuid).await?,
+        Some(secs) => schedule_job_deletion(&db, uuid, &workspace_id, secs).await?,
+        None => {}
     }
 
     Ok((result, success))
@@ -768,13 +772,13 @@ async fn trigger_script_internal<'c>(
     suspended_mode: Option<bool>,
 ) -> Result<(
     Uuid,
-    Option<bool>,
+    Option<i32>,
     Option<sqlx::Transaction<'c, sqlx::Postgres>>,
 )> {
     if retry.is_none() && error_handler_path.is_none() {
         let run_query = RunJobQuery { job_id, suspended_mode, ..Default::default() };
         let path = StripPath(script_path.to_string());
-        let (uuid, delete_after_use, tx_out) = push_script_job_by_path_into_queue(
+        let (uuid, resolved_delete_secs, tx_out) = push_script_job_by_path_into_queue(
             authed,
             db.clone(),
             tx_o,
@@ -786,9 +790,9 @@ async fn trigger_script_internal<'c>(
             Some(trigger),
         )
         .await?;
-        Ok((uuid, delete_after_use, tx_out))
+        Ok((uuid, resolved_delete_secs, tx_out))
     } else {
-        let (uuid, delete_after_use, tx_out) = trigger_script_with_retry_and_error_handler(
+        let (uuid, resolved_delete_secs, tx_out) = trigger_script_with_retry_and_error_handler(
             db,
             tx_o,
             user_db,
@@ -805,7 +809,7 @@ async fn trigger_script_internal<'c>(
             suspended_mode,
         )
         .await?;
-        Ok((uuid, delete_after_use, tx_out))
+        Ok((uuid, resolved_delete_secs, tx_out))
     }
 }
 
@@ -826,7 +830,7 @@ async fn trigger_script_with_retry_and_error_handler<'c>(
     suspended_mode: Option<bool>,
 ) -> Result<(
     Uuid,
-    Option<bool>,
+    Option<i32>,
     Option<sqlx::Transaction<'c, sqlx::Postgres>>,
 )> {
 
@@ -836,7 +840,7 @@ async fn trigger_script_with_retry_and_error_handler<'c>(
     let error_handler_path = error_handler_path.map(|p| p.to_string());
     let error_handler_args = error_handler_args.map(|args| args.0.clone());
 
-    let (job_payload, tag, delete_after_use, timeout, on_behalf_of) = {
+    let (job_payload, tag, delete_after_use, delete_after_secs, timeout, on_behalf_of) = {
         let db_authed = UserDbWithAuthed { db: user_db.clone(), authed: &authed.to_authed_ref() };
         script_path_to_payload(
             script_path,
@@ -847,6 +851,10 @@ async fn trigger_script_with_retry_and_error_handler<'c>(
         )
         .await?
     };
+    let resolved_delete_secs = windmill_api_jobs::execution::resolve_delete_after_secs(
+        delete_after_use,
+        delete_after_secs,
+    );
 
     check_tag_available_for_workspace(&db, &workspace_id, &tag, &authed).await?;
 
@@ -947,9 +955,9 @@ async fn trigger_script_with_retry_and_error_handler<'c>(
 
     // If we were given a transaction, return it; otherwise commit it
     if return_tx {
-        Ok((uuid, delete_after_use, Some(tx)))
+        Ok((uuid, resolved_delete_secs, Some(tx)))
     } else {
         tx.commit().await?;
-        Ok((uuid, delete_after_use, None))
+        Ok((uuid, resolved_delete_secs, None))
     }
 }
