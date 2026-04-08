@@ -598,7 +598,6 @@
 					ws_error_handler_muted: script.ws_error_handler_muted,
 					priority: script.priority,
 					restart_unless_cancelled: script.restart_unless_cancelled,
-					delete_after_use: script.delete_after_use,
 					timeout: script.timeout,
 					concurrency_key: emptyString(script.concurrency_key) ? undefined : script.concurrency_key,
 					visible_to_runner_only: script.visible_to_runner_only,
@@ -757,7 +756,6 @@
 						ws_error_handler_muted: script.ws_error_handler_muted,
 						priority: script.priority,
 						restart_unless_cancelled: script.restart_unless_cancelled,
-						delete_after_use: script.delete_after_use,
 						timeout: script.timeout,
 						concurrency_key: emptyString(script.concurrency_key)
 							? undefined
