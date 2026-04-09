@@ -1798,11 +1798,15 @@
 											/>
 										</div>
 									</Section>
-									<Section label="On behalf of last editor">
+									<Section
+										label={canPreserve
+											? 'Run on behalf of a specified user'
+											: 'On behalf of last editor'}
+									>
 										{#snippet header()}
 											<Tooltip>
 												When this option is enabled, the script will be run with the permissions of
-												the last editor.
+												{canPreserve ? 'the specified user' : 'the last editor'}.
 											</Tooltip>
 										{/snippet}
 										<div class="flex gap-2 shrink flex-col">
