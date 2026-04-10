@@ -2117,7 +2117,14 @@ try {{
             .envs(envs)
             .envs(reserved_variables)
             .envs(
-                get_proxy_envs_for_lang(&ScriptLang::Bun, &job.id, &job.workspace_id, conn).await?,
+                get_proxy_envs_for_lang(
+                    &ScriptLang::Bun,
+                    job.kind,
+                    &job.id,
+                    &job.workspace_id,
+                    conn,
+                )
+                .await?,
             )
             .envs(common_bun_proc_envs)
             .env("PATH", PATH_ENV.as_str())
@@ -2137,8 +2144,14 @@ try {{
                 .envs(envs)
                 .envs(reserved_variables)
                 .envs(
-                    get_proxy_envs_for_lang(&ScriptLang::Bun, &job.id, &job.workspace_id, conn)
-                        .await?,
+                    get_proxy_envs_for_lang(
+                        &ScriptLang::Bun,
+                        job.kind,
+                        &job.id,
+                        &job.workspace_id,
+                        conn,
+                    )
+                    .await?,
                 )
                 .envs(common_bun_proc_envs)
                 .stdin(Stdio::null())
@@ -2171,8 +2184,14 @@ try {{
                 .envs(envs)
                 .envs(reserved_variables)
                 .envs(
-                    get_proxy_envs_for_lang(&ScriptLang::Bun, &job.id, &job.workspace_id, conn)
-                        .await?,
+                    get_proxy_envs_for_lang(
+                        &ScriptLang::Bun,
+                        job.kind,
+                        &job.id,
+                        &job.workspace_id,
+                        conn,
+                    )
+                    .await?,
                 )
                 .envs(common_bun_proc_envs)
                 .stdin(Stdio::null())
