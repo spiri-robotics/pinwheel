@@ -15,8 +15,8 @@
 pub mod database;
 
 
-pub mod vault_oss;
 pub mod azure_kv_oss;
+pub mod vault_oss;
 
 pub mod aws_sm_oss;
 
