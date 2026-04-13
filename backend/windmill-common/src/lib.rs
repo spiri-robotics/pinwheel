@@ -43,6 +43,7 @@ pub mod cache;
 pub mod client;
 pub mod db;
 pub mod db_params;
+pub mod deployment_requests_oss;
 pub mod ee_oss;
 pub mod email_oss;
 pub mod error;

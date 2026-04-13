@@ -18,7 +18,7 @@ use windmill_api_auth::{
     auth::{list_tokens_internal, TruncatedTokenWithEmail},
     check_scopes, maybe_refresh_folders, require_owner_of_path, ApiAuthed,
 };
-use windmill_common::workspaces::{check_user_against_rule, ProtectionRuleKind, RuleCheckResult};
+use windmill_common::workspaces::{check_deploy_rules, RuleCheckResult};
 use windmill_common::{
     utils::{WithStarredInfoQuery, HTTP_CLIENT},
     webhook::{WebhookMessage, WebhookShared},
@@ -379,9 +379,8 @@ async fn create_flow(
     }
     check_scopes(&authed, || format!("flows:write:{}", nf.path))?;
 
-    if let RuleCheckResult::Blocked(msg) = check_user_against_rule(
+    if let RuleCheckResult::Blocked(msg) = check_deploy_rules(
         &w_id,
-        &ProtectionRuleKind::DisableDirectDeployment,
         AuditAuthorable::username(&authed),
         &authed.groups,
         authed.is_admin,
@@ -873,9 +872,8 @@ async fn update_flow(
     let flow_path = flow_path.to_path();
     check_scopes(&authed, || format!("flows:write:{}", flow_path))?;
 
-    if let RuleCheckResult::Blocked(msg) = check_user_against_rule(
+    if let RuleCheckResult::Blocked(msg) = check_deploy_rules(
         &w_id,
-        &ProtectionRuleKind::DisableDirectDeployment,
         AuditAuthorable::username(&authed),
         &authed.groups,
         authed.is_admin,
@@ -1504,9 +1502,8 @@ async fn archive_flow_by_path(
 ) -> Result<String> {
     let path = path.to_path();
     check_scopes(&authed, || format!("flows:write:{}", path))?;
-    if let RuleCheckResult::Blocked(msg) = check_user_against_rule(
+    if let RuleCheckResult::Blocked(msg) = check_deploy_rules(
         &w_id,
-        &ProtectionRuleKind::DisableDirectDeployment,
         AuditAuthorable::username(&authed),
         &authed.groups,
         authed.is_admin,
@@ -1645,9 +1642,8 @@ async fn delete_flow_by_path(
 ) -> Result<String> {
     let path = path.to_path();
     check_scopes(&authed, || format!("flows:write:{}", path))?;
-    if let RuleCheckResult::Blocked(msg) = check_user_against_rule(
+    if let RuleCheckResult::Blocked(msg) = check_deploy_rules(
         &w_id,
-        &ProtectionRuleKind::DisableDirectDeployment,
         AuditAuthorable::username(&authed),
         &authed.groups,
         authed.is_admin,
