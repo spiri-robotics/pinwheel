@@ -3281,7 +3281,7 @@ pub async fn get_resume_urls_internal(
         .unwrap_or(target_job_id);
     let approval_token = generate_approval_token(&w_id, approval_target_id, &db).await?;
 
-    let base_url_str = BASE_URL.read().await.clone();
+    let base_url_str = (**BASE_URL.load()).clone();
     let base_url = base_url_str.as_str();
     let res = ResumeUrls {
         approvalPage: format!(
