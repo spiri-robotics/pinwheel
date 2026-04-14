@@ -11,7 +11,6 @@ path = "src/lib.rs"
 [features]
 default = []
 python = ["dep:windmill-parser-py"]
-
 [dependencies]
 windmill-common = { workspace = true, default-features = false }
 windmill-object-store.workspace = true

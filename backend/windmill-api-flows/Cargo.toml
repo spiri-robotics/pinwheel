@@ -10,7 +10,6 @@ path = "src/lib.rs"
 
 [features]
 default = []
-
 [dependencies]
 windmill-common = { workspace = true, default-features = false }
 windmill-api-auth.workspace = true
