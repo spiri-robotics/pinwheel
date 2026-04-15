@@ -5276,8 +5276,16 @@ async fn push_inner<'c, 'd>(
             }
         }
         JobPayload::DeploymentCallback { path, debouncing_settings, concurrency_key_append } => {
+            const MAX_CONCURRENCY_KEY_LEN: usize = 255;
             let concurrency_key = match concurrency_key_append {
-                Some(suffix) => format!("{workspace_id}:git_sync:{suffix}"),
+                Some(suffix) => {
+                    let full = format!("{workspace_id}:git_sync:{suffix}");
+                    if full.len() <= MAX_CONCURRENCY_KEY_LEN {
+                        full
+                    } else {
+                        format!("{workspace_id}:git_sync:{}", calculate_hash(&suffix))
+                    }
+                }
                 None => format!("{workspace_id}:git_sync"),
             };
             JobPayloadUntagged {
