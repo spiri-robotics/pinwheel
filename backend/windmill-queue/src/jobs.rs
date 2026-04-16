@@ -3258,16 +3258,15 @@ pub async fn pull(
                         && !(job.kind.is_preview()
                             && PREVIEW_TAGS_OVERRIDE.load(std::sync::atomic::Ordering::Relaxed))
                     {
-                        let per_workspace = per_workspace_tag(&job.workspace_id).await;
+                        let effective_ws = per_workspace_tag(&job.workspace_id, db).await;
                         let base_tag = if job.is_flow() {
                             "flow".to_string()
                         } else {
                             "dependency".to_string()
                         };
-                        let tag = if per_workspace {
-                            format!("{}-{}", base_tag, job.workspace_id)
-                        } else {
-                            base_tag
+                        let tag = match &effective_ws {
+                            Some(ws) => format!("{}-{}", base_tag, ws),
+                            None => base_tag,
                         };
                         sqlx::query!(
                             "UPDATE v2_job_queue SET tag = $1, running = false WHERE id = $2",
@@ -4361,7 +4360,7 @@ use crate::cloud_usage::increment_usage_async;
 // Without this, the ~13KB future of push_inner is inlined into every caller's state machine,
 // causing stack overflows in deeply nested async call chains (e.g. flow execution).
 pub async fn push<'c, 'd>(
-    _db: &Pool<Postgres>,
+    db: &Pool<Postgres>,
     tx: PushIsolationLevel<'c>,
     workspace_id: &str,
     job_payload: JobPayload,
@@ -4391,7 +4390,7 @@ pub async fn push<'c, 'd>(
     suspended_mode: Option<bool>,
 ) -> Result<(Uuid, Transaction<'c, Postgres>), Error> {
     Box::pin(push_inner(
-        _db,
+        db,
         tx,
         workspace_id,
         job_payload,
@@ -4425,7 +4424,7 @@ pub async fn push<'c, 'd>(
 
 // #[instrument(level = "trace", skip_all)]
 async fn push_inner<'c, 'd>(
-    _db: &Pool<Postgres>,
+    db: &Pool<Postgres>,
     mut tx: PushIsolationLevel<'c>,
     workspace_id: &str,
     job_payload: JobPayload,
@@ -4457,7 +4456,7 @@ async fn push_inner<'c, 'd>(
     #[cfg(feature = "cloud")]
     if *CLOUD_HOSTED {
         let team_plan_status =
-            windmill_common::workspaces::get_team_plan_status(_db, workspace_id).await?;
+            windmill_common::workspaces::get_team_plan_status(db, workspace_id).await?;
         // we track only non flow steps
         let (workspace_usage, user_usage) = if !matches!(
             job_payload,
@@ -4466,11 +4465,11 @@ async fn push_inner<'c, 'd>(
             // Check current usage with SELECT (fast, no row locks)
             // Only check user usage for non-premium workspaces
             let (current_workspace_usage, current_user_usage) =
-                check_usage_limits(_db, workspace_id, email, !team_plan_status.premium).await?;
+                check_usage_limits(db, workspace_id, email, !team_plan_status.premium).await?;
 
             // Spawn async task to update usage counters in the background
             increment_usage_async(
-                _db.clone(),
+                db.clone(),
                 workspace_id.to_string(),
                 if !team_plan_status.premium {
                     Some(email.to_string())
@@ -4493,7 +4492,7 @@ async fn push_inner<'c, 'd>(
         };
 
         if !team_plan_status.premium || team_plan_status.is_past_due {
-            let is_super_admin = is_superadmin_cached(_db, email).await?;
+            let is_super_admin = is_superadmin_cached(db, email).await?;
 
             let recovery_email = "recovery@windmill.dev";
 
@@ -4517,7 +4516,7 @@ async fn push_inner<'c, 'd>(
                             AND id = $1",
                             email
                         )
-                        .fetch_optional(_db)
+                        .fetch_optional(db)
                         .await?
                         .flatten()
                         .unwrap_or(1)
@@ -4537,7 +4536,7 @@ async fn push_inner<'c, 'd>(
                         "SELECT COUNT(j.id) FROM v2_job_queue q JOIN v2_job j USING (id) WHERE j.permissioned_as_email = $1",
                         email
                     )
-                    .fetch_one(_db)
+                    .fetch_one(db)
                     .await?
                     .unwrap_or(0);
 
@@ -4551,7 +4550,7 @@ async fn push_inner<'c, 'd>(
                         "SELECT COUNT(j.id) FROM v2_job_queue q JOIN v2_job j USING (id) WHERE q.running = true AND j.permissioned_as_email = $1",
                         email
                     )
-                    .fetch_one(_db)
+                    .fetch_one(db)
                     .await?
                     .unwrap_or(0);
 
@@ -4573,7 +4572,7 @@ async fn push_inner<'c, 'd>(
                             AND id = $1",
                             workspace_id
                         )
-                        .fetch_optional(_db)
+                        .fetch_optional(db)
                         .await?
                         .flatten()
                         .unwrap_or(1)
@@ -4602,7 +4601,7 @@ async fn push_inner<'c, 'd>(
                             "SELECT COUNT(id) FROM v2_job_queue WHERE workspace_id = $1",
                             workspace_id
                         )
-                        .fetch_one(_db)
+                        .fetch_one(db)
                         .await?
                         .unwrap_or(0);
 
@@ -4616,7 +4615,7 @@ async fn push_inner<'c, 'd>(
                         "SELECT COUNT(id) FROM v2_job_queue WHERE running = true AND workspace_id = $1",
                             workspace_id
                         )
-                        .fetch_one(_db)
+                        .fetch_one(db)
                         .await?
                         .unwrap_or(0);
 
@@ -4718,7 +4717,7 @@ async fn push_inner<'c, 'd>(
             ..Default::default()
         },
         JobPayload::FlowNode { id, path } => {
-            let data = cache::flow::fetch_flow(_db, id).await?;
+            let data = cache::flow::fetch_flow(db, id).await?;
             let value = data.value();
             let status = Some(FlowStatus::new(value));
             // Keep inserting `value` if not all workers are updated.
@@ -4764,7 +4763,7 @@ async fn push_inner<'c, 'd>(
             }
 
             let hub_script =
-                get_full_hub_script_by_path(StripPath(path.clone()), &HTTP_CLIENT, Some(_db))
+                get_full_hub_script_by_path(StripPath(path.clone()), &HTTP_CLIENT, Some(db))
                     .await?;
 
             JobPayloadUntagged {
@@ -4892,7 +4891,7 @@ async fn push_inner<'c, 'd>(
                 Some(restarted_from_val) => {
                     let (_, _, _, step_n, truncated_modules, user_states, cleanup_module) =
                         restarted_flows_resolution(
-                            _db,
+                            db,
                             workspace_id,
                             restarted_from_val.flow_job_id,
                             restarted_from_val.step_id.as_str(),
@@ -5212,7 +5211,7 @@ async fn push_inner<'c, 'd>(
                 user_states,
                 cleanup_module,
             ) = restarted_flows_resolution(
-                _db,
+                db,
                 workspace_id,
                 completed_job_id,
                 step_id.as_str(),
@@ -5385,7 +5384,7 @@ async fn push_inner<'c, 'd>(
         }
 
         let interpolated_tag = tag.map(|x| interpolate_args(x, &args, workspace_id));
-        let per_workspace = per_workspace_tag(&workspace_id).await;
+        let effective_ws = per_workspace_tag(&workspace_id, db).await;
 
         let default = || {
             let ntag = if job_kind.is_flow()
@@ -5403,10 +5402,9 @@ async fn push_inner<'c, 'd>(
             } else {
                 "deno".to_string()
             };
-            if per_workspace {
-                format!("{}-{}", ntag, workspace_id)
-            } else {
-                ntag
+            match &effective_ws {
+                Some(ws) => format!("{}-{}", ntag, ws),
+                None => ntag,
             }
         };
 
@@ -5414,10 +5412,9 @@ async fn push_inner<'c, 'd>(
             if job_kind.is_preview()
                 && PREVIEW_TAGS_OVERRIDE.load(std::sync::atomic::Ordering::Relaxed)
             {
-                if per_workspace {
-                    format!("preview-{}", workspace_id)
-                } else {
-                    "preview".to_string()
+                match &effective_ws {
+                    Some(ws) => format!("preview-{}", ws),
+                    None => "preview".to_string(),
                 }
             } else {
                 language
@@ -5432,10 +5429,9 @@ async fn push_inner<'c, 'd>(
                         } else {
                             x.as_str()
                         };
-                        if per_workspace {
-                            format!("{}-{}", tag_lang, workspace_id)
-                        } else {
-                            tag_lang.to_string()
+                        match &effective_ws {
+                            Some(ws) => format!("{}-{}", tag_lang, ws),
+                            None => tag_lang.to_string(),
                         }
                     })
                     .unwrap_or_else(default)
@@ -5572,10 +5568,10 @@ async fn push_inner<'c, 'd>(
 
     let runnable_settings_handle = windmill_common::runnable_settings::insert_rs(
         RunnableSettings {
-            debouncing_settings: debouncing_settings.insert_cached(_db).await?,
-            concurrency_settings: concurrency_settings.insert_cached(_db).await?,
+            debouncing_settings: debouncing_settings.insert_cached(db).await?,
+            concurrency_settings: concurrency_settings.insert_cached(db).await?,
         },
-        _db,
+        db,
     )
     .await?;
 
