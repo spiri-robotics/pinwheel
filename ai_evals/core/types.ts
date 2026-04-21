@@ -77,6 +77,20 @@ export interface AppValidationSpec {
   }>;
 }
 
+export interface CliValidationSpec {
+  requiredSkills?: string[];
+  forbiddenSkills?: string[];
+  requiredSkillsBeforeFirstMutation?: string[];
+  requiredAssistantMentions?: string[];
+  forbiddenAssistantMentions?: string[];
+  orderedAssistantMentions?: string[];
+  requiredProposedCommands?: string[];
+  forbiddenProposedCommands?: string[];
+  orderedProposedCommands?: string[];
+  forbiddenExecutedCommands?: string[];
+  workspaceUnchanged?: boolean;
+}
+
 export type EvalValidationSpec = FlowValidationSpec | AppValidationSpec;
 
 export interface EvalCase {
@@ -85,6 +99,7 @@ export interface EvalCase {
   initialPath?: string;
   expectedPath?: string;
   validate?: EvalValidationSpec;
+  cliExpect?: CliValidationSpec;
   judgeChecklist?: string[];
   runtime?: EvalCaseRuntimeSpec;
 }
@@ -116,6 +131,29 @@ export interface BenchmarkTokenUsage {
   prompt: number;
   completion: number;
   total: number;
+}
+
+export interface CliToolInvocation {
+  tool: string;
+  input: Record<string, unknown>;
+  timestamp: number;
+}
+
+export interface CliWmillInvocation {
+  argv: string[];
+  cwd: string;
+  timestamp: string;
+}
+
+export interface CliTrace {
+  toolsUsed: CliToolInvocation[];
+  skillsInvoked: string[];
+  assistantMessageCount: number;
+  bashCommands: string[];
+  proposedCommands: string[];
+  executedWmillCommands: string[];
+  wmillInvocations: CliWmillInvocation[];
+  firstMutationToolIndex: number | null;
 }
 
 export interface ModeRunOutput<TActual> {
