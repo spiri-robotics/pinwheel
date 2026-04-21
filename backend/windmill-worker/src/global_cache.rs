@@ -3,6 +3,7 @@ use windmill_common::error;
 
 
 
+pub const TARGET: &str = const_format::concatcp!(std::env::consts::OS, "_", std::env::consts::ARCH);
 
 
 
