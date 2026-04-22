@@ -33,8 +33,8 @@ use axum::{
 use serde_json::json;
 
 use serde::{Deserialize, Serialize};
+use windmill_ai::ai_cache::bump_instance_ai_config_revision;
 use windmill_common::{
-    ai_cache::bump_instance_ai_config_revision,
     email_oss::send_email_plain_text,
     error::{self, JsonResult, Result},
     get_database_url,
