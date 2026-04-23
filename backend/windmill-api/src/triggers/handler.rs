@@ -45,6 +45,7 @@ pub fn generate_trigger_routers() -> Router {
 
 
 
+
     #[cfg(feature = "postgres_trigger")]
     {
         use crate::triggers::postgres::PostgresTrigger;
@@ -90,6 +91,7 @@ pub struct TriggersCount {
     mqtt_count: i64,
     sqs_count: i64,
     gcp_count: i64,
+    azure_count: i64,
     nextcloud_count: i64,
     google_count: i64,
     github_count: i64,
@@ -175,6 +177,8 @@ pub async fn get_triggers_count_internal(
 
     let gcp_count = 0;
 
+    let azure_count = 0;
+
     let email_count = 0;
 
     tx.commit().await?;
@@ -255,6 +259,7 @@ pub async fn get_triggers_count_internal(
         postgres_count,
         mqtt_count,
         gcp_count,
+        azure_count,
         sqs_count,
         nextcloud_count,
         google_count,

@@ -34,6 +34,7 @@ pub enum DeployedObject {
     MqttTrigger { path: String, parent_path: Option<String> },
     SqsTrigger { path: String, parent_path: Option<String> },
     GcpTrigger { path: String, parent_path: Option<String> },
+    AzureTrigger { path: String, parent_path: Option<String> },
     EmailTrigger { path: String, parent_path: Option<String> },
     Settings { setting_type: String },
     Key { key_type: String },
@@ -62,6 +63,7 @@ impl DeployedObject {
             DeployedObject::MqttTrigger { path, .. } => path.to_owned(),
             DeployedObject::SqsTrigger { path, .. } => path.to_owned(),
             DeployedObject::GcpTrigger { path, .. } => path.to_owned(),
+            DeployedObject::AzureTrigger { path, .. } => path.to_owned(),
             DeployedObject::EmailTrigger { path, .. } => path.to_owned(),
             DeployedObject::Settings { .. } => "settings.yaml".to_string(),
             DeployedObject::Key { .. } => "encryption_key.yaml".to_string(),
@@ -102,6 +104,7 @@ impl DeployedObject {
             DeployedObject::MqttTrigger { parent_path, .. } => parent_path.to_owned(),
             DeployedObject::SqsTrigger { parent_path, .. } => parent_path.to_owned(),
             DeployedObject::GcpTrigger { parent_path, .. } => parent_path.to_owned(),
+            DeployedObject::AzureTrigger { parent_path, .. } => parent_path.to_owned(),
             DeployedObject::EmailTrigger { parent_path, .. } => parent_path.to_owned(),
             DeployedObject::Settings { .. } => None,
             DeployedObject::Key { .. } => None,
@@ -130,6 +133,7 @@ impl DeployedObject {
             DeployedObject::MqttTrigger { .. } => "mqtt_trigger",
             DeployedObject::SqsTrigger { .. } => "sqs_trigger",
             DeployedObject::GcpTrigger { .. } => "gcp_trigger",
+            DeployedObject::AzureTrigger { .. } => "azure_trigger",
             DeployedObject::EmailTrigger { .. } => "email_trigger",
             DeployedObject::Settings { .. } => "settings",
             DeployedObject::Key { .. } => "key",
@@ -363,6 +367,10 @@ mod tests {
         assert_eq!(
             DeployedObject::GcpTrigger { path: "t".to_string(), parent_path: None }.get_kind(),
             "gcp_trigger"
+        );
+        assert_eq!(
+            DeployedObject::AzureTrigger { path: "t".to_string(), parent_path: None }.get_kind(),
+            "azure_trigger"
         );
         assert_eq!(
             DeployedObject::EmailTrigger { path: "t".to_string(), parent_path: None }.get_kind(),

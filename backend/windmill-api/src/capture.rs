@@ -95,6 +95,7 @@ pub fn workspaced_unauthed_service() -> Router {
         });
 
 
+
         router
     }
 
@@ -112,6 +113,7 @@ struct HttpTriggerConfig {
     raw_string: Option<bool>,
     wrap_body: Option<bool>,
 }
+
 
 
 
@@ -294,6 +296,17 @@ async fn set_gcp_trigger_config(
     Ok(capture_config)
 }
 
+
+#[inline]
+async fn set_azure_trigger_config(
+    _w_id: &str,
+    _authed: ApiAuthed,
+    _db: &DB,
+    capture_config: NewCaptureConfig,
+) -> Result<NewCaptureConfig> {
+    Ok(capture_config)
+}
+
 async fn set_config(
     authed: ApiAuthed,
     Extension(user_db): Extension<UserDB>,
@@ -306,6 +319,7 @@ async fn set_config(
             set_postgres_trigger_config(&w_id, authed.clone(), &db, user_db.clone(), nc).await?
         }
         TriggerKind::Gcp => set_gcp_trigger_config(&w_id, authed.clone(), &db, nc).await?,
+        TriggerKind::Azure => set_azure_trigger_config(&w_id, authed.clone(), &db, nc).await?,
         _ => nc,
     };
 
@@ -781,6 +795,7 @@ async fn webhook_payload(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
 
 
 #[cfg(feature = "http_trigger")]

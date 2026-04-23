@@ -813,6 +813,11 @@ pub async fn run_server(
                         Router::new()
                     }
                 })
+                .nest("/azure/w/{workspace_id}", {
+                    {
+                        Router::new()
+                    }
+                })
                 .route("/version", get(git_v))
                 .nest("/health/status", health::status_service())
                 .route("/min_keep_alive_version", get(min_keep_alive_version))

@@ -16084,6 +16084,7 @@ dependencies = [
  "windmill-runtime-nativets",
  "windmill-test-utils",
  "windmill-trigger",
+ "windmill-trigger-azure",
  "windmill-trigger-gcp",
  "windmill-trigger-kafka",
  "windmill-trigger-mqtt",
@@ -16263,6 +16264,7 @@ dependencies = [
  "windmill-queue",
  "windmill-store",
  "windmill-trigger",
+ "windmill-trigger-azure",
  "windmill-trigger-email",
  "windmill-trigger-gcp",
  "windmill-trigger-http",
@@ -17531,6 +17533,39 @@ dependencies = [
  "windmill-parser-py",
  "windmill-parser-ts",
  "windmill-queue",
+]
+
+[[package]]
+name = "windmill-trigger-azure"
+version = "1.689.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum 0.8.4",
+ "base64 0.22.1",
+ "bytes",
+ "chrono",
+ "constant_time_eq 0.3.1",
+ "hex",
+ "http 1.4.0",
+ "itertools 0.14.0",
+ "lazy_static",
+ "quick_cache",
+ "rand 0.9.0",
+ "reqwest 0.13.1",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "sqlx",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "windmill-api-auth",
+ "windmill-common",
+ "windmill-git-sync",
+ "windmill-store",
+ "windmill-trigger",
 ]
 
 [[package]]
