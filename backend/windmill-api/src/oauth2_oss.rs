@@ -39,6 +39,18 @@ pub fn workspaced_service() -> Router {
     Router::new()
 }
 
+pub async fn workspace_connect_slack() -> Result<http::status::StatusCode, error::Error> {
+    Err(error::Error::BadRequest(
+        "Slack only available on enterprise".to_string(),
+    ))
+}
+
+pub async fn connect_slack_instance() -> Result<http::status::StatusCode, error::Error> {
+    Err(error::Error::BadRequest(
+        "Slack only available on enterprise".to_string(),
+    ))
+}
+
 #[cfg(feature = "oauth2")]
 pub use windmill_oauth::{AllClients, BasicClientsMap, ClientWithScopes};
 
