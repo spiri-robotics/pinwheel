@@ -153,3 +153,96 @@ async fn create_folder(db: &Pool<Postgres>, name: &str) -> anyhow::Result<()> {
 
 
 
+
+// ============================================================================
+// Promotion-mode debounce-key tests
+// ============================================================================
+
+/// Configure git sync in promotion mode (one branch per object), with explicit
+/// include_type and include_path lists so script deploys fire the callback.
+#[allow(dead_code)]
+async fn setup_promotion_git_sync_config(
+    db: &Pool<Postgres>,
+    sync_script_path: &str,
+    group_by_folder: bool,
+) -> anyhow::Result<()> {
+    let git_sync_config = json!({
+        "include_type": ["script"],
+        "include_path": ["**"],
+        "repositories": [{
+            "script_path": sync_script_path,
+            "git_repo_resource_path": "$res:u/test-user/test_git_repo",
+            "use_individual_branch": true,
+            "group_by_folder": group_by_folder
+        }]
+    });
+
+    sqlx::query!(
+        "UPDATE workspace_settings SET git_sync = $1 WHERE workspace_id = $2",
+        git_sync_config,
+        "test-workspace"
+    )
+    .execute(db)
+    .await?;
+
+    Ok(())
+}
+
+/// Create a script via the API (triggering handle_deployment_metadata).
+#[allow(dead_code)]
+async fn create_test_script(
+    client: &windmill_api_client::Client,
+    path: &str,
+) -> anyhow::Result<()> {
+    let resp = client
+        .client()
+        .post(format!(
+            "{}/w/test-workspace/scripts/create",
+            client.baseurl()
+        ))
+        .json(&json!({
+            "path": path,
+            "summary": "",
+            "description": "",
+            // bash has no lock step, so handle_deployment_metadata runs
+            "content": "echo hi",
+            "language": "bash"
+        }))
+        .send()
+        .await?;
+    let status = resp.status();
+    let body = resp.text().await.unwrap_or_default();
+    anyhow::ensure!(
+        status.is_success(),
+        "failed to create script {}: {} {}",
+        path,
+        status,
+        body
+    );
+    Ok(())
+}
+
+/// Poll the `debounce_key` table until `expected` appears, or timeout.
+#[allow(dead_code)]
+async fn wait_for_debounce_key(
+    db: &Pool<Postgres>,
+    expected: &str,
+    timeout: Duration,
+) -> anyhow::Result<Vec<String>> {
+    let deadline = tokio::time::Instant::now() + timeout;
+    loop {
+        let keys: Vec<String> =
+            sqlx::query_scalar!("SELECT key FROM debounce_key WHERE key LIKE 'git_sync:%'")
+                .fetch_all(db)
+                .await?;
+        if keys.iter().any(|k| k == expected) {
+            return Ok(keys);
+        }
+        if tokio::time::Instant::now() >= deadline {
+            return Ok(keys);
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+}
+
+

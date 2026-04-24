@@ -21,6 +21,7 @@ windmill-common = { workspace = true, default-features = false }
 windmill-native-triggers = { workspace = true, features = ["native_trigger"] }
 windmill-api-auth.workspace = true
 windmill-git-sync.workspace = true
+windmill-queue.workspace = true
 windmill-worker = { workspace = true, optional = true }
 sqlx.workspace = true
 serde_json.workspace = true
