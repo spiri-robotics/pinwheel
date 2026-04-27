@@ -93,7 +93,7 @@ use crate::{
     worker_utils::ping_job_status,
     PyV, DISABLE_NUSER, HOME_ENV, NSJAIL_AVAILABLE, NSJAIL_PATH, PATH_ENV, PIP_EXTRA_INDEX_URL,
     PIP_INDEX_URL, PROXY_ENVS, PY_INSTALL_DIR, TRACING_PROXY_CA_CERT_PATH, TZ_ENV, UV_CACHE_DIR,
-    UV_INDEX_STRATEGY,
+    UV_EXCLUDE_NEWER, UV_INDEX_STRATEGY,
 };
 use windmill_common::client::AuthedClient;
 
@@ -166,6 +166,7 @@ pub async fn uv_pip_compile(
 
     let uv_index_strategy = UV_INDEX_STRATEGY.read().await.clone();
     let uv_index_strategy = uv_index_strategy.as_deref().unwrap_or("unsafe-best-match");
+    let uv_exclude_newer = (*UV_EXCLUDE_NEWER.read().await).map(|secs| format!("{}s", secs));
 
     let py_version_str = py_version.clone().to_string();
     // Include python version to requirements.in
@@ -175,8 +176,12 @@ pub async fn uv_pip_compile(
 
 
     let ws_suffix = crate::workspace_registry_cache_suffix(w_id).await;
+    let exclude_newer_suffix = uv_exclude_newer
+        .as_deref()
+        .map(|v| format!("-en{}", v))
+        .unwrap_or_default();
     let req_hash = format!(
-        "py-{}-{uv_index_strategy}{ws_suffix}",
+        "py-{}-{uv_index_strategy}{exclude_newer_suffix}{ws_suffix}",
         calculate_hash(&requirements)
     );
 
@@ -265,6 +270,9 @@ pub async fn uv_pip_compile(
         }
         if *NATIVE_CERT {
             args.extend(["--native-tls"]);
+        }
+        if let Some(exclude_newer) = uv_exclude_newer.as_deref() {
+            args.extend(["--exclude-newer", exclude_newer]);
         }
         tracing::debug!("uv args: {:?}", args);
 
@@ -1787,6 +1795,8 @@ async fn spawn_uv_install(
     let uv_index_strategy = uv_index_strategy_guard
         .as_deref()
         .unwrap_or("unsafe-best-match");
+    let uv_exclude_newer = (*UV_EXCLUDE_NEWER.read().await).map(|secs| format!("{}s", secs));
+    let uv_exclude_newer = uv_exclude_newer.as_deref();
 
     if is_sandboxing_enabled() {
         tracing::info!(
@@ -1822,6 +1832,9 @@ async fn spawn_uv_install(
         vars.push(("REQ", &req));
         vars.push(("TARGET", venv_p));
         vars.push(("UV_INDEX_STRATEGY", uv_index_strategy));
+        if let Some(v) = uv_exclude_newer {
+            vars.push(("UV_EXCLUDE_NEWER", v));
+        }
 
         std::fs::create_dir_all(venv_p)?;
         let nsjail_proto = format!("{req}.config.proto");
@@ -1892,6 +1905,9 @@ async fn spawn_uv_install(
             url.split(",").for_each(|url| {
                 command_args.extend(["--extra-index-url", url]);
             });
+        }
+        if let Some(v) = uv_exclude_newer {
+            command_args.extend(["--exclude-newer", v]);
         }
 
         let mut envs = vec![("PATH", PATH_ENV.as_str())];
