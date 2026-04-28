@@ -4889,7 +4889,7 @@ async fn push_inner<'c, 'd>(
 
             let flow_status: FlowStatus = match restarted_from {
                 Some(restarted_from_val) => {
-                    let (_, _, _, step_n, truncated_modules, user_states, cleanup_module) =
+                    let (_, _, _, step_n, truncated_modules, user_states, cleanup_module, _) =
                         restarted_flows_resolution(
                             db,
                             workspace_id,
@@ -4919,6 +4919,8 @@ async fn push_inner<'c, 'd>(
                             step_id: restarted_from_val.step_id,
                             branch_or_iteration_n: restarted_from_val.branch_or_iteration_n,
                             flow_version: restarted_from_val.flow_version,
+                            branch_chosen: restarted_from_val.branch_chosen,
+                            nested: restarted_from_val.nested,
                         }),
                         user_states,
                         preprocessor_module: None,
@@ -5201,6 +5203,8 @@ async fn push_inner<'c, 'd>(
             step_id,
             branch_or_iteration_n,
             flow_version,
+            branch_chosen,
+            nested,
         } => {
             let (
                 version,
@@ -5210,6 +5214,7 @@ async fn push_inner<'c, 'd>(
                 truncated_modules,
                 user_states,
                 cleanup_module,
+                original_kind,
             ) = restarted_flows_resolution(
                 db,
                 workspace_id,
@@ -5240,6 +5245,8 @@ async fn push_inner<'c, 'd>(
                     step_id,
                     branch_or_iteration_n,
                     flow_version,
+                    branch_chosen,
+                    nested,
                 }),
                 user_states,
                 preprocessor_module: None,
@@ -5263,7 +5270,7 @@ async fn push_inner<'c, 'd>(
             JobPayloadUntagged {
                 runnable_id: version,
                 runnable_path: flow_path,
-                job_kind: JobKind::Flow,
+                job_kind: original_kind,
                 raw_flow: value_o,
                 flow_status: Some(restarted_flow_status),
                 cache_ttl,
@@ -5995,7 +6002,6 @@ async fn restarted_flows_resolution(
     restart_step_id: &str,
     branch_or_iteration_n: Option<usize>,
     flow_version: Option<i64>,
-    // parents: Vec<RestartedParent>,
 ) -> Result<
     (
         Option<i64>,
@@ -6005,6 +6011,7 @@ async fn restarted_flows_resolution(
         Vec<FlowStatusModule>,
         HashMap<String, serde_json::Value>,
         FlowCleanupModule,
+        JobKind,
     ),
     Error,
 > {
@@ -6168,6 +6175,15 @@ async fn restarted_flows_resolution(
         truncated_modules,
         flow_status.user_states,
         flow_status.cleanup_module,
+        // Preserve the original job kind (e.g. FlowNode for BranchOne/loop wrapped
+        // children) so the new run uses the same lookup path. Setting kind=Flow when
+        // the original was FlowNode would cause `cache::job::fetch_flow` to query
+        // `flow_version` with a `flow_node` id and fail at runtime.
+        if is_version_change {
+            JobKind::Flow
+        } else {
+            row.job_kind
+        },
     ))
 }
 
