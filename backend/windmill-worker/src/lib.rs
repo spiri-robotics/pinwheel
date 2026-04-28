@@ -55,6 +55,7 @@ pub mod result_processor;
 mod rust_executor;
 mod sanitized_sql_params;
 mod schema;
+mod sql_s3_input;
 pub mod sql_utils;
 mod universal_pkg_installer;
 mod volume_oss;
