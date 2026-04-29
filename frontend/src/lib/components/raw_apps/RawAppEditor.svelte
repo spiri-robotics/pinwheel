@@ -20,7 +20,11 @@
 	import { isRunnableByName, isRunnableByPath } from '../apps/inputType'
 	import { aiChatManager, AIMode } from '../copilot/chat/AIChatManager.svelte'
 	import { onMount, untrack } from 'svelte'
-	import type { LintResult, DataTableSchema, InspectorElementInfo } from '../copilot/chat/app/core'
+	import type {
+		AppDatatableMetadata,
+		LintResult,
+		InspectorElementInfo
+	} from '../copilot/chat/app/core'
 	import { createAppSelectedContext, type AppCodeSelectionElement } from '../copilot/chat/context'
 	import { rawAppLintStore } from './lintStore'
 	import { dbSchemas } from '$lib/stores'
@@ -28,8 +32,10 @@
 	import { RawAppHistoryManager } from './RawAppHistoryManager.svelte'
 	import { sendUserToast } from '$lib/utils'
 	import {
+		buildDataTableWhitelist,
 		parseDataTableRef,
 		formatDataTableRef,
+		isDatatableTableAllowed,
 		type RawAppData,
 		DEFAULT_DATA
 	} from './dataTableRefUtils'
@@ -74,6 +80,87 @@
 
 	// Convert to object format for child components
 	let dataTableRefsObjects = $derived(data.tables.map(parseDataTableRef))
+	let dataTableWhitelist = $derived(buildDataTableWhitelist(dataTableRefsObjects))
+
+	type DataTableTablesMetadata = {
+		datatable_name: string
+		schemas: Record<string, string[]>
+		error?: string
+	}
+
+	function countTables(schemas: Record<string, string[]>): number {
+		return Object.values(schemas).reduce((acc, tables) => acc + tables.length, 0)
+	}
+
+	function withTableCount(datatable: DataTableTablesMetadata): AppDatatableMetadata {
+		return {
+			datatable_name: datatable.datatable_name,
+			schemas: datatable.schemas,
+			tableCount: countTables(datatable.schemas),
+			...(datatable.error && { error: datatable.error })
+		}
+	}
+
+	function isDatatableTableWhitelisted(
+		datatableName: string,
+		schemaName: string,
+		tableName: string
+	): boolean {
+		return isDatatableTableAllowed(dataTableWhitelist, datatableName, schemaName, tableName)
+	}
+
+	function filterDatatableTables(allTables: DataTableTablesMetadata[]): AppDatatableMetadata[] {
+		if (dataTableWhitelist.datatables.size === 0) {
+			return allTables.map(withTableCount)
+		}
+
+		const results: AppDatatableMetadata[] = []
+		for (const datatable of allTables) {
+			if (!dataTableWhitelist.datatables.has(datatable.datatable_name)) {
+				continue
+			}
+
+			if (dataTableWhitelist.allTablesDatatables.has(datatable.datatable_name)) {
+				results.push(withTableCount(datatable))
+				continue
+			}
+
+			const allowedTables = dataTableWhitelist.tables.get(datatable.datatable_name)
+			if (!allowedTables) {
+				results.push(
+					withTableCount({
+						datatable_name: datatable.datatable_name,
+						schemas: {},
+						error: datatable.error
+					})
+				)
+				continue
+			}
+
+			const filteredSchemas: Record<string, string[]> = {}
+			for (const [schemaName, tableNames] of Object.entries(datatable.schemas)) {
+				const allowedTablesInSchema = allowedTables.get(schemaName)
+				if (!allowedTablesInSchema) continue
+
+				const filteredTables = tableNames.filter((tableName) =>
+					allowedTablesInSchema.has(tableName)
+				)
+				if (filteredTables.length > 0) {
+					filteredSchemas[schemaName] = filteredTables
+				}
+			}
+
+			results.push(
+				withTableCount({
+					datatable_name: datatable.datatable_name,
+					schemas: filteredSchemas,
+					error: datatable.error
+				})
+			)
+		}
+
+		return results
+	}
 
 	// Initialize history manager
 	const historyManager = new RawAppHistoryManager({
@@ -445,88 +532,45 @@
 				console.log('reverting to snapshot', id)
 				handleHistorySelect(id)
 			},
-			getDatatables: async (): Promise<DataTableSchema[]> => {
+			listDatatableTables: async (): Promise<AppDatatableMetadata[]> => {
 				if (!$workspaceStore) {
 					return []
 				}
 
-				// Get all datatable schemas from the backend
-				const allSchemas = await WorkspaceService.listDataTableSchemas({
+				const tables = await WorkspaceService.listDataTableTables({
 					workspace: $workspaceStore
 				})
-
-				// Get unique datatable names from dataTableRefs (the whitelisted tables)
-				const whitelistedDatatables = new Set(dataTableRefsObjects.map((ref) => ref.datatable))
-
-				// If no datatables are configured, return all available datatables
-				// This allows users to see all datatables in the @ context menu
-				if (whitelistedDatatables.size === 0) {
-					return allSchemas
+				return filterDatatableTables(tables)
+			},
+			getDatatableTableSchema: async (
+				datatableName: string,
+				schemaName: string,
+				tableName: string
+			): Promise<Record<string, string>> => {
+				if (!$workspaceStore) {
+					return {}
 				}
 
-				// Build a map of whitelisted tables per datatable: datatable -> schema -> Set<table>
-				const whitelistedTables = new Map<string, Map<string, Set<string>>>()
-				for (const ref of dataTableRefsObjects) {
-					if (!ref.table) continue
-					if (!whitelistedTables.has(ref.datatable)) {
-						whitelistedTables.set(ref.datatable, new Map())
-					}
-					const schemaKey = ref.schema || 'public'
-					const schemaMap = whitelistedTables.get(ref.datatable)!
-					if (!schemaMap.has(schemaKey)) {
-						schemaMap.set(schemaKey, new Set())
-					}
-					schemaMap.get(schemaKey)!.add(ref.table)
-				}
-
-				// Filter schemas to only include whitelisted datatables and tables
-				const results: DataTableSchema[] = []
-				for (const schema of allSchemas) {
-					if (!whitelistedDatatables.has(schema.datatable_name)) {
-						continue
-					}
-
-					const allowedTables = whitelistedTables.get(schema.datatable_name)
-					if (!allowedTables) {
-						// Include the datatable but with empty schemas
-						results.push({
-							datatable_name: schema.datatable_name,
-							schemas: {},
-							error: schema.error
-						})
-						continue
-					}
-
-					// Filter schemas to only include whitelisted tables
-					const filteredSchemas: Record<string, Record<string, Record<string, string>>> = {}
-					for (const [schemaName, tables] of Object.entries(schema.schemas)) {
-						const allowedTablesInSchema = allowedTables.get(schemaName)
-						if (!allowedTablesInSchema) continue
-
-						const filteredTables: Record<string, Record<string, string>> = {}
-						for (const [tableName, columns] of Object.entries(tables)) {
-							if (allowedTablesInSchema.has(tableName)) {
-								filteredTables[tableName] = columns
-							}
-						}
-
-						if (Object.keys(filteredTables).length > 0) {
-							filteredSchemas[schemaName] = filteredTables
-						}
-					}
-
-					results.push({
-						datatable_name: schema.datatable_name,
-						schemas: filteredSchemas,
-						error: schema.error
+				if (!isDatatableTableWhitelisted(datatableName, schemaName, tableName)) {
+					const tableRef = formatDataTableRef({
+						datatable: datatableName,
+						schema: schemaName === 'public' ? undefined : schemaName,
+						table: tableName
 					})
+					throw new Error(`Table '${tableRef}' is not configured in this app`)
 				}
 
-				return results
+				const schema = await WorkspaceService.getDataTableTableSchema({
+					workspace: $workspaceStore,
+					datatableName,
+					schemaName,
+					tableName
+				})
+				return schema.columns
 			},
 			getAvailableDatatableNames: (): string[] => {
 				// Get unique datatable names from dataTableRefs
-				return [...new Set(dataTableRefsObjects.map((ref) => ref.datatable))]
+				return [...dataTableWhitelist.datatables]
 			},
 			execDatatableSql: async (
 				datatableName: string,
@@ -564,6 +608,8 @@
 						}
 					}
 
+					void aiChatManager.refreshDatatables()
+
 					// Check if result is an array (SELECT) or something else
 					if (Array.isArray(result)) {
 						return { success: true, result }
@@ -586,6 +632,7 @@
 				if (!data.tables.includes(newRef)) {
 					data.tables = [...data.tables, newRef]
 					saveFrontendDraft()
+					void aiChatManager.refreshDatatables()
 				}
 			}
 		})
