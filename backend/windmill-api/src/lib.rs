@@ -117,6 +117,7 @@ mod slack_approvals;
 #[cfg(feature = "smtp")]
 mod smtp_server_oss;
 mod teams_approvals_oss;
+mod workspace_shared_ui;
 
 #[cfg(feature = "native_trigger")]
 pub mod native_triggers;
@@ -562,6 +563,7 @@ pub async fn run_server(
                         )
                         .nest("/raw_apps", raw_apps::workspaced_service())
                         .nest("/resources", resources::workspaced_service())
+                        .nest("/shared_ui", workspace_shared_ui::workspaced_service())
                         .nest("/schedules", windmill_api_schedule::workspaced_service())
                         .nest("/scripts", scripts::workspaced_service())
                         .nest("/trash", trash::workspaced_service())
