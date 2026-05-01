@@ -11,12 +11,12 @@ use {
         error::{Error, Result},
     },
     windmill_git_sync::DeployedObject,
-    windmill_trigger::TriggerCrud,
+    windmill_trigger::{Trigger, TriggerCrud},
 };
 
 #[async_trait]
 impl TriggerCrud for KafkaTrigger {
-    type Trigger = ();
+    type Trigger = Trigger<Self::TriggerConfig>;
     type TriggerConfig = ();
     type TriggerConfigRequest = ();
     type TestConnectionConfig = ();
