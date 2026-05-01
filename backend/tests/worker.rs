@@ -1943,6 +1943,7 @@ CREATE TABLE wm_pg_arg_combo_test.enumtbl (c wm_pg_arg_combo_test.color);
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("database", db_arg.clone())
     .run_until_complete(&db, false, port)
@@ -2397,6 +2398,7 @@ SELECT 'price: $5' AS lbl, $5::int + $50::int AS sum"#
             .into(),
             debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
             modules: None,
+            tag: None,
         }))
         .arg("database", db_arg.clone());
         for (k, v) in args.as_object().unwrap() {
@@ -2451,6 +2453,7 @@ async fn test_postgresql_no_named_statements_after_typed_args(
             .into(),
             debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
             modules: None,
+            tag: None,
         }))
         .arg("database", db_arg.clone())
     };
@@ -2539,6 +2542,7 @@ async fn test_postgresql_prepare_fallback_for_unrecognised_arg_t(
             .into(),
             debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
             modules: None,
+            tag: None,
         }))
         .arg("database", db_arg.clone())
     };
@@ -2634,6 +2638,7 @@ async fn test_postgresql_custom_types_on_cached_connection(
             .into(),
             debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
             modules: None,
+            tag: None,
         }))
         .arg("database", db_arg.clone())
     };
@@ -2725,6 +2730,7 @@ async fn test_postgresql_set_role_does_not_leak_across_cached_connection(
             .into(),
             debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
             modules: None,
+            tag: None,
         }))
         .arg("database", db_arg.clone())
     };
@@ -4585,7 +4591,6 @@ async fn test_workflow_as_code(db: Pool<Postgres>) -> anyhow::Result<()> {
                     language: ScriptLang::Python3,
                     content: WORKFLOW_AS_CODE.into(),
                     ..RawCode::default()
-                    tag: None,
                 }))
                 .arg("n", json!(3))
                 .run_until_complete(db, false, port),
