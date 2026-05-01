@@ -34,10 +34,7 @@ async fn test_error_handler_settings(db: Pool<Postgres>) -> anyhow::Result<()> {
     )
     .fetch_one(&db)
     .await?;
-    assert_eq!(
-        after_set,
-        Some("script/f/test/error_handler".to_string())
-    );
+    assert_eq!(after_set, Some("script/f/test/error_handler".to_string()));
 
     // Verify extra_args
     let extra_args = sqlx::query_scalar!(
