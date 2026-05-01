@@ -877,6 +877,7 @@ func main(derp string) (string, error) {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("derp", json!("world"))
     .run_until_complete(&db, false, port)
@@ -916,6 +917,7 @@ fn main(world: String) -> Result<String, String> {
         cache_ttl: None,
         dedicated_worker: None,
         modules: None,
+        tag: None,
     }))
     .arg("world", json!("Hyrule"))
     .run_until_complete(&db, false, port)
@@ -961,6 +963,7 @@ class Script
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("world", json!("Arakis"))
     .arg("b", json!(3))
@@ -998,6 +1001,7 @@ echo "hello $msg"
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("msg", json!("world"))
     .run_until_complete(&db, false, port)
@@ -1036,6 +1040,7 @@ echo "$result"
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .run_until_complete(&db, false, port)
     .await;
@@ -1071,6 +1076,7 @@ echo "$result"
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .run_until_complete(&db, false, port)
     .await;
@@ -1109,6 +1115,7 @@ main <- function(msg) {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("msg", json!("world"))
     .run_until_complete(&db, false, port)
@@ -1147,6 +1154,7 @@ main <- function() {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .run_until_complete(&db, false, port)
     .await
@@ -1184,6 +1192,7 @@ main <- function() {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .run_until_complete(&db, false, port)
     .await
@@ -1221,6 +1230,7 @@ def main [ msg: string ] {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("msg", json!("world"))
     .run_until_complete(&db, false, port)
@@ -1276,6 +1286,7 @@ def main [
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("a", json!("3"))
     .arg("b", json!("null"))
@@ -1340,6 +1351,7 @@ public class Main {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("a", json!(3))
     .arg("b", json!(3.0))
@@ -1378,6 +1390,7 @@ export async function main(name: string): Promise<string> {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("name", json!("world"))
     .run_until_complete(&db, false, port)
@@ -1416,6 +1429,7 @@ export async function main(a: number, b: number): Promise<number> {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("a", json!(3))
     .arg("b", json!(7))
@@ -1455,6 +1469,7 @@ export async function main(items: string[]): Promise<{ count: number; items: str
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("items", json!(["a", "b", "c"]))
     .run_until_complete(&db, false, port)
@@ -1494,6 +1509,7 @@ export async function main(a: Date) {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("a", json!("2024-09-24T10:00:00.000Z"))
     .run_until_complete(&db, false, port)
@@ -1532,6 +1548,7 @@ SELECT 'hello ' || $1::text AS result;
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("name", json!("world"))
     .arg(
@@ -1582,6 +1599,7 @@ async fn test_postgresql_cached_connection_resets_session(
             .into(),
             debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
             modules: None,
+            tag: None,
         }))
         .arg("database", db_arg.clone())
     };
@@ -1668,6 +1686,7 @@ async fn test_postgresql_single_worker_session_isolation(db: Pool<Postgres>) -> 
             .into(),
             debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
             modules: None,
+            tag: None,
         }))
         .arg("database", db_arg.clone())
     };
@@ -1773,6 +1792,7 @@ async fn test_postgresql_100_jobs_cached(db: Pool<Postgres>) -> anyhow::Result<(
             .into(),
             debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
             modules: None,
+            tag: None,
         }))
         .arg("database", db_arg.clone())
     };
@@ -2809,6 +2829,7 @@ SELECT ? AS result;
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("name", json!("world"))
     .arg(
@@ -2850,6 +2871,7 @@ export async function main(name: string): Promise<string> {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("name", json!("world"))
     .run_until_complete(&db, false, port)
@@ -2886,6 +2908,7 @@ Write-Output "hello $msg"
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("msg", json!("world"))
     .run_until_complete(&db, false, port)
@@ -2923,6 +2946,7 @@ Write-Output "$Name-$Count"
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("Name", json!("test"))
     .arg("Count", json!(7))
@@ -2958,6 +2982,7 @@ throw "intentional error"
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("x", json!(1))
     .run_until_complete(&db, false, port)
@@ -3011,6 +3036,7 @@ function main(string $name): string {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("name", json!("world"))
     .run_until_complete(&db, false, port)
@@ -3049,6 +3075,7 @@ end
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("name", json!("world"))
     .run_until_complete(&db, false, port)
@@ -3086,6 +3113,7 @@ export async function main(a: Date) {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("a", json!("2024-09-24T10:00:00.000Z"))
     .run_until_complete(&db, false, port)
@@ -3123,6 +3151,7 @@ export async function main(a: Date) {
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("a", json!("2024-09-24T10:00:00.000Z"))
     .run_until_complete(&db, false, port)
@@ -3176,6 +3205,7 @@ export function main(name: string) {
         cache_ignore_s3_path: None,
         dedicated_worker: None,
         modules: None,
+        tag: None,
     }))
     .arg("name", json!("World"))
     .run_until_complete(&db, false, port)
@@ -3222,6 +3252,7 @@ def main(a: datetime, b: bytes):
             .into(),
         debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
         modules: None,
+        tag: None,
     }))
     .arg("a", json!("2024-09-24T10:00:00.000Z"))
     .arg("b", json!("dGVzdA=="))
@@ -4554,6 +4585,7 @@ async fn test_workflow_as_code(db: Pool<Postgres>) -> anyhow::Result<()> {
                     language: ScriptLang::Python3,
                     content: WORKFLOW_AS_CODE.into(),
                     ..RawCode::default()
+                    tag: None,
                 }))
                 .arg("n", json!(3))
                 .run_until_complete(db, false, port),
