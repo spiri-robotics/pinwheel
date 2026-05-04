@@ -8,6 +8,16 @@ You are reviewing a GitHub pull request for this repository. Apply this policy a
 - `CLAUDE.md` in this repo is a wrapper around `AGENTS.md` (`@AGENTS.md`) — the same content.
 - Quote the exact rule from `AGENTS.md` when flagging a violation.
 
+## Verdict (first line of the review)
+
+Start every review with a single verdict line, before any other section. Pick exactly one:
+
+- **Good to merge** — no blocking issues and no nits worth surfacing.
+- **Mergeable, but should ideally address nits: <short list>** — no blockers, but P2 findings that are worth a look. The list must name each nit briefly (e.g. "doc/code mismatch in `foo.rs`, half-finished `pub fn bar`").
+- **Should address issues before merging: <short list>** — at least one P0 or P1 finding. The list must name each blocking issue briefly (e.g. "missing auth check on new `/api/x` handler, SQL injection in `build_query`").
+
+The names in the list must match findings detailed later in the review. If you list a nit or issue here, it must appear with full context in the body. Do not invent items that aren't in the body, and do not bury blockers in the body without surfacing them in the verdict.
+
 ## Review policy
 
 - Only report issues you are confident are real and introduced by this pull request.
