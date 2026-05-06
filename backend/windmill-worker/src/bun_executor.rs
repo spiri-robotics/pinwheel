@@ -469,7 +469,12 @@ pub async fn gen_bun_lockfile(
             }
             result?;
         } else {
-            Box::into_pin(child_process.wait()).await?;
+            let status = Box::into_pin(child_process.wait()).await?;
+            if !status.success() {
+                return Err(error::Error::ExecutionErr(format!(
+                    "bun build exited with non-zero status: {status:?}"
+                )));
+            }
         }
 
         let new_package_json = read_file_content(&format!("{job_dir}/package.json")).await?;
@@ -775,7 +780,12 @@ pub async fn install_bun_lockfile(
         }
         result?;
     } else {
-        Box::into_pin(child_process.wait()).await?;
+        let status = Box::into_pin(child_process.wait()).await?;
+        if !status.success() {
+            return Err(error::Error::ExecutionErr(format!(
+                "bun install exited with non-zero status: {status:?}"
+            )));
+        }
     }
 
     if has_file {
@@ -836,8 +846,9 @@ try {{
 }} catch (e) {{
 }}
 
+let result;
 try {{
-    await Bun.build({{
+    result = await Bun.build({{
         entrypoints: ["{job_dir_js}/wrapper.mjs"],
         outdir: "./",
         target: "node",
@@ -848,6 +859,11 @@ try {{
 }} catch(err) {{
     console.log(err);
     console.log("Failed to build node bundle");
+    process.exit(1);
+}}
+if (!result?.success || !(result.outputs?.length > 0)) {{
+    for (const log of result?.logs ?? []) console.log(log);
+    console.log("Failed to build node bundle: success=" + result?.success + ", outputs=" + (result?.outputs?.length ?? 0));
     process.exit(1);
 }}
 "#
@@ -878,8 +894,9 @@ plugin(p)
                 r#"
 {loader}
 
+let result;
 try {{
-    await Bun.build({{
+    result = await Bun.build({{
         entrypoints: ["{job_dir_js}/main.ts"],
         outdir: "./",
         target: "{}",
@@ -894,6 +911,11 @@ try {{
 }} catch(err) {{
     console.log(err)
     console.log("Failed to build node bundle");
+    process.exit(1);
+}}
+if (!result?.success || !(result.outputs?.length > 0)) {{
+    for (const log of result?.logs ?? []) console.log(log);
+    console.log("Failed to build node bundle: success=" + result?.success + ", outputs=" + (result?.outputs?.length ?? 0));
     process.exit(1);
 }}
 "#,
@@ -1006,7 +1028,12 @@ pub async fn generate_bun_bundle(
         )
         .await?;
     } else {
-        Box::into_pin(child_process.wait()).await?;
+        let status = Box::into_pin(child_process.wait()).await?;
+        if !status.success() {
+            return Err(error::Error::ExecutionErr(format!(
+                "bun build exited with non-zero status: {status:?}"
+            )));
+        }
     }
     Ok(())
 }
@@ -1120,6 +1147,9 @@ pub async fn prebundle_bun_script(
         content = format!("export {{ WorkflowCtx, StepSuspend, setWorkflowCtx }} from \"windmill-client\";\n{content}");
     }
     write_file(job_dir, "main.ts", &content)?;
+    // Remove any stale main.js so we never confuse a leftover (e.g. unbundled TS source
+    // a caller dropped at this path) with a fresh Bun bundle output.
+    let _ = std::fs::remove_file(&origin);
     build_loader(
         job_dir,
         base_internal_url,
@@ -1153,8 +1183,22 @@ pub async fn prebundle_bun_script(
     )
     .await?;
 
+    ensure_bundle_output_exists(&origin)?;
+
     save_cache(&local_path, &remote_path, &origin, false).await?;
 
+    Ok(())
+}
+
+/// Refuse to cache a bundle if `Bun.build` finished without producing the
+/// expected output file. Belt-and-suspenders for any silent-failure mode the
+/// upstream wait-status / `result.success` checks don't already trip on.
+pub fn ensure_bundle_output_exists(bundle_path: &str) -> Result<()> {
+    if !std::path::Path::new(bundle_path).exists() {
+        return Err(error::Error::ExecutionErr(format!(
+            "bun bundle output missing at {bundle_path} after Bun.build — refusing to cache"
+        )));
+    }
     Ok(())
 }
 
@@ -1885,15 +1929,10 @@ try {{
                 &mut Some(occupancy_metrics),
             )
             .await?;
+            let bundle_path = format!("{job_dir}/main.js");
+            ensure_bundle_output_exists(&bundle_path)?;
             if !local_path.is_empty() {
-                match save_cache(
-                    &local_path,
-                    &remote_path,
-                    &format!("{job_dir}/main.js"),
-                    false,
-                )
-                .await
-                {
+                match save_cache(&local_path, &remote_path, &bundle_path, false).await {
                     Err(e) => {
                         let em = format!("could not save {local_path} to bundle cache: {e:?}");
                         tracing::error!(em)
