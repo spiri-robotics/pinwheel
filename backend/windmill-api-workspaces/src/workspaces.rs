@@ -182,6 +182,8 @@ pub fn workspaced_service() -> Router {
         .route("/log_chat", post(log_ai_chat))
         .route("/cloud_quotas", get(get_cloud_quotas))
         .route("/prune_versions", post(prune_versions))
+        .route("/list_ws_specific", get(list_ws_specific))
+        .route("/list_ws_specific_versions", get(list_ws_specific_versions))
 }
 pub fn global_service() -> Router {
     Router::new()
@@ -6535,6 +6537,35 @@ async fn compare_two_variables(
     fork_workspace_id: &str,
     path: &str,
 ) -> Result<ItemComparison> {
+    // Combine the four EXISTS checks (ws_specific × {source, fork}, variable
+    // × {source, fork}) into a single round-trip; this runs per variable
+    // during a workspace diff so the savings add up.
+    let presence = sqlx::query!(
+        r#"SELECT
+            EXISTS(SELECT 1 FROM ws_specific
+                   WHERE workspace_id = $1 AND item_kind = 'variable' AND path = $3) AS "src_ws!",
+            EXISTS(SELECT 1 FROM ws_specific
+                   WHERE workspace_id = $2 AND item_kind = 'variable' AND path = $3) AS "tgt_ws!",
+            EXISTS(SELECT 1 FROM variable
+                   WHERE workspace_id = $1 AND path = $3) AS "src_var!",
+            EXISTS(SELECT 1 FROM variable
+                   WHERE workspace_id = $2 AND path = $3) AS "tgt_var!""#,
+        source_workspace_id,
+        fork_workspace_id,
+        path,
+    )
+    .fetch_one(db)
+    .await?;
+
+    // If either side is ws_specific, consider unchanged
+    if presence.src_ws || presence.tgt_ws {
+        return Ok(ItemComparison {
+            has_changes: false,
+            exists_in_source: presence.src_var,
+            exists_in_fork: presence.tgt_var,
+        });
+    }
+
     // Get variable from each workspace
     let source_variable = sqlx::query!(
         "SELECT value, is_secret, description
@@ -6997,4 +7028,79 @@ async fn prune_versions(
     };
 
     Ok(Json(PruneVersionsResponse { pruned }))
+}
+
+#[derive(Serialize)]
+struct WsSpecificItem {
+    item_kind: String,
+    path: String,
+}
+
+async fn list_ws_specific(
+    authed: ApiAuthed,
+    Extension(user_db): Extension<UserDB>,
+    Path(w_id): Path<String>,
+) -> JsonResult<Vec<WsSpecificItem>> {
+    // ws_specific itself has no per-item RLS — only the workspace_id column.
+    // Joining against resource/variable under user_db forces the same
+    // path-based RLS policies that govern those tables (see_own / see_member /
+    // see_extra_perms_* / see_folder_extra_perms_user) to also gate visibility
+    // here. Without these joins, any workspace member could enumerate paths
+    // in folders they lack read access to (e.g. f/finance/prod_db_creds).
+    let mut tx = user_db.begin(&authed).await?;
+    let items = sqlx::query_as!(
+        WsSpecificItem,
+        r#"
+        SELECT s.item_kind, s.path
+        FROM ws_specific s
+        WHERE s.workspace_id = $1
+          AND (
+              (s.item_kind = 'resource' AND EXISTS (
+                  SELECT 1 FROM resource r
+                  WHERE r.workspace_id = s.workspace_id AND r.path = s.path
+              ))
+              OR (s.item_kind = 'variable' AND EXISTS (
+                  SELECT 1 FROM variable v
+                  WHERE v.workspace_id = s.workspace_id AND v.path = s.path
+              ))
+          )
+        "#,
+        &w_id
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(Json(items))
+}
+
+#[derive(Deserialize)]
+struct ListWsSpecificVersionsQuery {
+    kind: String,
+    path: String,
+}
+
+async fn list_ws_specific_versions(
+    authed: ApiAuthed,
+    Extension(db): Extension<DB>,
+    Path(w_id): Path<String>,
+    Query(q): Query<ListWsSpecificVersionsQuery>,
+) -> JsonResult<Vec<String>> {
+    if q.kind != "resource" && q.kind != "variable" {
+        return Err(Error::BadRequest(format!(
+            "Invalid kind '{}'. Must be 'resource' or 'variable'",
+            q.kind
+        )));
+    }
+
+    let versions: Vec<String> = sqlx::query_scalar!(
+        r#"SELECT ws AS "ws!" FROM list_ws_specific_versions($1, $2, $3, $4)"#,
+        &w_id,
+        &authed.email,
+        &q.kind,
+        &q.path,
+    )
+    .fetch_all(&db)
+    .await?;
+
+    Ok(Json(versions))
 }
