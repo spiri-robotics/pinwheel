@@ -1,5 +1,7 @@
 
-use {crate::ai::types::OpenAIMessage, crate::memory_common, uuid::Uuid, windmill_common::db::DB};
+use {
+    crate::memory_common, uuid::Uuid, windmill_ai::types::OpenAIMessage, windmill_common::db::DB,
+};
 
 /// Read AI agent memory from storage
 /// In OSS: always reads from database
