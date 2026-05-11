@@ -108,6 +108,8 @@ pub fn global_service() -> Router {
             get(get_latest_key_renewal_attempt),
         )
         .route("/renew_license_key", post(renew_license_key))
+        .route("/offline_license_status", get(get_offline_license_status))
+        .route("/instance_hash", get(get_instance_hash))
         .route("/customer_portal", post(create_customer_portal_session))
         .route("/test_critical_channels", post(test_critical_channels))
         .route("/critical_alerts", get(get_critical_alerts))
@@ -303,13 +305,50 @@ pub async fn test_license_key(
     Json(TestKey { license_key }): Json<TestKey>,
 ) -> error::Result<String> {
     require_super_admin(&db, &authed.email).await?;
-    let (_, expired) = validate_license_key(license_key, Some(&db)).await?;
+    let (_, expired, _offline_meta) = validate_license_key(license_key, Some(&db)).await?;
 
     if expired {
         Err(error::Error::BadRequest("Expired license key".to_string()))
     } else {
         Ok("Valid license key".to_string())
     }
+}
+
+#[derive(serde::Serialize)]
+pub struct InstanceHash {
+    pub instance_hash: Option<String>,
+}
+
+/// Returns the live cap status for an offline license, or `null` when no
+/// offline license is loaded. Used by the superadmin settings panel.
+pub async fn get_offline_license_status(
+    Extension(db): Extension<DB>,
+    authed: ApiAuthed,
+) -> error::JsonResult<Option<windmill_common::ee_oss::OfflineCapStatus>> {
+    require_super_admin(&db, &authed.email).await?;
+
+    let offline = (**windmill_common::ee_oss::LICENSE_OFFLINE_METADATA.load()).clone();
+    let is_offline = matches!(&offline, Some(m) if m.is_offline());
+
+    if !is_offline {
+        return Ok(Json(None));
+    }
+
+    let cap: Option<windmill_common::ee_oss::OfflineCapStatus> = None;
+
+    Ok(Json(cap))
+}
+
+/// Returns the per-instance binding hash that goes into offline license keys.
+/// Admin invokes via `curl` with their personal token when requesting a key
+/// from support.
+pub async fn get_instance_hash(
+    Extension(db): Extension<DB>,
+    authed: ApiAuthed,
+) -> error::JsonResult<InstanceHash> {
+    require_super_admin(&db, &authed.email).await?;
+    let hash: Option<String> = None;
+    Ok(Json(InstanceHash { instance_hash: hash }))
 }
 
 pub async fn get_local_settings(

@@ -2264,6 +2264,9 @@ pub async fn monitor_db(
     let verify_license_key_f = async {
     };
 
+    let enforce_offline_caps_f = async {
+    };
+
     let expose_queue_metrics_f = async {
         if !initial_load && server_mode {
             if let Some(db) = conn.as_sql() {
@@ -2372,6 +2375,7 @@ pub async fn monitor_db(
         vacuum_queue_f,
         expose_queue_metrics_f,
         verify_license_key_f,
+        enforce_offline_caps_f,
         worker_groups_alerts_f,
         jobs_waiting_alerts_f,
         low_disk_alerts_f,
@@ -2702,6 +2706,7 @@ pub async fn reload_base_url_setting(conn: &Connection) -> error::Result<()> {
     }
 
     IS_SECURE.store(is_secure, Ordering::Relaxed);
+
 
     Ok(())
 }
