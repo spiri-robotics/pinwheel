@@ -153,6 +153,7 @@ impl AuthCache {
                             scopes: None,
                             username_override,
                             token_prefix: claims.audit_span,
+                            read_only: false,
                         };
                         let job_id = claims.job_id.and_then(|j| uuid::Uuid::from_str(&j).ok());
                         AUTH_CACHE.insert(
@@ -180,11 +181,20 @@ impl AuthCache {
                         token_hash = $1
                         AND (expiration > NOW() OR expiration IS NULL)
                         AND (workspace_id IS NULL OR workspace_id = $2)
-                    RETURNING owner, email, super_admin, scopes, label",
+                    RETURNING owner, email, super_admin, scopes, label, read_only",
                     t_hash,
                     w_id.as_ref(),
                 )
-                .map(|x| (x.owner, x.email, x.super_admin, x.scopes, x.label))
+                .map(|x| {
+                    (
+                        x.owner,
+                        x.email,
+                        x.super_admin,
+                        x.scopes,
+                        x.label,
+                        x.read_only,
+                    )
+                })
                 .fetch_optional(&self.db)
                 .await
                 .ok()
@@ -193,7 +203,9 @@ impl AuthCache {
                 if let Some(user) = user_o {
                     let authed_o = {
                         match user {
-                            (Some(owner), Some(email), super_admin, _, label) if w_id.is_some() => {
+                            (Some(owner), Some(email), super_admin, _, label, read_only)
+                                if w_id.is_some() =>
+                            {
                                 let username_override = username_override_from_label(label);
                                 if let Some((prefix, name)) = owner.split_once('/') {
                                     if prefix == "u" {
@@ -239,6 +251,7 @@ impl AuthCache {
                                             scopes: None,
                                             username_override,
                                             token_prefix: Some(safe_token_prefix(token)),
+                                            read_only,
                                         })
                                     } else {
                                         let groups = vec![name.to_string()];
@@ -264,6 +277,7 @@ impl AuthCache {
                                             scopes: None,
                                             username_override,
                                             token_prefix: Some(safe_token_prefix(token)),
+                                            read_only,
                                         })
                                     }
                                 } else {
@@ -279,10 +293,11 @@ impl AuthCache {
                                         scopes: None,
                                         username_override,
                                         token_prefix: Some(safe_token_prefix(token)),
+                                        read_only,
                                     })
                                 }
                             }
-                            (_, Some(email), super_admin, scopes, label) => {
+                            (_, Some(email), super_admin, scopes, label, read_only) => {
                                 let username_override = username_override_from_label(label);
                                 if w_id.is_some() {
                                     let row_o = sqlx::query!(
@@ -327,6 +342,7 @@ impl AuthCache {
                                                 scopes,
                                                 username_override,
                                                 token_prefix: Some(safe_token_prefix(token)),
+                                                read_only,
                                             })
                                         }
                                         None if super_admin => Some(ApiAuthed {
@@ -339,6 +355,7 @@ impl AuthCache {
                                             scopes,
                                             username_override,
                                             token_prefix: Some(safe_token_prefix(token)),
+                                            read_only,
                                         }),
                                         None => None,
                                     }
@@ -353,6 +370,7 @@ impl AuthCache {
                                         scopes,
                                         username_override,
                                         token_prefix: Some(safe_token_prefix(token)),
+                                        read_only,
                                     })
                                 }
                             }
@@ -387,6 +405,7 @@ impl AuthCache {
                         scopes: None,
                         username_override: None,
                         token_prefix: Some(safe_token_prefix(token)),
+                        read_only: false,
                     };
                     Some(OptJobAuthed { authed, job_id: None })
                 } else {
@@ -589,6 +608,7 @@ pub async fn resolve_opt_job_authed(
             scopes: None,
             username_override: None,
             token_prefix: None,
+            read_only: false,
         };
         return Ok((OptJobAuthed { authed, job_id: None }, parts));
     }
@@ -626,11 +646,10 @@ pub async fn resolve_opt_job_authed(
                 cache.get_opt_job_authed(workspace_id.clone(), &token).await
             {
                 let authed = &mut opt_job_authed.authed;
+                let path = original_uri.path();
+                let method = parts.method.as_str();
                 if authed.scopes.is_some() {
                     transform_old_scope_to_new_scope(authed.scopes.as_mut());
-
-                    let path = original_uri.path();
-                    let method = parts.method.as_str();
 
                     if let Err(err) = crate::scopes::check_scopes_for_route(
                         authed.scopes.as_deref(),
@@ -638,6 +657,27 @@ pub async fn resolve_opt_job_authed(
                         method,
                     ) {
                         return Err((err, parts));
+                    }
+                }
+                if authed.read_only {
+                    // MCP transport runs over POST (streamable HTTP / SSE handshake),
+                    // so the middleware can't safely reject mutating methods on it —
+                    // the MCP runner itself filters out write tools and rejects
+                    // mutating tool calls for read-only tokens. Narrow to the actual
+                    // transport endpoints: anything else under `/api/mcp/*` (OAuth
+                    // approve, token exchange, client registration) must still go
+                    // through the read-only check, otherwise a read-only token
+                    // could approve an OAuth flow that mints a new non-read-only
+                    // token.
+                    let is_mcp_transport = path == "/api/mcp/gateway"
+                        || (path.starts_with("/api/mcp/w/")
+                            && (path.ends_with("/mcp")
+                                || path.ends_with("/sse")
+                                || path.ends_with("/list_tools")));
+                    if !is_mcp_transport {
+                        if let Err(err) = crate::scopes::check_read_only_for_route(path, method) {
+                            return Err((err, parts));
+                        }
                     }
                 }
                 parts.extensions.insert(authed.clone());
