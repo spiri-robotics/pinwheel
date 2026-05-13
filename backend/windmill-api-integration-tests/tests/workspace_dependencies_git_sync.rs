@@ -246,3 +246,63 @@ async fn wait_for_debounce_key(
 }
 
 
+/// Create a second git repository resource for multi-repo tests.
+#[allow(dead_code)]
+async fn create_second_git_repo_resource(db: &Pool<Postgres>) -> anyhow::Result<()> {
+    sqlx::query(
+        r#"
+        INSERT INTO resource (workspace_id, path, value, resource_type, extra_perms, created_by)
+        VALUES ('test-workspace', 'u/test-user/test_git_repo_2', $1::jsonb, 'git_repository', '{}'::jsonb, 'test-user')
+        ON CONFLICT (workspace_id, path) DO NOTHING
+        "#,
+    )
+    .bind(json!({
+        "url": "https://github.com/test/test2.git",
+        "branch": "main",
+        "token": "test-token-2"
+    }))
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
+/// Configure git sync with TWO promotion-mode repositories pointing at distinct
+/// git repo resources. Both repos use the same sync script and the same item
+/// filters — they only differ in the repo they target.
+#[allow(dead_code)]
+async fn setup_two_promotion_repos_config(
+    db: &Pool<Postgres>,
+    sync_script_path: &str,
+    group_by_folder: bool,
+) -> anyhow::Result<()> {
+    let git_sync_config = json!({
+        "include_type": ["script"],
+        "include_path": ["**"],
+        "repositories": [
+            {
+                "script_path": sync_script_path,
+                "git_repo_resource_path": "$res:u/test-user/test_git_repo",
+                "use_individual_branch": true,
+                "group_by_folder": group_by_folder
+            },
+            {
+                "script_path": sync_script_path,
+                "git_repo_resource_path": "$res:u/test-user/test_git_repo_2",
+                "use_individual_branch": true,
+                "group_by_folder": group_by_folder
+            }
+        ]
+    });
+
+    sqlx::query!(
+        "UPDATE workspace_settings SET git_sync = $1 WHERE workspace_id = $2",
+        git_sync_config,
+        "test-workspace"
+    )
+    .execute(db)
+    .await?;
+
+    Ok(())
+}
+
+
