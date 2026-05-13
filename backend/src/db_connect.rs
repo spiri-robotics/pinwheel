@@ -6,6 +6,8 @@ use windmill_common::{
 pub const DEFAULT_MAX_CONNECTIONS_SERVER: u32 = 50;
 pub const DEFAULT_MAX_CONNECTIONS_WORKER: u32 = 5;
 pub const DEFAULT_MAX_CONNECTIONS_INDEXER: u32 = 5;
+#[cfg(feature = "operator")]
+pub const DEFAULT_MAX_CONNECTIONS_OPERATOR: u32 = 2;
 
 pub async fn initial_connection() -> Result<sqlx::Pool<sqlx::Postgres>, error::Error> {
     let connect_options = get_database_url().await?.connect_options().await?;
@@ -14,6 +16,25 @@ pub async fn initial_connection() -> Result<sqlx::Pool<sqlx::Postgres>, error::E
         .connect_with(connect_options)
         .await
         .map_err(|err| Error::ConnectingToDatabase(err.to_string()))
+}
+
+/// Connect to the database for the Kubernetes operator process.
+///
+/// Long-running operator pods need IAM RDS / Entra ID token refresh just like the server,
+/// otherwise new pool connections start failing once the initial token expires (~15 min).
+#[cfg(feature = "operator")]
+pub async fn operator_connection(
+) -> anyhow::Result<sqlx::Pool<sqlx::Postgres>> {
+    let database_url = get_database_url().await?;
+    let pool = connect(
+        database_url.clone(),
+        DEFAULT_MAX_CONNECTIONS_OPERATOR,
+        false,
+    )
+    .await?;
+
+
+    Ok(pool)
 }
 
 pub async fn connect_db(
@@ -44,6 +65,7 @@ pub async fn connect_db(
 
     Ok(pool)
 }
+
 
 pub async fn connect(
     database_url: DatabaseUrl,

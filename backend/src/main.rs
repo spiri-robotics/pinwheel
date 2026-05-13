@@ -636,7 +636,13 @@ async fn windmill_main() -> anyhow::Result<()> {
             tracing_subscriber::fmt::init();
             tracing::info!("Starting Windmill Kubernetes operator...");
             tracing::info!("Connecting to database...");
-            let db = crate::db_connect::initial_connection().await?;
+
+
+            let db = crate::db_connect::operator_connection(
+            )
+            .await?;
+
+
             tracing::info!("Database connected. Starting ConfigMap watcher...");
             windmill_operator::run(db).await?;
             return Ok(());
