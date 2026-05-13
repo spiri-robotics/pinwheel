@@ -2155,6 +2155,7 @@ try {{
                 "--",
                 &BUN_PATH,
                 "run",
+                "--preserve-symlinks",
                 "-i",
                 "--prefer-offline",
                 "-r",
@@ -2221,6 +2222,7 @@ try {{
             } else {
                 vec![
                     "run",
+                    "--preserve-symlinks",
                     "-i",
                     "--prefer-offline",
                     "-r",
