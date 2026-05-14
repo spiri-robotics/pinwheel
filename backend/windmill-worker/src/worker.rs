@@ -265,6 +265,8 @@ pub struct OtelTracingProxySettings {
     pub enabled: bool,
     #[serde(default)]
     pub enabled_languages: HashSet<ScriptLang>,
+    #[serde(default)]
+    pub no_proxy_hosts: Option<String>,
 }
 
 #[cfg(feature = "prometheus")]
@@ -916,6 +918,9 @@ pub async fn get_proxy_envs_for_lang(
     envs.extend(get_otel_context_envs(job_id));
     Ok(envs)
 }
+
+
+
 
 
 #[cfg(windows)]
