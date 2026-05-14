@@ -93,6 +93,12 @@ struct ScriptMetadata {
     pub debouncing_settings: DebouncingSettings,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub labels: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "is_empty_extra_perms")]
+    pub extra_perms: serde_json::Value,
+}
+
+fn is_empty_extra_perms(value: &serde_json::Value) -> bool {
+    value.as_object().is_some_and(|o| o.is_empty()) || value.is_null()
 }
 
 pub fn is_none_or_false(val: &Option<bool>) -> bool {
@@ -189,12 +195,34 @@ pub(crate) struct ArchiveQueryParams {
     default_ts: Option<String>,
     /// Settings format version: "v1" (default) returns legacy flat format, "v2" returns grouped format
     settings_version: Option<String>,
+    /// Opt-in: include `extra_perms` on flow / script / app rows. Default `false`
+    /// so cross-workspace tarball imports do not carry over ACLs referring to
+    /// identities that may not exist in the target workspace. `wmill sync pull`
+    /// passes `true` to surface ACLs in the git-tracked yaml.
+    preserve_extra_perms: Option<bool>,
+}
+
+/// How to handle `extra_perms` in the serialized output.
+///
+/// * `Drop`           — strip the field unconditionally (legacy behavior for
+///                      types that have never carried ACLs in source).
+/// * `KeepEvenEmpty`  — always keep the field, even when `{}`. Matches the
+///                      pre-existing serialization for folders and groups so
+///                      no customer sees a one-time noisy diff on upgrade.
+/// * `KeepIfNonEmpty` — keep when there is at least one entry, drop when `{}`
+///                      or null. New surface for flow / script / app, which
+///                      never carried ACLs in source before this change.
+#[derive(Clone, Copy)]
+pub enum ExtraPermsBehavior {
+    Drop,
+    KeepEvenEmpty,
+    KeepIfNonEmpty,
 }
 
 #[inline]
 pub fn to_string_without_metadata<T>(
     value: &T,
-    preserve_extra_perms: bool,
+    extra_perms: ExtraPermsBehavior,
     ignore_keys: Option<Vec<&str>>,
 ) -> Result<String>
 where
@@ -239,8 +267,19 @@ where
                 o2.remove("on_behalf_of");
                 o2.remove("on_behalf_of_email");
             }
-            if !preserve_extra_perms && obj.contains_key("extra_perms") {
-                obj.remove("extra_perms");
+            if obj.contains_key("extra_perms") {
+                let is_empty_extra_perms = obj
+                    .get("extra_perms")
+                    .map(|v| v.as_object().is_some_and(|o| o.is_empty()) || v.is_null())
+                    .unwrap_or(true);
+                let drop = match extra_perms {
+                    ExtraPermsBehavior::Drop => true,
+                    ExtraPermsBehavior::KeepEvenEmpty => false,
+                    ExtraPermsBehavior::KeepIfNonEmpty => is_empty_extra_perms,
+                };
+                if drop {
+                    obj.remove("extra_perms");
+                }
             }
             if obj
                 .get("default_permissioned_as")
@@ -407,6 +446,7 @@ pub(crate) async fn tarball_workspace(
         include_workspace_dependencies,
         default_ts,
         settings_version,
+        preserve_extra_perms,
     }): Query<ArchiveQueryParams>,
 ) -> Result<([(HeaderName, String); 2], impl IntoResponse)> {
     tracing::info!(
@@ -416,6 +456,16 @@ pub(crate) async fn tarball_workspace(
         skip_variables,
         skip_resources
     );
+
+    // Opt-in behavior for surfacing per-resource ACLs on flow/app rows.
+    // Folder and group rows have always carried `extra_perms` in source and
+    // continue to do so unconditionally (`KeepEvenEmpty`) so existing
+    // customer git repos see no one-time noisy diff.
+    let new_kinds_extra_perms = if preserve_extra_perms.unwrap_or(false) {
+        ExtraPermsBehavior::KeepIfNonEmpty
+    } else {
+        ExtraPermsBehavior::Drop
+    };
 
     let mut tx = user_db.begin(&authed).await?;
 
@@ -463,7 +513,8 @@ pub(crate) async fn tarball_workspace(
         for folder in folders {
             archive
                 .write_to_archive(
-                    &to_string_without_metadata(&folder, true, None).unwrap(),
+                    &to_string_without_metadata(&folder, ExtraPermsBehavior::KeepEvenEmpty, None)
+                        .unwrap(),
                     &format!("f/{}/folder.meta.json", folder.name),
                 )
                 .await?;
@@ -471,15 +522,13 @@ pub(crate) async fn tarball_workspace(
     }
 
     {
-        let scripts = sqlx::query_as::<_, Script<ScriptRunnableSettingsHandle>>(
-            &format!(
-                "SELECT {} FROM script as o WHERE workspace_id = $1 AND archived = false
+        let scripts = sqlx::query_as::<_, Script<ScriptRunnableSettingsHandle>>(&format!(
+            "SELECT {} FROM script as o WHERE workspace_id = $1 AND archived = false
                  AND (draft_only IS NULL OR draft_only = false)
                  AND created_at = (select max(created_at) from script where path = o.path AND \
                   workspace_id = $1)",
-                windmill_common::scripts::SCRIPT_COLUMNS,
-            ),
-        )
+            windmill_common::scripts::SCRIPT_COLUMNS,
+        ))
         .bind(&w_id)
         .fetch_all(&mut *tx)
         .await?;
@@ -552,6 +601,15 @@ pub(crate) async fn tarball_workspace(
                 on_behalf_of_email: script.on_behalf_of_email,
                 modules: script.modules,
                 labels: script.labels,
+                // Same opt-in contract as flow/app: the tarball only surfaces
+                // ACLs when `?preserve_extra_perms=true`. Passing `Null` lets the
+                // `is_empty_extra_perms` skip-serializer drop the field entirely.
+                extra_perms: if matches!(new_kinds_extra_perms, ExtraPermsBehavior::KeepIfNonEmpty)
+                {
+                    script.extra_perms
+                } else {
+                    serde_json::Value::Null
+                },
             };
             let metadata_str = serde_json::to_string_pretty(&metadata).unwrap();
             archive
@@ -570,7 +628,8 @@ pub(crate) async fn tarball_workspace(
          .await?;
 
         for resource in resources {
-            let resource_str = &to_string_without_metadata(&resource, false, None).unwrap();
+            let resource_str =
+                &to_string_without_metadata(&resource, ExtraPermsBehavior::Drop, None).unwrap();
             archive
                 .write_to_archive(&resource_str, &format!("{}.resource.json", resource.path))
                 .await?;
@@ -587,7 +646,9 @@ pub(crate) async fn tarball_workspace(
         .await?;
 
         for resource_type in resource_types {
-            let resource_str = &to_string_without_metadata(&resource_type, false, None).unwrap();
+            let resource_str =
+                &to_string_without_metadata(&resource_type, ExtraPermsBehavior::Drop, None)
+                    .unwrap();
             archive
                 .write_to_archive(
                     &resource_str,
@@ -609,7 +670,7 @@ pub(crate) async fn tarball_workspace(
          .await?;
 
         for flow in flows {
-            let flow_str = &to_string_without_metadata(&flow, false, None).unwrap();
+            let flow_str = &to_string_without_metadata(&flow, new_kinds_extra_perms, None).unwrap();
             archive
                 .write_to_archive(&flow_str, &format!("{}.flow.json", flow.path))
                 .await?;
@@ -638,7 +699,8 @@ pub(crate) async fn tarball_workspace(
                     Error::internal_err(format!("Error decrypting variable {}: {}", var.path, e))
                 })?);
             }
-            let var_str = &to_string_without_metadata(&var, false, None).unwrap();
+            let var_str =
+                &to_string_without_metadata(&var, ExtraPermsBehavior::Drop, None).unwrap();
             archive
                 .write_to_archive(&var_str, &format!("{}.variable.json", var.path))
                 .await?;
@@ -658,7 +720,7 @@ pub(crate) async fn tarball_workspace(
          .await?;
 
         for app in apps {
-            let app_str = &to_string_without_metadata(&app, false, None).unwrap();
+            let app_str = &to_string_without_metadata(&app, new_kinds_extra_perms, None).unwrap();
             let kind = if app.raw_app { "raw_app" } else { "app" };
             archive
                 .write_to_archive(&app_str, &format!("{}.{}.json", app.path, kind))
@@ -676,7 +738,7 @@ pub(crate) async fn tarball_workspace(
             workspace_dependencies.len()
         );
         for dep in workspace_dependencies {
-            // let dep_str = &to_string_without_metadata(&dep, false, None).unwrap();
+            // let dep_str = &to_string_without_metadata(&dep, ExtraPermsBehavior::Drop, None).unwrap();
             let filename = WorkspaceDependencies::to_path(&dep.name, dep.language)?;
             tracing::info!(
                 "Adding workspace dependency: name={:?}, language={:?}, filename={}",
@@ -704,9 +766,12 @@ pub(crate) async fn tarball_workspace(
 
         let schedule_ignore_keys = fork_schedule_ignore_keys(is_fork);
         for schedule in schedules {
-            let app_str =
-                &to_string_without_metadata(&schedule, false, schedule_ignore_keys.clone())
-                    .unwrap();
+            let app_str = &to_string_without_metadata(
+                &schedule,
+                ExtraPermsBehavior::Drop,
+                schedule_ignore_keys.clone(),
+            )
+            .unwrap();
             archive
                 .write_to_archive(&app_str, &format!("{}.schedule.json", schedule.path))
                 .await?;
@@ -724,9 +789,12 @@ pub(crate) async fn tarball_workspace(
             let http_triggers = handler.list_triggers(&mut *tx, &w_id, None).await?;
 
             for trigger in http_triggers {
-                let trigger_str =
-                    &to_string_without_metadata(&trigger, false, trigger_ignore_keys.clone())
-                        .unwrap();
+                let trigger_str = &to_string_without_metadata(
+                    &trigger,
+                    ExtraPermsBehavior::Drop,
+                    trigger_ignore_keys.clone(),
+                )
+                .unwrap();
                 archive
                     .write_to_archive(
                         &trigger_str,
@@ -743,9 +811,12 @@ pub(crate) async fn tarball_workspace(
             let websocket_triggers = handler.list_triggers(&mut *tx, &w_id, None).await?;
 
             for trigger in websocket_triggers {
-                let trigger_str =
-                    &to_string_without_metadata(&trigger, false, trigger_ignore_keys.clone())
-                        .unwrap();
+                let trigger_str = &to_string_without_metadata(
+                    &trigger,
+                    ExtraPermsBehavior::Drop,
+                    trigger_ignore_keys.clone(),
+                )
+                .unwrap();
                 archive
                     .write_to_archive(
                         &trigger_str,
@@ -767,9 +838,12 @@ pub(crate) async fn tarball_workspace(
             let postgres_triggers = handler.list_triggers(&mut *tx, &w_id, None).await?;
 
             for trigger in postgres_triggers {
-                let trigger_str =
-                    &to_string_without_metadata(&trigger, false, trigger_ignore_keys.clone())
-                        .unwrap();
+                let trigger_str = &to_string_without_metadata(
+                    &trigger,
+                    ExtraPermsBehavior::Drop,
+                    trigger_ignore_keys.clone(),
+                )
+                .unwrap();
                 archive
                     .write_to_archive(
                         &trigger_str,
@@ -786,9 +860,12 @@ pub(crate) async fn tarball_workspace(
             let mqtt_triggers = handler.list_triggers(&mut *tx, &w_id, None).await?;
 
             for trigger in mqtt_triggers {
-                let trigger_str =
-                    &to_string_without_metadata(&trigger, false, trigger_ignore_keys.clone())
-                        .unwrap();
+                let trigger_str = &to_string_without_metadata(
+                    &trigger,
+                    ExtraPermsBehavior::Drop,
+                    trigger_ignore_keys.clone(),
+                )
+                .unwrap();
                 archive
                     .write_to_archive(
                         &trigger_str,
@@ -817,7 +894,7 @@ pub(crate) async fn tarball_workspace(
                 for trigger in native_triggers {
                     let trigger_str = &to_string_without_metadata(
                         &trigger,
-                        false,
+                        ExtraPermsBehavior::Drop,
                         Some(native_ignore_keys.clone()),
                     )
                     .unwrap();
@@ -860,7 +937,9 @@ pub(crate) async fn tarball_workspace(
                 disabled: user.disabled,
                 email: user.email,
             };
-            let user_str = &to_string_without_metadata(&user, false, Some(vec!["email"])).unwrap();
+            let user_str =
+                &to_string_without_metadata(&user, ExtraPermsBehavior::Drop, Some(vec!["email"]))
+                    .unwrap();
             archive
                 .write_to_archive(&user_str, &format!("users/{}.user.json", user.email))
                 .await?;
@@ -920,7 +999,9 @@ pub(crate) async fn tarball_workspace(
                 admins,
             };
 
-            let group_str = &to_string_without_metadata(&group, true, None).unwrap();
+            let group_str =
+                &to_string_without_metadata(&group, ExtraPermsBehavior::KeepEvenEmpty, None)
+                    .unwrap();
             archive
                 .write_to_archive(&group_str, &format!("groups/{}.group.json", group.name))
                 .await?;
