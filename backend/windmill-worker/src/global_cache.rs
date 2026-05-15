@@ -63,12 +63,21 @@ pub async fn save_cache(
 
     if true {
         if is_dir {
-            windmill_common::worker::copy_dir_recursively(
+            // Populate a sibling temp dir then atomically publish it, so a
+            // concurrent `load_cache`/`exists_in_cache` metadata() check never
+            // observes a half-copied cache directory.
+            let tmp_dir = format!("{}.tmp.{}", local_cache_path, uuid::Uuid::new_v4());
+            if let Err(e) = windmill_common::worker::copy_dir_recursively(
                 &PathBuf::from(origin),
-                &PathBuf::from(local_cache_path),
-            )?;
+                &PathBuf::from(&tmp_dir),
+            )
+            .and_then(|_| windmill_common::worker::atomic_publish_dir(&tmp_dir, local_cache_path))
+            {
+                let _ = std::fs::remove_dir_all(&tmp_dir);
+                return Err(e);
+            }
         } else {
-            std::fs::copy(origin, local_cache_path)?;
+            windmill_common::worker::atomic_copy_file(origin, local_cache_path)?;
         }
         Ok(format!(
             "\nwrote cached binary: {} (backed by EE distributed object store: {_cached_to_s3})\n",
