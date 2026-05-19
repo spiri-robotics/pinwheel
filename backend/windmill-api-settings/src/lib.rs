@@ -9,6 +9,8 @@
 use std::{collections::HashMap, time::Duration};
 
 #[cfg(feature = "parquet")]
+mod audit_logs_s3;
+#[cfg(feature = "parquet")]
 mod background_task;
 pub mod ee_oss;
 #[cfg(feature = "parquet")]
@@ -156,7 +158,8 @@ pub fn global_service() -> Router {
                 get(get_object_storage_usage).post(compute_object_storage_usage),
             )
             .route("/run_log_cleanup", post(run_log_cleanup))
-            .route("/log_cleanup_status", get(log_cleanup_status));
+            .route("/log_cleanup_status", get(log_cleanup_status))
+            .route("/audit_logs_s3_status", get(audit_logs_s3_status));
     }
 
     #[cfg(not(feature = "parquet"))]
@@ -292,6 +295,15 @@ async fn log_cleanup_status(
 ) -> error::JsonResult<Option<log_cleanup::LogCleanupProgress>> {
     require_super_admin(&db, &authed.email).await?;
     Ok(Json(log_cleanup::get_status(&db).await?))
+}
+
+#[cfg(feature = "parquet")]
+async fn audit_logs_s3_status(
+    Extension(db): Extension<DB>,
+    authed: ApiAuthed,
+) -> error::JsonResult<Option<audit_logs_s3::AuditLogsS3ExportStatus>> {
+    require_super_admin(&db, &authed.email).await?;
+    Ok(Json(audit_logs_s3::get_status(&db).await?))
 }
 
 #[derive(Deserialize)]
