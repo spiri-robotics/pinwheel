@@ -249,6 +249,7 @@ pub async fn run_wait_result_internal(
     uuid: Uuid,
     w_id: &str,
     node_id_for_empty_return: Option<String>,
+    has_failure_module: bool,
     username: &str,
 ) -> error::Result<(Box<RawValue>, bool)> {
     let mut result = None;
@@ -270,9 +271,15 @@ pub async fn run_wait_result_internal(
 
     let fast_poll_duration = *WAIT_RESULT_FAST_POLL_DURATION_SECS as u64 * 1000;
     let mut accumulated_delay = 0 as u64;
+    // Once we observe the early_return node failed with a failure_module configured,
+    // its result is final — no need to re-query it on every poll.
+    let mut early_return_failed_and_suppressed = false;
 
     loop {
-        if let Some(node_id_for_empty_return) = node_id_for_empty_return.as_ref() {
+        if let Some(node_id_for_empty_return) = node_id_for_empty_return
+            .as_ref()
+            .filter(|_| !early_return_failed_and_suppressed)
+        {
             let result_and_success = get_result_and_success_by_id_from_flow(
                 &db,
                 w_id,
@@ -283,8 +290,16 @@ pub async fn run_wait_result_internal(
             .await
             .ok();
             if let Some((r, s)) = result_and_success {
-                result = Some(r);
-                success = s;
+                // When the early_return node failed but the flow has a failure_module,
+                // the error handler will run and may recover. Skip this result and let
+                // the loop fall through to the completed flow result below, which is
+                // the failure_module's output.
+                if has_failure_module && !s {
+                    early_return_failed_and_suppressed = true;
+                } else {
+                    result = Some(r);
+                    success = s;
+                }
             }
         }
 
@@ -432,10 +447,18 @@ pub async fn run_wait_result(
     uuid: Uuid,
     w_id: &str,
     node_id_for_empty_return: Option<String>,
+    has_failure_module: bool,
     username: &str,
 ) -> error::Result<Response> {
-    let (result, success) =
-        run_wait_result_internal(db, uuid, w_id, node_id_for_empty_return, username).await?;
+    let (result, success) = run_wait_result_internal(
+        db,
+        uuid,
+        w_id,
+        node_id_for_empty_return,
+        has_failure_module,
+        username,
+    )
+    .await?;
 
     result_to_response(result, success)
 }
@@ -611,6 +634,7 @@ pub async fn run_flow<'c>(
 ) -> error::Result<(
     Uuid,
     Option<String>,
+    bool,
     Option<sqlx::Transaction<'c, sqlx::Postgres>>,
 )> {
     let FlowVersionInfo {
@@ -618,6 +642,7 @@ pub async fn run_flow<'c>(
         tag,
         dedicated_worker,
         has_preprocessor,
+        has_failure_module,
         chat_input_enabled,
         on_behalf_of_email,
         edited_by,
@@ -715,10 +740,20 @@ pub async fn run_flow<'c>(
 
     // If we were given a transaction, return it; otherwise commit it
     if return_tx {
-        Ok((uuid, early_return, Some(tx)))
+        Ok((
+            uuid,
+            early_return,
+            has_failure_module.unwrap_or(false),
+            Some(tx),
+        ))
     } else {
         tx.commit().await?;
-        Ok((uuid, early_return, None))
+        Ok((
+            uuid,
+            early_return,
+            has_failure_module.unwrap_or(false),
+            None,
+        ))
     }
 }
 
@@ -733,7 +768,7 @@ pub async fn run_flow_and_wait_result(
     args: PushArgsOwned,
     trigger: Option<TriggerMetadata>,
 ) -> error::Result<Response> {
-    let (uuid, early_return, _) = run_flow(
+    let (uuid, early_return, has_failure_module, _) = run_flow(
         authed,
         db,
         None,
@@ -747,7 +782,15 @@ pub async fn run_flow_and_wait_result(
     )
     .await?;
 
-    run_wait_result(&db, uuid, w_id, early_return, &authed.username).await
+    run_wait_result(
+        &db,
+        uuid,
+        w_id,
+        early_return,
+        has_failure_module,
+        &authed.username,
+    )
+    .await
 }
 
 // ---------------------------------------------------------------------------
@@ -767,6 +810,7 @@ pub async fn push_flow_job_by_path_into_queue<'c>(
 ) -> error::Result<(
     Uuid,
     Option<String>,
+    bool,
     Option<sqlx::Transaction<'c, sqlx::Postgres>>,
 )> {
 
