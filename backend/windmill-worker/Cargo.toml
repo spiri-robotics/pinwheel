@@ -110,6 +110,7 @@ jsonwebtoken.workspace = true
 sha2.workspace = true
 hmac.workspace = true
 pem = { workspace = true, optional = true }
+rsa = { workspace = true, optional = true }
 urlencoding.workspace = true
 nix.workspace = true
 bytes.workspace = true
