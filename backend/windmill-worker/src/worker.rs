@@ -928,8 +928,14 @@ pub async fn is_otel_tracing_proxy_enabled_for_lang(lang: &ScriptLang) -> bool {
     }
 }
 
+
 /// Get OTEL trace context environment variables for a job (TRACEPARENT, OTEL_TRACE_ID, OTEL_SPAN_ID).
 /// Returns an empty vec when OTEL tracing is not enabled or on non-enterprise builds.
+///
+/// When the request that enqueued the job carried a valid inbound `traceparent`
+/// (propagated via the job's [`LogContext`](windmill_common::log_context::LogContext)),
+/// it is forwarded verbatim so the script's spans join the originating
+/// distributed trace. Otherwise the trace context is derived from the job UUID.
 pub fn get_otel_context_envs(job_id: &uuid::Uuid) -> Vec<(&'static str, String)> {
     let _ = job_id;
     vec![]
@@ -1353,7 +1359,10 @@ pub fn create_span_with_name(
         span.record("script_hash", script_hash.to_string().as_str());
     }
 
-    windmill_common::otel_oss::set_span_parent(&span, &rj);
+    // Parent the job span on the inbound distributed trace when the request that
+    // enqueued it (or its flow root) carried a W3C `traceparent`; otherwise on
+    // the UUID-derived context. See `otel_ee::set_job_span_parent`.
+    crate::otel_oss::set_job_span_parent(&span, arc_job, &rj);
     span
 }
 
@@ -1454,8 +1463,19 @@ pub fn log_context_for_job(
         trigger_kind: arc_job.trigger_kind.as_ref().map(|k| k.to_string()),
         trigger: arc_job.trigger.clone(),
         hostname: hostname.map(|h| h.to_string()),
+        inbound_traceparent: job_inbound_traceparent(arc_job),
         ..existing
     }
+}
+
+/// Extract the inbound W3C `traceparent` captured at enqueue from a job's args
+/// (reserved `_wm_traceparent` key). Present only on directly-triggered jobs
+/// (and flow steps that inherited it).
+pub(crate) fn job_inbound_traceparent(job: &MiniPulledJob) -> Option<String> {
+    job.args
+        .as_ref()
+        .and_then(|a| a.get(windmill_common::jobs::WM_TRACEPARENT))
+        .and_then(|raw| serde_json::from_str::<String>(raw.get()).ok())
 }
 
 pub async fn handle_all_job_kind_error(
