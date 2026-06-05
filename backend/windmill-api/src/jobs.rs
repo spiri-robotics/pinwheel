@@ -2294,15 +2294,19 @@ async fn list_filtered_job_uuids(
         false,
         get_scope_tags(&authed),
     );
-    let sqlb2 = list_queue_jobs_query(
-        w_id.as_str(),
-        &lq.into(),
-        &["v2_job.id"],
-        Pagination { page: None, per_page: None },
-        false,
-        get_scope_tags(&authed),
-    );
-    let query = sqlb.union_all(sqlb2.subquery()?).subquery()?;
+    let query = if lq.status.is_some() {
+        sqlb.subquery()?
+    } else {
+        let sqlb2 = list_queue_jobs_query(
+            w_id.as_str(),
+            &lq.into(),
+            &["v2_job.id"],
+            Pagination { page: None, per_page: None },
+            false,
+            get_scope_tags(&authed),
+        );
+        sqlb.union_all(sqlb2.subquery()?).subquery()?
+    };
     let ids = sqlx::query_scalar(query.as_str()).fetch_all(&db).await?;
     Ok(Json(ids))
 }
@@ -2460,9 +2464,9 @@ async fn list_jobs(
         tracing::warn!("offset is not 0, but is ignored for list_jobs. Use created_before or completed_before instead.");
     }
 
-    if lq.success.is_some() && lq.running.is_some_and(|x| x) {
+    if (lq.success.is_some() || lq.status.is_some()) && lq.running.is_some_and(|x| x) {
         return Err(error::Error::BadRequest(
-            "cannot specify both success and running".to_string(),
+            "cannot specify success/status with running".to_string(),
         ));
     }
 
@@ -2515,6 +2519,7 @@ async fn list_jobs(
     };
 
     let sql = if lq.success.is_none()
+        && lq.status.is_none()
         && lq.label.is_none()
         && lq.result.is_none()
         && !lq.is_skipped.unwrap_or(false)
@@ -2540,7 +2545,7 @@ async fn list_jobs(
     } else {
         if sqlc.is_none() {
             return Err(error::Error::BadRequest(
-                "cannot specify success, label, created_or_started_before, or starte
+                "cannot specify success, status, label, created_or_started_before, or starte
                     d_before with running"
                     .to_string(),
             ));
