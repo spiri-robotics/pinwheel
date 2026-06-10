@@ -59,6 +59,7 @@ mod sanitized_sql_params;
 mod schema;
 mod sql_s3_input;
 pub mod sql_utils;
+mod ssh_executor_oss;
 mod universal_pkg_installer;
 mod volume_oss;
 pub mod wac_executor;
