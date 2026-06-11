@@ -151,7 +151,8 @@ async fn list_flows(
             "draft.path IS NOT NULL as has_draft",
             "draft_only",
             "ws_error_handler_muted",
-            "o.labels"
+            "o.labels",
+            "folder_labels(o.workspace_id, o.path) as inherited_labels"
         ])
         .left()
         .join("favorite")
@@ -199,7 +200,11 @@ async fn list_flows(
     }
     if let Some(label) = &lq.label {
         for l in label.split(',') {
-            sqlb.and_where("o.labels @> ARRAY[?]".bind(&l.trim()));
+            sqlb.and_where(
+                "(o.labels @> ARRAY[?] OR folder_labels(o.workspace_id, o.path) @> ARRAY[?])"
+                    .bind(&l.trim())
+                    .bind(&l.trim()),
+            );
         }
     }
 
@@ -1360,6 +1365,7 @@ async fn get_flow_by_path(
             flow.visible_to_runner_only, 
             flow.on_behalf_of_email,
             flow.labels,
+            folder_labels(flow.workspace_id, flow.path) AS inherited_labels,
             flow_version.id AS version_id,
             flow_version.schema,
             flow_version.value,
@@ -1401,6 +1407,7 @@ async fn get_flow_by_path(
             flow.visible_to_runner_only, 
             flow.on_behalf_of_email,
             flow.labels,
+            folder_labels(flow.workspace_id, flow.path) AS inherited_labels,
             flow_version.id AS version_id,
             flow_version.schema,
             flow_version.value,
