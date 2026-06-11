@@ -2036,7 +2036,7 @@ pub async fn reload_request_size(conn: &Connection) {
     }
 }
 
-pub async fn reload_license_key(conn: &Connection) -> anyhow::Result<()> {
+async fn resolve_license_key_value(conn: &Connection, quiet: bool) -> anyhow::Result<String> {
     let q = load_value_from_global_settings_with_conn(conn, LICENSE_KEY_SETTING, true)
         .await
         .map_err(|err| anyhow::anyhow!("Error reloading license key: {}", err.to_string()))?;
@@ -2048,18 +2048,38 @@ pub async fn reload_license_key(conn: &Connection) -> anyhow::Result<()> {
 
     if let Some(q) = q {
         if let Ok(v) = serde_json::from_value::<String>(q.clone()) {
-            tracing::info!(
-                "Loaded setting LICENSE_KEY from db config: {}",
-                truncate_token(&v)
-            );
+            if !quiet {
+                tracing::info!(
+                    "Loaded setting LICENSE_KEY from db config: {}",
+                    truncate_token(&v)
+                );
+            }
             value = v;
         } else {
             tracing::error!("Could not parse LICENSE_KEY found: {:#?}", &q);
         }
     };
-    set_license_key(value, conn.as_sql()).await;
+    Ok(value)
+}
+
+pub async fn reload_license_key(conn: &Connection) -> anyhow::Result<()> {
+    let value = resolve_license_key_value(conn, false).await?;
+    apply_license_key(value, conn).await;
     Ok(())
 }
+
+/// Applies the key and records it as the last accepted value only when
+/// `set_license_key` actually stored it (validation passed, even if expired).
+/// A rejected key is deliberately not recorded: validation can fail transiently
+/// (DB error during the instance-hash check, offline key validated before
+/// base_url is configured), and recording it would stop
+/// `refetch_license_key_if_invalid` from ever retrying an unchanged key.
+async fn apply_license_key(value: String, conn: &Connection) {
+    set_license_key(value.clone(), conn.as_sql()).await;
+}
+
+
+
 
 pub async fn reload_option_setting_with_tracing<T: FromStr + DeserializeOwned>(
     conn: &Connection,

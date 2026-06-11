@@ -1377,6 +1377,7 @@ Windmill Community Edition {GIT_VERSION}
                                     }
                                 }
 
+
                                 // update min version explicitly.
                                 // for sql connection it is the part of monitor_db.
                                 // TODO: pass worker names for min keep-alive alerts (for HTTP connection)
