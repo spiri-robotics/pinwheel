@@ -11,7 +11,6 @@ use serde::{Deserialize, Deserializer};
 
 pub use windmill_api_auth::{check_scopes, require_devops_role, require_super_admin};
 
-pub use windmill_common::utils::WithStarredInfoQuery;
 
 
 pub fn content_plain(body: Body) -> Response {

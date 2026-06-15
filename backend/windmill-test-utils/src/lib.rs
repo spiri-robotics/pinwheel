@@ -767,7 +767,6 @@ pub async fn assert_lockfile(
                 cache_ttl: None,
                 dedicated_worker: None,
                 description: "".to_string(),
-                draft_only: None,
                 envs: vec![],
                 is_template: None,
                 kind: None,
@@ -790,6 +789,7 @@ pub async fn assert_lockfile(
                 on_behalf_of_email: None,
                 assets: vec![],
                 modules: None,
+                draft_only: None,
             },
         )
         .await
@@ -865,7 +865,6 @@ pub async fn run_deployed_relative_imports(
                 cache_ttl: None,
                 dedicated_worker: None,
                 description: "".to_string(),
-                draft_only: None,
                 envs: vec![],
                 is_template: None,
                 kind: None,
@@ -888,6 +887,7 @@ pub async fn run_deployed_relative_imports(
                 on_behalf_of_email: None,
                 assets: vec![],
                 modules: None,
+                draft_only: None,
             },
         )
         .await

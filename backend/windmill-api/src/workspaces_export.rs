@@ -314,7 +314,6 @@ where
                     "edited_by",
                     "permissioned_as",
                     "archived",
-                    "has_draft",
                     "error",
                     "last_server_ping",
                     "server_id",
@@ -597,7 +596,6 @@ pub(crate) async fn tarball_workspace(
     {
         let scripts = sqlx::query_as::<_, Script<ScriptRunnableSettingsHandle>>(&format!(
             "SELECT {} FROM script as o WHERE workspace_id = $1 AND archived = false
-                 AND (draft_only IS NULL OR draft_only = false)
                  AND created_at = (select max(created_at) from script where path = o.path AND \
                   workspace_id = $1)",
             windmill_common::scripts::SCRIPT_COLUMNS,
@@ -733,10 +731,10 @@ pub(crate) async fn tarball_workspace(
 
     {
         let flows = sqlx::query_as::<_, Flow>(
-             "SELECT flow.workspace_id, flow.path, flow.summary, flow.description, flow.archived, flow.extra_perms, flow.draft_only, flow.dedicated_worker, flow.tag, flow.ws_error_handler_muted, flow.timeout, flow.visible_to_runner_only, flow.on_behalf_of_email, flow.labels, flow_version.schema, flow_version.value, flow_version.created_at as edited_at, flow_version.created_by as edited_by
+             "SELECT flow.workspace_id, flow.path, flow.summary, flow.description, flow.archived, flow.extra_perms, flow.dedicated_worker, flow.tag, flow.ws_error_handler_muted, flow.timeout, flow.visible_to_runner_only, flow.on_behalf_of_email, flow.labels, flow_version.schema, flow_version.value, flow_version.created_at as edited_at, flow_version.created_by as edited_by
              FROM flow
              LEFT JOIN flow_version ON flow_version.id = flow.versions[array_upper(flow.versions, 1)]
-             WHERE flow.workspace_id = $1 AND flow.archived = false AND (flow.draft_only IS NULL OR flow.draft_only = false)",
+             WHERE flow.workspace_id = $1 AND flow.archived = false",
          )
          .bind(&w_id)
          .fetch_all(&mut *tx)
@@ -785,8 +783,7 @@ pub(crate) async fn tarball_workspace(
              "SELECT app.id, app.path, app.summary, app.versions, app.policy, app.custom_path,
              app.extra_perms, app_version.value,
              app_version.created_at, app_version.created_by, app_version.raw_app, app.labels from app, app_version
-             WHERE app.workspace_id = $1 AND app_version.id = app.versions[array_upper(app.versions, 1)]
-             AND (app.draft_only IS NULL OR app.draft_only = false)",
+             WHERE app.workspace_id = $1 AND app_version.id = app.versions[array_upper(app.versions, 1)]",
          )
          .bind(&w_id)
          .fetch_all(&mut *tx)
@@ -865,7 +862,7 @@ pub(crate) async fn tarball_workspace(
         {
             use crate::triggers::http::HttpTrigger;
             let handler = HttpTrigger;
-            let http_triggers = handler.list_triggers(&mut *tx, &w_id, None).await?;
+            let http_triggers = handler.list_triggers(&mut *tx, &w_id, None, None).await?;
             let parent_modes = fork_parent_trigger_modes(
                 &db,
                 <HttpTrigger as TriggerCrud>::TABLE_NAME,
@@ -895,7 +892,7 @@ pub(crate) async fn tarball_workspace(
         {
             use crate::triggers::websocket::WebsocketTrigger;
             let handler = WebsocketTrigger;
-            let websocket_triggers = handler.list_triggers(&mut *tx, &w_id, None).await?;
+            let websocket_triggers = handler.list_triggers(&mut *tx, &w_id, None, None).await?;
             let parent_modes = fork_parent_trigger_modes(
                 &db,
                 <WebsocketTrigger as TriggerCrud>::TABLE_NAME,
@@ -930,7 +927,7 @@ pub(crate) async fn tarball_workspace(
         {
             use crate::triggers::postgres::PostgresTrigger;
             let handler = PostgresTrigger;
-            let postgres_triggers = handler.list_triggers(&mut *tx, &w_id, None).await?;
+            let postgres_triggers = handler.list_triggers(&mut *tx, &w_id, None, None).await?;
             let parent_modes = fork_parent_trigger_modes(
                 &db,
                 <PostgresTrigger as TriggerCrud>::TABLE_NAME,
@@ -960,7 +957,7 @@ pub(crate) async fn tarball_workspace(
         {
             use crate::triggers::mqtt::MqttTrigger;
             let handler = MqttTrigger;
-            let mqtt_triggers = handler.list_triggers(&mut *tx, &w_id, None).await?;
+            let mqtt_triggers = handler.list_triggers(&mut *tx, &w_id, None, None).await?;
             let parent_modes = fork_parent_trigger_modes(
                 &db,
                 <MqttTrigger as TriggerCrud>::TABLE_NAME,
