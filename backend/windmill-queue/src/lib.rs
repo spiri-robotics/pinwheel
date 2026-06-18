@@ -6,6 +6,9 @@
  * LICENSE-AGPL for a copy of the license.
  */
 
+pub mod asset_dispatch;
+pub mod cascade_oss;
+pub use cascade_oss as cascade;
 pub mod jobs;
 pub mod jobs_oss;
 pub mod schedule;
