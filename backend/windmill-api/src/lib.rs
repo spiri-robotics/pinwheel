@@ -74,6 +74,7 @@ mod capture;
 mod concurrency_groups;
 mod db;
 mod db_health;
+mod docs;
 mod drafts;
 
 pub mod ee_oss;
@@ -87,7 +88,6 @@ mod group_history;
 mod groups;
 mod health;
 mod indexer_oss;
-mod inkeep_oss;
 mod integration;
 mod internal_db;
 mod live_migrations;
@@ -633,7 +633,7 @@ pub async fn run_server(
                 .nest("/schedules", windmill_api_schedule::global_service())
                 .nest("/embeddings", embeddings::global_service())
                 .nest("/ai", ai::global_service())
-                .nest("/inkeep", inkeep_oss::global_service())
+                .nest("/docs", docs::global_service())
                 .nest("/indexer", indexer_oss::management_service())
                 .nest("/mcp/w/{workspace_id}/list_tools", mcp_list_tools_service)
                 .nest("/db_health", db_health::global_service())
