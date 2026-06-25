@@ -8,32 +8,14 @@
 
 //! Secret backend extension for the API layer
 //!
-//! This module provides helper functions for integrating the SecretBackend
-//! trait with variable operations in the API.
+//! Backend resolution and read helpers live in
+//! `windmill_common::secret_backend`; this module keeps the API-specific bulk
+//! rename helper used when renaming users.
 //!
 //! Note: HashiCorp Vault integration requires Enterprise Edition.
 //! The OSS version only supports the database backend.
 
-
 use windmill_common::{db::DB, error::Result};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 /// Bulk rename secrets in Vault when a path prefix changes (e.g., user rename)

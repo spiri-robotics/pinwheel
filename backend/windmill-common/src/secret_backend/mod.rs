@@ -13,6 +13,9 @@
 //! vaults like HashiCorp Vault (Enterprise Edition).
 
 pub mod database;
+pub mod resolver;
+
+pub use resolver::*;
 
 
 pub mod azure_kv_oss;

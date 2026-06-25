@@ -6,84 +6,26 @@
  * LICENSE-AGPL for a copy of the license.
  */
 
-//! Secret backend extension for the API layer
+//! Secret backend extension for the store layer
 //!
-//! This module provides helper functions for integrating the SecretBackend
-//! trait with variable operations in the API.
+//! Write-side helpers for integrating the SecretBackend trait with variable
+//! operations. Backend resolution and read helpers live in
+//! `windmill_common::secret_backend` (so lower-level crates can resolve secrets
+//! too) and are re-exported here for existing callers.
 //!
 //! Note: HashiCorp Vault integration requires Enterprise Edition.
 //! The OSS version only supports the database backend.
 
-use std::sync::Arc;
-
 use windmill_common::{
     db::DB,
     error::{Error, Result},
-    secret_backend::{database::DatabaseBackend, SecretBackend},
-    variables::{build_crypt, decrypt, encrypt},
+    variables::{build_crypt, encrypt},
 };
 
-
-
-
-
-
-
-
-
-/// Get the current secret backend based on global settings
-///
-/// OSS: Always returns DatabaseBackend
-/// EE: Returns configured backend (Database or Vault)
-pub async fn get_secret_backend(db: &DB) -> Result<Arc<dyn SecretBackend>> {
-    Ok(Arc::new(DatabaseBackend::new(db.clone())))
-}
-
-
-
-
-
-/// Check if a Vault backend is currently configured
-///
-/// OSS: Always returns false
-/// EE: Checks global settings
-pub async fn is_vault_backend_configured(_db: &DB) -> Result<bool> {
-    Ok(false)
-}
-
-
-/// Get a secret value using the configured backend
-///
-/// For database backend: decrypts using workspace key
-/// For vault backend (EE only): fetches from Vault directly
-pub async fn get_secret_value(
-    db: &DB,
-    workspace_id: &str,
-    path: &str,
-    encrypted_value: &str,
-) -> Result<String> {
-    let backend = get_secret_backend(db).await?;
-
-    match backend.backend_name() {
-        "database" => {
-            // Use existing database decryption
-            let mc = build_crypt(db, workspace_id).await?;
-            decrypt(&mc, encrypted_value.to_string()).map_err(|e| {
-                Error::internal_err(format!("Error decrypting variable {}: {}", path, e))
-            })
-        }
-        "hashicorp_vault" => {
-            // Fetch from Vault directly
-            backend.get_secret(workspace_id, path).await
-        }
-        "azure_key_vault" => backend.get_secret(workspace_id, path).await,
-        "aws_secrets_manager" => backend.get_secret(workspace_id, path).await,
-        _ => Err(Error::internal_err(format!(
-            "Unknown backend: {}",
-            backend.backend_name()
-        ))),
-    }
-}
+pub use windmill_common::secret_backend::{
+    get_secret_backend, get_secret_value, is_aws_sm_stored_value, is_azure_kv_stored_value,
+    is_external_stored_value, is_vault_backend_configured, is_vault_stored_value,
+};
 
 /// Store a secret value using the configured backend
 ///
@@ -226,26 +168,6 @@ pub async fn delete_secret_from_backend(db: &DB, workspace_id: &str, path: &str)
     } else {
         Ok(())
     }
-}
-
-/// Check if a value is stored in Vault (indicated by the $vault: prefix)
-pub fn is_vault_stored_value(value: &str) -> bool {
-    value.starts_with("$vault:")
-}
-
-/// Check if a value is stored in Azure Key Vault (indicated by the $azure_kv: prefix)
-pub fn is_azure_kv_stored_value(value: &str) -> bool {
-    value.starts_with("$azure_kv:")
-}
-
-/// Check if a value is stored in AWS Secrets Manager (indicated by the $aws_sm: prefix)
-pub fn is_aws_sm_stored_value(value: &str) -> bool {
-    value.starts_with("$aws_sm:")
-}
-
-/// Check if a value is stored in any external secret backend
-pub fn is_external_stored_value(value: &str) -> bool {
-    is_vault_stored_value(value) || is_azure_kv_stored_value(value) || is_aws_sm_stored_value(value)
 }
 
 /// Rename a secret in Vault when a variable path changes (EE only)
