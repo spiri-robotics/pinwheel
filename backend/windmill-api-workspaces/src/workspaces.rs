@@ -2197,7 +2197,7 @@ async fn edit_ducklake_config(
             "#,
             &w_id
         )
-        .fetch_one(&db)
+        .fetch_one(&mut *tx)
         .await?
         .unwrap_or(serde_json::Value::Null);
         let old_ducklakes: HashMap<String, Ducklake> =
@@ -2269,7 +2269,7 @@ async fn edit_datatable_config(
             "#,
             &w_id
         )
-        .fetch_one(&db)
+        .fetch_one(&mut *tx)
         .await?
         .unwrap_or(serde_json::Value::Null);
         let old_datatables: HashMap<String, DataTable> =
