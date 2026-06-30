@@ -9,6 +9,7 @@ lazy_static::lazy_static! {
   pub static ref LICENSE_KEY: arc_swap::ArcSwap<String> = arc_swap::ArcSwap::from_pointee("".to_string());
   pub static ref LICENSE_OFFLINE_METADATA: arc_swap::ArcSwap<Option<OfflineMetadata>> = arc_swap::ArcSwap::from_pointee(None);
   pub static ref LICENSE_OFFLINE_OVER_CU_CAP: AtomicBool = AtomicBool::new(false);
+  pub static ref LICENSE_OFFLINE_OVER_SEAT_CAP: AtomicBool = AtomicBool::new(false);
   pub static ref LICENSE_OFFLINE_LAST_STATUS: arc_swap::ArcSwap<Option<OfflineCapStatus>> = arc_swap::ArcSwap::from_pointee(None);
   pub static ref LICENSE_OFFLINE_LAST_CHECKED_AT: arc_swap::ArcSwap<Option<chrono::DateTime<chrono::Utc>>> = arc_swap::ArcSwap::from_pointee(None);
 }
@@ -38,6 +39,7 @@ pub struct OfflineCapStatus {
     pub cu_cap: f64,
     pub cu_over_cap: bool,
 }
+
 
 
 
