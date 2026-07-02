@@ -91,6 +91,9 @@ impl RawWebhookArgs {
         w_id: &str,
     ) -> Result<HashMap<String, Box<RawValue>>, Error> {
         use crate::job_helpers_oss::{
+            bump_storage_usage, ce_storage_quota_remaining, spawn_storage_usage_recount_floored,
+        };
+        use crate::job_helpers_oss::{
             get_random_file_name, get_workspace_s3_resource, upload_file_internal,
         };
         use futures::TryStreamExt;
@@ -139,8 +142,33 @@ impl RawWebhookArgs {
                             .into_stream()
                             .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err));
 
-                        upload_file_internal(s3_client.clone(), &file_key, bytes_stream, options)
-                            .await?;
+                        // file_key is always freshly random here, so this never
+                        // overwrites an existing object; the full size is the delta.
+                        let max_size = Some(ce_storage_quota_remaining(db, w_id, None).await? as usize);
+
+                        match upload_file_internal(
+                            s3_client.clone(),
+                            &file_key,
+                            bytes_stream,
+                            options,
+                            max_size,
+                        )
+                        .await
+                        {
+                            Ok((_, _size)) => {
+                                bump_storage_usage(
+                                    db,
+                                    w_id,
+                                    windmill_object_store::DEFAULT_STORAGE,
+                                    _size as i64,
+                                )
+                                .await;
+                            }
+                            Err(e) => {
+                                spawn_storage_usage_recount_floored(db, w_id);
+                                return Err(e);
+                            }
+                        }
 
                         files.entry(name).or_insert(vec![]).push(serde_json::json!({
                             "s3": &file_key
