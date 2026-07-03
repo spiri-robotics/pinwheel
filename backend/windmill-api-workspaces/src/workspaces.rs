@@ -4509,9 +4509,18 @@ async fn clone_apps(
     .await?;
 
     let mut app_id_mapping: HashMap<i64, i64> = HashMap::new();
+    // Only a raw app's current (last) version has a bundle worth carrying into the fork: bundles exist
+    // only for raw apps, and older versions aren't viewable/runnable (the bundle secret is only ever
+    // minted for `versions.last()`). Copying a bundle for every version of every app is what makes
+    // forking a workspace with many app versions hang — a serial S3 round-trip per version, held inside
+    // the fork transaction. Collect each app's current version here; intersect with raw versions below.
+    let mut latest_version_ids: HashSet<i64> = HashSet::new();
 
     // Clone apps with new IDs
     for app in apps {
+        if let Some(&current_version) = app.versions.last() {
+            latest_version_ids.insert(current_version);
+        }
         let new_app_id = sqlx::query_scalar!(
             "INSERT INTO app (workspace_id, path, summary, policy, versions, extra_perms, custom_path)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -4531,6 +4540,7 @@ async fn clone_apps(
     }
 
     let mut version_id_mapping: HashMap<i64, i64> = HashMap::new();
+    let mut raw_version_ids: HashSet<i64> = HashSet::new();
 
     {
         // Clone app versions
@@ -4546,6 +4556,9 @@ async fn clone_apps(
 
         for version in app_versions {
             if let Some(&new_app_id) = app_id_mapping.get(&version.app_id) {
+                if version.raw_app {
+                    raw_version_ids.insert(version.id);
+                }
                 let new_version_id = sqlx::query_scalar!(
                     "INSERT INTO app_version (app_id, value, created_by, created_at, raw_app)
                  VALUES ($1, $2, $3, $4, $5) RETURNING id",
@@ -4563,9 +4576,16 @@ async fn clone_apps(
         }
     }
 
-    // Clone app bundles for raw apps
-    if !version_id_mapping.is_empty() {
-        let old_ids: Vec<i64> = version_id_mapping.keys().copied().collect();
+    // The bundles worth cloning: each raw app's current version (latest ∩ raw). Everything else either
+    // has no bundle (low-code apps) or an unreachable one (older versions), so we don't touch S3 for it.
+    let bundle_version_ids: HashSet<i64> = latest_version_ids
+        .intersection(&raw_version_ids)
+        .copied()
+        .collect();
+
+    // Clone app bundles — only the current version of each raw app (see bundle_version_ids).
+    if !bundle_version_ids.is_empty() {
+        let old_ids: Vec<i64> = bundle_version_ids.iter().copied().collect();
         let bundles = sqlx::query!(
             "SELECT app_version_id, file_type, data FROM app_bundles
              WHERE app_version_id = ANY($1) AND w_id = $2",
