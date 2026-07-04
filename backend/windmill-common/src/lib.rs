@@ -55,6 +55,7 @@ pub mod materialization;
 pub mod min_version;
 pub mod notify_events;
 pub mod runtime_assets;
+pub mod schema_contracts;
 pub mod workspace_dependencies;
 
 pub mod git_sync_oss;
