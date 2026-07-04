@@ -1592,4 +1592,128 @@ mod schedule_push {
 
         Ok(())
     }
+
+    // -----------------------------------------------------------------------
+    // push_scheduled_job: reserved ducklake-maintenance prefix
+    // -----------------------------------------------------------------------
+
+    // A schedule that pre-dates the reserved prefix (a user schedule under a
+    // real `ducklake_maintenance` folder) must fall through to normal script
+    // resolution when its path's lake has no enabled maintenance config —
+    // never be hijacked into the maintenance payload builder and auto-disabled.
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
+    async fn test_push_reserved_prefix_no_config_falls_through_to_script(
+        db: Pool<Postgres>,
+    ) -> anyhow::Result<()> {
+        let schedule = make_schedule(|s| {
+            s.path = "f/ducklake_maintenance/legacy".to_string();
+        });
+        let authed = make_authed();
+
+        let tx = db.begin().await?;
+        let tx = push_scheduled_job(&db, tx, &schedule, Some(&authed), None).await?;
+        tx.commit().await?;
+
+        assert_eq!(count_queued_jobs(&db).await, 1);
+        let (ws, path, trigger, _) = get_queued_job(&db).await.unwrap();
+        assert_eq!(ws, "test-workspace");
+        assert_eq!(
+            path.as_deref(),
+            Some("f/system/test_script"),
+            "must resolve the schedule's script_path, not the maintenance builder"
+        );
+        assert_eq!(trigger.as_deref(), Some("f/ducklake_maintenance/legacy"));
+        Ok(())
+    }
+
+
+    // Saving maintenance off must remove the managed row AND its queued
+    // occurrence in BOTH builds: the enterprise sync reconciles, and the
+    // public stub must not leave a job pushed under the enterprise edition
+    // to run after the admin disabled maintenance (EE-to-CE downgrade).
+    #[sqlx::test(migrations = "../migrations", fixtures("base", "schedule_push"))]
+    async fn test_sync_disable_clears_managed_row_and_queued_occurrence(
+        db: Pool<Postgres>,
+    ) -> anyhow::Result<()> {
+        use std::collections::HashMap;
+        use windmill_common::workspaces::{
+            Ducklake, DucklakeCatalog, DucklakeCatalogResourceType, DucklakeMaintenance,
+            DucklakeStorage,
+        };
+        use windmill_queue::ducklake_maintenance::sync_ducklake_maintenance_schedules;
+
+        fn lake(maintenance_enabled: bool) -> Ducklake {
+            Ducklake {
+                catalog: DucklakeCatalog {
+                    resource_type: DucklakeCatalogResourceType::Postgresql,
+                    resource_path: "u/test/pg".to_string(),
+                },
+                storage: DucklakeStorage { storage: None, path: "legacy".to_string() },
+                extra_args: None,
+                maintenance: Some(DucklakeMaintenance {
+                    enabled: maintenance_enabled,
+                    schedule: None,
+                    retention_days: None,
+                    compaction: None,
+                    orphan_cleanup: None,
+                }),
+            }
+        }
+
+        // a managed row with a queued occurrence (queued via fall-through: no
+        // lake config exists yet, so the push resolves the script path)
+        let schedule = make_schedule(|s| {
+            s.path = "f/ducklake_maintenance/legacy".to_string();
+        });
+        sqlx::query(
+            "INSERT INTO schedule (workspace_id, path, schedule, timezone, edited_by, script_path,
+                is_flow, enabled, email, permissioned_as, cron_version)
+             VALUES ($1, $2, $3, 'UTC', $4, $5, false, true, $6, $7, 'v2')",
+        )
+        .bind(&schedule.workspace_id)
+        .bind(&schedule.path)
+        .bind(&schedule.schedule)
+        .bind(&schedule.edited_by)
+        .bind(&schedule.script_path)
+        .bind(&schedule.email)
+        .bind(&schedule.permissioned_as)
+        .execute(&db)
+        .await?;
+        let authed = make_authed();
+        let tx = db.begin().await?;
+        let tx = push_scheduled_job(&db, tx, &schedule, Some(&authed), None).await?;
+        tx.commit().await?;
+        assert_eq!(count_queued_jobs(&db).await, 1);
+
+        // maintenance saved off
+        let previous = HashMap::from([("legacy".to_string(), lake(true))]);
+        let current = HashMap::from([("legacy".to_string(), lake(false))]);
+        let tx = db.begin().await?;
+        let tx = sync_ducklake_maintenance_schedules(
+            &db,
+            tx,
+            &schedule.workspace_id,
+            &current,
+            &previous,
+            "test-user",
+            "test@windmill.dev",
+        )
+        .await?;
+        tx.commit().await?;
+
+        assert_eq!(
+            count_queued_jobs(&db).await,
+            0,
+            "queued occurrence must be cleared when maintenance is saved off"
+        );
+        let row_exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM schedule WHERE workspace_id = $1 AND path = $2)",
+        )
+        .bind(&schedule.workspace_id)
+        .bind(&schedule.path)
+        .fetch_one(&db)
+        .await?;
+        assert!(!row_exists, "managed schedule row must be deleted");
+        Ok(())
+    }
 }

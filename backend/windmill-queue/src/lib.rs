@@ -9,6 +9,8 @@
 pub mod asset_dispatch;
 pub mod cascade_oss;
 pub use cascade_oss as cascade;
+pub mod ducklake_maintenance_oss;
+pub use ducklake_maintenance_oss as ducklake_maintenance;
 pub mod freshness_watchdog_oss;
 pub use freshness_watchdog_oss as freshness_watchdog;
 pub mod jobs;
