@@ -1650,6 +1650,7 @@ mod schedule_push {
                 },
                 storage: DucklakeStorage { storage: None, path: "legacy".to_string() },
                 extra_args: None,
+                fork_behavior: None,
                 maintenance: Some(DucklakeMaintenance {
                     enabled: maintenance_enabled,
                     schedule: None,
