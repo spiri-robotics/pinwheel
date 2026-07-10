@@ -2062,6 +2062,7 @@ pub async fn run_worker(
             worker_name.clone(),
             killpill_tx.clone(),
             is_dedicated_worker,
+            false,
             stats_map,
         )),
         _ => None,
