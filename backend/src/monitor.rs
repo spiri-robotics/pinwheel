@@ -2991,6 +2991,11 @@ pub async fn monitor_db(
     let cleanup_scheduled_job_deletions_f = async {
     };
 
+    // Poll git-sync repositories for new commits and pull them into the
+    // workspace (repo → Windmill auto-pull). Runs every 2 iterations.
+    let git_auto_pull_f = async {
+    };
+
     // run every 2 iterations (~20s at the default LISTEN_NEW_EVENTS_INTERVAL_SEC).
     // Enterprise feature: the active `// freshness` backstop lives in
     // windmill-queue's `freshness_watchdog` (`private`); OSS gets a no-op stub.
@@ -3041,9 +3046,16 @@ pub async fn monitor_db(
         manage_audit_partitions_f,
         export_audit_logs_to_object_store_f,
         cleanup_scheduled_job_deletions_f,
+        git_auto_pull_f,
         pipeline_freshness_watchdog_f,
     );
 }
+
+
+
+
+
+
 
 async fn vacuuming_tables(db: &Pool<Postgres>) -> error::Result<()> {
     sqlx::query!("VACUUM v2_job, v2_job_completed, job_result_stream_v2, job_stats, job_logs, job_perms, concurrency_key, log_file, metrics")
