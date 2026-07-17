@@ -142,7 +142,11 @@ bollard = { workspace = true, optional = true }
 oracle = { workspace = true, optional = true }
 hudsucker = { workspace = true, optional = true }
 hyper-http-proxy = { workspace = true, optional = true }
-hyper-tls = { workspace = true, optional = true }
+hyper-rustls = { workspace = true, optional = true }
+tokio-rustls = { workspace = true, optional = true }
+rustls = { workspace = true, optional = true }
+rustls-native-certs = { workspace = true, optional = true }
+rustls-pemfile = { workspace = true, optional = true }
 hyper-util = { workspace = true, optional = true }
 rcgen = { workspace = true, optional = true }
 
