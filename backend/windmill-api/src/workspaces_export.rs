@@ -14,7 +14,7 @@ use crate::{apps::AppWithLastVersion, db::DB, folders::Folder};
 
 use windmill_api_auth::check_scopes;
 
-#[cfg(any(feature = "http_trigger", feature = "websocket", feature = "postgres_trigger", feature = "mqtt_trigger"))]
+#[cfg(any(feature = "http_trigger", feature = "websocket", feature = "postgres_trigger", feature = "mqtt_trigger", feature = "amqp_trigger"))]
 use crate::triggers::TriggerCrud;
 
 use axum::{
@@ -122,7 +122,7 @@ pub fn is_none_or_false(val: &Option<bool>) -> bool {
 ///
 /// Maps trigger `path` → parent `mode` (as the lowercase enum text that matches
 /// `TriggerMode`'s serde representation). Empty when not a fork.
-#[cfg(any(feature = "http_trigger", feature = "websocket", feature = "postgres_trigger", feature = "mqtt_trigger", feature = "native_trigger"))]
+#[cfg(any(feature = "http_trigger", feature = "websocket", feature = "postgres_trigger", feature = "mqtt_trigger", feature = "amqp_trigger", feature = "native_trigger"))]
 async fn fork_parent_trigger_modes(
     db: &DB,
     table_name: &str,
@@ -149,7 +149,7 @@ async fn fork_parent_trigger_modes(
 
 /// Build the `{ "mode": <parent value> }` override for a single trigger, or
 /// `None` (keep the fork's own value) when the path is fork-only.
-#[cfg(any(feature = "http_trigger", feature = "websocket", feature = "postgres_trigger", feature = "mqtt_trigger", feature = "native_trigger"))]
+#[cfg(any(feature = "http_trigger", feature = "websocket", feature = "postgres_trigger", feature = "mqtt_trigger", feature = "amqp_trigger", feature = "native_trigger"))]
 fn trigger_mode_override(
     parent_modes: &HashMap<String, String>,
     path: &str,
@@ -1023,6 +1023,36 @@ pub(crate) async fn tarball_workspace(
                     .write_to_archive(
                         &trigger_str,
                         &format!("{}.mqtt_trigger.json", trigger.base.path),
+                    )
+                    .await?;
+            }
+        }
+
+        #[cfg(feature = "amqp_trigger")]
+        {
+            use crate::triggers::amqp::AmqpTrigger;
+            let handler = AmqpTrigger;
+            let amqp_triggers = handler.list_triggers(&mut *tx, &w_id, None, None).await?;
+            let parent_modes = fork_parent_trigger_modes(
+                &db,
+                <AmqpTrigger as TriggerCrud>::TABLE_NAME,
+                parent_workspace_id.as_deref(),
+            )
+            .await?;
+
+            for trigger in amqp_triggers {
+                let mode_override = trigger_mode_override(&parent_modes, &trigger.base.path);
+                let trigger_str = &to_string_without_metadata_inner(
+                    &trigger,
+                    ExtraPermsBehavior::Drop,
+                    None,
+                    mode_override.as_ref(),
+                )
+                .unwrap();
+                archive
+                    .write_to_archive(
+                        &trigger_str,
+                        &format!("{}.amqp_trigger.json", trigger.base.path),
                     )
                     .await?;
             }

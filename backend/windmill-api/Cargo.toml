@@ -31,6 +31,7 @@ http_trigger = ["dep:matchit", "dep:windmill-trigger-http", "windmill-store/http
 static_frontend = ["dep:rust-embed"]
 postgres_trigger = ["dep:windmill-trigger-postgres", "windmill-store/postgres_trigger"]
 mqtt_trigger = ["dep:windmill-trigger-mqtt", "windmill-store/mqtt_trigger"]
+amqp_trigger = ["dep:windmill-trigger-amqp", "windmill-store/amqp_trigger"]
 native_trigger = ["dep:windmill-native-triggers", "windmill-native-triggers/native_trigger", "dep:strum", "oauth2"]
 sqs_trigger = ["dep:windmill-trigger-sqs", "windmill-store/sqs_trigger"]
 gcp_trigger = ["dep:windmill-trigger-gcp", "windmill-store/gcp_trigger"]
@@ -138,6 +139,7 @@ matchit = { workspace = true, optional = true }
 windmill-trigger-kafka = { workspace = true, optional = true }
 windmill-trigger-postgres = { workspace = true, optional = true }
 windmill-trigger-mqtt = { workspace = true, optional = true }
+windmill-trigger-amqp = { workspace = true, optional = true }
 windmill-trigger-websocket = { workspace = true, optional = true }
 windmill-trigger-email = { workspace = true, optional = true }
 windmill-trigger-nats = { workspace = true, optional = true }

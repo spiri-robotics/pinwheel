@@ -2379,7 +2379,7 @@ async fn update_resource_type(
     Ok(format!("resource_type {} updated", name))
 }
 
-#[cfg(any(feature = "http_trigger", feature = "postgres_trigger", feature = "mqtt_trigger"))]
+#[cfg(any(feature = "http_trigger", feature = "postgres_trigger", feature = "mqtt_trigger", feature = "amqp_trigger"))]
 pub async fn try_get_resource_from_db_as<T>(
     authed: &ApiAuthed,
     user_db: Option<UserDB>,

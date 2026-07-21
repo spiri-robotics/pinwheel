@@ -1,3 +1,6 @@
+// Concrete trigger submodules (feature-gated)
+#[cfg(feature = "amqp_trigger")]
+pub mod amqp;
 #[cfg(feature = "http_trigger")]
 pub mod http;
 #[cfg(feature = "mqtt_trigger")]
