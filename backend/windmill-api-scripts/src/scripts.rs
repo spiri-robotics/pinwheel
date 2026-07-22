@@ -157,8 +157,7 @@ async fn list_search_scripts(
     Extension(user_db): Extension<UserDB>,
 ) -> JsonResult<Vec<SearchScript>> {
     let mut tx = user_db.begin(&authed).await?;
-
-    let n = 10;
+    let n = 10000;
 
     let allowed = build_scope_path_predicate(&authed, "scripts", "read");
     let rows = sqlx::query_as!(

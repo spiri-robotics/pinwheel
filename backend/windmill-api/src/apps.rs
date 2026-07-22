@@ -383,8 +383,7 @@ async fn list_search_apps(
     // apps' definitions. `check_scopes` uses ScopeDefinition::includes, where run
     // does NOT include read, so it correctly denies such tokens.
     check_scopes(&authed, || "apps:read".to_string())?;
-
-    let n = 3;
+    let n = 1000;
     let mut tx = user_db.begin(&authed).await?;
 
     let allowed = build_scope_path_predicate(&authed, "apps", "read");
