@@ -93,6 +93,7 @@ mod indexer_oss;
 mod integration;
 mod internal_db;
 mod live_migrations;
+mod runnables;
 mod s3_proxy_oss;
 mod workspace_dependencies;
 
@@ -519,6 +520,7 @@ pub async fn run_server(
                         .nest("/embeddings", embeddings::workspaced_service())
                         .nest("/favorites", favorite::workspaced_service())
                         .nest("/flows", flows::workspaced_service())
+                        .nest("/runnables", runnables::workspaced_service())
                         .nest(
                             "/workspace_dependencies",
                             workspace_dependencies::workspaced_service(),
