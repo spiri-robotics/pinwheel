@@ -188,8 +188,12 @@ use crate::duckdb_executor::do_duckdb;
 
 
 
+#[cfg(feature = "snowflake")]
+use crate::snowflake_executor::do_snowflake;
 
 
+#[cfg(feature = "bigquery")]
+use crate::bigquery_executor::do_bigquery;
 
 #[cfg(feature = "benchmark")]
 use windmill_common::bench::{benchmark_init, benchmark_verify, BenchmarkInfo, BenchmarkIter};
@@ -4638,13 +4642,6 @@ pub async fn run_language_executor(
             .await;
         }
     } else if language == Some(ScriptLang::Bigquery) {
-        {
-            return Err(Error::ExecutionErr(
-                "Bigquery is only available with an enterprise license".to_string(),
-            ));
-        }
-
-        #[allow(unreachable_code)]
         #[cfg(not(feature = "bigquery"))]
         {
             return Err(Error::internal_err(
@@ -4652,13 +4649,56 @@ pub async fn run_language_executor(
             ));
         }
 
-    } else if language == Some(ScriptLang::Snowflake) {
+        #[cfg(feature = "bigquery")]
         {
-            return Err(Error::ExecutionErr(
-                "Snowflake is only available with an enterprise license".to_string(),
+            if run_inline {
+                return Err(Error::internal_err(
+                    "Inline execution is not yet supported for this language".to_string(),
+                ));
+            }
+            return Box::pin(do_bigquery(
+                job,
+                &client,
+                &code,
+                conn,
+                mem_peak,
+                canceled_by,
+                worker_name,
+                column_order,
+                occupancy_metrics,
+                parent_runnable_path,
+            ))
+            .await;
+        }
+    } else if language == Some(ScriptLang::Snowflake) {
+        #[cfg(not(feature = "snowflake"))]
+        {
+            return Err(Error::internal_err(
+                "Snowflake requires the snowflake feature to be enabled".to_string(),
             ));
         }
 
+        #[cfg(feature = "snowflake")]
+        {
+            if run_inline {
+                return Err(Error::internal_err(
+                    "Inline execution is not yet supported for this language".to_string(),
+                ));
+            }
+            return Box::pin(do_snowflake(
+                job,
+                &client,
+                &code,
+                conn,
+                mem_peak,
+                canceled_by,
+                worker_name,
+                column_order,
+                occupancy_metrics,
+                parent_runnable_path,
+            ))
+            .await;
+        }
     } else if language == Some(ScriptLang::Mssql) {
         {
             return Err(Error::ExecutionErr(

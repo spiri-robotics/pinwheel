@@ -1,3 +1,7 @@
+#[cfg(feature = "bigquery")]
+mod bigquery_executor;
+#[cfg(feature = "snowflake")]
+mod snowflake_executor;
 
 mod agent_workers;
 #[cfg(feature = "python")]
