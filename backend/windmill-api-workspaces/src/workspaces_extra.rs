@@ -1339,7 +1339,7 @@ pub async fn drop_forked_datatable_databases(
                         ));
                     }
                     drop(client);
-                    let _ = join_handle.await;
+                    let _ = windmill_common::shutdown_pg_connection(join_handle).await;
                 }
                 Err(e) => {
                     errors.push(format!(
@@ -1668,7 +1668,7 @@ async fn drop_fork_ducklake_metadata_schema(
         )
         .await;
     drop(client);
-    let _ = join_handle.await;
+    let _ = windmill_common::shutdown_pg_connection(join_handle).await;
     res.map_err(|e| Error::internal_err(format!("{e:#}")))?;
     Ok(())
 }
