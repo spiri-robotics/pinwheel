@@ -767,8 +767,8 @@ fn redact_git_sync_webhook_secrets(git_sync: &mut serde_json::Value) {
     }
 }
 
-/// Zero the server-owned auto-pull fields (webhook id/secret/error, synced sha,
-/// last pull status) on a client-supplied `AutoPullSettings`. The client only
+/// Zero the server-owned auto-pull fields (webhook id/secret/url/error, synced
+/// sha, last pull status) on a client-supplied `AutoPullSettings`. The client only
 /// controls `enabled` / `mode` / `poll_interval_s`; the rest is written by the
 /// server (webhook creation, poller) and must never be trusted from the request —
 /// otherwise a caller could inject a webhook id/secret or fake sync state.
@@ -777,6 +777,7 @@ fn clear_client_supplied_auto_pull_state(
 ) {
     auto_pull.webhook_id = None;
     auto_pull.webhook_secret = None;
+    auto_pull.webhook_url = None;
     auto_pull.webhook_error = None;
     auto_pull.last_synced_sha = std::collections::HashMap::new();
     auto_pull.last_pull_status = None;
@@ -872,7 +873,6 @@ async fn reject_parent_only_git_sync_settings_on_fork<'a>(
     }
     Ok(())
 }
-
 
 async fn get_settings(
     authed: ApiAuthed,
@@ -3225,8 +3225,13 @@ async fn edit_git_sync_config(
         // status) that the redacted GET response omits — otherwise a whole-config
         // save from the UI would drop the webhook secret (breaking delivery) or
         // clobber what the poller/webhook layer wrote.
+        //
+        // `FOR UPDATE` because this is a read-modify-write of the whole `git_sync`
+        // blob: the webhook reconciler writes hook fields into it with a targeted
+        // update, and without the row lock one landing between this read and the
+        // write below would be reverted, leaving its hook live but untracked.
         let existing: Option<WorkspaceGitSyncSettings> = sqlx::query_scalar!(
-            "SELECT git_sync FROM workspace_settings WHERE workspace_id = $1",
+            "SELECT git_sync FROM workspace_settings WHERE workspace_id = $1 FOR UPDATE",
             &w_id
         )
         .fetch_optional(&mut *tx)
@@ -3248,6 +3253,7 @@ async fn edit_git_sync_config(
                 {
                     new_ap.webhook_id = old_ap.webhook_id;
                     new_ap.webhook_secret = old_ap.webhook_secret.clone();
+                    new_ap.webhook_url = old_ap.webhook_url.clone();
                     new_ap.last_synced_sha = old_ap.last_synced_sha.clone();
                     new_ap.last_pull_status = old_ap.last_pull_status.clone();
                 }
@@ -3345,9 +3351,12 @@ async fn edit_git_sync_repository(
 
     let mut tx = db.begin().await?;
 
-    // First, get the current git sync settings
+    // First, get the current git sync settings. `FOR UPDATE` because this
+    // read-modify-writes the whole `git_sync` blob: the webhook reconciler writes
+    // hook fields into it with a targeted update, and one landing between this read
+    // and the write below would be reverted, leaving its hook live but untracked.
     let current_settings = sqlx::query!(
-        "SELECT git_sync FROM workspace_settings WHERE workspace_id = $1",
+        "SELECT git_sync FROM workspace_settings WHERE workspace_id = $1 FOR UPDATE",
         &w_id
     )
     .fetch_optional(&mut *tx)
@@ -3422,6 +3431,7 @@ async fn edit_git_sync_repository(
                 new_ap.last_pull_status = old_ap.last_pull_status.clone();
                 new_ap.webhook_id = old_ap.webhook_id;
                 new_ap.webhook_secret = old_ap.webhook_secret.clone();
+                new_ap.webhook_url = old_ap.webhook_url.clone();
             }
             // UI omitted auto_pull (e.g. older client): keep existing config.
             (None, Some(_)) => {
@@ -3500,9 +3510,12 @@ async fn delete_git_sync_repository(
 
     let mut tx = db.begin().await?;
 
-    // First, get the current git sync settings
+    // First, get the current git sync settings. `FOR UPDATE` because this
+    // read-modify-writes the whole `git_sync` blob: the webhook reconciler writes
+    // hook fields into it with a targeted update, and one landing between this read
+    // and the write below would be reverted, leaving its hook live but untracked.
     let current_settings = sqlx::query!(
-        "SELECT git_sync FROM workspace_settings WHERE workspace_id = $1",
+        "SELECT git_sync FROM workspace_settings WHERE workspace_id = $1 FOR UPDATE",
         &w_id
     )
     .fetch_optional(&mut *tx)
@@ -6532,10 +6545,13 @@ async fn attach_dev_workspace(
     // live — they'd keep pulling/pushing against its pre-attach tracked
     // branch. Mirror the fork-creation copy: keep sync repos only, strip the
     // parent-only fields, and delete any managed webhook after commit.
+    // `FOR UPDATE` like the other `git_sync` read-modify-writes: the hook ids
+    // collected here are deleted after commit, so a reconcile writing a new id in the
+    // gap would leave that hook live with nothing tracking it.
     #[allow(unused_mut)]
     let mut stripped_webhooks: Vec<(String, i64)> = Vec::new();
     if let Some(git_sync) = sqlx::query_scalar!(
-        "SELECT git_sync FROM workspace_settings WHERE workspace_id = $1",
+        "SELECT git_sync FROM workspace_settings WHERE workspace_id = $1 FOR UPDATE",
         &dev_w_id
     )
     .fetch_optional(&mut *tx)
