@@ -1000,8 +1000,7 @@ async fn test_compare_workspaces_fork_only_folder_visibility(
     .execute(&db)
     .await?;
 
-    // Create fork via the API so cloning + workspace_settings.deploy_to wiring
-    // matches what production sees.
+    // Create fork via the API so the cloning and lineage wiring matches what production sees.
     let client_admin = windmill_api_client::create_client(
         &format!("http://localhost:{port}"),
         "SECRET_TOKEN".to_string(),

@@ -393,8 +393,6 @@ struct SimplifiedSettings {
     auto_invite: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     webhook: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    deploy_to: Option<String>,
     // Always serialize (including as `null`) so that `wmill sync pull` emits
     // these fields in settings.yaml unconditionally. Makes round-trip
     // bijective: YAML is the source of truth, absence/null = "clear remote",
@@ -440,8 +438,6 @@ struct SimplifiedSettingsLegacy {
     #[serde(skip_serializing_if = "Option::is_none")]
     webhook: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    deploy_to: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     error_handler: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     error_handler_extra_args: Option<Value>,
@@ -478,7 +474,6 @@ struct SimplifiedSettingsLegacy {
 struct SettingsRow {
     auto_invite: Option<Value>,
     webhook: Option<String>,
-    deploy_to: Option<String>,
     error_handler: Option<Value>,
     success_handler: Option<Value>,
     ai_config: Option<serde_json::Value>,
@@ -1198,7 +1193,6 @@ pub(crate) async fn tarball_workspace(
             r#"SELECT
                  auto_invite,
                  webhook,
-                 deploy_to,
                  error_handler,
                  success_handler,
                  ai_config,
@@ -1258,7 +1252,6 @@ pub(crate) async fn tarball_workspace(
             let settings = SimplifiedSettings {
                 auto_invite: row.auto_invite,
                 webhook: row.webhook,
-                deploy_to: row.deploy_to,
                 error_handler: row.error_handler,
                 success_handler: row.success_handler,
                 ai_config: row.ai_config,
@@ -1328,7 +1321,6 @@ pub(crate) async fn tarball_workspace(
                 auto_invite_as,
                 auto_invite_mode,
                 webhook: row.webhook,
-                deploy_to: row.deploy_to,
                 error_handler,
                 error_handler_extra_args,
                 error_handler_muted_on_cancel,
