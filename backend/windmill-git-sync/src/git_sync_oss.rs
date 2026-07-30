@@ -17,6 +17,16 @@ pub async fn handle_deployment_metadata<'c>(
     return Ok(());
 }
 
+pub async fn tally_deployed_object_changes(
+    _w_id: &str,
+    _obj: &DeployedObject,
+    _db: &DB,
+    _renamed_from: Option<&str>,
+) -> Result<()> {
+    // Workspace forks are an enterprise feature and not part of the open-source version
+    return Ok(());
+}
+
 pub async fn handle_fork_branch_creation<'c>(
     _email: &str,
     _created_by: &str,

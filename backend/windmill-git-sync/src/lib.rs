@@ -13,6 +13,7 @@ pub mod git_sync_oss;
 
 pub use git_sync_oss::{
     handle_deployment_metadata, handle_deployment_metadata_batch, handle_fork_branch_creation,
+    tally_deployed_object_changes,
 };
 
 #[derive(Clone, Debug)]
