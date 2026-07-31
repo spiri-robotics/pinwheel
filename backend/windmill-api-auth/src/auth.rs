@@ -155,7 +155,8 @@ impl AuthCache {
                             tracing::error!("JWT auth error: workspace_id mismatch");
                             return None;
                         }
-                        let username_override = username_override_from_label(claims.label);
+                        let (username_override, username_override_is_token_label) =
+                            username_override_from_label(claims.label);
 
                         let authed = ApiAuthed {
                             email: claims.email,
@@ -170,6 +171,7 @@ impl AuthCache {
                             // WM_TOKEN) keeps full user privileges as before.
                             scopes: claims.scopes,
                             username_override,
+                            username_override_is_token_label,
                             token_prefix: claims.audit_span,
                             read_only: false,
                         };
@@ -224,7 +226,8 @@ impl AuthCache {
                             (Some(owner), Some(email), super_admin, _, label, read_only)
                                 if w_id.is_some() =>
                             {
-                                let username_override = username_override_from_label(label);
+                                let (username_override, username_override_is_token_label) =
+                                    username_override_from_label(label);
                                 if let Some((prefix, name)) = owner.split_once('/') {
                                     if prefix == "u" {
                                         let lookup = if super_admin {
@@ -267,6 +270,7 @@ impl AuthCache {
                                                 folders,
                                                 scopes: None,
                                                 username_override,
+                                                username_override_is_token_label,
                                                 token_prefix: Some(safe_token_prefix(token)),
                                                 read_only,
                                             })
@@ -317,6 +321,7 @@ impl AuthCache {
                                                 folders,
                                                 scopes: None,
                                                 username_override,
+                                                username_override_is_token_label,
                                                 token_prefix: Some(safe_token_prefix(token)),
                                                 read_only,
                                             })
@@ -345,7 +350,8 @@ impl AuthCache {
                                 }
                             }
                             (_, Some(email), super_admin, scopes, label, read_only) => {
-                                let username_override = username_override_from_label(label);
+                                let (username_override, username_override_is_token_label) =
+                                    username_override_from_label(label);
                                 if w_id.is_some() {
                                     let row_o = sqlx::query!(
                                         "SELECT username, is_admin, operator FROM usr WHERE
@@ -388,6 +394,7 @@ impl AuthCache {
                                                 folders,
                                                 scopes,
                                                 username_override,
+                                                username_override_is_token_label,
                                                 token_prefix: Some(safe_token_prefix(token)),
                                                 read_only,
                                             })
@@ -409,6 +416,7 @@ impl AuthCache {
                                                     folders: vec![],
                                                     scopes,
                                                     username_override,
+                                                    username_override_is_token_label,
                                                     token_prefix: Some(safe_token_prefix(token)),
                                                     read_only,
                                                 }),
@@ -432,6 +440,7 @@ impl AuthCache {
                                         folders: Vec::new(),
                                         scopes,
                                         username_override,
+                                        username_override_is_token_label,
                                         token_prefix: Some(safe_token_prefix(token)),
                                         read_only,
                                     })
@@ -467,6 +476,7 @@ impl AuthCache {
                         folders: Vec::new(),
                         scopes: None,
                         username_override: None,
+                        username_override_is_token_label: false,
                         token_prefix: Some(safe_token_prefix(token)),
                         read_only: false,
                     };
@@ -674,6 +684,7 @@ fn no_auth_admin_authed() -> ApiAuthed {
         folders: Vec::new(),
         scopes: None,
         username_override: None,
+        username_override_is_token_label: false,
         token_prefix: None,
         read_only: false,
     }
@@ -794,27 +805,47 @@ pub async fn resolve_opt_job_authed(
     Err((Error::NotAuthorized("Unauthorized".to_string()), parts))
 }
 
-fn username_override_from_label(label: Option<String>) -> Option<String> {
+/// Returns the override and whether it names the token's *label* rather than the entity that
+/// fired the request. Callers must not re-derive the second element from the first: the
+/// `ephemeral-script-end-user-` arm forwards a `created_by` verbatim, and `created_by` is
+/// unconstrained, so it may itself look like any of these shapes.
+///
+/// Only namespaces `create_token` rejects (`is_server_minted_label`) are trusted to name the
+/// entity acting, so the label can only have come from a server-side mint. Tokens minted
+/// before that guard existed are the remaining hole; closing it needs the token row to record
+/// who minted it rather than inferring it from the label.
+///
+/// Note that a trigger whose identity is set server-side — the SMTP one builds an `email-*`
+/// override directly — does not rely on this at all, so its prefix must not be trusted here.
+pub(crate) fn username_override_from_label(label: Option<String>) -> (Option<String>, bool) {
     match label {
+        Some(label) if label.starts_with("ephemeral-webhook-") => (Some(label), false),
+        Some(label) if label.starts_with("ephemeral-script-end-user-") => (
+            Some(
+                label
+                    .trim_start_matches("ephemeral-script-end-user-")
+                    .to_string(),
+            ),
+            false,
+        ),
+        // User-mintable, so they name nobody in particular — the trigger panels merely
+        // pre-fill `webhook-`/`http-`, and the editor mints the lsp one. The override keeps
+        // its value because `require_job_read_access` matches it against the `created_by` of
+        // jobs launched under it, which these shapes produced while they were trusted.
+        Some(label) if label == "Ephemeral lsp token" => (Some("lsp".to_string()), true),
         Some(label)
-            if label.starts_with("ephemeral-webhook-")
-                || label.starts_with("webhook-")
+            if label.starts_with("webhook-")
                 || label.starts_with("http-")
                 || label.starts_with("email-")
                 || label.starts_with("ws-") =>
         {
-            Some(label)
+            (Some(label), true)
         }
-        Some(label) if label.starts_with("ephemeral-script-end-user-") => Some(
-            label
-                .trim_start_matches("ephemeral-script-end-user-")
-                .to_string(),
+        Some(label) if label != "ephemeral-script" && label != "session" && !label.is_empty() => (
+            Some(format!("{}{label}", crate::GENERIC_TOKEN_LABEL_PREFIX)),
+            true,
         ),
-        Some(label) if label == "Ephemeral lsp token" => Some("lsp".to_string()),
-        Some(label) if label != "ephemeral-script" && label != "session" && !label.is_empty() => {
-            Some(format!("label-{label}"))
-        }
-        _ => None,
+        _ => (None, false),
     }
 }
 
