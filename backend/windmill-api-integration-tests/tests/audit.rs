@@ -33,3 +33,4 @@ async fn test_audit_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
 
     Ok(())
 }
+
