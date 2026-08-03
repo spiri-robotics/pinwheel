@@ -96,6 +96,8 @@ mod internal_db;
 mod live_migrations;
 mod runnables;
 mod s3_proxy_oss;
+#[cfg(feature = "parquet")]
+mod storage_list_oss;
 mod workspace_dependencies;
 
 mod approvals;
