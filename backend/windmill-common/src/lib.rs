@@ -29,6 +29,7 @@ use sqlx::{Acquire, Postgres};
 pub mod agent_workers;
 pub mod apps;
 pub mod assets;
+pub mod azure_workload_identity;
 pub mod dbt_manifest;
 pub mod audit;
 pub mod auth;
@@ -1016,6 +1017,8 @@ impl PgDatabase {
             Ok((client, TokioPgConnection::NoTls(connection)))
         }
     }
+
+
 
 
     pub fn parse_uri(url: &str) -> Result<Self, Error> {
