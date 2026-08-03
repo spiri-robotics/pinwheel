@@ -40,6 +40,7 @@ pub mod client;
 pub mod data_metrics;
 pub mod db;
 pub mod db_params;
+pub mod deploy_origin;
 pub mod deployment_requests_oss;
 pub mod ee_oss;
 pub mod email_oss;

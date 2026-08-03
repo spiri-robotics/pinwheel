@@ -1859,3 +1859,26 @@ async fn test_full_diff_scan_against_arbitrary_workspace(db: Pool<Postgres>) -> 
 
     Ok(())
 }
+
+
+/// `probe_deploy_event_kind` builds its query for these kinds by interpolating the
+/// table name, so a wrong entry compiles fine and only fails once someone deploys
+/// that trigger kind in a fork — where the error aborts the tally and the item
+/// never reaches `workspace_diff` at all. Sweep the allowlist against a live
+/// database instead.
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
+async fn test_probe_covers_every_path_keyed_table(db: Pool<Postgres>) -> anyhow::Result<()> {
+    for kind in windmill_git_sync::PATH_KEYED_TABLES {
+        let probed =
+            windmill_git_sync::probe_deploy_event_kind(&db, "test-workspace", kind, "u/a/nothing")
+                .await
+                .unwrap_or_else(|e| panic!("probing `{kind}` failed: {e}"));
+        assert_eq!(
+            probed,
+            Some(windmill_common::deploy_origin::DeployEventKind::Delete),
+            "an absent `{kind}` must probe as a deletion"
+        );
+    }
+    Ok(())
+}
+
