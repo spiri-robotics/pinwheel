@@ -762,6 +762,23 @@ ta9ELulniZau8zUAtwqwecxodzl+KO8NYj0a9PGgAM64dMqkRtRA8P4UP350Nag3\n\
         assert!(pg(Some("allow"), None).to_uri().contains("sslmode=prefer"));
         assert!(pg(None, None).to_uri().contains("sslmode=prefer"));
     }
+
+    /// The other paths default a missing login to `postgres`; Entra must not, or the
+    /// server rejects a role the resource never named.
+    #[test]
+    fn entra_login_rejects_a_missing_user() {
+        let mut db = pg(None, None);
+        assert_eq!(db.entra_login().unwrap(), "u");
+        assert_eq!(db.login_name(), "u");
+
+        db.user = None;
+        assert_eq!(db.login_name(), "postgres");
+
+        for blank in [None, Some(""), Some("  ")] {
+            db.user = blank.map(|u: &str| u.to_string());
+            assert!(db.entra_login().is_err(), "{blank:?} is not a login");
+        }
+    }
 }
 
 #[derive(Serialize, Debug)]
@@ -828,6 +845,11 @@ impl Future for TokioPgConnection {
 }
 
 impl PgDatabase {
+    /// The role the connection logs in as, whichever way it authenticates.
+    pub fn login_name(&self) -> &str {
+        self.user.as_deref().unwrap_or("postgres")
+    }
+
     pub fn to_uri(&self) -> String {
         let sslmode = match self.sslmode.as_deref() {
             Some("allow") => "prefer".to_string(),
@@ -846,7 +868,7 @@ impl PgDatabase {
         };
         format!(
             "postgres://{user}:{password}@{host}:{port}/{dbname}?sslmode={sslmode}",
-            user = urlencoding::encode(&self.user.as_deref().unwrap_or("postgres")),
+            user = urlencoding::encode(self.login_name()),
             password = urlencoding::encode(&self.password.as_deref().unwrap_or("")),
             host = host,
             port = self.port.unwrap_or(5432),
@@ -1019,6 +1041,26 @@ impl PgDatabase {
         }
     }
 
+
+    /// The role an Entra-authenticated connection logs in as. Azure maps each Entra
+    /// principal to a role of its own (`pgaadauth_create_principal`), so unlike the
+    /// other paths this one has no sensible default: `postgres` would send the server a
+    /// role name the resource never mentions, and the rejection then names a value the
+    /// user never configured.
+    pub fn entra_login(&self) -> error::Result<&str> {
+        self.user
+            .as_deref()
+            .map(str::trim)
+            .filter(|u| !u.is_empty())
+            .ok_or_else(|| {
+                error::Error::BadRequest(
+                    "Azure workload identity authentication requires `user` on the resource. \
+                     Set it to the Postgres role the worker's Entra principal is mapped to, \
+                     as created by pgaadauth_create_principal."
+                        .to_string(),
+                )
+            })
+    }
 
 
 
