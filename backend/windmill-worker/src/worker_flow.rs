@@ -3060,6 +3060,7 @@ async fn push_next_flow_job(
             w_id: flow_job.workspace_id.clone(),
             worker_dir: worker_dir.to_string(),
             token: client.token.clone(),
+            unrecoverable,
         })));
     }
 
@@ -3114,6 +3115,7 @@ async fn push_next_flow_job(
                             w_id: flow_job.workspace_id.clone(),
                             worker_dir: worker_dir.to_string(),
                             token: client.token.clone(),
+                            unrecoverable,
                         }
                     )));
                 }
@@ -3158,6 +3160,7 @@ async fn push_next_flow_job(
                     w_id: flow_job.workspace_id.clone(),
                     worker_dir: worker_dir.to_string(),
                     token: client.token.clone(),
+                    unrecoverable,
                 })));
             }
         }
@@ -3490,6 +3493,10 @@ async fn push_next_flow_job(
                     w_id: flow_job.workspace_id.clone(),
                     worker_dir: worker_dir.to_string(),
                     token: client.token.clone(),
+                    // A suspend that was disapproved or ran out its timeout cannot be
+                    // resumed by anything the flow does next, so the failure module is the
+                    // only way forward.
+                    unrecoverable: true,
                 })));
             }
         }
