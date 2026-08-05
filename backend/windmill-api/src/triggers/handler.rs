@@ -133,14 +133,18 @@ pub async fn get_triggers_count_internal(
     .await?
     .unwrap_or(0);
 
+    // These counts are independent reads: they share a connection to avoid one acquire
+    // per trigger kind, but must not share a transaction. A single failing count would
+    // abort it and, since `trigger_count` falls back to 0 on error, silently zero every
+    // count after it.
     #[allow(unused)]
-    let mut tx = db.begin().await?;
+    let mut conn = db.acquire().await?;
 
     #[cfg(feature = "http_trigger")]
     let http_routes_count = {
         use crate::triggers::http::HttpTrigger;
         let count = HttpTrigger
-            .trigger_count(&mut tx, w_id, is_flow, path)
+            .trigger_count(&mut conn, w_id, is_flow, path)
             .await;
         count
     };
@@ -151,7 +155,7 @@ pub async fn get_triggers_count_internal(
     let websocket_count = {
         use crate::triggers::websocket::WebsocketTrigger;
         let count = WebsocketTrigger
-            .trigger_count(&mut tx, w_id, is_flow, path)
+            .trigger_count(&mut conn, w_id, is_flow, path)
             .await;
         count
     };
@@ -166,7 +170,7 @@ pub async fn get_triggers_count_internal(
     let postgres_count = {
         use crate::triggers::postgres::PostgresTrigger;
         let count = PostgresTrigger
-            .trigger_count(&mut tx, w_id, is_flow, path)
+            .trigger_count(&mut conn, w_id, is_flow, path)
             .await;
         count
     };
@@ -177,7 +181,7 @@ pub async fn get_triggers_count_internal(
     let mqtt_count = {
         use crate::triggers::mqtt::MqttTrigger;
         let count = MqttTrigger
-            .trigger_count(&mut tx, w_id, is_flow, path)
+            .trigger_count(&mut conn, w_id, is_flow, path)
             .await;
         count
     };
@@ -188,7 +192,7 @@ pub async fn get_triggers_count_internal(
     let amqp_count = {
         use crate::triggers::amqp::AmqpTrigger;
         let count = AmqpTrigger
-            .trigger_count(&mut tx, w_id, is_flow, path)
+            .trigger_count(&mut conn, w_id, is_flow, path)
             .await;
         count
     };
@@ -203,7 +207,7 @@ pub async fn get_triggers_count_internal(
 
     let email_count = 0;
 
-    tx.commit().await?;
+    drop(conn);
 
     let webhook_count = (if is_flow {
         sqlx::query_scalar!(
