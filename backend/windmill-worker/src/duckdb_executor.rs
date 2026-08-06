@@ -1597,6 +1597,7 @@ pub async fn do_duckdb(
         )
         .await?;
 
+
         let base_internal_url = client.base_internal_url.clone();
         let w_id = job.workspace_id.clone();
         let job_dir = job_dir.to_string();
