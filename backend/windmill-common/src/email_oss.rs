@@ -1,6 +1,10 @@
 
 use crate::server::Smtp;
 
+/// Every send below is a no-op in this build, so callers that report success to a user (the
+/// instance-settings SMTP test) have to say so instead of claiming the email went out.
+pub const SMTP_ENABLED: bool = false;
+
 pub async fn send_email(
     _subject: &str,
     _content: &str,
