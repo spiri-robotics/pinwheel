@@ -824,6 +824,7 @@ pub async fn handle_receive_completed_job(
 
 
 
+
 pub async fn process_completed_job(
     JobCompleted {
         job,
