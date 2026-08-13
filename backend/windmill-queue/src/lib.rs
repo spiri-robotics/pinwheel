@@ -7,6 +7,7 @@
  */
 
 pub mod asset_dispatch;
+pub mod binary_prebuild;
 pub mod cascade_oss;
 pub use cascade_oss as cascade;
 pub mod ducklake_maintenance_oss;
