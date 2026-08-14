@@ -159,12 +159,7 @@ async fn test_group_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
         .send()
         .await
         .unwrap();
-    assert_eq!(
-        resp.status(),
-        200,
-        "create igroup: {}",
-        resp.text().await?
-    );
+    assert_eq!(resp.status(), 200, "create igroup: {}", resp.text().await?);
 
     // --- list instance groups ---
     let resp = authed(client().get(format!("{global_base}/list")))
@@ -199,12 +194,7 @@ async fn test_group_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
         .send()
         .await
         .unwrap();
-    assert_eq!(
-        resp.status(),
-        200,
-        "update igroup: {}",
-        resp.text().await?
-    );
+    assert_eq!(resp.status(), 200, "update igroup: {}", resp.text().await?);
 
     // verify update
     let resp = authed(client().get(format!("{global_base}/get/test_igroup")))
@@ -220,12 +210,7 @@ async fn test_group_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
         .send()
         .await
         .unwrap();
-    assert_eq!(
-        resp.status(),
-        200,
-        "adduser igroup: {}",
-        resp.text().await?
-    );
+    assert_eq!(resp.status(), 200, "adduser igroup: {}", resp.text().await?);
 
     // verify membership
     let resp = authed(client().get(format!("{global_base}/get/test_igroup")))
@@ -243,13 +228,11 @@ async fn test_group_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
     );
 
     // --- removeuser from instance group ---
-    let resp = authed(client().post(format!(
-        "{global_base}/removeuser/test_igroup"
-    )))
-    .json(&json!({"email": "test@windmill.dev"}))
-    .send()
-    .await
-    .unwrap();
+    let resp = authed(client().post(format!("{global_base}/removeuser/test_igroup")))
+        .json(&json!({"email": "test@windmill.dev"}))
+        .send()
+        .await
+        .unwrap();
     assert_eq!(resp.status(), 200);
 
     // --- export (EE-gated) ---
@@ -280,12 +263,7 @@ async fn test_group_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
         .send()
         .await
         .unwrap();
-    assert_eq!(
-        resp.status(),
-        200,
-        "delete igroup: {}",
-        resp.text().await?
-    );
+    assert_eq!(resp.status(), 200, "delete igroup: {}", resp.text().await?);
 
     // verify deleted
     let resp = authed(client().get(format!("{global_base}/list")))
@@ -294,6 +272,99 @@ async fn test_group_endpoints(db: Pool<Postgres>) -> anyhow::Result<()> {
         .unwrap();
     let list = resp.json::<Vec<serde_json::Value>>().await?;
     assert!(!list.iter().any(|g| g["name"] == "test_igroup"));
+
+    Ok(())
+}
+
+
+
+
+
+
+/// The upgrade migration converts every member the reconciler would evict — those whose
+/// granting group was deleted and those dropped from a group that still exists — and leaves
+/// still-qualifying members alone. The migration has already run against the empty test
+/// database by the time this executes, so the test fabricates pre-fix state and re-executes
+/// the migration's statements, which are idempotent plain UPDATEs.
+#[sqlx::test(migrations = "../migrations", fixtures("base"))]
+async fn test_preserve_orphaned_members_migration(db: Pool<Postgres>) -> anyhow::Result<()> {
+    // ghost_grp pins the statement order: it is referenced by the workspace and still has a
+    // membership row, but no instance_group row. Only when the reference strip runs before
+    // the conversion does ghost@ read as unconverted-by-membership nowhere and get preserved;
+    // converting first would spare them on the doomed reference and then strand them.
+    sqlx::raw_sql(
+        r#"
+        INSERT INTO workspace (id, name, owner) VALUES ('mig-ws', 'mig-ws', 'admin@windmill.dev');
+        INSERT INTO workspace_settings (workspace_id, auto_invite) VALUES
+          ('mig-ws', '{"instance_groups": ["gone_grp", "ghost_grp", "live_grp"], "instance_groups_roles": {"gone_grp": "admin", "ghost_grp": "developer", "live_grp": "developer"}}'::jsonb);
+        INSERT INTO instance_group (name) VALUES ('live_grp');
+        INSERT INTO email_to_igroup (email, igroup) VALUES
+          ('live@example.com', 'live_grp'),
+          ('ghost@example.com', 'ghost_grp');
+        INSERT INTO usr (workspace_id, username, email, is_admin, operator, added_via) VALUES
+          ('mig-ws', 'orphan', 'orphan@example.com', true, false, '{"source": "instance_group", "group": "gone_grp"}'::jsonb),
+          ('mig-ws', 'droppedu', 'dropped@example.com', false, false, '{"source": "instance_group", "group": "live_grp"}'::jsonb),
+          ('mig-ws', 'ghostmember', 'ghost@example.com', false, false, '{"source": "instance_group", "group": "ghost_grp"}'::jsonb),
+          ('mig-ws', 'livemember', 'live@example.com', false, false, '{"source": "instance_group", "group": "live_grp"}'::jsonb);
+        "#,
+    )
+    .execute(&db)
+    .await?;
+
+    sqlx::raw_sql(include_str!(
+        "../../migrations/20260813195023_preserve_orphaned_instance_group_members.up.sql"
+    ))
+    .execute(&db)
+    .await?;
+
+    // Deleted-group orphan and retained-group-dropped orphan both become manual members
+    // with the original group recorded; the still-qualifying member is untouched.
+    for (email, expected_group) in [
+        ("orphan@example.com", "gone_grp"),
+        ("dropped@example.com", "live_grp"),
+        ("ghost@example.com", "ghost_grp"),
+    ] {
+        let (source, migrated_from): (Option<String>, Option<String>) = sqlx::query_as(
+            "SELECT added_via->>'source', added_via->>'migrated_from_instance_group'
+             FROM usr WHERE workspace_id = 'mig-ws' AND email = $1",
+        )
+        .bind(email)
+        .fetch_one(&db)
+        .await?;
+        assert_eq!(
+            source.as_deref(),
+            Some("manual"),
+            "{email} should be converted"
+        );
+        assert_eq!(
+            migrated_from.as_deref(),
+            Some(expected_group),
+            "{email} marker"
+        );
+    }
+
+    let (source, group): (Option<String>, Option<String>) = sqlx::query_as(
+        "SELECT added_via->>'source', added_via->>'group'
+         FROM usr WHERE workspace_id = 'mig-ws' AND email = 'live@example.com'",
+    )
+    .fetch_one(&db)
+    .await?;
+    assert_eq!(
+        source.as_deref(),
+        Some("instance_group"),
+        "still-qualifying member spared"
+    );
+    assert_eq!(group.as_deref(), Some("live_grp"));
+
+    // The dangling references are stripped from both auto_invite fields; the live one stays.
+    let (groups, roles): (serde_json::Value, serde_json::Value) = sqlx::query_as(
+        "SELECT auto_invite->'instance_groups', auto_invite->'instance_groups_roles'
+         FROM workspace_settings WHERE workspace_id = 'mig-ws'",
+    )
+    .fetch_one(&db)
+    .await?;
+    assert_eq!(groups, json!(["live_grp"]));
+    assert_eq!(roles, json!({ "live_grp": "developer" }));
 
     Ok(())
 }

@@ -513,6 +513,100 @@ async fn update_igroup(
     Ok(format!("Updated group {}", name))
 }
 
+
+
+/// Drop `groups` from every workspace's instance-group auto-assignment config.
+///
+/// Workspaces reference instance groups by name in `workspace_settings.auto_invite`, and
+/// nothing in the schema ties those references to `instance_group` rows. A deleted group whose
+/// name is left behind here silently re-acquires its members if a group of the same name is
+/// created later.
+///
+/// Mutates every workspace's settings, so callers must have established superadmin first.
+/// Deliberately not audited per workspace: the mutation is instance-scoped and recorded by
+/// the caller's global igroup audit event.
+pub async fn remove_instance_groups_from_workspace_settings(
+    groups: &[String],
+    tx: &mut Transaction<'_, Postgres>,
+) -> Result<()> {
+    if groups.is_empty() {
+        return Ok(());
+    }
+
+    // Row filter must stay `?|`: it yields false on a JSON `null` instance_groups, where
+    // jsonb_array_elements_text would instead raise and abort the whole transaction; the
+    // jsonb_typeof guard rules out the same class of value for the roles object. The filter is
+    // not index-backed — the GIN index covers the auto_invite column, not this expression —
+    // which is acceptable since workspace_settings holds one row per workspace.
+    sqlx::query!(
+        r#"UPDATE workspace_settings SET
+             auto_invite = jsonb_set(
+                 jsonb_set(
+                     COALESCE(auto_invite, '{}'::jsonb),
+                     '{instance_groups}',
+                     (SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
+                      FROM jsonb_array_elements(COALESCE(auto_invite->'instance_groups', '[]'::jsonb)) elem
+                      WHERE elem #>> '{}' <> ALL($1))
+                 ),
+                 '{instance_groups_roles}',
+                 CASE WHEN jsonb_typeof(auto_invite->'instance_groups_roles') = 'object'
+                      THEN (auto_invite->'instance_groups_roles') - $1::text[]
+                      ELSE '{}'::jsonb
+                 END
+             )
+           WHERE auto_invite->'instance_groups' ?| $1"#,
+        groups
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(())
+}
+
+/// Follow an instance-group rename through every workspace's auto-assignment config.
+///
+/// Workspaces reference instance groups by name, so a rename that leaves the old name behind
+/// strands those references: the reconciler resolves membership from the groups a workspace
+/// references, and a name that no longer matches any group reads as "no members", which would
+/// evict everyone granted through it on the next reconcile.
+///
+/// Mutates every workspace's settings, so callers must have established superadmin first.
+/// Deliberately not audited per workspace: the mutation is instance-scoped and recorded by
+/// the caller's global igroup audit event.
+pub async fn rename_instance_group_in_workspace_settings(
+    old_name: &str,
+    new_name: &str,
+    tx: &mut Transaction<'_, Postgres>,
+) -> Result<()> {
+    // Row filter must stay `?`: it yields false on a JSON `null` instance_groups, where
+    // jsonb_array_elements would instead raise and abort the whole transaction.
+    sqlx::query!(
+        r#"UPDATE workspace_settings SET
+             auto_invite = jsonb_set(
+                 jsonb_set(
+                     COALESCE(auto_invite, '{}'::jsonb),
+                     '{instance_groups}',
+                     (SELECT COALESCE(jsonb_agg(
+                          CASE WHEN elem #>> '{}' = $1 THEN to_jsonb($2::text) ELSE elem END), '[]'::jsonb)
+                      FROM jsonb_array_elements(COALESCE(auto_invite->'instance_groups', '[]'::jsonb)) elem)
+                 ),
+                 '{instance_groups_roles}',
+                 CASE WHEN COALESCE(auto_invite->'instance_groups_roles', '{}'::jsonb) ? $1
+                      THEN (COALESCE(auto_invite->'instance_groups_roles', '{}'::jsonb) - $1)
+                           || jsonb_build_object($2::text, auto_invite->'instance_groups_roles'->$1)
+                      ELSE COALESCE(auto_invite->'instance_groups_roles', '{}'::jsonb)
+                 END
+             )
+           WHERE auto_invite->'instance_groups' ? $1"#,
+        old_name,
+        new_name
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(())
+}
+
 async fn delete_igroup(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
@@ -521,9 +615,10 @@ async fn delete_igroup(
     require_super_admin(&db, &authed.email).await?;
     let mut tx: Transaction<'_, Postgres> = db.begin().await?;
 
-    // Fetch group's instance_role and members before deletion
+    // FOR UPDATE: the group row is the group-level mutex, taken before the workspace
+    // advisory locks (see reconcile_workspace_instance_groups).
     let group_role = sqlx::query_scalar!(
-        "SELECT instance_role FROM instance_group WHERE name = $1",
+        "SELECT instance_role FROM instance_group WHERE name = $1 FOR UPDATE",
         &name
     )
     .fetch_optional(&mut *tx)
@@ -538,6 +633,9 @@ async fn delete_igroup(
         vec![]
     };
 
+
+    remove_instance_groups_from_workspace_settings(std::slice::from_ref(&name), &mut tx).await?;
+
     sqlx::query!("DELETE FROM email_to_igroup WHERE igroup = $1", name)
         .execute(&mut *tx)
         .await?;
@@ -551,6 +649,7 @@ async fn delete_igroup(
         let effective_role = compute_effective_instance_role(email, &mut tx).await?;
         apply_instance_role(email, effective_role.as_deref(), &mut tx).await?;
     }
+
 
     audit_log(
         &mut *tx,
@@ -822,11 +921,17 @@ async fn add_user_igroup(
 
     let mut tx: Transaction<'_, Postgres> = db.begin().await?;
 
-    let group_opt = sqlx::query_scalar!("SELECT name FROM instance_group WHERE name = $1", name)
-        .fetch_optional(&mut *tx)
-        .await?;
+    // FOR UPDATE: the group row is the group-level mutex, taken before the workspace
+    // advisory locks (see reconcile_workspace_instance_groups).
+    let group_opt = sqlx::query_scalar!(
+        "SELECT name FROM instance_group WHERE name = $1 FOR UPDATE",
+        name
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
 
     not_found_if_none(group_opt, "IGroup", &name)?;
+
 
     sqlx::query!(
         "INSERT INTO email_to_igroup (email, igroup) VALUES ($1, $2) ON CONFLICT DO NOTHING",
@@ -847,10 +952,10 @@ async fn add_user_igroup(
     )
     .await?;
 
-
     // Apply instance-level role from group membership
     let effective_role = compute_effective_instance_role(&email, &mut tx).await?;
     apply_instance_role(&email, effective_role.as_deref(), &mut tx).await?;
+
 
     tx.commit().await?;
     Ok(format!("Added {} to igroup {}", email, name))
@@ -1024,11 +1129,17 @@ async fn remove_user_igroup(
     require_super_admin(&db, &authed.email).await?;
     let mut tx = db.begin().await?;
 
-    let group_opt = sqlx::query_scalar!("SELECT name FROM instance_group WHERE name = $1", name,)
-        .fetch_optional(&mut *tx)
-        .await?;
+    // FOR UPDATE: the group row is the group-level mutex, taken before the workspace
+    // advisory locks (see reconcile_workspace_instance_groups).
+    let group_opt = sqlx::query_scalar!(
+        "SELECT name FROM instance_group WHERE name = $1 FOR UPDATE",
+        name,
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
 
     not_found_if_none(group_opt, "IGroup", &name)?;
+
 
     sqlx::query!(
         "DELETE FROM email_to_igroup WHERE email = $1 AND igroup = $2",
@@ -1049,10 +1160,10 @@ async fn remove_user_igroup(
     )
     .await?;
 
-
     // Recompute instance-level role after group removal
     let effective_role = compute_effective_instance_role(&email, &mut tx).await?;
     apply_instance_role(&email, effective_role.as_deref(), &mut tx).await?;
+
 
     tx.commit().await?;
     Ok(format!("Removed {} from igroup {}", email, name))
