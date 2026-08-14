@@ -588,7 +588,8 @@ async def main(item: str, qty: int, email: str):
             port,
         )
         .await;
-    });
+    })
+    .await;
     Ok(())
 }
 
