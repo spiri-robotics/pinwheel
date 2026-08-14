@@ -70,6 +70,7 @@ pub mod more_serde;
 pub mod oauth2;
 pub mod otel_oss;
 pub mod partition_oss;
+pub mod per_minute_counter;
 pub use partition_oss as partition;
 pub mod pipeline_advanced_oss;
 pub use pipeline_advanced_oss as pipeline_advanced;
