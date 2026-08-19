@@ -8286,7 +8286,7 @@ async fn add_batch_jobs(
     Path((w_id, n)): Path<(String, i32)>,
     Json(batch_info): Json<BatchInfo>,
 ) -> error::JsonResult<Vec<Uuid>> {
-    require_super_admin(&db, &authed.email).await?;
+    require_super_admin(&db, &authed).await?;
 
     let (
         hash,
@@ -10217,11 +10217,11 @@ struct TagCount {
 }
 
 async fn count_by_tag(
-    ApiAuthed { email, .. }: ApiAuthed,
+    authed: ApiAuthed,
     Extension(db): Extension<DB>,
     Query(query): Query<CountByTagQuery>,
 ) -> JsonResult<Vec<TagCount>> {
-    require_super_admin(&db, &email).await?;
+    require_super_admin(&db, &authed).await?;
     let horizon = query.horizon_secs.unwrap_or(3600); // Default to 1 hour if not specified
 
     let counts = sqlx::query_as!(
@@ -10937,6 +10937,7 @@ mod approval_view_gate_tests {
             is_session_token: false,
             token_prefix: None,
             read_only: false,
+            job_id: None,
         }
     }
 

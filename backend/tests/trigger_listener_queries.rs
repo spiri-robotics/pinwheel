@@ -93,6 +93,7 @@ fn make_authed() -> windmill_api_auth::ApiAuthed {
         is_session_token: false,
         token_prefix: None,
         read_only: false,
+        job_id: None,
     }
 }
 

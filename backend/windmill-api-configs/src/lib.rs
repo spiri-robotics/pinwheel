@@ -23,7 +23,7 @@ use windmill_common::{
     DB,
 };
 
-use windmill_api_auth::{require_devops_role, ApiAuthed};
+use windmill_api_auth::{is_instance_admin, require_devops_role, ApiAuthed};
 
 pub fn global_service() -> Router {
     Router::new()
@@ -75,7 +75,10 @@ async fn list_worker_groups(
             }
         }
     }
-    let configs = if !authed.is_admin {
+    // Worker-group configs are instance-global and expose env_vars_static (may hold
+    // secrets); a job token (capped at workspace admin) gets the obfuscated view even
+    // when its identity is a superadmin. See is_instance_admin (GHSA-hfh4-cx4h-3fcr).
+    let configs = if !is_instance_admin(&authed) {
         let mut obfuscated_configs: Vec<Config> = vec![];
         for config in configs_raw {
             let config_value_opt = config.config.as_object().map(|obj| obj.to_owned());
@@ -117,7 +120,7 @@ async fn get_config(
     Path(name): Path<String>,
     Extension(db): Extension<DB>,
 ) -> error::JsonResult<Option<serde_json::Value>> {
-    require_devops_role(&db, &authed.email).await?;
+    require_devops_role(&db, &authed).await?;
 
     let config = sqlx::query_as!(Config, "SELECT name, config FROM config WHERE name = $1", name)
         .fetch_optional(&db)
@@ -133,7 +136,7 @@ async fn update_config(
     authed: ApiAuthed,
     Json(config): Json<serde_json::Value>,
 ) -> error::Result<String> {
-    require_devops_role(&db, &authed.email).await?;
+    require_devops_role(&db, &authed).await?;
 
     let config = if name.starts_with("worker__") {
         // In CE, only allow setting worker_tags, cache_clear, init_bash, and native_mode
@@ -211,7 +214,7 @@ async fn delete_config(
     Extension(db): Extension<DB>,
     authed: ApiAuthed,
 ) -> error::Result<String> {
-    require_devops_role(&db, &authed.email).await?;
+    require_devops_role(&db, &authed).await?;
 
     let mut tx = db.begin().await?;
 
@@ -317,7 +320,7 @@ async fn list_all_workspace_dependencies(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
 ) -> error::JsonResult<Vec<WorkspaceDependencySummary>> {
-    require_devops_role(&db, &authed.email).await?;
+    require_devops_role(&db, &authed).await?;
     let deps = sqlx::query!(
         r#"SELECT workspace_id, name, language AS "language: windmill_common::scripts::ScriptLang"
            FROM workspace_dependencies
@@ -349,7 +352,7 @@ async fn list_all_dedicated_with_deps(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
 ) -> error::JsonResult<Vec<DedicatedScriptDepsWithWorkspace>> {
-    require_devops_role(&db, &authed.email).await?;
+    require_devops_role(&db, &authed).await?;
 
     let rows = sqlx::query!(
         r#"SELECT DISTINCT ON (workspace_id, path)
