@@ -89,25 +89,31 @@ async fn setup_git_sync_config(db: &Pool<Postgres>, sync_script_path: &str) -> a
     Ok(())
 }
 
-/// Create a git repository resource for testing
+/// Create a git repository resource at an arbitrary path.
 #[allow(dead_code)]
-async fn create_git_repo_resource(db: &Pool<Postgres>) -> anyhow::Result<()> {
+async fn create_git_repo_resource_at(db: &Pool<Postgres>, path: &str) -> anyhow::Result<()> {
     sqlx::query(
         r#"
         INSERT INTO resource (workspace_id, path, value, resource_type, extra_perms, created_by)
-        VALUES ('test-workspace', 'u/test-user/test_git_repo', $1::jsonb, 'git_repository', '{}'::jsonb, 'test-user')
+        VALUES ('test-workspace', $2, $1::jsonb, 'git_repository', '{}'::jsonb, 'test-user')
         ON CONFLICT (workspace_id, path) DO NOTHING
         "#,
     )
     .bind(json!({
-        "url": "https://github.com/test/test.git",
+        "url": format!("https://github.com/test/{}.git", path.rsplit('/').next().unwrap_or("test")),
         "branch": "main",
         "token": "test-token"
     }))
+    .bind(path)
     .execute(db)
     .await?;
-
     Ok(())
+}
+
+/// Create a git repository resource for testing
+#[allow(dead_code)]
+async fn create_git_repo_resource(db: &Pool<Postgres>) -> anyhow::Result<()> {
+    create_git_repo_resource_at(db, "u/test-user/test_git_repo").await
 }
 
 /// Create a dummy sync script for testing (with version >= 28103 for debouncing support)
@@ -246,24 +252,58 @@ async fn wait_for_debounce_key(
 }
 
 
+/// Poll until `expected` callbacks for `script_path` are queued, or time out.
+#[allow(dead_code)]
+async fn wait_for_callback_jobs(
+    db: &Pool<Postgres>,
+    script_path: &str,
+    expected: usize,
+    timeout: Duration,
+) -> anyhow::Result<()> {
+    let deadline = tokio::time::Instant::now() + timeout;
+    loop {
+        let jobs =
+            get_deployment_callback_jobs(db, script_path, Duration::from_millis(200)).await?;
+        if jobs.len() >= expected {
+            return Ok(());
+        }
+        if tokio::time::Instant::now() >= deadline {
+            anyhow::bail!(
+                "timed out waiting for {expected} deployment callbacks on {script_path}, got {}",
+                jobs.len()
+            );
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+}
+
+/// The concurrency key each queued deployment callback was pushed with, read
+/// back through the runnable-settings handle the push stored it under.
+#[allow(dead_code)]
+async fn get_concurrency_keys(
+    db: &Pool<Postgres>,
+    script_path: &str,
+) -> anyhow::Result<Vec<String>> {
+    let rows: Vec<(String,)> = sqlx::query_as(
+        r#"
+        SELECT COALESCE(cs.concurrency_key, '<no concurrency settings row>')
+        FROM v2_job j
+        JOIN v2_job_queue q ON q.id = j.id
+        LEFT JOIN runnable_settings rs ON rs.hash = q.runnable_settings_handle
+        LEFT JOIN concurrency_settings cs ON cs.hash = rs.concurrency_settings
+        WHERE j.runnable_path = $1 AND j.kind = 'deploymentcallback'
+        "#,
+    )
+    .bind(script_path)
+    .fetch_all(db)
+    .await?;
+    Ok(rows.into_iter().map(|(k,)| k).collect())
+}
+
 /// Create a second git repository resource for multi-repo tests.
 #[allow(dead_code)]
 async fn create_second_git_repo_resource(db: &Pool<Postgres>) -> anyhow::Result<()> {
-    sqlx::query(
-        r#"
-        INSERT INTO resource (workspace_id, path, value, resource_type, extra_perms, created_by)
-        VALUES ('test-workspace', 'u/test-user/test_git_repo_2', $1::jsonb, 'git_repository', '{}'::jsonb, 'test-user')
-        ON CONFLICT (workspace_id, path) DO NOTHING
-        "#,
-    )
-    .bind(json!({
-        "url": "https://github.com/test/test2.git",
-        "branch": "main",
-        "token": "test-token-2"
-    }))
-    .execute(db)
-    .await?;
-    Ok(())
+    create_git_repo_resource_at(db, "u/test-user/test_git_repo_2").await
 }
 
 /// Configure git sync with TWO promotion-mode repositories pointing at distinct
@@ -304,5 +344,8 @@ async fn setup_two_promotion_repos_config(
 
     Ok(())
 }
+
+
+
 
 
