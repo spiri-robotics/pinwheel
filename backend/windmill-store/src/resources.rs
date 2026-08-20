@@ -3177,12 +3177,15 @@ async fn get_git_commit_hash(
     .await
     .map_err(|e| Error::NotFound(format!("Access to resource {} denied: ({e})", path)))?;
 
-    let mut git_resource: GitRepositoryResource = match git_repo_resource_value {
-        Some(value) => serde_json::from_value(value).map_err(|e| {
-            Error::BadRequest(format!("Invalid git repository resource format: {}", e))
-        })?,
-        None => return Err(Error::NotFound(format!("Resource {} not found", path)).into()),
+    let Some(git_repo_resource_value) = git_repo_resource_value else {
+        return Err(Error::NotFound(format!("Resource {} not found", path)).into());
     };
+
+
+    let mut git_resource: GitRepositoryResource = serde_json::from_value(git_repo_resource_value)
+        .map_err(|e| {
+        Error::BadRequest(format!("Invalid git repository resource format: {}", e))
+    })?;
     git_resource.url =
         resolve_azure_devops_url(&db_with_opt_authed, &w_id, &git_resource.url, false).await?;
 
