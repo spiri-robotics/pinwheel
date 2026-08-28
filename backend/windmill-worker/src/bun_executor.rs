@@ -1235,6 +1235,7 @@ pub async fn prebundle_bun_script(
     token: &str,
     occupancy_metrics: &mut Option<&mut OccupancyMetrics>,
     temp_script_refs: &Option<HashMap<String, String>>,
+    modules: Option<&HashMap<String, windmill_common::scripts::ScriptModule>>,
 ) -> Result<()> {
     let (local_path, remote_path) = compute_bundle_local_and_remote_path(
         inner_content,
@@ -1243,6 +1244,7 @@ pub async fn prebundle_bun_script(
         db,
         w_id,
         temp_script_refs,
+        modules,
     )
     .await;
     if exists_in_cache(&local_path, &remote_path).await {
@@ -1421,6 +1423,7 @@ pub async fn compute_bundle_local_and_remote_path(
     db: Option<&DB>,
     w_id: &str,
     temp_script_refs: &Option<HashMap<String, String>>,
+    modules: Option<&HashMap<String, windmill_common::scripts::ScriptModule>>,
 ) -> (String, String) {
     let mut input_src = format!("{inner_content}{lock}",);
 
@@ -1449,7 +1452,10 @@ pub async fn compute_bundle_local_and_remote_path(
 
     let ws_suffix = crate::workspace_registry_cache_suffix(w_id).await;
     input_src.push_str(&ws_suffix);
-    let hash = windmill_common::utils::calculate_hash(&input_src);
+
+    // The loader resolves relative imports against the module files in the job dir, so
+    // their content is inlined into the bundle this name covers.
+    let hash = crate::worker::artifact_cache_name(input_src, modules);
     let local_path = format!("{}/{hash}", *BUN_BUNDLE_CACHE_DIR);
 
     #[cfg(windows)]
@@ -1548,6 +1554,7 @@ pub async fn handle_bun_job(
                     Some(db),
                     &job.workspace_id,
                     &temp_script_refs,
+                    modules.as_ref(),
                 )
                 .await
             }
@@ -2941,9 +2948,8 @@ pub async fn handle_wac_v2_output(
                                     version: flow_info.version,
                                     labels: flow_info.labels.clone(),
                                 };
-                                let on_behalf_of = flow_info
-                                    .on_behalf_of(&job.workspace_id, db)
-                                    .await?;
+                                let on_behalf_of =
+                                    flow_info.on_behalf_of(&job.workspace_id, db).await?;
                                 let step_args: HashMap<String, Box<RawValue>> = step
                                     .args
                                     .iter()
@@ -3746,5 +3752,50 @@ export function main(x: number) { return x; }"#;
         assert!(wrapper.contains(r#"line.startsWith("execd:")"#));
         assert!(wrapper.contains(r#"line.startsWith("exec_preprocess:")"#));
         assert!(wrapper.contains(r#"line.startsWith("exec:")"#));
+    }
+
+    /// The bundle cache is global and content-keyed, so a key that ignores the inline
+    /// modules hands one workspace's bundle — attacker helper code and all — to the next
+    /// job whose main content and lockfile happen to match.
+    #[tokio::test]
+    async fn bundle_cache_key_separates_inline_module_content() {
+        use windmill_common::scripts::ScriptModule;
+
+        async fn key_for(modules: Option<&HashMap<String, ScriptModule>>) -> String {
+            compute_bundle_local_and_remote_path(
+                "import { h } from './helper.ts';\nexport async function main() { return h(); }",
+                "{}\n//bun.lock\n<empty>",
+                "u/alice/script",
+                None,
+                "w1",
+                &None,
+                modules,
+            )
+            .await
+            .1
+        }
+        fn modules(content: &str) -> HashMap<String, ScriptModule> {
+            HashMap::from([(
+                "helper.ts".to_string(),
+                ScriptModule {
+                    content: content.to_string(),
+                    language: ScriptLang::Bun,
+                    lock: None,
+                },
+            )])
+        }
+
+        let attacker = key_for(Some(&modules("export const h = () => 'attacker'"))).await;
+        let victim = key_for(Some(&modules("export const h = () => 'victim'"))).await;
+        assert_ne!(attacker, victim);
+        assert_eq!(
+            attacker,
+            key_for(Some(&modules("export const h = () => 'attacker'"))).await,
+            "same modules must still share a cache slot"
+        );
+
+        // An absent map and an empty one are the same script, so they share a slot.
+        assert_eq!(key_for(None).await, key_for(Some(&HashMap::new())).await);
+        assert_ne!(key_for(None).await, attacker);
     }
 }
