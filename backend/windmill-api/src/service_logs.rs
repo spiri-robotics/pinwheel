@@ -88,6 +88,7 @@ async fn list_files(
     Ok(Json(rows))
 }
 
+
 async fn get_log_file(
     authed: ApiAuthed,
     Extension(db): Extension<DB>,
@@ -104,27 +105,30 @@ async fn get_log_file(
     let s3_client = windmill_object_store::get_object_store().await;
     #[cfg(feature = "parquet")]
     if let Some(s3_client) = s3_client {
-        let path = format!("{}{}", windmill_common::tracing_init::LOGS_SERVICE, path);
-        let file = s3_client
+        use windmill_object_store::object_store_reexports::ObjectStoreError;
+
+        // The raw file, for as long as it is there. It outlives its ingestion by
+        // one indexer pass at most, so this covers the most recent minutes of a
+        // host's logs byte for byte; everything older is rebuilt from the store.
+        let object_path = format!("{}{}", windmill_common::tracing_init::LOGS_SERVICE, path);
+        match s3_client
             .get(&windmill_object_store::object_store_reexports::Path::from(
-                path,
+                object_path,
             ))
-            .await;
-        match file {
-            Ok(file) => {
-                let bytes = file.bytes().await;
-                match bytes {
-                    Ok(bytes) => {
-                        return Ok(content_plain(Body::from(bytes::Bytes::from(bytes))));
-                    }
-                    Err(e) => {
-                        return Err(Error::internal_err(format!(
-                            "Error pulling the bytes: {}",
-                            e
-                        )));
-                    }
+            .await
+        {
+            Ok(file) => match file.bytes().await {
+                Ok(bytes) => {
+                    return Ok(content_plain(Body::from(bytes::Bytes::from(bytes))));
                 }
-            }
+                Err(e) => {
+                    return Err(Error::internal_err(format!(
+                        "Error pulling the bytes: {}",
+                        e
+                    )));
+                }
+            },
+            Err(ObjectStoreError::NotFound { .. }) => {}
             Err(e) => {
                 return Err(Error::internal_err(format!(
                     "Error fetching the file: {}",
@@ -132,6 +136,8 @@ async fn get_log_file(
                 )));
             }
         }
+
+        return Err(Error::NotFound(format!("File {path} not found")));
     }
     let full_path = format!("{}{}", *TMP_WINDMILL_LOGS_SERVICE, path);
     // SECURITY (defense in depth): refuse to read through a symlink so a planted
