@@ -64,6 +64,7 @@ use crate::scim_oss::has_scim_token;
 use windmill_common::error::AppError;
 
 mod ai;
+mod ai_free_tier_oss;
 mod ai_skills;
 mod apps;
 mod apps_raw_bundle;
