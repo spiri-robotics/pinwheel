@@ -10,7 +10,7 @@ path = "src/lib.rs"
 
 [features]
 default = []
-cloud = []
+cloud = ["windmill-common/cloud"]
 benchmark = ["windmill-common/benchmark"]
 failpoints = []
 prometheus = ["dep:prometheus"]
