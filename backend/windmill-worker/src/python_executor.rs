@@ -72,6 +72,12 @@ const NSJAIL_CONFIG_DOWNLOAD_PY_CONTENT: &str = include_str!("../nsjail/download
 const NSJAIL_CONFIG_RUN_PYTHON3_CONTENT: &str = include_str!("../nsjail/run.python3.config.proto");
 pub const RELATIVE_PYTHON_LOADER: &str = include_str!("../loader.py");
 
+/// Every file exchanged with a job is UTF-8 by construction, so the interpreter
+/// must agree. A job env carries no locale: Linux then picks UTF-8 on its own
+/// (PEP 540), Windows picks the ANSI code page. Applied after the whitelisted
+/// envs so the protocol is not the user's to opt out of.
+pub const PYTHON_UTF8_ENVS: [(&str, &str); 1] = [("PYTHONUTF8", "1")];
+
 /// Render loader.py with the TEMP_SCRIPT_REFS placeholder substituted by a
 /// Python dict literal. Preview jobs pass a path -> temp-hash map so relative
 /// imports resolve from not-yet-deployed local content; deployed runs pass
@@ -751,7 +757,7 @@ pub async fn handle_python_job(
                 del pre_args[k]
         kwargs = inner_script.preprocessor(**pre_args)
         kwrags_json = res_to_json(kwargs, type(kwargs))
-        with open("args.json", 'w') as f:
+        with open("args.json", 'w', encoding="utf-8") as f:
             f.write(kwrags_json)"#
         )
     } else {
@@ -786,7 +792,7 @@ pub async fn handle_python_job(
         _pre_result = asyncio.run(_pre_result)
     kwargs = _pre_result if _pre_result is not None else {{}}
     _pre_json = json.dumps(kwargs, separators=(',', ':'), default=str)
-    with open("args.json", 'w') as f:
+    with open("args.json", 'w', encoding="utf-8") as f:
         f.write(_pre_json)
     sys.stdout.write("wm_res[preprocessed_args]:" + _pre_json + "\n")
     sys.stdout.flush()"#
@@ -807,11 +813,11 @@ import sys
 from {module_dir_dot} import {last} as inner_script
 from wmill.client import _run_workflow
 
-with open("args.json") as f:
+with open("args.json", encoding="utf-8") as f:
     kwargs = json.load(f, strict=False)
 {transforms}
 
-with open("checkpoint.json") as f:
+with open("checkpoint.json", encoding="utf-8") as f:
     checkpoint = json.load(f, strict=False)
 
 result_json = os.path.join(os.path.abspath(os.path.dirname(__file__)), "result.json")
@@ -837,12 +843,12 @@ try:
         print("")
         print("--- WAC: complete ---")
     output_json = json.dumps(output, separators=(',', ':'), default=str)
-    with open(result_json, 'w') as f:
+    with open(result_json, 'w', encoding="utf-8") as f:
         f.write(output_json)
 except BaseException as e:
     exc_type, exc_value, exc_traceback = sys.exc_info()
     tb = traceback.format_tb(exc_traceback)
-    with open(result_json, 'w') as f:
+    with open(result_json, 'w', encoding="utf-8") as f:
         err = {{ "message": str(e), "name": e.__class__.__name__, "stack": '\n'.join(tb[1:]) }}
         extra = e.__dict__
         if extra and len(extra) > 0:
@@ -869,7 +875,7 @@ import sys
 from {module_dir_dot} import {last} as inner_script
 import re
 
-with open("args.json") as f:
+with open("args.json", encoding="utf-8") as f:
     kwargs = json.load(f, strict=False)
 args = {{}}
 {transforms}
@@ -905,12 +911,12 @@ try:
             print("WM_STREAM: " + chunk.replace('\n', '\\n'))
         res = None
     res_json = res_to_json(res, typ)
-    with open(result_json, 'w') as f:
+    with open(result_json, 'w', encoding="utf-8") as f:
         f.write(res_json)
 except BaseException as e:
     exc_type, exc_value, exc_traceback = sys.exc_info()
     tb = traceback.format_tb(exc_traceback)
-    with open(result_json, 'w') as f:
+    with open(result_json, 'w', encoding="utf-8") as f:
         err = {{ "message": str(e), "name": e.__class__.__name__, "stack": '\n'.join(tb[1:]) }}
         extra = e.__dict__
         if extra and len(extra) > 0:
@@ -1050,6 +1056,7 @@ mount {{
                 )
                 .await?,
             )
+            .envs(PYTHON_UTF8_ENVS)
             .env("PATH", PATH_ENV.as_str())
             .env("TZ", TZ_ENV.as_str())
             .env("BASE_INTERNAL_URL", base_internal_url)
@@ -1085,6 +1092,7 @@ mount {{
                 )
                 .await?,
             )
+            .envs(PYTHON_UTF8_ENVS)
             .env("PATH", PATH_ENV.as_str())
             .env("TZ", TZ_ENV.as_str())
             .env("BASE_INTERNAL_URL", base_internal_url)
