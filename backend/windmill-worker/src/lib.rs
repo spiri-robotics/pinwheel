@@ -34,6 +34,7 @@ mod csharp_executor;
 mod dbt_engine;
 mod dbt_executor;
 mod dbt_profiles;
+mod dbt_state;
 mod dedicated_worker_oss;
 mod deno_executor;
 mod docker_v2;
