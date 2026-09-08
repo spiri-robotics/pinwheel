@@ -879,6 +879,10 @@ pub async fn run_server(
 
                     Router::new()
                 })
+                .nest("/w/{workspace_id}/git_sync", {
+
+                    Router::new()
+                })
                 .nest(
                     "/w/{workspace_id}/resources_u",
                     public_service().layer(cors.clone()),
