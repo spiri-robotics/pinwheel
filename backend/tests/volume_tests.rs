@@ -525,6 +525,28 @@ fn test_asset_kind_volume_variant() {
 #[cfg(feature = "parquet")]
 #[sqlx::test(fixtures("base"))]
 async fn test_volume_sql_worker_e2e(db: Pool<Postgres>) -> anyhow::Result<()> {
+    let code = r#"// volume: test-vol data
+
+import { readFileSync, writeFileSync, existsSync } from "fs";
+
+export function main() {
+    const content = readFileSync("data/hello.txt", "utf-8");
+    writeFileSync("data/output.txt", "written by sql worker");
+    return {
+        read_content: content,
+        output_exists: existsSync("data/output.txt"),
+    };
+}"#;
+    run_volume_sql_worker_e2e(db, ScriptLang::Bun, code).await
+}
+
+
+#[cfg(feature = "parquet")]
+async fn run_volume_sql_worker_e2e(
+    db: Pool<Postgres>,
+    language: ScriptLang,
+    code: &str,
+) -> anyhow::Result<()> {
     initialize_tracing().await;
     let server = ApiServer::start(db.clone()).await?;
     let port = server.addr.port();
@@ -559,24 +581,11 @@ async fn test_volume_sql_worker_e2e(db: Pool<Postgres>) -> anyhow::Result<()> {
     std::fs::write(vol_dir.join("hello.txt"), b"hello from volume")?;
 
     // 3. Push the job and run with SQL-connected worker
-    let code = r#"// volume: test-vol data
-
-import { readFileSync, writeFileSync, existsSync } from "fs";
-
-export function main() {
-    const content = readFileSync("data/hello.txt", "utf-8");
-    writeFileSync("data/output.txt", "written by sql worker");
-    return {
-        read_content: content,
-        output_exists: existsSync("data/output.txt"),
-    };
-}"#;
-
     let job = JobPayload::Code(RawCode {
         hash: None,
         content: code.to_string(),
         path: None,
-        language: ScriptLang::Bun,
+        language,
         lock: None,
         cache_ttl: None,
         cache_ignore_s3_path: None,
