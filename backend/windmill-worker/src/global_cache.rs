@@ -30,7 +30,10 @@ pub fn extract_tar(tar: bytes::Bytes, folder: &str) -> error::Result<()> {
     Ok(())
 }
 
-/// Two-tier cache load: check local disk first, then fall back to instance object store.
+/// Two-tier cache load: check local disk first, then fall back to the shared object store.
+///
+/// "Shared" is the worker group's own store when its config overrides one, the instance store
+/// otherwise — see [`windmill_object_store::get_cache_object_store`].
 /// Returns `(hit, log_message)`.
 pub async fn load_cache(bin_path: &str, _remote_path: &str, is_dir: bool) -> (bool, String) {
     if tokio::fs::metadata(&bin_path).await.is_ok() {
@@ -41,7 +44,7 @@ pub async fn load_cache(bin_path: &str, _remote_path: &str, is_dir: bool) -> (bo
     }
 }
 
-/// Whether this worker can push to the instance object store at all — the features are
+/// Whether this worker can push to the shared object store at all — the features are
 /// compiled in and a store is loaded. False on builds without them, where `save_cache`
 /// only ever writes to the worker's own disk.
 pub async fn object_store_available() -> bool {
@@ -50,7 +53,7 @@ pub async fn object_store_available() -> bool {
     }
 }
 
-/// Whether a binary/bundle is in the instance object store, ignoring the local cache.
+/// Whether a binary/bundle is in the shared object store, ignoring the local cache.
 ///
 /// The deploy-time prebuild asks this rather than [`exists_in_cache`]: a copy on the
 /// building worker's own disk is exactly the state the prebuild exists to fix, so
@@ -68,12 +71,12 @@ pub async fn ensure_pushed_to_object_store(remote_path: &str) -> error::Result<(
         return Ok(());
     }
     Err(error::Error::ExecutionErr(format!(
-        "the binary was built but did not reach the instance object store at {remote_path}, \
+        "the binary was built but did not reach the object store at {remote_path}, \
          so no other worker can load it"
     )))
 }
 
-/// Check whether a binary/bundle exists in local cache or instance object store.
+/// Check whether a binary/bundle exists in local cache or the shared object store.
 pub async fn exists_in_cache(bin_path: &str, _remote_path: &str) -> bool {
     if tokio::fs::metadata(&bin_path).await.is_ok() {
         return true;
@@ -82,7 +85,7 @@ pub async fn exists_in_cache(bin_path: &str, _remote_path: &str) -> bool {
     }
 }
 
-/// Two-tier cache write: upload to instance object store, then copy to local disk.
+/// Two-tier cache write: upload to the shared object store, then copy to local disk.
 pub async fn save_cache(
     local_cache_path: &str,
     _remote_cache_path: &str,
