@@ -521,9 +521,6 @@ pub struct Policy {
     /// `FRONTEND_SDK_ALLOWED_SCOPES`; absent means no credential (the default).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub frontend_sdk_scopes: Option<Vec<String>>,
-    /// Display only: hides the viewer's login status badge on the public viewer.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub hide_login_status: Option<bool>,
 }
 
 impl Policy {
@@ -4531,7 +4528,6 @@ async fn upload_s3_file_from_app(
             allowed_s3_keys: None,
             sandbox: None,
             frontend_sdk_scopes: None,
-            hide_login_status: None,
         })
     } else {
         let policy_o = sqlx::query_scalar!(
@@ -4947,7 +4943,6 @@ async fn get_on_behalf_authed_from_app(
             allowed_s3_keys: Some(force_allowed_s3_keys),
             sandbox: None,
             frontend_sdk_scopes: None,
-            hide_login_status: None,
         }
     } else {
         // TODO: improve db query to not return uneeded fields
@@ -4972,7 +4967,6 @@ async fn get_on_behalf_authed_from_app(
                 allowed_s3_keys: None,
                 sandbox: None,
                 frontend_sdk_scopes: None,
-                hide_login_status: None,
             })
     };
 
