@@ -17,3 +17,12 @@ pub async fn impersonate_service_account(
         "Service accounts require Windmill Enterprise Edition".to_string(),
     ))
 }
+
+pub(crate) async fn portal_cloud_trial_login(
+    _email: &str,
+) -> windmill_common::error::Result<crate::users::PortalTrialLogin> {
+    Err(windmill_common::error::Error::FeatureUnavailable(
+        "Starting a pre-approved trial from Windmill Cloud requires Windmill Enterprise Edition"
+            .to_string(),
+    ))
+}
