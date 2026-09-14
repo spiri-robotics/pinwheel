@@ -13,3 +13,12 @@ pub async fn trigger_ci_tests_for_item(
 ) -> error::Result<Vec<Uuid>> {
     Ok(vec![])
 }
+
+pub async fn trigger_all_ci_tests(
+    _db: &sqlx::Pool<sqlx::Postgres>,
+    _w_id: &str,
+    _email: &str,
+    _username: &str,
+) -> error::Result<Vec<Uuid>> {
+    Ok(vec![])
+}
