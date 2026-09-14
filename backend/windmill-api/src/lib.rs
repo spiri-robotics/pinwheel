@@ -65,6 +65,7 @@ use windmill_common::error::AppError;
 
 mod ai;
 mod ai_free_tier_oss;
+mod ai_shared_artifacts;
 mod apps;
 mod apps_raw_bundle;
 pub use apps::invalidate_app_policy_cache;
