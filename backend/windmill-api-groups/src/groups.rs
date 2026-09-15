@@ -22,7 +22,10 @@ use windmill_common::{
     error::{Error, JsonResult, Result},
     utils::{not_found_if_none, paginate, Pagination},
 };
-use windmill_common::{db::UserDB, users::username_to_permissioned_as};
+use windmill_common::{
+    db::UserDB,
+    users::{username_to_permissioned_as, usr_accepts_email},
+};
 
 use serde::{Deserialize, Serialize};
 use sqlx::{query_scalar, FromRow, Postgres, Transaction};
@@ -918,6 +921,15 @@ async fn add_user_igroup(
     Json(Email { email }): Json<Email>,
 ) -> Result<String> {
     require_super_admin(&db, &authed).await?;
+
+    // `email_to_igroup` has no shape constraint of its own; `usr`, which the member is
+    // promoted into on reconcile, has `proper_email`, and a value failing it there would
+    // roll back every member of the group.
+    if !usr_accepts_email(&db, &email).await? {
+        return Err(Error::BadRequest(format!(
+            "'{email}' is not a valid email address"
+        )));
+    }
 
     let mut tx: Transaction<'_, Postgres> = db.begin().await?;
 
