@@ -21,5 +21,6 @@ tracing.workspace = true
 windmill-common = { workspace = true, default-features = false }
 windmill-queue.workspace = true
 windmill-dep-map.workspace = true
+windmill-audit.workspace = true
 regex = "1.10.3"
 tokio = { workspace = true, features = ["full"] }
