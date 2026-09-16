@@ -1306,77 +1306,22 @@ async fn get_git_sync_deploy_mode(
 
     let configured = !settings.repositories.is_empty();
 
-    // Auto-pull runs only on Enterprise-licensed instances (see poll_git_auto_pull);
-    // without a caller branch there is nothing to match. Either way deploy_on_push
-    // stays false and the caller falls back (git push via CI, or wmill sync push).
+    // Auto-pull runs only in builds that compile the poller (`private`); without a
+    // caller branch there is nothing to match. Either way deploy_on_push stays
+    // false and the caller falls back (git push via CI, or wmill sync push).
     let Some(branch) = q.branch.as_deref() else {
         return Ok(Json(GitSyncDeployMode {
             configured,
             deploy_on_push: false,
         }));
     };
-    let licensed = matches!(
-        windmill_common::ee_oss::get_license_plan().await,
-        windmill_common::ee_oss::LicensePlan::Enterprise
-    );
 
     // Count the auto-pull repos that would deploy this branch. We deliberately do
     // not check the caller's remote URL: with exactly one such repo the local
     // checkout is unambiguously it, and with several we can't tell which is the
     // caller's, so we report false and let the CLI ask the user.
     let mut matches = 0u32;
-    if licensed && !root_deleted {
-        for repo in &settings.repositories {
-            let Some(auto_pull) = repo.auto_pull.as_ref() else {
-                continue;
-            };
-            if !auto_pull.enabled {
-                continue;
-            }
-            // A fork deploys only through the root's sync_forks repos.
-            if is_fork && !auto_pull.sync_forks {
-                continue;
-            }
-            // Interpolates `$var:`/`$res:` as the auto-pull poller does.
-            // allow_cache=false: an on-demand status must reflect the current
-            // repo config, not a value cached by an earlier poll.
-            let Some(value) = windmill_store::resources::resolve_git_repository_resource(
-                &db,
-                &root_id,
-                &repo.git_repo_resource_path,
-                false,
-            )
-            .await?
-            else {
-                continue;
-            };
-            // `enabled` isn't enough: without a runnable delivery path (active
-            // webhook, or pollable non-app HTTPS repo) the push never deploys.
-            if !has_runnable_delivery(auto_pull, &value) {
-                continue;
-            }
-            let tracked_branch = value.get("branch").and_then(|v| v.as_str()).unwrap_or("");
-            let deploys = if is_fork {
-                // Fork/dev routing (wm-fork/* or an env-label branch) resolved by
-                // the same logic the auto-pull reconciler uses; this repo counts
-                // only if the branch routes to *this* workspace.
-                windmill_common::workspaces::resolve_fork_branch_target(
-                    &db,
-                    &root_id,
-                    &repo.git_repo_resource_path,
-                    branch,
-                    tracked_branch,
-                )
-                .await?
-                .is_some_and(|(fork_id, _)| fork_id == w_id)
-            } else {
-                deploys_on_push_branch(branch, tracked_branch)
-            };
-            if deploys {
-                matches += 1;
-            }
-        }
-    }
+    {}
 
     Ok(Json(GitSyncDeployMode {
         configured,
@@ -3748,10 +3693,6 @@ fn cleanup_legacy_git_sync_settings_in_memory(
 }
 
 const CE_GIT_SYNC_MAX_USERS: i64 = 2;
-
-
-
-
 
 
 
