@@ -1834,7 +1834,8 @@ pub async fn update_flow_status_after_job_completion_internal(
 
             if flow_job.cache_ttl.is_some() && success {
                 let flow = RawData::Flow(flow_data.clone());
-                let cached_res_path = cached_result_path(db, client, &flow_job, Some(&flow)).await;
+                let cached_res_path =
+                    cached_result_path(db, client, &flow_job, Some(&flow)).await?;
 
                 save_in_cache(
                     db,
