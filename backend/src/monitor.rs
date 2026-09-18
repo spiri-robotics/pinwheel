@@ -41,7 +41,10 @@ use windmill_common::otel_oss::{
 use windmill_common::{
     agent_workers::DECODED_AGENT_TOKEN,
     apps::APP_WORKSPACED_ROUTE,
-    auth::{create_token_for_owner, ephemeral_script_token_label, job_token_expiry_secs},
+    auth::{
+        create_token_for_owner, ephemeral_script_token_label, job_token_expiry_secs,
+        TOKEN_EXPIRY_WARNING_DAYS,
+    },
     ee_oss::CriticalErrorChannel,
     email_oss::send_email_if_possible,
     error,
@@ -2107,7 +2110,7 @@ pub async fn delete_expired_items(db: &DB) -> () {
 
 
 pub async fn check_expiring_tokens(db: &DB) {
-    // Find tokens expiring within 7 days that still have a pending notification row.
+    // Find tokens expiring within the warning window that still have a pending notification row.
     // The notification table stores token_hash (not plaintext) so the join works
     // even after the hash migration makes token.token nullable.
     let expiring_tokens_r = sqlx::query_as!(
@@ -2116,8 +2119,9 @@ pub async fn check_expiring_tokens(db: &DB) {
          USING token t
          WHERE n.token_hash = t.token_hash
            AND n.expiration > now()
-           AND n.expiration <= now() + interval '7 days'
+           AND n.expiration <= now() + make_interval(days => $1)
          RETURNING t.token_prefix, t.label, t.email, t.workspace_id",
+        TOKEN_EXPIRY_WARNING_DAYS,
     )
     .fetch_all(db)
     .await;
