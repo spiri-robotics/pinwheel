@@ -17,6 +17,7 @@ mod audit_logs_s3;
 mod audit_logs_s3_backfill;
 #[cfg(feature = "parquet")]
 mod background_task;
+mod datatable_roles_oss;
 pub mod ee_oss;
 #[cfg(feature = "parquet")]
 mod log_cleanup;
@@ -142,6 +143,16 @@ pub fn global_service() -> Router {
         .route(
             "/list_custom_instance_pg_databases",
             post(list_custom_instance_pg_databases),
+        )
+        .route(
+            "/datatable_roles",
+            get(datatable_roles_oss::list_datatable_roles)
+                .post(datatable_roles_oss::create_datatable_role),
+        )
+        .route(
+            "/datatable_roles/{id}",
+            post(datatable_roles_oss::update_datatable_role)
+                .delete(datatable_roles_oss::delete_datatable_role),
         )
         .route(
             "/refresh_custom_instance_user_pwd",

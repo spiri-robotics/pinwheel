@@ -2,8 +2,11 @@
 pub mod ai_session_backups;
 pub mod data_metrics;
 pub mod datatable_migrations;
+pub mod datatable_permissions;
+pub mod datatable_permissions_oss;
 pub mod deployment_requests;
 pub mod workspaces;
 pub mod workspaces_extra;
 pub mod workspaces_oss;
+
 
