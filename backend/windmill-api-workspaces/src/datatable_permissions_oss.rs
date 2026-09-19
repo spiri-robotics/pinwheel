@@ -49,6 +49,20 @@ mod ce {
         }
     }
 
+    pub(crate) async fn ensure_reaches_governing_datatable(
+        _db: &DB,
+        _w_id: &str,
+        _datatable_name: &str,
+        governing: &GoverningDatatable,
+        _authed: &ApiAuthed,
+    ) -> Result<()> {
+        if governing.datatable.permissions.is_none() {
+            Ok(())
+        } else {
+            Err(unavailable())
+        }
+    }
+
     // The routes stay registered so the API has one shape; each answers after authentication,
     // before anything is read.
 
