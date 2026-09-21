@@ -77,4 +77,28 @@ mod ce {
     pub(crate) async fn list_usable_datatable_roles(_authed: ApiAuthed) -> Result<String> {
         Err(unavailable())
     }
+
+    pub(crate) struct UsableDatatableRoles {
+        pub(crate) permissioned: bool,
+        pub(crate) roles: Vec<String>,
+        pub(crate) default_role: String,
+    }
+
+    /// A data table not under roles is used as `admin`, as before roles existed. One under roles
+    /// is refused: no role of it can be connected as.
+    pub(crate) async fn usable_datatable_roles(
+        _db: &DB,
+        _authed: &ApiAuthed,
+        _w_id: &str,
+        governing: &GoverningDatatable,
+    ) -> Result<UsableDatatableRoles> {
+        if governing.datatable.permissions.is_some() {
+            return Err(unavailable());
+        }
+        Ok(UsableDatatableRoles {
+            permissioned: false,
+            roles: vec![],
+            default_role: windmill_common::datatable_roles::ADMIN_DATATABLE_ROLE.to_string(),
+        })
+    }
 }
