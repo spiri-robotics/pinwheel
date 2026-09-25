@@ -115,7 +115,8 @@ use windmill_common::{
     scripts::{ScriptHash, ScriptLang},
     users::username_to_permissioned_as,
     utils::{
-        not_found_if_none, now_from_db, paginate, require_admin, Pagination, ScheduleType, StripPath,
+        not_found_if_none, now_from_db, paginate, require_admin, Pagination, ScheduleType,
+        StripPath,
     },
 };
 
