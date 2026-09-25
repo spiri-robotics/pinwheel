@@ -163,6 +163,7 @@ mod cgroups;
 mod db_connect;
 mod ee_oss;
 mod monitor;
+mod stranded_jobs;
 
 
 pub fn setup_deno_runtime() -> anyhow::Result<()> {
