@@ -6742,6 +6742,13 @@ pub async fn run_workflow_as_code(
     let args = PushArgs { args: &task.args.unwrap_or_else(HashMap::new), extra: Some(extra) };
     check_tag_available_for_workspace(&db, &w_id, &run_query.tag, &args, &authed).await?;
     check_scopes(&authed, || format!("jobs:run"))?;
+    // The task becomes a child of `job_id`, runs its code and writes into its flow status, so
+    // only that job itself (the SDK's `task` wrapper, on its `WM_TOKEN`) or an admin may push it.
+    if authed.job_id != Some(job_id) && !authed.is_admin {
+        return Err(error::Error::PermissionDenied(format!(
+            "only job {job_id}'s own WM_TOKEN can run its workflow tasks"
+        )));
+    }
 
     if !is_valid_entrypoint_name(&entrypoint) {
         return Err(error::Error::BadRequest(format!(
@@ -7156,6 +7163,8 @@ pub async fn run_wait_result_job_by_path_get(
     let tag = run_query.tag.clone().or(tag);
     let push_args = PushArgs { args: &args.args, extra: args.extra };
     check_tag_available_for_workspace(&db, &w_id, &tag, &push_args, &authed).await?;
+    let mut run_query = run_query;
+    drop_unclaimable_run_lineage(&db, &w_id, &mut run_query, &authed).await?;
 
     let (email, permissioned_as, push_authed, tx) =
         if let Some(on_behalf_of) = on_behalf_authed.as_ref() {
@@ -7298,6 +7307,8 @@ pub async fn run_wait_result_script_by_path_internal(
     let tag = run_query.tag.clone().or(tag);
     let push_args = PushArgs { args: &args.args, extra: args.extra };
     check_tag_available_for_workspace(&db, &w_id, &tag, &push_args, &authed).await?;
+    let mut run_query = run_query;
+    drop_unclaimable_run_lineage(&db, &w_id, &mut run_query, &authed).await?;
 
     let (email, permissioned_as, push_authed, tx) =
         if let Some(on_behalf_of) = on_behalf_of.as_ref() {
@@ -7410,6 +7421,8 @@ pub async fn run_wait_result_script_by_hash(
     let tag = run_query.tag.clone().or(tag);
     let push_args = PushArgs { args: &args.args, extra: args.extra };
     check_tag_available_for_workspace(&db, &w_id, &tag, &push_args, &authed).await?;
+    let mut run_query = run_query;
+    drop_unclaimable_run_lineage(&db, &w_id, &mut run_query, &authed).await?;
 
     let (email, permissioned_as, push_authed, tx) = if let Some(obo) = on_behalf_of.as_ref() {
         (
@@ -9417,6 +9430,8 @@ pub async fn run_job_by_hash_inner(
     let push_args = PushArgs { args: &args.args, extra: args.extra };
 
     check_tag_available_for_workspace(&db, &w_id, &tag, &push_args, &authed).await?;
+    let mut run_query = run_query;
+    drop_unclaimable_run_lineage(&db, &w_id, &mut run_query, &authed).await?;
 
     let (email, permissioned_as, push_authed, tx) = if let Some(obo) = on_behalf_of.as_ref() {
         (
