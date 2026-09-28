@@ -67,6 +67,7 @@ pub mod schema_contracts;
 pub mod workspace_dependencies;
 
 pub mod git_sync_oss;
+pub mod job_provenance;
 pub mod jobs;
 pub mod jwt;
 pub mod login_rate_limit;
