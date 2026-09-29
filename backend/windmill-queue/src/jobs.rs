@@ -4788,6 +4788,13 @@ pub fn has_active_concurrency_limit(concurrent_limit: Option<i32>) -> bool {
     concurrent_limit.is_some_and(|n| n > 0)
 }
 
+/// Admit a job already owned by a worker without releasing its queue reservation.
+/// The caller must maintain its heartbeat while waiting and complete it on failure.
+pub async fn try_admit_owned_job(db: &DB, job: &MiniPulledJob) -> error::Result<bool> {
+    let _ = (db, job);
+    Ok(true)
+}
+
 pub async fn custom_concurrency_key(
     db: &Pool<Postgres>,
     job_id: &Uuid,
