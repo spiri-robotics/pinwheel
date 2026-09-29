@@ -2960,7 +2960,7 @@ mod tests {
         assert!(
             attach.starts_with(&format!(
                 "ATTACH 'sslmode=verify-full sslrootcert=''{}''",
-                root
+                root.replace('\\', "\\\\")
             )),
             "{attach}"
         );
