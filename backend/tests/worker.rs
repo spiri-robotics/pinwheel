@@ -5468,7 +5468,10 @@ async fn test_scoped_custom_tag_pattern_admission(db: Pool<Postgres>) -> anyhow:
             "scoped pattern refused elsewhere",
             !allowed(&db, "other", "cpu-secret", "").await,
         ),
-        ("confined tag refused past the patterns it fits", confined.is_err()),
+        (
+            "confined tag refused past the patterns it fits",
+            confined.is_err(),
+        ),
         (
             "global pattern for the tags nothing confines",
             allowed(&db, "test-workspace", "gpu-large", "").await,
