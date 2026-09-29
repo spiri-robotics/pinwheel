@@ -1609,6 +1609,7 @@ async fn declarative_sync_rejects_an_unusable_default_allowed_origins(db: Pool<P
     .expect("a valid origin list must sync");
 }
 
+
 /// The accent color is interpolated into a stylesheet every user loads, so the operator
 /// path must refuse anything but `#rrggbb` just like the settings API does.
 #[sqlx::test(fixtures("base"))]
