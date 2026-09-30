@@ -218,6 +218,49 @@ def main():
 
 #[cfg(feature = "python")]
 #[sqlx::test(fixtures("base"))]
+async fn test_python_async_main(db: Pool<Postgres>) -> anyhow::Result<()> {
+    initialize_tracing().await;
+    let server = ApiServer::start(db.clone()).await?;
+    let port = server.addr.port();
+
+    let content = r#"
+import asyncio
+
+async def main(x: int):
+    await asyncio.sleep(0)
+    return x + 1
+        "#
+    .to_owned();
+
+    let job = JobPayload::Code(RawCode {
+        hash: None,
+        content,
+        path: None,
+        language: ScriptLang::Python3,
+        lock: None,
+        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default()
+            .into(),
+        debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
+        cache_ttl: None,
+        cache_ignore_s3_path: None,
+        dedicated_worker: None,
+        modules: None,
+        tag: None,
+    });
+
+    let result = RunJob::from(job)
+        .arg("x", serde_json::json!(41))
+        .run_until_complete(&db, false, port)
+        .await
+        .json_result()
+        .unwrap();
+
+    assert_eq!(result, serde_json::json!(42));
+    Ok(())
+}
+
+#[cfg(feature = "python")]
+#[sqlx::test(fixtures("base"))]
 async fn test_python_result_preserves_infinity_in_string(db: Pool<Postgres>) -> anyhow::Result<()> {
     initialize_tracing().await;
     let server = ApiServer::start(db.clone()).await?;
