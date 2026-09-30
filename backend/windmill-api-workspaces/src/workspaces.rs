@@ -3408,7 +3408,6 @@ fn apply_pg_tls_env(
     Ok(None)
 }
 
-
 #[cfg(test)]
 mod pg_tls_env_tests {
     use super::apply_pg_tls_env;
@@ -4179,7 +4178,9 @@ async fn edit_datatable_config(
         // the other managed cluster, one whose role ids name nothing in that cluster's catalog.
         // Refuse it instead: turning roles off first is one step, and it keeps discarding an access
         // decision something somebody chose rather than a side effect of moving a database.
-        let old_kind = old.and_then(|old| old.database.as_ref()).map(|d| d.resource_type);
+        let old_kind = old
+            .and_then(|old| old.database.as_ref())
+            .map(|d| d.resource_type);
         if dt.permissions.is_some()
             && dt
                 .database
@@ -10987,10 +10988,15 @@ struct ChangeOperatorSettings {
     folders: bool,
     #[serde(default)]
     workers: bool,
-    /// Writes operators may perform unless withdrawn, so `None` (key absent) must mean "leave as
-    /// stored" rather than a value: the row is merged, not overwritten, and this endpoint takes
-    /// whole-object payloads from git-sync files that predate the key. Defaulting either way here
-    /// would make an older file silently withdraw or restore the right on every pull.
+    /// Write rights, so `None` (key absent) must mean "leave as stored" rather than a value: the
+    /// row is merged, not overwritten, and this endpoint takes whole-object payloads from git-sync
+    /// files that predate the key. Defaulting either way here would make an older file silently
+    /// withdraw or grant the right on every push.
+    ///
+    /// `builder_flows` lets every operator of this workspace compose flows out of already-deployed
+    /// runnables, and makes each of them consume a full author seat instead of half of one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    builder_flows: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     manage_schedules: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -11004,6 +11010,7 @@ async fn update_operator_settings(
     Json(settings): Json<ChangeOperatorSettings>,
 ) -> Result<String> {
     require_admin(authed.is_admin, &authed.username)?;
+
 
     let mut tx = db.begin().await?;
 
