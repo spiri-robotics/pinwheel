@@ -110,6 +110,7 @@ mod s3_proxy_oss;
 mod storage_list_oss;
 mod workspace_dependencies;
 
+mod agent_runs;
 mod ai_evals;
 mod approvals;
 #[cfg(feature = "parquet")]
