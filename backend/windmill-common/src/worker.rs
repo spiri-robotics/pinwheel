@@ -1166,6 +1166,7 @@ pub struct TypeScriptAnnotations {
     pub native: bool,
     pub nobundling: bool,
     pub sandbox: bool,
+    pub no_network: bool,
 }
 
 #[annotations("--")]
