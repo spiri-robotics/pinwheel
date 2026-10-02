@@ -1,0 +1,20 @@
+name: no-upstream-branding
+
+# Fails if upstream's name or links appear in the frontend's user-visible text
+# (e.g. after an upstream import), or if tools/rebrand flags something new.
+# Fix with `uv run --project tools/rebrand rebrand frontend`; acknowledge flags
+# that need manual work with `--update-known`.
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Test the rebrand tool
+        run: uv run --project tools/rebrand pytest -q tools/rebrand
+      - name: Look for upstream branding
+        run: uv run --project tools/rebrand rebrand frontend --check

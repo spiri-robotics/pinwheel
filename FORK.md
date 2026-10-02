@@ -126,6 +126,10 @@ message, so the importer works out which upstream commits `upstream-stripped`
 already covers by matching them, and only rewrites the new ones. The unstripped
 upstream clone it uses is a temporary directory, deleted afterwards.
 
+- **Rebrand after merging.** Upstream text arrives saying Windmill and linking
+  to windmill.dev; the `no-upstream-branding` check fails until
+  `uv run --project tools/rebrand rebrand frontend` has been run and committed
+  (see `tools/rebrand/README.md`).
 - **Never merge upstream directly** (`git merge` from upstream, GitHub's "Sync
   fork"). The rewritten history shares no commits with upstream, so git refuses
   such a merge as "unrelated histories", and the `no-gated-code` CI check fails
