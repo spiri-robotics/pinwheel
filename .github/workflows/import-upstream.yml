@@ -4,10 +4,11 @@ name: import-upstream
 # the upstream-stripped branch, and opens a PR to merge them into main.
 on:
   schedule:
-    - cron: "0 6 * * 1"   # Mondays 06:00 UTC
+    - cron: "0 6 * * *"   # daily, 06:00 UTC
   workflow_dispatch:
 
 permissions:
+  actions: write        # to re-enable this workflow (see below)
   contents: write
   pull-requests: write
 
@@ -19,6 +20,14 @@ jobs:
   import:
     runs-on: ubuntu-latest
     steps:
+      # GitHub pauses scheduled workflows in public repos after 60 days without
+      # repository activity. Re-enabling the workflow on every run resets that
+      # timer, so it keeps running as long as it runs at least once in 60 days.
+      - name: Keep this schedule from being paused
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable import-upstream.yml --repo "${{ github.repository }}"
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0

@@ -113,11 +113,13 @@ Nothing in this work should be read as conceding any claim.
 
 ## Pulling in upstream releases
 
-The `import-upstream` workflow runs every Monday (or on demand from the Actions
-tab). It rewrites any new upstream commits with the current `tools/cfgstrip`,
-pushes them to `upstream-stripped`, and opens a PR into `main`. Merge that PR
-with a merge commit, not a squash or rebase, so later imports keep a common
-base. `tools/import-upstream` does the same by hand.
+The `import-upstream` workflow runs daily (or on demand from the Actions tab).
+It rewrites any new upstream commits with the current `tools/cfgstrip`, pushes
+them to `upstream-stripped`, and opens a PR into `main` (or adds them to the
+one already open). Merge that PR with a merge commit, not a squash or rebase,
+so later imports keep a common base. `tools/import-upstream` does the same by
+hand. The workflow re-enables itself on every run, so GitHub's 60-day pause on
+idle scheduled workflows doesn't stop it.
 
 No state is kept anywhere. Rewriting preserves each commit's author, dates and
 message, so the importer works out which upstream commits `upstream-stripped`
