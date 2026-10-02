@@ -1,0 +1,48 @@
+name: import-upstream
+
+# Rewrites new upstream Windmill commits with tools/cfgstrip, pushes them to
+# the upstream-stripped branch, and opens a PR to merge them into main.
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: import-upstream
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Rewrite and push new upstream commits
+        run: tools/import-upstream
+
+      - name: Open a PR if upstream-stripped is ahead of main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          git fetch --quiet origin main upstream-stripped
+          ahead=$(git rev-list --count origin/main..origin/upstream-stripped)
+          if [ "$ahead" -eq 0 ]; then
+            echo "main already has everything from upstream-stripped"
+            exit 0
+          fi
+          if [ -n "$(gh pr list --head upstream-stripped --base main --state open --json number --jq '.[].number')" ]; then
+            echo "an import PR is already open; it now includes the new commits"
+            exit 0
+          fi
+          gh pr create --head upstream-stripped --base main \
+            --title "Import upstream Windmill ($ahead commits)" \
+            --body "New upstream commits, rewritten by tools/cfgstrip. Merge with a merge commit, not a squash or rebase, so later imports keep a common base."

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "deny": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:codeload.github.com)",
+      "Bash(git clone *windmill-labs*)",
+      "Bash(git fetch *windmill-labs*)",
+      "Bash(git pull *windmill-labs*)",
+      "Bash(git remote add *windmill-labs*)",
+      "Bash(git submodule add *windmill-labs*)",
+      "Bash(gh repo clone windmill-labs/*)",
+      "Bash(gh api repos/windmill-labs/*)",
+      "Bash(gh api /repos/windmill-labs/*)",
+      "Bash(curl *windmill-labs*)",
+      "Bash(wget *windmill-labs*)",
+      "Bash(docker pull ghcr.io/windmill-labs/*)",
+      "Bash(docker run *ghcr.io/windmill-labs/*)"
+    ]
+  }
+}

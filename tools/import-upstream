@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Bring new upstream Windmill work into the fork as stripped, rewritten commits.
+#
+#   tools/import-upstream            # rewrite new upstream commits, push upstream-stripped
+#   git merge upstream-stripped      # then merge as usual
+#
+# Normally this runs in CI (.github/workflows/import-upstream.yml); running it
+# by hand does the same thing. The unstripped upstream clone it needs lives in
+# a temporary directory and is deleted afterwards. Nothing else is kept: which
+# upstream commits are already imported is worked out from upstream-stripped.
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+upstream_url=${CFGSTRIP_UPSTREAM_URL:-https://github.com/windmill-labs/windmill.git}
+upstream_ref=${CFGSTRIP_UPSTREAM_REF:-main}
+remote=${CFGSTRIP_FORK_REMOTE:-origin}
+branch=upstream-stripped
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+up="$work/upstream.git"
+
+git clone --bare --quiet --single-branch --branch "$upstream_ref" "$upstream_url" "$up"
+git -C "$repo_root" fetch --quiet "$remote" "+refs/heads/$branch:refs/heads/$branch"
+git -C "$up" fetch --quiet "$repo_root" "+refs/heads/$branch:refs/heads/$branch"
+before=$(git -C "$up" rev-parse "refs/heads/$branch")
+
+uv run --quiet --project "$repo_root/tools/cfgstrip" cfgstrip-history \
+  --repo "$up" --ref "$upstream_ref" --branch "$branch" \
+  --drop AGENTS.md --drop CLAUDE.md --drop .claude --drop .agents
+
+after=$(git -C "$up" rev-parse "refs/heads/$branch")
+if [ "$before" = "$after" ]; then
+  echo "No new upstream commits."
+  exit 0
+fi
+
+# Fetching a single branch only copies objects reachable from it, so none of
+# the unstripped history comes along.
+git -C "$repo_root" fetch --quiet "$up" "+refs/heads/$branch:refs/heads/$branch"
+git -C "$repo_root" push --quiet "$remote" "refs/heads/$branch:refs/heads/$branch"
+echo "$branch: $(git -C "$repo_root" rev-list --count "$before..$after") new commit(s). Merge with: git merge $branch"

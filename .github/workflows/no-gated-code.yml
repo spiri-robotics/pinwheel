@@ -1,0 +1,22 @@
+name: no-gated-code
+
+# Fails if code gated on the removed features, or references to the private
+# upstream modules, reappears (e.g. after an accidental raw merge of upstream).
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Look for gated code
+        run: |
+          set -u
+          pattern='feature\s*=\s*"(enterprise|private|enterprise_saml)"|^\s*(pub(\([a-z]+\))?\s+)?(mod|use)\s+[^;]*_ee\b'
+          if grep -rnE --include='*.rs' "$pattern" backend; then
+            echo "::error::Code gated on enterprise/private features is present. Upstream must be imported through tools/import-upstream, never merged directly."
+            exit 1
+          fi
+          echo "clean"

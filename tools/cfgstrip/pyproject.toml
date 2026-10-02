@@ -1,0 +1,25 @@
+[project]
+name = "cfgstrip"
+version = "0.1.0"
+description = "Strip feature-gated Rust code from a source tree by partially evaluating cfg predicates"
+requires-python = ">=3.11"
+dependencies = [
+    "tree-sitter>=0.23",
+    "tree-sitter-rust>=0.23",
+    "tomlkit>=0.13",
+    "pygit2>=1.20.1",
+]
+
+[project.scripts]
+cfgstrip = "cfgstrip:main"
+cfgstrip-history = "history:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["cfgstrip.py", "history.py"]
