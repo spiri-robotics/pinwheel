@@ -28,7 +28,7 @@ const SUMMARY_PROMPT = `Your task is to create a detailed summary of the convers
 
 The message you are reading now is an instruction, not part of the conversation. Summarize only the messages above it: do not describe this instruction, do not list it among the user's messages, pending tasks or current work, and do not mention the <analysis> or <summary> tags inside your summary.
 
-This is a conversation with Windmill's global workspace assistant. It inspects workspace items and authors them as per-user drafts — scripts, flows, apps, resources, variables, triggers, and schedules — then deploys those drafts and test-runs scripts and flows. It works with items by their workspace path (e.g. \`u/alice/sync_orders\`, \`f/team/my_flow\`); it does NOT edit files on a filesystem. Frame the summary in those terms.
+This is a conversation with Pinwheel's global workspace assistant. It inspects workspace items and authors them as per-user drafts — scripts, flows, apps, resources, variables, triggers, and schedules — then deploys those drafts and test-runs scripts and flows. It works with items by their workspace path (e.g. \`u/alice/sync_orders\`, \`f/team/my_flow\`); it does NOT edit files on a filesystem. Frame the summary in those terms.
 
 Before providing your final summary, wrap your analysis in <analysis> tags to organize your thoughts. In your analysis:
 

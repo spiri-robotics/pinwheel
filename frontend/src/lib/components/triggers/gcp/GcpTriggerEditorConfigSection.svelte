@@ -244,8 +244,8 @@
 								value="default"
 								disabled={!canUseDefaultCredentials}
 								tooltip={canUseDefaultCredentials
-									? 'Authenticate as the Windmill server itself, using the credentials of its environment (workload identity, the metadata server, or GOOGLE_APPLICATION_CREDENTIALS).'
-									: 'Workspace admins can authenticate as the Windmill server itself. Ask one to set this up.'}
+									? 'Authenticate as the Pinwheel server itself, using the credentials of its environment (workload identity, the metadata server, or GOOGLE_APPLICATION_CREDENTIALS).'
+									: 'Workspace admins can authenticate as the Pinwheel server itself. Ask one to set this up.'}
 								showTooltipIcon
 								{item}
 							/>
@@ -293,7 +293,7 @@
 
 					{#if blockedByAdminGate}
 						<Alert title="Workspace admin required" type="info" size="xs">
-							This trigger authenticates as the Windmill server. Saving changes to it needs
+							This trigger authenticates as the Pinwheel server. Saving changes to it needs
 							workspace admin, because saving re-provisions the subscription with those credentials.
 						</Alert>
 					{/if}
@@ -342,7 +342,7 @@
 				<Section
 					label="Subscription"
 					tooltip="Choose whether to create or update a Pub/Sub subscription, or link an existing one from your Google Cloud project."
-					documentationLink="https://www.windmill.dev/docs/core_concepts/gcp_triggers#subscription-setup"
+					documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 				>
 					<div class="flex flex-col gap-3">
 						<ToggleButtonGroup
@@ -405,7 +405,7 @@
 												/>
 												<ToggleButton
 													label="Push"
-													tooltip="Windmill will auto-generate a push endpoint for this subscription. You must not modify this endpoint in Google Cloud, as it is managed internally by Windmill."
+													tooltip="Pinwheel will auto-generate a push endpoint for this subscription. You must not modify this endpoint in Google Cloud, as it is managed internally by Pinwheel."
 													showTooltipIcon
 													value="push"
 													{item}

@@ -216,7 +216,7 @@
 		...switchModeItems,
 		{
 			search_id: 'nav:service_logs',
-			label: 'Explore windmill service logs',
+			label: 'Explore pinwheel service logs',
 			action: (newtab: boolean = false) => gotoPage('/service_logs', newtab),
 			shortcutKey: LOGS_PREFIX,
 			icon: Logs,
@@ -792,8 +792,8 @@
 									id="goto_service_logs_search"
 									hovered={true}
 									label={searchTerm === '!'
-										? 'Explore Windmill service logs'
-										: `Search '${removePrefix(searchTerm, '!')}' in Windmill's service logs`}
+										? 'Explore Pinwheel service logs'
+										: `Search '${removePrefix(searchTerm, '!')}' in Pinwheel's service logs`}
 									icon={searchTerm === '!' ? Logs : Search}
 								/>
 							{/if}

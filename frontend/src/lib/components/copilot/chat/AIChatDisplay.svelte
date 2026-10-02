@@ -704,10 +704,10 @@
 
 {#snippet freeTierExhaustedBanner()}
 	<div class="my-2">
-		<Alert type="info" size="xs" title="Free Windmill AI used up">
+		<Alert type="info" size="xs" title="Free Pinwheel AI used up">
 			<div class="flex flex-col items-start gap-2">
 				<span>
-					You have used all of your free Windmill AI tokens. Add your own API key to keep using AI.
+					You have used all of your free Pinwheel AI tokens. Add your own API key to keep using AI.
 				</span>
 				<Button
 					unifiedSize="2xs"
@@ -727,7 +727,7 @@
 		class="my-1 flex items-center justify-between gap-2 rounded-md border bg-surface-secondary px-2 py-1"
 	>
 		<span class="text-xs text-secondary tabular-nums">
-			{freeTierUsedPct}% of your free Windmill AI used
+			{freeTierUsedPct}% of your free Pinwheel AI used
 		</span>
 		<Button
 			unifiedSize="2xs"

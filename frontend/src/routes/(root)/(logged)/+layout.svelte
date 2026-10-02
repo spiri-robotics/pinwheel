@@ -986,7 +986,7 @@
 	<div class="flex items-center gap-x-1.5 text-xs font-semibold text-emphasis">
 		<WindmillIcon white={darkMode} height="16px" width="16px" />
 		{#if !collapsed}
-			{$whitelabelNameStore ? capitalize($whitelabelNameStore) : 'Windmill'}
+			{$whitelabelNameStore ? capitalize($whitelabelNameStore) : 'Pinwheel'}
 		{/if}
 	</div>
 {/snippet}
@@ -1419,7 +1419,7 @@
 								<WindmillIcon white={darkMode} height="20px" width="20px" />
 								{#if !isCollapsed}{#if $whitelabelNameStore}{capitalize(
 											$whitelabelNameStore
-										)}{:else}Windmill{/if}{/if}
+										)}{:else}Pinwheel{/if}{/if}
 							</div>
 
 							<div class="px-2 py-4 space-y-2 border-y border-light dark:border-gray-700">

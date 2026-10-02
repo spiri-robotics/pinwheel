@@ -382,7 +382,7 @@ const createScheduleTool: Tool<any> = {
 	}
 }
 
-const EMAIL_TRIGGER_DOCS = 'https://windmill.dev/docs/advanced/email_triggers'
+const EMAIL_TRIGGER_DOCS = 'https://github.com/spiri-robotics/windmill-OSS'
 
 type EmailTriggerAvailability =
 	| { available: true; domain: string }
@@ -410,8 +410,8 @@ async function resolveEmailTriggerAvailability(): Promise<EmailTriggerAvailabili
 	])
 	const isSuperadmin = get(userStore)?.is_super_admin ?? false
 	const hint = isSuperadmin
-		? `Email triggering is not set up on this instance yet, so no email trigger was created. As a superadmin, enable it: run an SMTP server that forwards inbound mail to Windmill and set the "email_domain" instance setting (Instance settings). See ${EMAIL_TRIGGER_DOCS}. Once configured, ask again and I will create the trigger.`
-		: `Email triggering is not set up on this instance yet, so no email trigger was created. Ask an instance superadmin to enable it: they need to run an SMTP server that forwards inbound mail to Windmill and set the "email_domain" instance setting. See ${EMAIL_TRIGGER_DOCS}. Once it is configured, ask again and I will create the trigger.`
+		? `Email triggering is not set up on this instance yet, so no email trigger was created. As a superadmin, enable it: run an SMTP server that forwards inbound mail to Pinwheel and set the "email_domain" instance setting (Instance settings). See ${EMAIL_TRIGGER_DOCS}. Once configured, ask again and I will create the trigger.`
+		: `Email triggering is not set up on this instance yet, so no email trigger was created. Ask an instance superadmin to enable it: they need to run an SMTP server that forwards inbound mail to Pinwheel and set the "email_domain" instance setting. See ${EMAIL_TRIGGER_DOCS}. Once it is configured, ask again and I will create the trigger.`
 	return { available: false, hint }
 }
 

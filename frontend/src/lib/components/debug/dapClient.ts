@@ -304,7 +304,7 @@ export class DAPClient {
 	async initialize(): Promise<DAPMessage> {
 		const response = await this.sendRequest('initialize', {
 			clientID: 'windmill',
-			clientName: 'Windmill Script Editor',
+			clientName: 'Pinwheel Script Editor',
 			adapterID: 'python',
 			pathFormat: 'path',
 			linesStartAt1: true,

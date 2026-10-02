@@ -29,7 +29,7 @@
 <HighlightTheme />
 
 <Section label="Webhooks" class="flex flex-col gap-4">
-	<Description link="https://www.windmill.dev/docs/core_concepts/webhooks">
+	<Description link="https://github.com/spiri-robotics/windmill-OSS">
 		Webhooks trigger scripts or flows via HTTP requests. Each webhook can be configured to run
 		synchronously or asynchronously. You can secure webhooks using tokens with specific permissions.
 	</Description>

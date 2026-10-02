@@ -87,7 +87,7 @@
 </script>
 
 <svelte:head>
-	<title>Run {truncateRev(jobId, 8)} | Windmill</title>
+	<title>Run {truncateRev(jobId, 8)} | Pinwheel</title>
 	<!-- The URL *is* the credential: keep the link out of search indexes, and out of the
 	     Referer header of anything the rendered result or logs may link to. -->
 	<meta name="robots" content="noindex, nofollow" />

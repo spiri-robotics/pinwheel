@@ -364,13 +364,13 @@
 							'github_pat',
 							githubIcon,
 							'GitHub personal access token',
-							'Generate a token from GitHub to allow Windmill to access your account.'
+							'Generate a token from GitHub to allow Pinwheel to access your account.'
 						)}
 						{@render providerCard(
 							'gitlab',
 							gitlabIcon,
 							'GitLab',
-							'Generate a token from GitLab to allow Windmill to access your account.'
+							'Generate a token from GitLab to allow Pinwheel to access your account.'
 						)}
 						{#if hasResource || provider === 'existing'}
 							{@render providerCard(
@@ -465,7 +465,7 @@
 								<div class="flex flex-col gap-1">
 									<span class="text-xs font-semibold text-emphasis">Save as resource</span>
 									<span class="text-xs text-secondary">
-										Windmill keeps the repository and its access as a <code>git_repository</code> resource
+										Pinwheel keeps the repository and its access as a <code>git_repository</code> resource
 										at this path.
 									</span>
 									{#key connection.url}

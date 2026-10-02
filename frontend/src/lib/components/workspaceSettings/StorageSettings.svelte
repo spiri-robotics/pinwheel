@@ -191,11 +191,11 @@
 
 <SettingsPageHeader
 	title="Workspace object storage (S3/Azure Blob/GCS)"
-	description="Connect your Windmill workspace to your S3 bucket, Azure Blob storage, or Google Cloud Storage to enable users to read and write from object storage without having to have access to the credentials."
-	link="https://www.windmill.dev/docs/core_concepts/object_storage_in_windmill#workspace-object-storage"
+	description="Connect your Pinwheel workspace to your S3 bucket, Azure Blob storage, or Google Cloud Storage to enable users to read and write from object storage without having to have access to the credentials."
+	link="https://github.com/spiri-robotics/windmill-OSS"
 />
 {#if !$enterpriseLicense}
-	<Alert type="info" title="Workspace storage is limited to {quotaDisplay} in Windmill CE">
+	<Alert type="info" title="Workspace storage is limited to {quotaDisplay} in Pinwheel CE">
 		Total workspace storage is capped at {quotaDisplay} in the Community Edition: writes that would exceed
 		the quota are rejected. Consider upgrading to Windmill EE for unlimited workspace storage.
 	</Alert>
@@ -204,7 +204,7 @@
 		This setting is only for storage of large files allowing to upload files directly to object
 		storage using S3Object and use the wmill sdk to read and write large files backed by an object
 		storage. Large-scale log management and distributed dependency caching is under <a
-			href="https://www.windmill.dev/docs/core_concepts/object_storage_in_windmill#instance-object-storage"
+			href="https://github.com/spiri-robotics/windmill-OSS"
 			>Instance object storage</a
 		>, set by the superadmins in the instance settings UI.
 	</Alert>
@@ -328,7 +328,7 @@
 									{#if tableRow[1].resourceType === 'filesystem'}
 										<Tooltip>
 											Filesystem storage points the workspace at a directory on the server's own
-											disk. Only development builds of Windmill accept it — switch this storage to
+											disk. Only development builds of Pinwheel accept it — switch this storage to
 											S3, Azure Blob or Google Cloud Storage to configure it here.
 										</Tooltip>
 									{/if}
@@ -552,7 +552,7 @@
 						>
 							S3 resource public access is ON, which means that the entire content of the S3 bucket
 							will be accessible to all the users of this workspace regardless of whether they have
-							access the resource or not. Similarly, certain Windmill SDK endpoints can be used in
+							access the resource or not. Similarly, certain Pinwheel SDK endpoints can be used in
 							scripts to access the resource details, including public and private keys.
 						</Alert>
 					{/if}

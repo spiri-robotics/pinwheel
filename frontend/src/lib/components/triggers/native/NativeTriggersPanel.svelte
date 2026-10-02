@@ -58,7 +58,7 @@
 		{...restProps}
 	>
 		{#snippet description()}
-			<Description link="https://www.windmill.dev/docs/core_concepts/{service}_triggers">
+			<Description link="https://github.com/spiri-robotics/windmill-OSS{service}_triggers">
 				{serviceDisplayName} triggers execute scripts and flows in response to events in {serviceDisplayName}.
 			</Description>
 		{/snippet}

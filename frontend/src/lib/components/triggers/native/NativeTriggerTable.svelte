@@ -238,7 +238,7 @@
 			<span>External ID: {triggerToDelete.external_id}</span>
 		{/if}
 		<Alert type="warning" title="Warning">
-			This will permanently delete the trigger from both Windmill and {serviceConfig?.serviceDisplayName}.
+			This will permanently delete the trigger from both Pinwheel and {serviceConfig?.serviceDisplayName}.
 			This action cannot be undone.
 		</Alert>
 	</div>

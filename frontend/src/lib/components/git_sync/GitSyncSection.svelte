@@ -222,8 +222,8 @@
 {:else}
 	<SettingsPageHeader
 		title="Git Sync"
-		description="Connect the Windmill workspace to a Git repository: each deploy commits scripts, flows, and apps to the repository, and new commits to the repository can automatically deploy into the workspace."
-		link="https://www.windmill.dev/docs/advanced/git_sync"
+		description="Connect the Pinwheel workspace to a Git repository: each deploy commits scripts, flows, and apps to the repository, and new commits to the repository can automatically deploy into the workspace."
+		link="https://github.com/spiri-robotics/windmill-OSS"
 	>
 		{#snippet actions()}
 			{#if (gitSyncAllowed || gitSyncStatus.user_count != null) && gitSyncContext?.repositories != undefined}
@@ -323,12 +323,12 @@
 								>
 									Add promotion repository
 								</Button>
-								<Tooltip documentationLink="https://www.windmill.dev/docs/advanced/deploy_gh_gl">
+								<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 									Each deploy in this workspace pushes its changes to a dedicated
 									<span class="font-mono">wm_deploy/**</span>
 									branch of the repository instead of committing to its tracked branch directly. Merging
 									that branch promotes the change: the workspace that syncs the tracked branch deploys
-									it on merge, so set up Git Sync there. Windmill can open the pull request for each
+									it on merge, so set up Git Sync there. Pinwheel can open the pull request for each
 									deploy branch, or you can use the open-pr-on-commit workflow.
 								</Tooltip>
 								{#if !$enterpriseLicense}<EEOnly />{/if}
@@ -342,7 +342,7 @@
 						<Alert
 							type="info"
 							title="Promotion does not apply to a fork"
-							documentationLink="https://www.windmill.dev/docs/advanced/workspace_forks"
+							documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 						>
 							Deploys in a fork always commit to the fork's own wm-fork/** branch, so a promotion
 							repository would never take effect here. Promote this fork's work by merging that

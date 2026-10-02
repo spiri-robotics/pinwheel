@@ -6,380 +6,380 @@ export type Changelog = {
 
 const changelogs: Changelog[] = [
 	{
-		label: 'AWS Bedrock support for Windmill AI',
-		href: 'https://www.windmill.dev/changelog/aws-bedrock',
+		label: 'AWS Bedrock support for Pinwheel AI',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2025-11-19'
 	},
 
 	{
 		label: 'Dynamic select for flows',
-		href: 'https://www.windmill.dev/changelog/dynamic-select-flows',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2025-08-08'
 	},
 
 	{
 		label: 'MQTT triggers',
-		href: 'https://www.windmill.dev/changelog/mqtt-triggers',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2025-03-11'
 	},
 	{
 		label: 'SQS triggers',
-		href: 'https://www.windmill.dev/changelog/sqs-triggers',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2025-02-18'
 	},
 	{
 		label: 'Teams workspace integration',
-		href: 'https://www.windmill.dev/changelog/teams-workspace-integration',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2025-02-13'
 	},
 	{
 		label: 'Mocked API files',
-		href: 'https://www.windmill.dev/changelog/mocked-api-files',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2025-01-27'
 	},
 	{
 		label: 'Select Python version',
-		href: 'https://www.windmill.dev/changelog/select-python-version',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2025-01-24'
 	},
 	{
 		label: 'Postgres triggers',
-		href: 'https://www.windmill.dev/changelog/postgres-triggers',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2025-01-24'
 	},
 	{
 		label: 'Oracle support',
-		href: 'https://www.windmill.dev/changelog/oracle-support',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2025-01-15'
 	},
 	{
 		label: 'NATS triggers',
-		href: 'https://www.windmill.dev/changelog/nats-triggers',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2025-01-15'
 	},
 	{
 		label: 'Workspace color',
-		href: 'https://www.windmill.dev/changelog/workspace-color',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2025-01-10'
 	},
 	{
 		label: 'Interactive Slack approval steps',
-		href: 'https://www.windmill.dev/changelog/slack-approval-steps',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-12-20'
 	},
 	{
 		label: 'C#',
-		href: 'https://www.windmill.dev/changelog/csharp',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-12-13'
 	},
 	{
 		label: 'App custom URL',
-		href: 'https://www.windmill.dev/changelog/app-custom-url',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-12-05'
 	},
 	{
 		label: 'Full text search on jobs and logs',
-		href: 'https://www.windmill.dev/changelog/instant-full-text-search-on-jobs-and-logs',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-12-05'
 	},
 	{
 		label: 'Force dark/light theme in apps',
-		href: 'https://www.windmill.dev/changelog/force-dark-light-theme',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-11-28'
 	},
 	{
 		label: 'Kafka triggers',
-		href: 'https://www.windmill.dev/changelog/kafka-triggers',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-11-18'
 	},
 	{
 		label: 'Critical channels in UI',
-		href: 'https://www.windmill.dev/changelog/critical-channels-ui',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-11-15'
 	},
 	{
 		label: 'Support for Mistral and Anthropic AI models',
-		href: 'https://www.windmill.dev/changelog/mistral-anthropic-support',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-11-14'
 	},
 	{
 		label: 'Websocket triggers',
-		href: 'https://www.windmill.dev/changelog/websocket-triggers',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-11-06'
 	},
 	{
 		label: 'Autoscaling',
-		href: 'https://www.windmill.dev/changelog/autoscaling',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-10-28'
 	},
 	{
 		label: 'File download helper',
-		href: 'https://www.windmill.dev/changelog/file-download-helper',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-10-12'
 	},
 	{
 		label: 'Queue metric alerts',
-		href: 'https://www.windmill.dev/changelog/queue-metric-alerts',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-10-10'
 	},
 	{
 		label: 'Deno 2.0',
-		href: 'https://www.windmill.dev/changelog/deno-2.0',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-10-10'
 	},
 	{
 		label: 'Move components inside containers with ctrl+click',
-		href: 'https://www.windmill.dev/changelog/move-components-inside-containers-with-ctrl',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-10-09'
 	},
 	{
 		label: 'Support workers to run natively on Windows',
-		href: 'https://www.windmill.dev/changelog/workers-run-natively-windows',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-10-03'
 	},
 	{
 		label: 'Quick access menu for faster component insertion',
-		href: 'https://www.windmill.dev/changelog/flow-quick-access-menu',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-10-03'
 	},
 	{
 		label: 'Custom HTTP routes',
-		href: 'https://www.windmill.dev/changelog/http-routing',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-09-23'
 	},
 	{
 		label: 'Set/Get progress from code',
-		href: 'https://www.windmill.dev/changelog/explicit-progress',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-09-18'
 	},
 	{
 		label: 'Directly edit flow YAML',
-		href: 'https://www.windmill.dev/changelog/flow-yaml-editor',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-09-02'
 	},
 	{
 		label: 'Critical alert channels',
-		href: 'https://www.windmill.dev/changelog/critical-alerts',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-09-01'
 	},
 	{
-		label: 'See service logs directly in Windmill',
-		href: 'https://www.windmill.dev/changelog/service-logs',
+		label: 'See service logs directly in Pinwheel',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-09-01'
 	},
 	{
 		label: 'Vim support for Monaco/webeditor',
-		href: 'https://www.windmill.dev/changelog/vim-support',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-08-28'
 	},
 	{
 		label: 'Hide / Show App Editor Panels',
-		href: 'https://www.windmill.dev/changelog/hide-show-app-panels',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-08-26'
 	},
 	{
 		label: 'Email triggers',
-		href: 'https://www.windmill.dev/changelog/email-triggers',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-08-06'
 	},
 	{
 		label: 'Continue on disapproval/timeout',
-		href: 'https://www.windmill.dev/changelog/continue-on-disapproval',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-08-14'
 	},
 	{
 		label: 'Nativets runtime supports npm packages and relative imports',
-		href: 'https://www.windmill.dev/changelog/native-runtime-imports',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-07-29'
 	},
 	{
 		label: 'App bar as components',
-		href: 'https://www.windmill.dev/changelog/app-bar-components',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-07-29'
 	},
 	{
 		label: 'TypeScript Bun scripts are automatically pre-bundled',
-		href: 'https://www.windmill.dev/changelog/pre-bundle-bun-scripts',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-07-26'
 	},
 	{
 		label: 'Dynamic select',
-		href: 'https://www.windmill.dev/changelog/dynamic-select',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-07-22'
 	},
 	{
 		label: 'Flow Status Viewer improvements',
-		href: 'https://www.windmill.dev/changelog/flow-status-viewer',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-07-14'
 	},
 	{
 		label: 'Navbar component',
-		href: 'https://www.windmill.dev/changelog/navbar',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-07-05'
 	},
 	{
 		label: 'Flow versioning',
-		href: 'https://www.windmill.dev/changelog/flow-versioning',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-07-04'
 	},
 	{
 		label: 'OneOf inputs',
-		href: 'https://www.windmill.dev/changelog/oneof-inputs',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-06-17'
 	},
 	{
 		label: 'Tracking relative imports to avoid dependency hell',
-		href: 'https://www.windmill.dev/changelog/track-relative-imports',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-06-10'
 	},
 	{
-		label: 'Windmill Customer Portal',
-		href: 'https://www.windmill.dev/changelog/customer-portal',
+		label: 'Pinwheel Customer Portal',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-06-04'
 	},
 	{
 		label: 'Secondary storage',
-		href: 'https://www.windmill.dev/changelog/secondary-storage',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-05-31'
 	},
 	{
 		label: 'Allow User Resources in Apps with a toggle',
-		href: 'https://www.windmill.dev/changelog/user-resources-in-apps',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-05-27'
 	},
 	{
-		label: 'Windmill AI now supports GPT-4o',
-		href: 'https://www.windmill.dev/changelog/windmill-ai-gpt-4o',
+		label: 'Pinwheel AI now supports GPT-4o',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-05-27'
 	},
 	{
 		label: 'Concurrency limit observability',
-		href: 'https://www.windmill.dev/changelog/concurrency-limit-observability',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-05-15'
 	},
 	{
 		label: 'Full height components',
-		href: 'https://www.windmill.dev/changelog/full-height-components',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-05-15'
 	},
 	{
 		label: 'PHP Support',
-		href: 'https://www.windmill.dev/changelog/php-support',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-05-15'
 	},
 	{
 		label: 'nativets/REST supports the full wmill API',
-		href: 'https://www.windmill.dev/changelog/nativets-wmill-library',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-05-13'
 	},
 	{
 		label: 'Workers metrics',
-		href: 'https://www.windmill.dev/changelog/workers-metrics',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-05-10'
 	},
 	{
 		label: 'CLI and Git Sync major improvements',
-		href: 'https://www.windmill.dev/changelog/cli-lockfiles',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-04-28'
 	},
 	{
 		label: 'AgGrid Infinite Table',
-		href: 'https://www.windmill.dev/changelog/aggrid-infinite-table',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-04-24'
 	},
 	{
 		label: 'Jobs labels',
-		href: 'https://www.windmill.dev/changelog/jobs-labels',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-04-24'
 	},
 	{
 		label: 'AgGrid Actions',
-		href: 'https://www.windmill.dev/changelog/aggrid-actions',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-04-12'
 	},
 	{
 		label: 'Continue on error with error as step`s return',
-		href: 'https://www.windmill.dev/changelog/continue-on-error',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-04-02'
 	},
 	{
 		label: 'While loops',
-		href: 'https://www.windmill.dev/changelog/while-loops',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-04-02'
 	},
 	{
 		label: 'Approval steps improvements',
-		href: 'https://www.windmill.dev/changelog/approval-steps-improvements',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-03-27'
 	},
 	{
 		label: 'Map Support in Result Renderer',
-		href: 'https://www.windmill.dev/changelog/map-support-renderer',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-03-27'
 	},
 	{
 		label: 'Markdown support in descriptions',
-		href: 'https://www.windmill.dev/changelog/markdown-support-descriptions',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-03-27'
 	},
 	{
 		label: 'Custom flow states',
-		href: 'https://www.windmill.dev/changelog/custom-flow-states',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-03-26'
 	},
 	{
 		label: 'Custom contextual variables',
-		href: 'https://www.windmill.dev/changelog/custom-contextual-variables',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-03-23'
 	},
 	{
 		label: 'Large log disk and Distributed storage compaction',
-		href: 'https://www.windmill.dev/changelog/log-disk-distributed-storage-compaction',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-03-23'
 	},
 	{
 		label: 'Rename Workspace (Self-Host only)',
-		href: 'https://www.windmill.dev/changelog/rename-workspace',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-03-22'
 	},
 	{
 		label: 'Configurable available languages',
-		href: 'https://www.windmill.dev/changelog/configurable-languages',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-03-13'
 	},
 	{
 		label: 'Workflow as Code',
-		href: 'https://www.windmill.dev/changelog/workflows-as-code',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-03-04'
 	},
 	{
 		label: 'Pin Database in SQL Scripts',
-		href: 'https://www.windmill.dev/changelog/pin-database',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-02-27'
 	},
 	{
 		label: 'Custom workspace secret encryption',
-		href: 'https://www.windmill.dev/changelog/workspace-encryption',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-02-15'
 	},
 	{
 		label: 'Flow & Metadata Copilot',
-		href: 'https://www.windmill.dev/changelog/ai-copilot',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-02-15'
 	},
 	{
 		label: 'Ag Charts',
-		href: 'https://www.windmill.dev/changelog/ag-charts',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-01-24'
 	},
 	{
 		label: 'Database studio',
-		href: 'https://www.windmill.dev/changelog/database-studio',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-01-24'
 	},
 	{
 		label: 'Rich results render',
-		href: 'https://www.windmill.dev/changelog/rich-render',
+		href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 		date: '2024-01-23'
 	}
 ]

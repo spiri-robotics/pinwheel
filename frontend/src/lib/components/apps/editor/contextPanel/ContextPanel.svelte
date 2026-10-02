@@ -31,7 +31,7 @@
 				}}
 				direction="left"
 			/>
-			<DocLink docLink="https://www.windmill.dev/docs/apps/outputs" />
+			<DocLink docLink="https://github.com/spiri-robotics/windmill-OSS" />
 		</div>
 	{/snippet}
 	<AnimatedButton

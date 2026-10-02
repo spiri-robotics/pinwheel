@@ -196,7 +196,7 @@
 
 	let embedMode = $state(false)
 	function toEmbedSnippet(url: string): string {
-		return `<iframe src="${url}" title="Windmill app" width="100%" height="600"></iframe>`
+		return `<iframe src="${url}" title="Pinwheel app" width="100%" height="600"></iframe>`
 	}
 	async function getSecretUrl() {
 		secretUrl = await AppService.getPublicSecretOfApp({
@@ -413,7 +413,7 @@
 	<h2 class="text-xs font-semibold">Frontend API access</h2>
 	<div class="mb-6 mt-2">
 		<div class="text-xs text-secondary mb-3">
-			Let the app's frontend code call the Windmill API through the <code>windmill-client</code>
+			Let the app's frontend code call the Pinwheel API through the <code>windmill-client</code>
 			SDK, authenticated as <b>the viewer</b> (unlike runnables, which run on behalf of the
 			publisher). Each viewer is asked to approve the scopes below before the app runs. Grant only
 			what the app needs: its code — or an XSS bug in it — can use them as that viewer. Add
@@ -453,7 +453,7 @@
 			<div class="mt-2">
 				<Alert type="info" title="Redeploy to use the SDK from a sandboxed app" size="xs">
 					A sandboxed app calls the API cross-origin, which older <code>windmill-client</code> versions
-					cannot do. An app bundled before this Windmill version fails with a CORS error until you deploy
+					cannot do. An app bundled before this Pinwheel version fails with a CORS error until you deploy
 					it again, which re-bundles it against a current client.
 				</Alert>
 			</div>
@@ -498,7 +498,7 @@
 						disabled={policy.execution_mode != 'guest' && (!guestsAvailable || !canSetGuest)}
 						tooltip={!guestsAvailable
 							? 'Not available on Windmill Cloud. Guests require a self-hosted instance or a dedicated Windmill Cloud deployment.'
-							: "Anyone your identity provider authenticates who has no Windmill account, plus workspace members. No membership, no seat up to the instance's allowance."}
+							: "Anyone your identity provider authenticates who has no Pinwheel account, plus workspace members. No membership, no seat up to the instance's allowance."}
 						{item}
 					/>
 					<ToggleButton
@@ -527,7 +527,7 @@
 					Guests are turned off for this workspace, so this app still admits members only. A
 					workspace admin can turn them on in the workspace settings.
 				{:else}
-					Anyone your identity provider authenticates can open this app without a Windmill account.
+					Anyone your identity provider authenticates can open this app without a Pinwheel account.
 					They join no workspace. Members of this workspace can open it too.
 					{#if guestUsage}
 						{guestUsage.guest_count} of {guestUsage.free_allowance} free guests used across this instance
@@ -568,7 +568,7 @@
 						Cross-Origin-Resource-Policy header.</Tooltip
 					> to the URL.
 				{/if}
-				(if requiring login, top-level domain of embedding app must be the same as the one of Windmill)
+				(if requiring login, top-level domain of embedding app must be the same as the one of Pinwheel)
 			{:else}
 				Share this url directly, or switch to <b>Embed</b> to get an iframe snippet.
 			{/if}
@@ -582,11 +582,11 @@
 				<div class="text-xs text-secondary">
 					To open this app for a user your own product already authenticates, mint a short-lived JWT
 					in your backend and append it to the app URL as <code>guest.&lt;jwt&gt;</code>. Each token
-					is its own seatless guest, confined to this app — no shared secret and no Windmill
+					is its own seatless guest, confined to this app — no shared secret and no Pinwheel
 					account, unlike the plain secret URL above.
 				</div>
 				<div class="text-xs text-secondary">
-					Windmill verifies the token against the workspace's guest JWT key (Workspace settings →
+					Pinwheel verifies the token against the workspace's guest JWT key (Workspace settings →
 					Guests) — a PEM public key or a JWKS URL{#if !isCloudHosted()}, or the instance's
 						configured issuer (<code>JWT_EXT_JWKS_URL</code>) when no workspace key is set{/if}. Set
 					the <b>public</b> half there; in your backend, sign each token with the matching
@@ -666,7 +666,7 @@
 	</Alert>
 
 	<a
-		href="https://www.windmill.dev/docs/advanced/external_auth_with_jwt#embed-public-apps-using-your-own-authentification"
+		href="https://github.com/spiri-robotics/windmill-OSS"
 		class="mt-4 text-2xs">Embed this app in your own product to be used by your own users</a
 	>
 {/if}

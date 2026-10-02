@@ -250,7 +250,7 @@ input_name2: expression2
 				<div class="p-4">
 					<p class="text-sm">
 						{#if !$copilotInfo.enabled}
-							Enable Windmill AI in the{' '}
+							Enable Pinwheel AI in the{' '}
 							<a
 								href="{base}/workspace_settings?tab=ai"
 								target="_blank"

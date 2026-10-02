@@ -232,7 +232,7 @@
 								: 'text-emphasis'}">New project</span
 						>
 						<span class="text-xs text-secondary font-normal"
-							>Windmill creates it and stores its password</span
+							>Pinwheel creates it and stores its password</span
 						>
 					</span>
 				</button>
@@ -282,7 +282,7 @@
 			/>
 		</div>
 		<Alert type="info" size="xs" bgClass="border-0" title="">
-			Windmill generates and stores the database password. A new project takes a minute or two to
+			Pinwheel generates and stores the database password. A new project takes a minute or two to
 			come up.
 		</Alert>
 		<SupabaseConnectionMode bind:mode={intent.connectionMode} onChange={onIntentChange} />

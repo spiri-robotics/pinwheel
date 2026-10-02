@@ -171,12 +171,12 @@
 			</Alert>
 		{:else if repo.detectionState === 'no-wmill'}
 			<Alert type="info" size="xs" bgClass="border-0" title="New repository">
-				The repository has no Windmill configuration yet. Choose what to sync, then initialize it
+				The repository has no Pinwheel configuration yet. Choose what to sync, then initialize it
 				with the current content of this workspace.
 			</Alert>
 		{:else if repo.detectionState === 'has-wmill'}
-			<Alert type="success" size="xs" bgClass="border-0" title="Existing Windmill repository">
-				The repository already holds a Windmill configuration. Its sync settings are loaded below.
+			<Alert type="success" size="xs" bgClass="border-0" title="Existing Pinwheel repository">
+				The repository already holds a Pinwheel configuration. Its sync settings are loaded below.
 			</Alert>
 		{/if}
 
@@ -204,7 +204,7 @@
 					options={{
 						right: 'Group all changes from the same folder in the same branch',
 						rightTooltip:
-							'Instead of creating a branch per item, Windmill creates a branch per folder containing the items being deployed.'
+							'Instead of creating a branch per item, Pinwheel creates a branch per folder containing the items being deployed.'
 					}}
 				/>
 				{#if managedCredential}
@@ -213,7 +213,7 @@
 						options={{
 							right: 'Open a pull request for each deploy branch',
 							rightTooltip:
-								'After a deploy pushes its wm_deploy/** branch, Windmill opens a pull request to the target branch. Runs from the deploy itself, so it works without inbound webhooks.'
+								'After a deploy pushes its wm_deploy/** branch, Pinwheel opens a pull request to the target branch. Runs from the deploy itself, so it works without inbound webhooks.'
 						}}
 						on:change={(e) => setPromotionOpenPrs(e.detail)}
 					/>
@@ -232,7 +232,7 @@
 						options={{
 							right: 'Automatically deploy changes from Git',
 							rightTooltip:
-								'Windmill deploys new commits from the tracked branch into this workspace.'
+								'Pinwheel deploys new commits from the tracked branch into this workspace.'
 						}}
 						on:change={(e) => setAutoPull(e.detail)}
 					>
@@ -251,7 +251,7 @@
 							Leave it off to control deployment from your own pipeline (tests, custom gating,
 							deploy on PR merge) with
 							<a
-								href="https://www.windmill.dev/docs/advanced/deploy_gh_gl#github-actions-setup"
+								href="https://github.com/spiri-robotics/windmill-OSS"
 								target="_blank"
 								rel="noreferrer"
 								class="text-accent hover:underline">GitHub Actions or a similar CI/CD workflow</a
@@ -264,7 +264,7 @@
 						options={{
 							right: 'Automatically sync forks with git branches',
 							rightTooltip: repo.auto_pull?.enabled
-								? "When a fork's wm-fork/** branch changes in the repository (for example after merging the tracked branch into it), Windmill deploys those commits into the fork workspace. Configured once here, applied to every fork of this workspace."
+								? "When a fork's wm-fork/** branch changes in the repository (for example after merging the tracked branch into it), Pinwheel deploys those commits into the fork workspace. Configured once here, applied to every fork of this workspace."
 								: 'Requires automatic deploy from Git to be enabled above.'
 						}}
 						on:change={(e) => setSyncForks(e.detail)}
@@ -276,7 +276,7 @@
 							options={{
 								right: 'Open a pull request when an item is deployed in a fork',
 								rightTooltip:
-									"After an item deployed in a fork is pushed to the fork's branch (wm-fork/**, or the dev branch for a dev workspace), Windmill opens a pull request to the tracked branch of the shared repository. Runs from the deploy itself, so it works without inbound webhooks."
+									"After an item deployed in a fork is pushed to the fork's branch (wm-fork/**, or the dev branch for a dev workspace), Pinwheel opens a pull request to the tracked branch of the shared repository. Runs from the deploy itself, so it works without inbound webhooks."
 							}}
 							on:change={(e) => setForkOpenPrs(e.detail)}
 						>

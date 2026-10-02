@@ -27,7 +27,7 @@
 
 ### Heading 3
 
-Body text with **bold**, *italic*, a [link](https://windmill.dev), and \`inline code\` that must stay readable in both themes.
+Body text with **bold**, *italic*, a [link](https://github.com/spiri-robotics/windmill-OSS), and \`inline code\` that must stay readable in both themes.
 
 > A block quote should be legible too.
 
@@ -73,7 +73,7 @@ Raw sanitized HTML (via rehypeRaw) must keep its content, not render empty:
 	// can be tuned against the real render path, not an approximation.
 	const chatSampleContent = `# Wiring up the trigger
 
-Here's how you'd wire up the trigger. First, some prose with \`inline code\`, a [link](https://windmill.dev), and **bold** text so we can see how code sits next to surrounding content.
+Here's how you'd wire up the trigger. First, some prose with \`inline code\`, a [link](https://github.com/spiri-robotics/windmill-OSS), and **bold** text so we can see how code sits next to surrounding content.
 
 ## The script
 

@@ -28,8 +28,8 @@
 			markSettingSaved?.(KEY)
 			sendUserToast(
 				next
-					? "Windmill's database can back data tables and Ducklake catalogs again"
-					: "Windmill's database is off: its data tables no longer resolve, and it is not offered for new ones"
+					? "Pinwheel's database can back data tables and Ducklake catalogs again"
+					: "Pinwheel's database is off: its data tables no longer resolve, and it is not offered for new ones"
 			)
 		} catch (e) {
 			sendUserToast(e?.body ?? e?.message ?? String(e), true)
@@ -50,13 +50,13 @@
 			{disabled}
 			checked={enabled}
 			options={{
-				right: 'Data tables and Ducklake catalogs can use Windmill’s own database'
+				right: 'Data tables and Ducklake catalogs can use Pinwheel’s own database'
 			}}
 			id="instance-pg-enabled"
 			on:change={({ detail }) => !saving && setEnabled(detail)}
 		/>
 		<p class="text-xs text-secondary max-w-prose">
-			Turning this off takes Windmill's database out of use: data tables on it stop resolving, so
+			Turning this off takes Pinwheel's database out of use: data tables on it stop resolving, so
 			jobs, apps and triggers using them fail until they are moved or this is turned back on, and no
 			workspace can name it for a new data table or Ducklake catalog. The databases themselves stay
 			where they are. Ducklake catalogs already on it keep working.

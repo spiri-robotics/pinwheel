@@ -140,9 +140,9 @@
 		{initialConfig}
 		workspace="admins"
 		{disableChatOffset}
-		title="Windmill AI"
-		description="Windmill AI integrates with your favorite AI providers and models. Set your AI settings at the instance level to be able to use them on all your workspaces. Workspace-level settings can override these."
-		link="https://www.windmill.dev/docs/core_concepts/ai_generation"
+		title="Pinwheel AI"
+		description="Pinwheel AI integrates with your favorite AI providers and models. Set your AI settings at the instance level to be able to use them on all your workspaces. Workspace-level settings can override these."
+		link="https://github.com/spiri-robotics/windmill-OSS"
 		promptScope="instance"
 		customSave={handleCustomSave}
 		onSave={(savedConfig) => {

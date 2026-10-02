@@ -78,7 +78,7 @@
 	// A role is a login on one cluster, and this drawer's is the data table's: name it, or the
 	// copy would send someone to the wrong catalog.
 	const clusterName = $derived(
-		info?.cluster === 'external_instance' ? 'the external cluster' : "Windmill's database"
+		info?.cluster === 'external_instance' ? 'the external cluster' : "Pinwheel's database"
 	)
 	const unusedRoles = $derived(availableRoles.filter((r) => !roles.some((row) => row.id === r.id)))
 	const pendingRoles = $derived(roles.filter((r) => r.id === undefined))
@@ -259,7 +259,7 @@
 
 				{#if !info?.supported}
 					<Alert type="info" title="Not available on this data table" size="xs">
-						A data table role is a Postgres login on the Windmill instance's own database, so only a
+						A data table role is a Postgres login on the Pinwheel instance's own database, so only a
 						data table backed by that database can use one. This one is backed by a PostgreSQL
 						resource — grant access on that server directly.
 					</Alert>

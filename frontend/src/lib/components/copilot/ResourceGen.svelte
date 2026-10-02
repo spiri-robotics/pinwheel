@@ -37,10 +37,10 @@
 
 		if (isFileset) {
 			prompt =
-				'You are a helpful assistant that generates file contents for a Windmill fileset resource. A fileset is a JSON object mapping file paths to their string contents, e.g. {"path/to/file.txt": "file content", "other/file.md": "# Title"}. You MUST return ONLY valid JSON (a flat object with string keys and string values), no markdown fences, no explanation, no extra text.'
+				'You are a helpful assistant that generates file contents for a Pinwheel fileset resource. A fileset is a JSON object mapping file paths to their string contents, e.g. {"path/to/file.txt": "file content", "other/file.md": "# Title"}. You MUST return ONLY valid JSON (a flat object with string keys and string values), no markdown fences, no explanation, no extra text.'
 		} else {
 			prompt =
-				'You are a helpful assistant that generates JSON values for Windmill resources. You MUST return ONLY valid JSON, no markdown fences, no explanation, no extra text.'
+				'You are a helpful assistant that generates JSON values for Pinwheel resources. You MUST return ONLY valid JSON, no markdown fences, no explanation, no extra text.'
 		}
 
 		if (resourceType) {
@@ -174,7 +174,7 @@
 				{:else}
 					<div class="block text-primary">
 						<p class="text-sm"
-							>Enable Windmill AI in the <a
+							>Enable Pinwheel AI in the <a
 								href="{base}/workspace_settings?tab=ai"
 								target="_blank"
 								class="inline-flex flex-row items-center gap-1"

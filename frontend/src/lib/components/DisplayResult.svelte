@@ -1030,7 +1030,7 @@
 						<Alert size="xs" type="info" title="Seeing an odd error?">
 							Bun script are bundled for performance reasons. If you see an odd error that doesn't
 							appear when testing (which doesn't use bundling), try putting <code>//nobundling</code
-							> at the top of your script to disable bundling and feel free to mention it to the Windmill's
+							> at the top of your script to disable bundling and feel free to mention it to the Pinwheel's
 							team.
 						</Alert>
 					{/if}
@@ -1038,7 +1038,7 @@
 						<Alert size="xs" type="info" title="Seeing an odd import error?">
 							Python requirements inference may be inaccurate. This is due to the fact that
 							requirement names can vary from package names they provide. Try to <a
-								href="https://www.windmill.dev/docs/advanced/dependencies_in_python#pinning-dependencies-and-requirements"
+								href="https://github.com/spiri-robotics/windmill-OSS"
 								target="_blank"
 								rel="noopener noreferrer">manually pin requirements</a
 							>
@@ -1048,7 +1048,7 @@
 						<Alert size="xs" type="info" title="Seeing an odd resolution error?">
 							Python requirements inference may be inaccurate. This is due to the fact that
 							requirement names can vary from package names they provide. Try to <a
-								href="https://www.windmill.dev/docs/advanced/dependencies_in_python#pinning-dependencies-and-requirements"
+								href="https://github.com/spiri-robotics/windmill-OSS"
 								target="_blank"
 								rel="noopener noreferrer">manually pin requirements</a
 							>
@@ -1345,7 +1345,7 @@
 									title="Large result detected"
 									type="warning"
 									tooltip="We recommend using persistent object storage for large result. See docs for setting up an object storage service integration using s3 or any other s3 compatible services."
-									documentationLink="https://www.windmill.dev/docs/core_concepts/persistent_storage#object-storage-for-large-data-s3-r2-minio-azure-blob"
+									documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 								/>
 							</div>
 						{/if}

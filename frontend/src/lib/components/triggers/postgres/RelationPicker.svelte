@@ -140,7 +140,7 @@
 									<Label label="Columns">
 										{#snippet header()}
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/core_concepts/postgres_triggers#selecting-specific-columns"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 												small
 											>
 												<p>
@@ -198,7 +198,7 @@
 									<Label label="Where Clause">
 										{#snippet header()}
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/core_concepts/postgres_triggers#filtering-rows-with-where-condition"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 												small
 											>
 												<p class="text-sm">

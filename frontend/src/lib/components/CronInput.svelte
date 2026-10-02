@@ -231,7 +231,7 @@
 			<div class="flex flex-row-reverse text-2xs text-secondary hover:underline">
 				<a
 					class="text-primary"
-					href="https://www.windmill.dev/docs/core_concepts/scheduling#cron-syntax"
+					href="https://github.com/spiri-robotics/windmill-OSS"
 					target="_blank">Croner</a
 				>
 			</div>

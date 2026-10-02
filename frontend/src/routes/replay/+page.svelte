@@ -106,7 +106,7 @@
 			<h1 class="text-lg font-semibold text-emphasis">Replay a recording</h1>
 			<p class="text-xs text-secondary max-w-lg">
 				Open a recording file, or point this page at one you host yourself with
-				<span class="font-mono">?src=&lt;url&gt;</span>. Nothing is uploaded to Windmill — the
+				<span class="font-mono">?src=&lt;url&gt;</span>. Nothing is uploaded to Pinwheel — the
 				recording is read in your browser and replayed from it alone.
 			</p>
 			{#if error}

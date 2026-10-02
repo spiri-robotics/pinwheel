@@ -264,7 +264,7 @@
 										unifiedSize="md"
 										variant="default"
 										endIcon={{ icon: ExternalLink }}
-										href="https://windmill.dev/docs/core_concepts/autoscaling#kubernetes"
+										href="https://github.com/spiri-robotics/windmill-OSS"
 										target="_blank"
 									>
 										Setup Guide (Roles & Bindings)

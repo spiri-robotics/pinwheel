@@ -227,7 +227,7 @@
 			title: isParallelLoop ? stopAfterCopy.tooltip : undefined,
 			right: stopAfterCopy.label,
 			rightTooltip: stopAfterCopy.tooltip,
-			rightDocumentationLink: 'https://www.windmill.dev/docs/flows/early_stop'
+			rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 		}}
 	/>
 {/snippet}
@@ -247,7 +247,7 @@
 		options={{
 			right: stopAfterAllItersCopy.label,
 			rightTooltip: stopAfterAllItersCopy.tooltip,
-			rightDocumentationLink: 'https://www.windmill.dev/docs/flows/early_stop'
+			rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 		}}
 	/>
 {/snippet}

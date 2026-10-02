@@ -502,7 +502,7 @@
 	on:close={() => (open = false)}
 	title="Schedule Reports"
 	tooltip="Send a PDF or PNG preview of any app at a given schedule"
-	documentationLink="https://www.windmill.dev/docs/apps/schedule_reports"
+	documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 >
 	{#snippet actions()}
 		<div class="mr-4 center-center">

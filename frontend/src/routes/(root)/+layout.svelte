@@ -219,7 +219,7 @@
 					if (!import.meta.env.PROD || chunkLoadToastPath === location.pathname) return
 					chunkLoadToastPath = location.pathname
 					sendUserToast(
-						'Part of the page failed to load, Windmill may have been updated',
+						'Part of the page failed to load, Pinwheel may have been updated',
 						true,
 						[{ label: 'Reload', callback: () => location.reload() }],
 						undefined,

@@ -715,10 +715,10 @@
 		{/if}
 
 		{#if holdsCredential && selected}
-			<Alert type="info" title="Windmill holds this repository's access token">
+			<Alert type="info" title="Pinwheel holds this repository's access token">
 				<div class="flex flex-col items-start gap-2">
 					<div>
-						The URL carries no credential. Windmill stores the token and renews it before it
+						The URL carries no credential. Pinwheel stores the token and renews it before it
 						expires.
 						{#if urlDirty}
 							Save your URL change to replace the token.

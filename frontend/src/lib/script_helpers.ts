@@ -38,14 +38,14 @@ def main():
     # return range from (state to newState)
     #
     # For more complex states, consider using Data Tables:
-    # https://www.windmill.dev/docs/core_concepts/persistent_storage/data_tables
+    # https://github.com/spiri-robotics/windmill-OSS
     return [1, 2, 3]`
 
 const PYTHON_INIT_CODE = `import os
 import wmill
 
 # You can import any PyPi package. 
-# See here for more info: https://www.windmill.dev/docs/advanced/dependencies_in_python
+# See here for more info: https://github.com/spiri-robotics/windmill-OSS
 
 # you can use typed resources by doing a type alias to dict
 #postgresql = dict
@@ -82,7 +82,7 @@ def main(
     # return value is converted to JSON
     return {"splitted": name.split(), "user": user, "state": new_state}`
 
-const NATIVETS_INIT_CODE = `// Fetch-only script, no imports allowed (except windmill) but benefits from a dedicated highly efficient runtime
+const NATIVETS_INIT_CODE = `// Fetch-only script, no imports allowed (except pinwheel) but benefits from a dedicated highly efficient runtime
 //import * as wmill from './windmill.ts'
 
 export async function main(example_input: number = 3) {
@@ -111,7 +111,7 @@ export async function main(example_input: number = 3) {
 }
 `
 
-const NATIVETS_INIT_CODE_CLEAR = `// Fetch-only script, no imports allowed (except windmill) but benefits from a dedicated highly efficient runtime
+const NATIVETS_INIT_CODE_CLEAR = `// Fetch-only script, no imports allowed (except pinwheel) but benefits from a dedicated highly efficient runtime
 //import * as wmill from './windmill.ts'
 
 export async function main() {
@@ -148,7 +148,7 @@ export async function main(
 `
 
 const BUN_INIT_BLOCK = `// there are multiple modes to add as header: //nobundling //native //npm //nodejs
-// https://www.windmill.dev/docs/getting_started/scripts_quickstart/typescript#modes
+// https://github.com/spiri-robotics/windmill-OSS
 
 // import { toWords } from "number-to-words@1"
 import * as wmill from "windmill-client"
@@ -165,8 +165,8 @@ export async function main(
   a: number,
   b: "my" | "enum",
   //c: Postgresql,
-  //d: wmill.S3Object, // https://www.windmill.dev/docs/core_concepts/persistent_storage/large_data_files 
-  //d: DynSelect_foo, // https://www.windmill.dev/docs/core_concepts/json_schema_and_parsing#dynamic-select
+  //d: wmill.S3Object, // https://github.com/spiri-robotics/windmill-OSS 
+  //d: DynSelect_foo, // https://github.com/spiri-robotics/windmill-OSS
   e = "inferred type string from default arg",
   f = { nested: "object" },
   g: {
@@ -343,13 +343,13 @@ const DUCKDB_INIT_CODE = `-- result_collection=last_statement_all_rows
 -- -- $friends_csv (s3object)
 
 -- Click the +Database button to connect to a database
--- https://www.windmill.dev/docs/getting_started/scripts_quickstart/sql#duckdb-1
+-- https://github.com/spiri-robotics/windmill-OSS
 --
 -- ATTACH '$res:u/demo/amazed_postgresql' AS db (TYPE postgres);
 -- SELECT * FROM db.public.friends;
 
 -- Click the +Ducklake button to use a ducklake
--- https://www.windmill.dev/docs/core_concepts/persistent_storage/ducklake
+-- https://github.com/spiri-robotics/windmill-OSS
 --
 -- ATTACH 'ducklake' AS dl;
 -- USE dl;
@@ -582,7 +582,7 @@ export async function main() {
   // return range from (state to newState)
   //
   // For more complex states, consider using Data Tables:
-  // https://www.windmill.dev/docs/core_concepts/persistent_storage/data_tables
+  // https://github.com/spiri-robotics/windmill-OSS
 
   return [1,2,3]
 
@@ -606,7 +606,7 @@ export async function main() {
   // return range from (state to newState)
   //
   // For more complex states, consider using Data Tables:
-  // https://www.windmill.dev/docs/core_concepts/persistent_storage/data_tables
+  // https://github.com/spiri-robotics/windmill-OSS
 
   return [1,2,3]
 
@@ -633,7 +633,7 @@ func main() (interface{}, error) {
 	// 4. Return the new rows
 	//
 	// For more complex states, consider using Data Tables:
-	// https://www.windmill.dev/docs/core_concepts/persistent_storage/data_tables
+	// https://github.com/spiri-robotics/windmill-OSS
 
 	return state, nil
 
@@ -663,12 +663,12 @@ export async function main(approver?: string) {
 		description: undefined
 		// supports all formats from rich display rendering such as simple strings,
 		// but also markdown, html, images, tables, maps, render_all, etc...
-		// https://www.windmill.dev/docs/core_concepts/rich_display_rendering
+		// https://github.com/spiri-robotics/windmill-OSS
   }
 }
 
 // add a form in Advanced - Suspend
-// all on approval steps: https://www.windmill.dev/docs/flows/flow_approval`
+// all on approval steps: https://github.com/spiri-robotics/windmill-OSS`
 
 const BUN_INIT_CODE_APPROVAL = `import * as wmill from "windmill-client@^1.158.2"
 
@@ -691,12 +691,12 @@ export async function main(approver?: string) {
 		description: undefined
 		// supports all formats from rich display rendering such as simple strings,
 		// but also markdown, html, images, tables, maps, render_all, etc...
-		// https://www.windmill.dev/docs/core_concepts/rich_display_rendering
+		// https://github.com/spiri-robotics/windmill-OSS
   }
 }
 
 // add a form in Advanced - Suspend
-// all on approval steps: https://www.windmill.dev/docs/flows/flow_approval`
+// all on approval steps: https://github.com/spiri-robotics/windmill-OSS`
 
 export const TS_PREPROCESSOR_SCRIPT_INTRO = `/**
  * Trigger preprocessor
@@ -710,7 +710,7 @@ export const TS_PREPROCESSOR_SCRIPT_INTRO = `/**
  * e.g., { b: 1, a: 2 } → Calls \`main(2, 1)\`, assuming \`main\` is defined as \`main(a: number, b: number)\`.
  * Ensure that the parameter names in \`main\` match the keys in the returned object.
  * 
- * Learn more: https://www.windmill.dev/docs/core_concepts/preprocessors
+ * Learn more: https://github.com/spiri-robotics/windmill-OSS
  */\n`
 
 export const TS_PREPROCESSOR_FLOW_INTRO = `/**
@@ -723,7 +723,7 @@ export const TS_PREPROCESSOR_FLOW_INTRO = `/**
  * e.g., \`{ b: 1, a: 2 }\` → Calls the flow with \`a = 2\` and \`b = 1\`, assuming the flow has two inputs called \`a\` and \`b\`.
  * Ensure that the input names of the flow match the keys in the returned object.
  * 
- * Learn more: https://www.windmill.dev/docs/core_concepts/preprocessors
+ * Learn more: https://github.com/spiri-robotics/windmill-OSS
  */\n`
 
 export const TS_PREPROCESSOR_MODULE_CODE = `export async function preprocessor(event: TriggerEvent) {
@@ -867,11 +867,11 @@ def main():
     "description": None,
     # supports all formats from rich display rendering such as simple strings,
     # but also markdown, html, images, tables, maps, render_all, etc...
-    # https://www.windmill.dev/docs/core_concepts/rich_display_rendering
+    # https://github.com/spiri-robotics/windmill-OSS
   }
 
 # add a form in Advanced - Suspend
-# all on approval steps: https://www.windmill.dev/docs/flows/flow_approval`
+# all on approval steps: https://github.com/spiri-robotics/windmill-OSS`
 
 export const PYTHON_PREPROCESSOR_SCRIPT_INTRO = `# Trigger preprocessor
 #
@@ -884,7 +884,7 @@ export const PYTHON_PREPROCESSOR_SCRIPT_INTRO = `# Trigger preprocessor
 # e.g., { b: 1, a: 2 } → Calls \`main(2, 1)\`, assuming \`main\` is defined as \`main(a: int, b: int)\`.
 # Ensure that the parameter names in \`main\` match the keys in the returned object.
 #
-# Learn more: https://www.windmill.dev/docs/core_concepts/preprocessors\n\n`
+# Learn more: https://github.com/spiri-robotics/windmill-OSS\n\n`
 
 export const PYTHON_PREPROCESSOR_FLOW_INTRO = `# Trigger preprocessor
 #
@@ -895,7 +895,7 @@ export const PYTHON_PREPROCESSOR_FLOW_INTRO = `# Trigger preprocessor
 # e.g., \`{ b: 1, a: 2 }\` → Calls the flow with \`a = 2\` and \`b = 1\`, assuming the flow has two inputs called \`a\` and \`b\`.
 # Ensure that the input names of the flow match the keys in the returned object.
 #
-# Learn more: https://www.windmill.dev/docs/core_concepts/preprocessors\n\n`
+# Learn more: https://github.com/spiri-robotics/windmill-OSS\n\n`
 
 export const PYTHON_PREPROCESSOR_MODULE_CODE = `from typing import TypedDict, Literal, Optional, Union
 
@@ -1065,7 +1065,7 @@ export const PHP_PREPROCESSOR_SCRIPT_INTRO = `<?php
  * e.g., ['b' => 1, 'a' => 2] → Calls \`main(2, 1)\`, assuming \`main\` is defined as \`main($a, $b)\`.
  * Ensure that the parameter names in \`main\` match the keys in the returned array.
  * 
- * Learn more: https://www.windmill.dev/docs/core_concepts/preprocessors
+ * Learn more: https://github.com/spiri-robotics/windmill-OSS
  */
 
 `
@@ -1081,7 +1081,7 @@ export const PHP_PREPROCESSOR_FLOW_INTRO = `<?php
  * e.g., ['b' => 1, 'a' => 2] → Calls the flow with \`a = 2\` and \`b = 1\`, assuming the flow has two inputs called \`a\` and \`b\`.
  * Ensure that the input names of the flow match the keys in the returned array.
  * 
- * Learn more: https://www.windmill.dev/docs/core_concepts/preprocessors
+ * Learn more: https://github.com/spiri-robotics/windmill-OSS
  */
 
 `
@@ -1089,7 +1089,7 @@ export const PHP_PREPROCESSOR_FLOW_INTRO = `<?php
 export const PHP_PREPROCESSOR_MODULE_CODE = `function preprocessor(object $event) {
     // $event can be one of the following types:
     // 
-    // All events (except webhook) include 'trigger_path' => '...' (the path of the trigger in Windmill)
+    // All events (except webhook) include 'trigger_path' => '...' (the path of the trigger in Pinwheel)
     //
     // Webhook event:
     // ['kind' => 'webhook', 'body' => [...], 'raw_string' => '...', 'query' => [...], 'headers' => [...]]
@@ -1144,7 +1144,7 @@ const DOCKER_INIT_CODE = `# shellcheck shell=bash
 # The "# sandbox <image>" annotation runs this script INSIDE the image above,
 # sandboxed via nsjail: the image's rootfs is extracted (rootless podman) and the
 # body runs chrooted in it, inheriting the job's confinement. The body runs with
-# the image's /bin/sh and windmill args bind positionally as $1, $2, ...
+# the image's /bin/sh and pinwheel args bind positionally as $1, $2, ...
 # Daemonless — no docker run/-d/exec/build and no host -v bind mounts.
 # (A bare "# docker" still uses the legacy daemon runtime instead.)
 
@@ -1186,7 +1186,7 @@ options:
   #   target:  ./ssh_key
   #   mode: '0600'
 
-# Define the arguments of the windmill script
+# Define the arguments of the pinwheel script
 extra_vars:
   world_qualifier:
     type: string
@@ -1280,7 +1280,7 @@ const RUBY_INIT_CODE = `require 'windmill/inline'
 require 'windmill/mini'
 
 # Dependency management: declare gems in gemfile block for automatic installation
-# Windmill uses bundler/inline compatible syntax with automatic requiring
+# Pinwheel uses bundler/inline compatible syntax with automatic requiring
 gemfile do
   source 'https://rubygems.org'
   gem 'amazing_print', '~> 1.6'
@@ -1296,7 +1296,7 @@ def main(
   puts "Hello World and a warm welcome especially to #{name}"
   puts "and its acolytes.. #{age} #{obj} #{list}"
 
-  # Retrieve variables using the Windmill mini client
+  # Retrieve variables using the Pinwheel mini client
   begin
     secret = get_variable("f/examples/secret")
   rescue => e
@@ -1307,7 +1307,7 @@ def main(
   # Get typed resources using the mini client
   # database = get_resource("u/user/my_postgresql") 
 
-  # Access environment variables provided by Windmill
+  # Access environment variables provided by Pinwheel
   user = ENV['WM_USERNAME']
 
   # Pretty print results using amazing_print (automatically required from gemfile)
@@ -1335,7 +1335,7 @@ main <- function(
     data = list(1, 2, 3),
     flag = TRUE
 ) {
-    # Use Windmill helpers:
+    # Use Pinwheel helpers:
     # var <- get_variable("f/my_var")
     # res <- get_resource("f/my_resource")
 
@@ -1362,7 +1362,7 @@ profile:
   # Alternatively, keep the project's own file. It runs unchanged, but names a
   # warehouse only to say where its assets belong:
   # profiles_yml: profiles.yml
-# Passed to dbt verbatim — this is dbt's selector grammar, not Windmill's
+# Passed to dbt verbatim — this is dbt's selector grammar, not Pinwheel's
 select: []
 exclude: []
 # build (models and tests interleaved) | after_all | none
@@ -1383,7 +1383,7 @@ defer: false
 #   attempts: 2
 #   delay_seconds: 30
 # Extra env for the project's own {{ env_var() }} lookups. A $var: value is
-# resolved to that Windmill variable, so secrets stay out of this file.
+# resolved to that Pinwheel variable, so secrets stay out of this file.
 # env:
 #   DBT_PASSWORD: $var:u/user/my_warehouse_password
 # Real column schemas — every column typed and in the order the model produces

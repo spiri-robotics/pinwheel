@@ -874,7 +874,7 @@
 					</a>
 					— a public page that needs no login and can be embedded in an iframe. Host the JSON anywhere
 					it can be fetched (S3, GitHub raw, your docs site) and link
-					<span class="font-mono">{base}/replay?src=&lt;url&gt;</span> to have it load itself. Windmill
+					<span class="font-mono">{base}/replay?src=&lt;url&gt;</span> to have it load itself. Pinwheel
 					keeps no copy.
 				</span>
 			</div>

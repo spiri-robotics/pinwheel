@@ -120,7 +120,7 @@
 					<div>
 						<strong>1. Create Application</strong>
 						<div class="ml-4 mt-1">
-							From your auth0 Admin page, setup a Windmill application:
+							From your auth0 Admin page, setup a Pinwheel application:
 							<ul class="list-disc ml-4 mt-1 space-y-1">
 								<li>Create a new application</li>
 								<li>For "application type" select <strong>Regular Web Application</strong></li>

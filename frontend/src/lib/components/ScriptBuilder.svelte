@@ -432,28 +432,28 @@
 			value: 'trigger',
 			title: 'Trigger',
 			desc: 'First module of flows to trigger them based on external changes. These kind of scripts are usually running on a schedule to periodically look for changes.',
-			documentationLink: 'https://www.windmill.dev/docs/flows/flow_trigger',
+			documentationLink: 'https://github.com/spiri-robotics/windmill-OSS',
 			Icon: Rocket
 		},
 		{
 			value: 'approval',
 			title: 'Approval',
 			desc: 'Send notifications externally to ask for approval to continue a flow.',
-			documentationLink: 'https://www.windmill.dev/docs/flows/flow_approval',
+			documentationLink: 'https://github.com/spiri-robotics/windmill-OSS',
 			Icon: CheckCircle
 		},
 		{
 			value: 'failure',
 			title: 'Error Handler',
 			desc: 'Handle errors in flows after all retry attempts have been exhausted.',
-			documentationLink: 'https://www.windmill.dev/docs/flows/flow_error_handler',
+			documentationLink: 'https://github.com/spiri-robotics/windmill-OSS',
 			Icon: Bug
 		},
 		{
 			value: 'preprocessor',
 			title: 'Preprocessor',
 			desc: 'Transform incoming requests before they are passed to the main entrypoint.',
-			documentationLink: 'https://www.windmill.dev/docs/core_concepts/preprocessors',
+			documentationLink: 'https://github.com/spiri-robotics/windmill-OSS',
 			Icon: Shuffle
 		}
 	]
@@ -1390,7 +1390,7 @@
 						>
 							{#snippet extra()}
 								<Tooltip
-									documentationLink="https://www.windmill.dev/docs/core_concepts/json_schema_and_parsing"
+									documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 								>
 									The arguments are synced with the main signature but you may refine the parts that
 									cannot be inferred from the type directly.
@@ -1406,7 +1406,7 @@
 							label="Triggers"
 						>
 							{#snippet extra()}
-								<Tooltip documentationLink="https://www.windmill.dev/docs/getting_started/triggers">
+								<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 									Configure how this script will be triggered.
 								</Tooltip>
 							{/snippet}
@@ -1450,7 +1450,7 @@
 											<Label label="Path">
 												{#snippet header()}
 													<Tooltip
-														documentationLink="https://www.windmill.dev/docs/core_concepts/roles_and_permissions#path"
+														documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 													>
 														The unique identifier of the script in the workspace that defines
 														permissions
@@ -1648,7 +1648,7 @@
 										<Section label="Script kind">
 											{#snippet header()}
 												<Tooltip
-													documentationLink="https://www.windmill.dev/docs/script_editor/script_kinds"
+													documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 												>
 													Tag this script's purpose within flows such that it is available as the
 													corresponding action.
@@ -1711,7 +1711,7 @@
 									<Section label="Worker group tag (queue)">
 										{#snippet header()}
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/core_concepts/worker_groups"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											>
 												The script will be executed on a worker configured to listen to this worker
 												group tag (queue). For instance, you could setup an "highmem", or "gpu" tag.
@@ -1726,7 +1726,7 @@
 									<Section label="Concurrency limits" eeOnly>
 										{#snippet header()}
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/core_concepts/concurrency_limits"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											>
 												Allowed concurrency within a given timeframe
 											</Tooltip>
@@ -1768,7 +1768,7 @@
 													<Label label="Custom concurrency key (optional)">
 														{#snippet header()}
 															<Tooltip
-																documentationLink="https://www.windmill.dev/docs/core_concepts/concurrency_limits#custom-concurrency-key"
+																documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 															>
 																Concurrency keys are global, you can have them be workspace specific
 																using the variable `$workspace`. You can also use an argument's
@@ -1790,7 +1790,7 @@
 									<Section label="Cache">
 										{#snippet header()}
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/core_concepts/caching"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											>
 												Cache the results for each possible inputs
 											</Tooltip>
@@ -1824,7 +1824,7 @@
 									<Section label="Timeout">
 										{#snippet header()}
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/script_editor/settings#timeout"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											>
 												Add a custom timeout for this script
 											</Tooltip>
@@ -1870,7 +1870,7 @@
 
 										{#snippet header()}
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/core_concepts/job_debouncing"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											>
 												Debounce Jobs
 											</Tooltip>
@@ -1880,7 +1880,7 @@
 									<Section label="Perpetual script">
 										{#snippet header()}
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/script_editor/perpetual_scripts"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											>
 												Restart the script upon ending unless cancelled
 											</Tooltip>
@@ -1933,7 +1933,7 @@
 										{/if}
 										{#snippet header()}
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/core_concepts/dedicated_workers"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											>
 												In this mode, the script is meant to be run on dedicated workers that run
 												the script at native speed. Can reach &gt;1500rps per dedicated worker. Only
@@ -1946,14 +1946,14 @@
 									<Section label="Delete after completion">
 										{#snippet header()}
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/script_editor/settings#delete-after-use"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											>
 												WARNING: This settings ONLY applies to synchronous webhooks or when the
 												script is used within a flow. If used individually, this script must be
 												triggered using a synchronous endpoint to have the desired effect.
 												<br />
 												<br />
-												The logs, arguments and results of the job will be completely deleted from Windmill
+												The logs, arguments and results of the job will be completely deleted from Pinwheel
 												after the specified delay once it is complete and the result has been returned.
 												Set to 0 for immediate deletion.
 												<br />
@@ -2027,7 +2027,7 @@
 											{#snippet header()}
 												<!-- TODO: Add EE-only badge when we have it -->
 												<Tooltip
-													documentationLink="https://www.windmill.dev/docs/core_concepts/jobs#high-priority-jobs"
+													documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 												>
 													Jobs from script labeled as high priority take precedence over the other
 													jobs when in the jobs queue.
@@ -2040,7 +2040,7 @@
 									<Section label="Runs visibility">
 										{#snippet header()}
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/core_concepts/monitor_past_and_future_runs#invisible-runs"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											>
 												When this option is enabled, manual executions of this script are invisible
 												to users other than the user running it, including the owner(s). This
@@ -2142,7 +2142,7 @@
 										<Section label="Custom env variables">
 											{#snippet header()}
 												<Tooltip
-													documentationLink="https://www.windmill.dev/docs/script_editor/custom_environment_variables"
+													documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 												>
 													Additional static custom env variables to pass to the script.
 												</Tooltip>
@@ -2413,7 +2413,7 @@
 					to materialize its result, or build it in the
 					<a href="{base}/pipeline" class="text-blue-500 hover:underline">pipeline editor</a>.
 					<a
-						href="https://www.windmill.dev/docs/pipelines"
+						href="https://github.com/spiri-robotics/windmill-OSS"
 						target="_blank"
 						rel="noreferrer"
 						class="text-blue-500 hover:underline"
@@ -2507,7 +2507,7 @@
 	Script Builder not available to operators
 {/if}
 
-<Modal title="dbt on Windmill is in alpha" bind:open={dbtAlphaOpen} cancelText="Got it">
+<Modal title="dbt on Pinwheel is in alpha" bind:open={dbtAlphaOpen} cancelText="Got it">
 	<div class="flex flex-col gap-3 text-sm text-secondary">
 		<p>
 			A dbt script is a whole dbt project: the files are the script's module bundle, the content is
@@ -2525,7 +2525,7 @@
 		</p>
 		<p class="text-xs">
 			<a
-				href="https://www.windmill.dev/docs/getting_started/scripts_quickstart"
+				href="https://github.com/spiri-robotics/windmill-OSS"
 				target="_blank"
 				rel="noreferrer"
 				class="text-blue-500 hover:underline">Docs</a

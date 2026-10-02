@@ -56,7 +56,7 @@
 			document.cookie = `token=; domain=.windmill.dev; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; Secure; SameSite=None`
 			document.cookie = `token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; Secure; SameSite=None`
 
-			console.log('Token cookie removed for windmill cloud instance.')
+			console.log('Token cookie removed for pinwheel cloud instance.')
 		}
 	}
 

@@ -520,7 +520,7 @@
 					<strong class="font-semibold">Triggers</strong> automatically run your flow when events
 					happen. Select one to configure it or create a new one.
 					<a
-						href="https://www.windmill.dev/docs/getting_started/triggers"
+						href="https://github.com/spiri-robotics/windmill-OSS"
 						target="_blank"
 						class="whitespace-nowrap">Learn more <ExternalLink size={14} class="inline-block" /></a
 					>

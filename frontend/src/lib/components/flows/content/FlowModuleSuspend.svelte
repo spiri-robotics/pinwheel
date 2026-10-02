@@ -113,7 +113,7 @@
 			right: 'Suspend until approval/resume',
 			rightTooltip:
 				'At the end of the step, the flow is suspended until it receives external requests to resume or cancel it. Most useful for approval steps, but can be used flexibly for other purposes.',
-			rightDocumentationLink: 'https://www.windmill.dev/docs/flows/flow_approval'
+			rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 		}}
 	/>
 
@@ -183,7 +183,7 @@
 						options={{
 							right: 'Continue on disapproval/timeout',
 							rightTooltip: `Instead of failing the flow and bubbling up the error, continue to the next step which would allow to put a branchone right after to handle both cases separately. 
-						If any disapproval/timeout event is received, the resume payload will be similar to every error result in Windmill, an object containing an "error" field which you can use 
+						If any disapproval/timeout event is received, the resume payload will be similar to every error result in Pinwheel, an object containing an "error" field which you can use 
 						to distinguish between approvals and disapproval/timeouts. 
 						
 						We recommend using the expr "resume?.error" to handle null payload values. 

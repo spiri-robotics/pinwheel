@@ -970,7 +970,7 @@
 			<p class="text-2xs text-tertiary">
 				Use this YAML to manage instance settings as code.
 				<a
-					href="https://www.windmill.dev/docs/advanced/instance_settings#kubernetes-operator"
+					href="https://github.com/spiri-robotics/windmill-OSS"
 					target="_blank"
 					rel="noopener noreferrer">Learn more <ExternalLink size={12} class="inline-block" /></a
 				>
@@ -1024,20 +1024,20 @@
 		{#if category == 'Core'}
 			<SettingsPageHeader
 				title="Core"
-				description="Configure the core settings of your Windmill instance."
-				link="https://www.windmill.dev/docs/advanced/instance_settings"
+				description="Configure the core settings of your Pinwheel instance."
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 		{:else if category == 'SMTP'}
 			<SettingsPageHeader
 				title="SMTP"
 				description="Setting SMTP unlocks sending emails upon adding new users to the workspace or the instance or sending critical alerts via email."
-				link="https://www.windmill.dev/docs/advanced/instance_settings#smtp"
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 		{:else if category == 'Registries'}
 			<SettingsPageHeader
 				title="Registries"
 				description="Add private registries for Pip, Bun and npm."
-				link="https://www.windmill.dev/docs/advanced/imports"
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 			{#if !$enterpriseLicense}
 				<Alert type="info" title="Private registries configuration is an EE feature" class="mb-2" />
@@ -1046,19 +1046,19 @@
 			<SettingsPageHeader
 				title="Alerts"
 				description="Critical alerts automatically notify administrators about system events like job crashes, license issues, worker failures, and queue delays through email, Slack, or Teams."
-				link="https://www.windmill.dev/docs/core_concepts/critical_alerts"
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 		{:else if category == 'OTEL/Prom'}
 			<SettingsPageHeader
 				title="OTEL/Prometheus"
-				description="Configure OpenTelemetry and Prometheus metrics export for monitoring your Windmill instance."
-				link="https://www.windmill.dev/docs/misc/guides/otel"
+				description="Configure OpenTelemetry and Prometheus metrics export for monitoring your Pinwheel instance."
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 		{:else if category == 'Indexer'}
 			<SettingsPageHeader
 				title="Indexer"
 				description="The indexer service unlocks full text search across jobs and service logs. It requires spinning up its own separate container."
-				link="https://www.windmill.dev/docs/core_concepts/search_bar#setup"
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 			{#if !$enterpriseLicense}
 				<Alert
@@ -1112,7 +1112,7 @@
 				</div>
 			{:else}
 				<div class="text-primary pb-4 text-xs">
-					Anonymous usage data is collected to help improve Windmill.
+					Anonymous usage data is collected to help improve Pinwheel.
 					<br />The following information is collected:
 					<ul class="list-disc list-inside pl-2">
 						<li>Instance version and base URL</li>
@@ -1129,12 +1129,12 @@
 			<SettingsPageHeader
 				title="Jobs"
 				description="Configure default timeouts and retention policies for job execution."
-				link="https://www.windmill.dev/docs/advanced/instance_settings#jobs"
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 		{:else if category == 'Service logs'}
 			<SettingsPageHeader
 				title="Service logs"
-				description="The logs of the Windmill processes themselves — servers, workers and the indexer. Job logs are covered by the job retention period under Jobs."
+				description="The logs of the Pinwheel processes themselves — servers, workers and the indexer. Job logs are covered by the job retention period under Jobs."
 			/>
 			{#if !$values['object_store_cache_config']}
 				<div class="pb-4">
@@ -1160,25 +1160,25 @@
 			<SettingsPageHeader
 				title="Object Storage"
 				description="Configure S3-compatible storage for large logs and distributed dependency caching."
-				link="https://www.windmill.dev/docs/core_concepts/object_storage_in_windmill"
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 		{:else if category == 'Private Hub'}
 			<SettingsPageHeader
 				title="Private Hub"
 				description="Connect to a Private Hub instance for sharing custom scripts and integrations."
-				link="https://www.windmill.dev/docs/core_concepts/private_hub"
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 		{:else if category == 'Secret Storage'}
 			<SettingsPageHeader
 				title="Secret Storage"
 				description="Configure where secrets (secret variables) are stored."
-				link="https://www.windmill.dev/docs/core_concepts/workspace_secret_encryption"
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 		{:else if category == 'GitHub App'}
 			<SettingsPageHeader
 				title="GitHub App"
 				description="Configure a self-managed GitHub App for git sync on GitHub.com, GHE Cloud or GitHub Enterprise Server."
-				link="https://www.windmill.dev/docs/integrations/git_repository#self-managed-github-app"
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 		{:else if category == 'DB Health'}
 			<SettingsPageHeader

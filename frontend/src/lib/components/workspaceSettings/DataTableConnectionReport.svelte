@@ -59,7 +59,7 @@
 			</ul>
 			{#if report.suggested_grants.length > 0}
 				<div>
-					Windmill connects as the role that lacks these privileges, so it cannot grant them itself.
+					Pinwheel connects as the role that lacks these privileges, so it cannot grant them itself.
 					Run as a schema owner or superuser on that database:
 				</div>
 				<pre class="whitespace-pre-wrap select-all text-xs"

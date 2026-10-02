@@ -270,7 +270,7 @@
 								<div class="text-2xs uppercase tracking-wide text-secondary mb-1">Thinking</div>
 								{@render typedField(reasoning.value ?? '', 'none', reasoning.onSelect, close)}
 								<div class="text-2xs text-tertiary mt-1">
-									Windmill has no thinking levels for this provider — type what it accepts.
+									Pinwheel has no thinking levels for this provider — type what it accepts.
 								</div>
 							</div>
 						{:else if controlState === 'ladder'}

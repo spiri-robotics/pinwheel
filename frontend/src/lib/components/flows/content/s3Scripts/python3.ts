@@ -24,7 +24,7 @@ def main(input_file: S3Object):
     print(input_obj)
 
     # write object to s3
-    s3client.put_object(Bucket=bucket, Key=output_file, Body="Hello Windmill!")
+    s3client.put_object(Bucket=bucket, Key=output_file, Body="Hello Pinwheel!")
 
     # download file to the job temporary folder:
     s3client.download_file(
@@ -36,7 +36,7 @@ def main(input_file: S3Object):
     # upload file from temporary folder to S3
     uploaded_file = "output/uploaded.txt"
     with open("./upload.txt", mode="wb") as file_to_upload:
-        file_to_upload.write(str.encode("Hello Windmill!"))
+        file_to_upload.write(str.encode("Hello Pinwheel!"))
     s3client.upload_file(Bucket=bucket, Key=uploaded_file, Filename="./upload.txt")
 
     # see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-examples.html

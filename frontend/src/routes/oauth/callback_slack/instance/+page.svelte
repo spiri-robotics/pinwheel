@@ -19,7 +19,7 @@
 			await OauthService.connectSlackCallbackInstance({
 				requestBody: { code, state }
 			})
-			sendUserToast('Slack workspace connected to your Windmill instance.')
+			sendUserToast('Slack workspace connected to your Pinwheel instance.')
 		} else {
 			sendUserToast('Missing code or state as query params', true)
 		}

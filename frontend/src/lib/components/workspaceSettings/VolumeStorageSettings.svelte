@@ -64,7 +64,7 @@
 <SettingsPageHeader
 	title="Volume storage"
 	description="Select which storage volumes should use. If disabled, scripts with volumes will fail with an error."
-	link="https://www.windmill.dev/docs/core_concepts/volumes"
+	link="https://github.com/spiri-robotics/windmill-OSS"
 />
 {#if s3ResourceSettings}
 	{#if hasAvailableStorage}

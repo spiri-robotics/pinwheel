@@ -29,7 +29,7 @@
 			<div class="text-lg font-semibold">This app requires the following permissions</div>
 		</div>
 		<p class="text-sm text-secondary">
-			The app's code will be able to call the Windmill API on your behalf, restricted to:
+			The app's code will be able to call the Pinwheel API on your behalf, restricted to:
 		</p>
 		<ul class="flex flex-col gap-2">
 			{#each scopes as scope (scope)}

@@ -59,7 +59,7 @@
 
 <SettingCard
 	label="Workspace on another instance"
-	description="Deploy the same items to a workspace on a different Windmill instance. Each person deploying connects with their own token for that instance, from the deploy drawer."
+	description="Deploy the same items to a workspace on a different Pinwheel instance. Each person deploying connects with their own token for that instance, from the deploy drawer."
 	class="mt-6"
 >
 	{#if !$enterpriseLicense}

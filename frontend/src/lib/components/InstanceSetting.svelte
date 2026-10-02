@@ -702,7 +702,7 @@
 							</div>
 							<Description
 								class="text-2xs text-secondary"
-								link="https://www.windmill.dev/docs/misc/guides/otel#environment-variables"
+								link="https://github.com/spiri-robotics/windmill-OSS"
 							>
 								Service name, environment, resource attributes, metrics temporality and other
 								options are set with environment variables.

@@ -48,10 +48,10 @@ setup dialog, and in the standalone modal for a connection saved outside it.
 	{:else if explainAutoPullOff}
 		<Alert
 			type="warning"
-			title="Deploy changes from Git back to Windmill"
-			documentationLink="https://www.windmill.dev/docs/advanced/deploy_gh_gl#github-actions-setup"
+			title="Deploy changes from Git back to Pinwheel"
+			documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		>
-			Turn on "Automatically deploy changes from Git" on the repository to have Windmill pull new
+			Turn on "Automatically deploy changes from Git" on the repository to have Pinwheel pull new
 			commits into this workspace for you. Prefer to control deployment from your own pipeline
 			(tests, custom gating, deploy on PR merge)? Set up GitHub Actions or a similar CI/CD workflow
 			instead.
@@ -65,7 +65,7 @@ setup dialog, and in the standalone modal for a connection saved outside it.
 		<div class="flex flex-col gap-1">
 			<h3 class="text-lg font-semibold text-primary">Git sync connection saved successfully!</h3>
 			<p class="text-sm text-secondary">
-				Your repository is now configured to receive changes from Windmill.
+				Your repository is now configured to receive changes from Pinwheel.
 			</p>
 		</div>
 	</div>

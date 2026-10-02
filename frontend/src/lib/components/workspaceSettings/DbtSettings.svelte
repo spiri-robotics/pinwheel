@@ -105,7 +105,7 @@
 	}
 </script>
 
-<Description link="https://www.windmill.dev/docs/getting_started/scripts_quickstart/dbt">
+<Description link="https://github.com/spiri-robotics/windmill-OSS">
 	Where dbt projects in this workspace run. A project names a warehouse by name in its descriptor (<span
 		class="font-mono">profile.warehouse</span
 	>) and reaches
@@ -113,7 +113,7 @@
 	connection of its own. The name is also what its tables are keyed on in the asset graph (<span
 		class="font-mono">dbt://{DEFAULT_WAREHOUSE}/schema/table</span
 	>), so two projects on one warehouse share their nodes. Each entry points either at one of
-	Windmill's own connection resources, whose fields are translated into a dbt target, or at a
+	Pinwheel's own connection resources, whose fields are translated into a dbt target, or at a
 	<span class="font-mono">dbt_profile</span> resource, which carries a
 	<span class="font-mono">profiles.yml</span> target as it is and so reaches any adapter dbt has. Configuring
 	one here is what makes it available: anyone who may run a dbt script builds with it and reads its models,

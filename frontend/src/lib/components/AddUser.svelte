@@ -235,7 +235,7 @@
 					<ToggleButton
 						value="admin"
 						label="Admin"
-						tooltip="An admin has full control over a specific Windmill workspace, including the ability to manage users, edit entities, and control permissions within the workspace."
+						tooltip="An admin has full control over a specific Pinwheel workspace, including the ability to manage users, edit entities, and control permissions within the workspace."
 						{item}
 					/>
 					<ToggleButton
@@ -283,7 +283,7 @@
 								/ CI deploy identity. Members of <code>wm_deployers</code> can deploy on behalf of
 								other users in the target workspace.
 								<a
-									href="https://www.windmill.dev/docs/core_concepts/staging_prod#run-on-behalf-of"
+									href="https://github.com/spiri-robotics/windmill-OSS"
 									target="_blank"
 									rel="noopener noreferrer"
 									class="underline">Learn more</a

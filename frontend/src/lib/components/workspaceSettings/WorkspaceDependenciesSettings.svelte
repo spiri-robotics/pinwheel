@@ -254,7 +254,7 @@
 <SettingsPageHeader
 	title="Enforced Dependencies"
 	description="Enforced Dependencies define dependency specifications for scripts by language. Unnamed dependencies serve as workspace defaults, while named dependencies can be referenced by scripts using #raw_reqs annotations."
-	link="https://www.windmill.dev/docs/core_concepts/workspace_dependencies"
+	link="https://github.com/spiri-robotics/windmill-OSS"
 >
 	{#snippet actions()}
 		<Button

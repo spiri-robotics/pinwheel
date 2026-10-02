@@ -151,7 +151,7 @@
 <div class="flex flex-col p-4 border border-border-light rounded-md">
 	<h2 class="text-emphasis text-sm font-semibold mb-1">Tokens</h2>
 	<div class="text-xs text-secondary mb-2">
-		Authenticate to the Windmill API with access tokens.
+		Authenticate to the Pinwheel API with access tokens.
 	</div>
 	{#if expiringSoonCount > 0}
 		<div class="mb-2">

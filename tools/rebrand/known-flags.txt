@@ -1,0 +1,96 @@
+# Flags acknowledged by tools/rebrand: file, match, reason (one line per occurrence).
+# Fix them by hand and delete their lines. Regenerate with --update-known.
+src/lib/cloud.ts	app.windmill.dev	upstream URL in comparison; not rewritten
+src/lib/components/EditorBar.svelte	github.com/windmill-labs/windmill-go-client	upstream URL in includes() argument; not rewritten
+src/lib/components/EditorBar.svelte	github.com/windmill-labs/windmill-go-client	upstream URL in includes() argument; not rewritten
+src/lib/components/EditorBar.svelte	github.com/windmill-labs/windmill-go-client	upstream endpoint; not a doc link
+src/lib/components/EditorBar.svelte	github.com/windmill-labs/windmill-go-client	upstream endpoint; not a doc link
+src/lib/components/ErrorOrRecoveryHandler.svelte	Windmill Hub	upstream product or service
+src/lib/components/FlowWrapper.svelte	Windmill Whitelabel	upstream product or service
+src/lib/components/ImportProjectCard.svelte	hub.windmill.dev	upstream endpoint; not a doc link
+src/lib/components/Login.svelte	admin@windmill.dev	upstream email address
+src/lib/components/Login.svelte	admin@windmill.dev	upstream email address
+src/lib/components/Login.svelte	contact@windmill.dev	upstream email address
+src/lib/components/Login.svelte	https://windmill.dev/privacy_policy	upstream endpoint; not a doc link
+src/lib/components/Login.svelte	https://windmill.dev/terms_of_service	upstream endpoint; not a doc link
+src/lib/components/QueueAlerts.svelte	https://www.windmill.dev/pricing	upstream endpoint; not a doc link
+src/lib/components/ScriptBuilder.svelte	Windmill Enterprise	upstream product or service
+src/lib/components/ScriptEditor.svelte	https://www.windmill.dev/pricing	upstream endpoint; not a doc link
+src/lib/components/SuperadminSettings.svelte	https://github.com/windmill-labs/windmill-helm-charts#install	upstream endpoint; not a doc link
+src/lib/components/Uptodate.svelte	https://github.com/windmill-labs/windmill-helm-charts#install	upstream endpoint; not a doc link
+src/lib/components/apps/editor/AppEditorHeaderDeploy.svelte	Windmill Cloud	upstream product or service
+src/lib/components/apps/editor/AppEditorHeaderDeploy.svelte	Windmill Cloud	upstream product or service
+src/lib/components/apps/editor/AppEditorHeaderDeploy.svelte	Windmill Cloud	upstream product or service
+src/lib/components/apps/editor/AppEditorHeaderDeploy.svelte	Windmill Cloud	upstream product or service
+src/lib/components/apps/editor/appUtils.ts	Windmill Enterprise	upstream product or service
+src/lib/components/apps/editor/appUtils.ts	Windmill Enterprise	upstream product or service
+src/lib/components/copilot/chat/AssistantSettingsModal.svelte	https://github.com/windmill-labs/windmill/issues/new?title=	upstream endpoint; not a doc link
+src/lib/components/copilot/chat/ask/core.ts	Windmill team	upstream product or service
+src/lib/components/copilot/chat/flow/core.ts	Windmill Hub	upstream product or service
+src/lib/components/copilot/chat/global/core.ts	Windmill Cloud	upstream product or service
+src/lib/components/copilot/chat/global/core.ts	Windmill team	upstream product or service
+src/lib/components/copilot/chat/global/core.ts	app.windmill.dev	upstream endpoint; not a doc link
+src/lib/components/copilot/chat/shared.ts	Windmill Hub	upstream product or service
+src/lib/components/datatableAcl/PgAclEditor.svelte	Windmill Enterprise	upstream product or service
+src/lib/components/datatableUsableRoles.ts	Windmill Enterprise	upstream product or service
+src/lib/components/flows/pickers/PickHubApp.svelte	Windmill Hub	upstream product or service
+src/lib/components/flows/pickers/PickHubFlow.svelte	Windmill Hub	upstream product or service
+src/lib/components/flows/pickers/PickHubScript.svelte	Windmill Hub	upstream product or service
+src/lib/components/flows/pickers/PickHubScriptQuick.svelte	Windmill Hub	upstream product or service
+src/lib/components/git_sync/setup/GithubAppConnectForm.svelte	Windmill GitHub	upstream product or service
+src/lib/components/git_sync/setup/GithubAppConnectForm.svelte	Windmill GitHub	upstream product or service
+src/lib/components/home/HubTemplatePicker.svelte	https://hub.windmill.dev	upstream endpoint; not a doc link
+src/lib/components/home/ImportProjectModal.svelte	hub.windmill.dev	upstream endpoint; not a doc link
+src/lib/components/instanceSettings.ts	Windmill Hub	upstream product or service
+src/lib/components/instanceSettings.ts	Windmill-managed	upstream product or service
+src/lib/components/instanceSettings.ts	stats.windmill.dev.	upstream endpoint; not a doc link
+src/lib/components/instanceSettings/GhesAppSettings.svelte	Windmill GitHub	upstream product or service
+src/lib/components/instanceSettings/GhesAppSettings.svelte	stats.windmill.dev.	upstream endpoint; not a doc link
+src/lib/components/instanceSettings/GuestActivityList.svelte	Windmill Cloud	upstream product or service
+src/lib/components/instanceSettings/GuestActivityList.svelte	Windmill Cloud	upstream product or service
+src/lib/components/instanceSettings/InstanceBannerSetting.svelte	https://status.windmill.dev	upstream endpoint; not a doc link
+src/lib/components/instanceSettings/InstancePgSettings.svelte	Windmill Cloud	upstream product or service
+src/lib/components/settings/PremiumInfo.svelte	https://www.windmill.dev/pricing	upstream endpoint; not a doc link
+src/lib/components/settings/PremiumInfo.svelte	https://www.windmill.dev/pricing	upstream endpoint; not a doc link
+src/lib/components/sidebar/SettingsMenu.svelte	https://github.com/windmill-labs/windmill/issues/new	upstream endpoint; not a doc link
+src/lib/components/sidebar/SidebarContent.svelte	https://github.com/windmill-labs/windmill/issues/new	upstream endpoint; not a doc link
+src/lib/components/workspaceSettings/AddDataTableWizard.svelte	Windmill managed	upstream product or service
+src/lib/components/workspaceSettings/DataTableSettings.svelte	Windmill Cloud	upstream product or service
+src/lib/components/workspaceSettings/DeployToHub.svelte	Windmill team	upstream product or service
+src/lib/components/workspaceSettings/DeployToHub.svelte	Windmill team	upstream product or service
+src/lib/components/workspaceSettings/DeployToHub.svelte	Windmill team	upstream product or service
+src/lib/components/workspaceSettings/StorageSettings.svelte	Windmill EE	upstream product or service
+src/lib/components/workspaceSettings/StorageSettings.svelte	Windmill EE	upstream product or service
+src/lib/components/workspaceSettings/StorageSettings.svelte	Windmill EE	upstream product or service
+src/lib/components/workspaceSettings/WorkspaceRulesets.svelte	Windmill Enterprise	upstream product or service
+src/lib/components/workspaceSettings/deployToHubSession.svelte.ts	Windmill team	upstream product or service
+src/lib/githubApp.ts	Windmill	name in includes() argument; not rewritten
+src/lib/githubApp.ts	Windmill Github	upstream product or service
+src/lib/hub.ts	https://hub.windmill.dev	upstream endpoint; not a doc link
+src/lib/logoutRedirect.ts	windmill.dev	upstream URL in comparison; not rewritten
+src/lib/logoutRedirect.ts	windmill.dev	upstream URL in endsWith() argument; not rewritten
+src/lib/script_helpers.ts	github.com/windmill-labs/windmill-go-client	upstream endpoint; not a doc link
+src/lib/script_helpers.ts	github.com/windmill-labs/windmill-go-client	upstream endpoint; not a doc link
+src/lib/utils.ts	Windmill team	upstream product or service
+src/routes/(root)/(logged)/projects/import/+page@(root).svelte	hub.windmill.dev	upstream endpoint; not a doc link
+src/routes/(root)/(logged)/user/(user)/instance_settings/+page.svelte	Windmill Hub	upstream product or service
+src/routes/(root)/(logged)/user/(user)/instance_settings/+page.svelte	admin@windmill.dev	upstream email address
+src/routes/(root)/(logged)/user/(user)/instance_settings/+page.svelte	admin@windmill.dev	upstream email address
+src/routes/(root)/(logged)/user/(user)/login/+page.svelte	app.windmill.dev	upstream URL in comparison; not rewritten
+src/routes/(root)/(logged)/user/(user)/login/+page.svelte	internal.windmill.dev	upstream URL in comparison; not rewritten
+src/routes/(root)/(logged)/user/(user)/login/+page.svelte	windmill.dev	upstream URL in endsWith() argument; not rewritten
+src/routes/(root)/(logged)/user/(user)/login/+page.svelte	windmill.dev	upstream endpoint; not a doc link
+src/routes/(root)/(logged)/workspace_settings/+page.svelte	Windmill Cloud	upstream product or service
+src/routes/(root)/(logged)/workspace_settings/+page.svelte	Windmill Cloud	upstream product or service
+src/routes/(root)/(logged)/workspace_settings/+page.svelte	Windmill EE	upstream product or service
+src/routes/(root)/(logged)/workspace_settings/+page.svelte	Windmill EE	upstream product or service
+src/routes/(root)/(logged)/workspace_settings/+page.svelte	Windmill EE	upstream product or service
+src/routes/(root)/(logged)/workspace_settings/+page.svelte	Windmill Enterprise	upstream product or service
+src/routes/(root)/(logged)/workspace_settings/+page.svelte	Windmill Enterprise	upstream product or service
+src/routes/(root)/(logged)/workspace_settings/checkout/+page.svelte	contact@windmill.dev	upstream email address
+src/routes/gh_success/+page.svelte	Windmill GitHub	upstream product or service
+src/routes/gh_success/+page.svelte	Windmill GitHub	upstream product or service
+src/routes/kitchen_sink/+page.svelte	https://app.windmill.dev/api/w/demo/jobs/run_wait_result/p/u/admin/very_long_script_path?token=abcdef0123456789&include_header=Authorization	upstream endpoint; not a doc link
+src/routes/kitchen_sink/login/+page.svelte	someone@windmill.dev	upstream email address
+src/routes/test_dev/TestDevHeader.svelte	admin@windmill.dev	upstream email address
+src/routes/test_dev/TestDevHeader.svelte	admin@windmill.dev	upstream email address

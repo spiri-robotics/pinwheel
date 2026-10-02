@@ -171,7 +171,7 @@
 				<span class="font-semibold text-accent">{clientName}</span>
 				is requesting access to
 				{#if isGateway && !workspaceId}
-					your Windmill workspace.
+					your Pinwheel workspace.
 				{:else}
 					your
 					<span class="font-semibold text-accent">{workspaceId}</span>

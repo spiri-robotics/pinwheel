@@ -329,7 +329,7 @@
 		<span class="text-2xs text-secondary leading-relaxed">
 			{#if variant !== 'drawer'}
 				Configure <a
-					href="https://www.windmill.dev/docs/core_concepts/worker_groups"
+					href="https://github.com/spiri-robotics/windmill-OSS"
 					target="_blank"
 					class="inline-flex gap-1 items-baseline"
 					>worker groups <ExternalLink size={12} />
@@ -350,7 +350,7 @@
 			<br />{#if variant !== 'drawer'}<br />{/if}
 			For
 			<a
-				href="https://www.windmill.dev/docs/core_concepts/worker_groups#dynamic-tag"
+				href="https://github.com/spiri-robotics/windmill-OSS"
 				target="_blank">dynamic tags <ExternalLink size={12} class="inline-block" /></a
 			>
 			based on the workspace, use <pre class="inline text-emphasis">$workspace</pre>, e.g:
@@ -359,7 +359,7 @@
 
 			For
 			<a
-				href="https://www.windmill.dev/docs/core_concepts/worker_groups#dynamic-tag"
+				href="https://github.com/spiri-robotics/windmill-OSS"
 				target="_blank">dynamic tags <ExternalLink size={12} class="inline-block" /></a
 			>
 			based on args input, use <pre class="inline text-emphasis">$args[a.b.c]</pre> where
@@ -367,7 +367,7 @@
 			<br />{#if variant !== 'drawer'}<br />{/if}
 			For
 			<a
-				href="https://www.windmill.dev/docs/core_concepts/worker_groups#dynamic-tag"
+				href="https://github.com/spiri-robotics/windmill-OSS"
 				target="_blank">dynamic tags <ExternalLink size={12} class="inline-block" /></a
 			>
 			based on flow step results, flow input or flow env, use

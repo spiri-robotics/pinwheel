@@ -69,7 +69,7 @@
 				right: 'Cache results',
 				rightTooltip:
 					'The result of the step is cached for the configured number of seconds; a re-trigger with the same input returns the cached value instead of recomputing it.',
-				rightDocumentationLink: 'https://www.windmill.dev/docs/flows/cache'
+				rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 			}}
 		/>
 		{#if isCacheEnabled}

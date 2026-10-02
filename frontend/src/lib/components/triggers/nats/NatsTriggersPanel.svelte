@@ -57,7 +57,7 @@
 						NATS triggers are disabled in the multi-tenant cloud.
 					</Alert>
 				{:else}
-					<Description link="https://www.windmill.dev/docs/core_concepts/nats_triggers">
+					<Description link="https://github.com/spiri-robotics/windmill-OSS">
 						NATS triggers allow you to execute scripts and flows in response to NATS messages. They
 						can be configured to listen to specific subjects and to use JetStream or not.
 					</Description>

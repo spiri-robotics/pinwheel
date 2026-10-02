@@ -1902,7 +1902,7 @@
 			<div class="py-1">
 				<Button
 					target="_blank"
-					href="https://www.windmill.dev/docs/cli_local_dev/vscode-extension"
+					href="https://github.com/spiri-robotics/windmill-OSS"
 					variant="subtle"
 					unifiedSize="md"
 					iconOnly={width < EDITOR_BAR_WIDTH_THRESHOLD}
@@ -2732,7 +2732,7 @@
 								>
 									{#snippet popoverOverride()}
 										<div class="text-sm">
-											Enable Windmill AI in the <a
+											Enable Pinwheel AI in the <a
 												href="{base}/workspace_settings?tab=ai"
 												target="_blank"
 												class="inline-flex flex-row items-center gap-1"

@@ -57,7 +57,7 @@
 						Kafka triggers are disabled in the multi-tenant cloud.
 					</Alert>
 				{:else}
-					<Description link="https://www.windmill.dev/docs/core_concepts/kafka_triggers">
+					<Description link="https://github.com/spiri-robotics/windmill-OSS">
 						Kafka triggers execute scripts and flows in response to messages published to Kafka
 						topics.
 					</Description>

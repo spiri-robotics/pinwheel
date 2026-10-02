@@ -198,7 +198,7 @@
 	<DrawerContent
 		title="Custom Components"
 		on:close={ccDrawer.closeDrawer}
-		documentationLink="https://www.windmill.dev/docs/apps/react_components"
+		documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 	>
 		<ComponentsList on:reload={fetchCustomComponents} />
 	</DrawerContent>

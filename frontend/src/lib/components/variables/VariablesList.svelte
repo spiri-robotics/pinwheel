@@ -325,7 +325,7 @@
 		<PageHeader
 			title="Variables"
 			tooltip="Save and permission strings to be reused in Scripts and Flows."
-			documentationLink="https://www.windmill.dev/docs/core_concepts/variables_and_secrets"
+			documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		>
 			{#if showCreateButtons}
 				<div class="flex flex-row justify-end">
@@ -375,7 +375,7 @@
 				<Tab value="contextual" label="Contextual" icon={DollarSign}>
 					{#snippet extra()}
 						<Tooltip
-							documentationLink="https://www.windmill.dev/docs/core_concepts/variables_and_secrets#contextual-variables"
+							documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 						>
 							Contextual variables are passed as environment variables when running a script and
 							depends on the execution context.
@@ -524,7 +524,7 @@
 														{#snippet text()}
 															<div>
 																This OAuth token will be kept up-to-date in the background by
-																Windmill using its refresh token
+																Pinwheel using its refresh token
 															</div>
 														{/snippet}
 													</Popover>

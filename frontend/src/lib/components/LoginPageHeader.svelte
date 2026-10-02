@@ -24,7 +24,7 @@
 				{capitalize($whitelabelNameStore)}
 			{:else}
 				<WindmillIcon height="28px" width="28px" />
-				Windmill
+				Pinwheel
 			{/if}
 		{/if}
 	</div>

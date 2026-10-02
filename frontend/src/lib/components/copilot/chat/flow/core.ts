@@ -860,7 +860,7 @@ export function prepareFlowSystemMessage(customPrompt?: string): ChatCompletionS
 	const flowBaseContext = getFlowPrompt()
 
 	// Chat-specific tool instructions
-	const chatToolInstructions = `You are a helpful assistant that creates and edits workflows on the Windmill platform.
+	const chatToolInstructions = `You are a helpful assistant that creates and edits workflows on the Pinwheel platform.
 
 ## Tool Selection Guide
 

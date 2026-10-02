@@ -226,7 +226,7 @@
 				body:
 					credentialOrigin === 'borrowed'
 						? 'The workspace that holds this token renews it, but it has expired anyway. Replace it there to restore sync.'
-						: 'Windmill renews this token automatically but has not managed to. Check that the instance can reach GitLab, then replace the token to restore sync.'
+						: 'Pinwheel renews this token automatically but has not managed to. Check that the instance can reach GitLab, then replace the token to restore sync.'
 			}
 		}
 		if (days > 30) return undefined
@@ -237,7 +237,7 @@
 		return {
 			type: days <= 7 ? ('error' as const) : days <= 14 ? ('warning' as const) : ('info' as const),
 			title: `Repository token ${when}`,
-			body: `Windmill does not renew this token. Replace it ${where}${days <= 0 ? ' to restore sync.' : ' before it expires.'}`
+			body: `Pinwheel does not renew this token. Replace it ${where}${days <= 0 ? ' to restore sync.' : ' before it expires.'}`
 		}
 	})
 
@@ -420,7 +420,7 @@
 			? mode === 'sync'
 				? `Deploys are committed to the ${targetOrDefaultBranch} branch, and new commits to it can deploy back into this workspace automatically`
 				: mode === 'promotion'
-					? `Each deploy in this workspace pushes its changes to a dedicated wm_deploy/** branch of the repository instead of committing to ${targetOrDefaultBranch} directly. Merging that branch into ${targetOrDefaultBranch} promotes the change: the workspace that syncs ${targetOrDefaultBranch} deploys it on merge, so set up Git Sync there. Windmill can open the pull request for each deploy branch (toggle below), or use the open-pr-on-commit workflow.`
+					? `Each deploy in this workspace pushes its changes to a dedicated wm_deploy/** branch of the repository instead of committing to ${targetOrDefaultBranch} directly. Merging that branch into ${targetOrDefaultBranch} promotes the change: the workspace that syncs ${targetOrDefaultBranch} deploys it on merge, so set up Git Sync there. Pinwheel can open the pull request for each deploy branch (toggle below), or use the open-pr-on-commit workflow.`
 					: null
 			: null
 	)
@@ -578,13 +578,13 @@
 					Repository token expires on {repo.credential.expires_at}, and the workspace that holds it
 					renews it.
 				{:else if repo.credential.rotatable && $enterpriseLicense}
-					Repository token expires on {repo.credential.expires_at}, and Windmill renews it
+					Repository token expires on {repo.credential.expires_at}, and Pinwheel renews it
 					automatically.
 				{:else if repo.credential.rotatable || credentialOrigin === 'borrowed'}
 					Repository token expires on {repo.credential.expires_at}. Renewing it automatically
 					requires an enterprise license.
 				{:else}
-					Repository token expires on {repo.credential.expires_at}, and Windmill does not renew it.
+					Repository token expires on {repo.credential.expires_at}, and Pinwheel does not renew it.
 				{/if}
 			</div>
 		{/if}
@@ -605,7 +605,7 @@
 					{:else}
 						<XCircle size={14} class="text-red-700" />
 					{/if}
-					Git sync resource checked via Windmill job
+					Git sync resource checked via Pinwheel job
 					<a
 						target="_blank"
 						href={`/run/${gitSyncTestJob.jobId}?workspace=${$workspaceStore}`}
@@ -633,7 +633,7 @@
 			{#if repo.script_path}
 				<Alert type="warning" title="Pinned git sync script version">
 					This repository uses a pinned sync script: <code>{repo.script_path}</code>. Switch to
-					auto-managed to always use the latest version bundled with Windmill.
+					auto-managed to always use the latest version bundled with Pinwheel.
 					<div class="flex mt-2">
 						<Button
 							size="xs"
@@ -680,7 +680,7 @@
 							<div class="flex justify-between items-start gap-4">
 								<div class="flex-1">
 									<div class="text-sm font-semibold text-emphasis mb-1">
-										Push to Git on deploy (Windmill → Git)
+										Push to Git on deploy (Pinwheel → Git)
 									</div>
 									{#if !isFork || (isDevWorkspace && repoMode === 'promotion')}
 										<GitSyncModeDisplay mode={repoMode} {targetBranch} repository={repo} active />
@@ -703,7 +703,7 @@
 										options={{
 											right: 'Promote to prod via Git',
 											rightTooltip:
-												"Each deploy pushes a per-item wm_deploy/** branch to prod's repository, ready to open a pull request into its tracked branch, instead of committing to the dev branch. Enable automatic pull requests below to have Windmill open them. Reuses prod's repository, no separate setup."
+												"Each deploy pushes a per-item wm_deploy/** branch to prod's repository, ready to open a pull request into its tracked branch, instead of committing to the dev branch. Enable automatic pull requests below to have Pinwheel open them. Reuses prod's repository, no separate setup."
 										}}
 										on:change={(e) => setDevPromotion(e.detail)}
 									/>
@@ -734,7 +734,7 @@
 										options={{
 											right: 'Open a pull request for each deploy branch',
 											rightTooltip:
-												'After a deploy pushes its wm_deploy/** branch, Windmill opens a pull request to the target branch. Runs from the deploy itself, so it works without inbound webhooks.'
+												'After a deploy pushes its wm_deploy/** branch, Pinwheel opens a pull request to the target branch. Runs from the deploy itself, so it works without inbound webhooks.'
 										}}
 										on:change={(e) => setPromotionOpenPrs(e.detail)}
 									/>
@@ -743,21 +743,21 @@
 								<div class="text-2xs text-secondary mt-2">
 									To open a pull request for each deploy branch, set up the
 									<a
-										href="https://www.windmill.dev/docs/advanced/deploy_gh_gl#github-actions-setup"
+										href="https://github.com/spiri-robotics/windmill-OSS"
 										target="_blank"
 										class="text-blue-500 hover:underline font-mono">open-pr-on-commit</a
 									>
 									workflow in the repository. Recommended: connect the repository through the
 									<a
-										href="https://www.windmill.dev/docs/integrations/git_repository#github-app"
+										href="https://github.com/spiri-robotics/windmill-OSS"
 										target="_blank"
 										class="text-blue-500 hover:underline">GitHub App</a
 									>, or give a GitLab repository a
 									<a
-										href="https://www.windmill.dev/docs/integrations/git_repository"
+										href="https://github.com/spiri-robotics/windmill-OSS"
 										target="_blank"
 										class="text-blue-500 hover:underline">project access token</a
-									>, and Windmill opens them automatically.
+									>, and Pinwheel opens them automatically.
 								</div>
 							{/if}
 							{#if repoMode === 'sync' && isFork}
@@ -780,7 +780,7 @@
 											options={{
 												right: 'Open a pull request when an item is deployed in a fork',
 												rightTooltip:
-													"After an item deployed in a fork is pushed to the fork's branch (wm-fork/**, or the dev branch for a dev workspace), Windmill opens a pull request to the tracked branch of the shared repository. Runs from the deploy itself, so it works without inbound webhooks. When a dev workspace enables Git promotion, its own pull request toggle takes over for its wm_deploy/** branches."
+													"After an item deployed in a fork is pushed to the fork's branch (wm-fork/**, or the dev branch for a dev workspace), Pinwheel opens a pull request to the tracked branch of the shared repository. Runs from the deploy itself, so it works without inbound webhooks. When a dev workspace enables Git promotion, its own pull request toggle takes over for its wm_deploy/** branches."
 											}}
 											on:change={(e) => setForkOpenPrs(e.detail)}
 										>
@@ -793,17 +793,17 @@
 									<div class="text-2xs text-secondary mt-2">
 										To open pull requests when an item is deployed in a fork, set up the
 										<a
-											href="https://www.windmill.dev/docs/advanced/git_sync#github-actions"
+											href="https://github.com/spiri-robotics/windmill-OSS"
 											target="_blank"
 											class="text-blue-500 hover:underline font-mono">open-pr-on-fork-commit</a
 										>
 										workflow in the repository. Recommended: connect the repository through the GitHub
 										App, or give a GitLab repository a
 										<a
-											href="https://www.windmill.dev/docs/integrations/git_repository"
+											href="https://github.com/spiri-robotics/windmill-OSS"
 											target="_blank"
 											class="text-blue-500 hover:underline">project access token</a
-										> and Windmill opens them automatically.
+										> and Pinwheel opens them automatically.
 									</div>
 								{/if}
 							{/if}
@@ -824,7 +824,7 @@
 							<div class="mt-4 border-t border-gray-200 pt-3 dark:border-gray-700">
 								<div class="flex justify-between items-start gap-4">
 									<div class="text-sm font-semibold text-emphasis"
-										>Pull from Git (Git → Windmill)</div
+										>Pull from Git (Git → Pinwheel)</div
 									>
 									<Button
 										size="xs"
@@ -872,7 +872,7 @@
 										options={{
 											right: 'Automatically deploy changes from Git',
 											rightTooltip:
-												'Windmill deploys new commits from the tracked branch into this workspace. Repositories Windmill holds a credential for sync instantly via webhooks with a polling fallback; other token-based repositories are checked about every minute. The webhook also delivers pull request events, which is what posts the diff check on pull requests and, for GitHub repositories, the Windmill CI tests check.'
+												'Pinwheel deploys new commits from the tracked branch into this workspace. Repositories Pinwheel holds a credential for sync instantly via webhooks with a polling fallback; other token-based repositories are checked about every minute. The webhook also delivers pull request events, which is what posts the diff check on pull requests and, for GitHub repositories, the Pinwheel CI tests check.'
 										}}
 										on:change={(e) => setAutoPullEnabled(e.detail)}
 									>
@@ -887,7 +887,7 @@
 											options={{
 												right: 'Automatically sync forks with git branches',
 												rightTooltip: repo.auto_pull?.enabled
-													? "When a fork's wm-fork/** branch changes in the repository (for example after merging the tracked branch into it), Windmill deploys those commits into the fork workspace. On GitHub, needed for the Windmill CI tests check on a fork pull request whose commits were pushed outside Windmill. Configured once here, applied to every fork of this workspace."
+													? "When a fork's wm-fork/** branch changes in the repository (for example after merging the tracked branch into it), Pinwheel deploys those commits into the fork workspace. On GitHub, needed for the Pinwheel CI tests check on a fork pull request whose commits were pushed outside Pinwheel. Configured once here, applied to every fork of this workspace."
 													: 'Requires automatic deploy from Git to be enabled above.'
 											}}
 											on:change={(e) => setSyncForks(e.detail)}
@@ -901,19 +901,19 @@
 											gaps make drift and merge conflicts more likely. For instant pull, connect the
 											repository through the
 											<a
-												href="https://www.windmill.dev/docs/integrations/git_repository#github-app"
+												href="https://github.com/spiri-robotics/windmill-OSS"
 												target="_blank"
 												class="text-blue-500 hover:underline">GitHub App</a
 											>, or give a GitLab repository a
 											<a
-												href="https://www.windmill.dev/docs/integrations/git_repository"
+												href="https://github.com/spiri-robotics/windmill-OSS"
 												target="_blank"
 												class="text-blue-500 hover:underline">project access token</a
 											>
-											(either also lets Windmill manage pull requests), or push changes into Windmill
+											(either also lets Pinwheel manage pull requests), or push changes into Pinwheel
 											with the
 											<a
-												href="https://www.windmill.dev/docs/advanced/git_sync#github-actions"
+												href="https://github.com/spiri-robotics/windmill-OSS"
 												target="_blank"
 												class="text-blue-500 hover:underline">sync GitHub workflow</a
 											>. If you already push changes from CI, keep either that or automatic pull,
@@ -926,7 +926,7 @@
 									{#if hasManagedCredential}
 										<div class="mt-2">
 											<Alert type="info" title="Already pulling with a CI job?" size="xs">
-												If you previously set up a CI job to push changes into Windmill, remove it
+												If you previously set up a CI job to push changes into Pinwheel, remove it
 												now so the two don't fight over deploys.
 											</Alert>
 										</div>
@@ -1000,7 +1000,7 @@
 					<p class="text-2xs text-secondary"
 						>{displayDescription}
 						{#if mode === 'promotion'}
-							<a target="_blank" href="https://www.windmill.dev/docs/advanced/deploy_gh_gl"
+							<a target="_blank" href="https://github.com/spiri-robotics/windmill-OSS"
 								>Learn more about Git Promotion</a
 							>
 						{/if}
@@ -1046,7 +1046,7 @@
 					<p class="text-xs text-secondary"
 						>{displayDescription}
 						{#if mode === 'promotion'}
-							<a target="_blank" href="https://www.windmill.dev/docs/advanced/deploy_gh_gl"
+							<a target="_blank" href="https://github.com/spiri-robotics/windmill-OSS"
 								>Learn more about Git Promotion</a
 							>
 						{/if}</p

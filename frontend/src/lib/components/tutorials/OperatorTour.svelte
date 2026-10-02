@@ -29,7 +29,7 @@
 		const steps: DriveStep[] = [
 			{
 				popover: {
-					title: 'Welcome to Windmill! 🎉',
+					title: 'Welcome to Pinwheel! 🎉',
 					description:
 						"Let's take a quick tour! We'll show you the three main tools you can use: Scripts, Flows, and Apps."
 				}

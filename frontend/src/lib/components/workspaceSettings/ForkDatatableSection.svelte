@@ -161,7 +161,7 @@
 
 		{#if currentCloneJob.resourceType === 'instance'}
 			<p class="text-xs text-secondary mt-2">
-				Creating the fork will run <code>CREATE DATABASE {currentCloneJob._newDbName}</code> on the Windmill
+				Creating the fork will run <code>CREATE DATABASE {currentCloneJob._newDbName}</code> on the Pinwheel
 				PostgreSQL instance. A data table under roles keeps its owners and grants in the copy, and its
 				roles stay decided where they are decided today.
 			</p>

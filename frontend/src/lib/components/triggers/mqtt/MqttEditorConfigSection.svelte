@@ -91,7 +91,7 @@
 											<span class="text-secondary text-sm">
 												QoS
 												<Tooltip
-													documentationLink="https://www.windmill.dev/docs/core_concepts/mqtt_triggers#configure-topic-subscriptions"
+													documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 													><ul class="list-disc list-inside space-y-2">
 														<li>
 															<span class="font-bold">QoS 0 - At most once</span>
@@ -143,7 +143,7 @@
 										<span class="text-secondary text-sm">
 											Topic
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/core_concepts/mqtt_triggers#configure-topic-subscriptions"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 												>The topic you want to subscribe to</Tooltip
 											>
 										</span>

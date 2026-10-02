@@ -79,7 +79,7 @@
 		<div class="flex flex-col gap-3 h-full">
 			<div class="text-xs text-secondary">
 				DuckDB macros from deployed <span class="font-mono">// macros</span> libraries. Call them by
-				name from any DuckDB script in this workspace — Windmill injects the definitions at run
+				name from any DuckDB script in this workspace — Pinwheel injects the definitions at run
 				time. Add
 				<span class="font-mono">// use &lt;library path&gt;</span> to pull in a whole library when the
 				call is built dynamically.

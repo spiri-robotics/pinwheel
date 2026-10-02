@@ -6,7 +6,7 @@
 <AlignWrapper verticalAlignment="center" horizontalAlignment="center">
 	<Alert
 		title="Deprecated component"
-		documentationLink="https://www.windmill.dev/docs/apps/app_configuration_settings/log_display"
+		documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		tooltip="See documentation of the new component:"
 		type="error"
 	>

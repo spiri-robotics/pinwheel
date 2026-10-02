@@ -2,6 +2,17 @@
 	import { run } from 'svelte/legacy'
 
 	import { customIcon } from './store'
+	import {
+		PINWHEEL_BLADE,
+		PINWHEEL_BLADE_ROTATIONS,
+		PINWHEEL_FLAP,
+		PINWHEEL_HUB,
+		PINWHEEL_PRIMARY,
+		PINWHEEL_SECONDARY,
+		PINWHEEL_VIEWBOX,
+		PINWHEEL_WHITE_PRIMARY,
+		PINWHEEL_WHITE_SECONDARY
+	} from './pinwheelMark'
 
 	interface Props {
 		white?: boolean
@@ -126,7 +137,7 @@
 	{#if white}
 		<img
 			src={customIcon.white}
-			alt="Windmill Custom icon"
+			alt="Pinwheel Custom icon"
 			width={size}
 			height={size}
 			class={classNames}
@@ -134,7 +145,7 @@
 	{:else}
 		<img
 			src={customIcon.normal}
-			alt="Windmill Custom icon"
+			alt="Pinwheel Custom icon"
 			width={size}
 			height={size}
 			class={classNames}
@@ -147,44 +158,29 @@
 		class:animate-[spin_5s_linear_infinite]={spin === 'fast'}
 		class:animate-[spin_15s_linear_infinite]={spin === 'medium'}
 		class:animate-[spin_50s_linear_infinite]={spin === 'slow'}
-		version="1.1"
-		id="Calque_1"
 		xmlns="http://www.w3.org/2000/svg"
-		xmlns:xlink="http://www.w3.org/1999/xlink"
-		x="0px"
-		y="0px"
 		width={size}
 		height={size}
-		viewBox="-11.636 -11.636 279.273 279.273"
-		style="enable-background:new 0 0 256 256;"
-		xml:space="preserve"
+		viewBox={PINWHEEL_VIEWBOX}
 	>
-		<g>
-			<!-- Use color or fallback to defaults (white or blue) -->
-			<polygon
-				fill={lessSaturatedColor || (white ? '#cccccc' : '#bcd4fc')}
-				points="134.78,14.22 114.31,48.21 101.33,69.75 158.22,69.75 177.97,36.95 191.67,14.22"
-			/>
-			<polygon
-				fill={color || (white ? '#ffffff' : '#3b82f6')}
-				points="227.55,69.75 186.61,69.75 101.33,69.75 129.78,119.02 158.16,119.02 228.61,119.02 256,119.02"
-			/>
-			<polygon
-				fill={color || (white ? '#ffffff' : '#3b82f6')}
-				points="136.93,132.47 116.46,167.93 73.82,241.78 130.71,241.78 144.9,217.2 180.13,156.18 193.82,132.46"
-			/>
-			<polygon
-				fill={color || (white ? '#ffffff' : '#3b82f6')}
-				points="121.7,131.95 101.23,96.49 58.59,22.63 30.15,71.91 44.34,96.49 79.57,157.5 93.26,181.22"
-			/>
-			<polygon
-				fill={lessSaturatedColor || (white ? '#cccccc' : '#bcd4fc')}
-				points="64.81,131.95 25.15,131.21 0,130.74 28.44,180.01 66.73,180.72 93.26,181.21"
-			/>
-			<polygon
-				fill={lessSaturatedColor || (white ? '#cccccc' : '#bcd4fc')}
-				points="165.38,181.74 184.58,216.46 196.75,238.47 225.19,189.2 206.66,155.69 193.83,132.46"
-			/>
-		</g>
+		<!-- Use color or fallback to defaults (white or blue) -->
+		{#each PINWHEEL_BLADE_ROTATIONS as rotation}
+			<g transform="rotate({rotation} 128 128)">
+				<path
+					fill={color || (white ? PINWHEEL_WHITE_PRIMARY : PINWHEEL_PRIMARY)}
+					d={PINWHEEL_BLADE}
+				/>
+				<path
+					fill={lessSaturatedColor || (white ? PINWHEEL_WHITE_SECONDARY : PINWHEEL_SECONDARY)}
+					d={PINWHEEL_FLAP}
+				/>
+			</g>
+		{/each}
+		<circle
+			cx={PINWHEEL_HUB.cx}
+			cy={PINWHEEL_HUB.cy}
+			r={PINWHEEL_HUB.r}
+			fill={color || (white ? PINWHEEL_WHITE_PRIMARY : PINWHEEL_PRIMARY)}
+		/>
 	</svg>
 {/if}

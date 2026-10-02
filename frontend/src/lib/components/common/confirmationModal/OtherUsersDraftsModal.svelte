@@ -132,7 +132,7 @@
 			<p class="text-sm text-secondary">
 				Their drafts are independent of yours. For advanced collaboration, consider using <a
 					target="_blank"
-					href="https://www.windmill.dev/docs/advanced/workspace_forks">workspace forks (EE)</a
+					href="https://github.com/spiri-robotics/windmill-OSS">workspace forks (EE)</a
 				>
 			</p>
 		</div>

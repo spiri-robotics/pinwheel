@@ -99,7 +99,7 @@
 							type="info"
 							title="While loops"
 							size="xs"
-							documentationLink="https://www.windmill.dev/docs/flows/while_loops"
+							documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 						>
 							Add steps inside the while loop but have one of them use early stop/break in their Run
 							settings (or do it at the loop level that will watch the last step) to break out of
@@ -119,7 +119,7 @@
 								right: 'Skip failures',
 								rightTooltip:
 									'If disabled, the flow will fail as soon as one of the iteration fail. Otherwise, the error will be collected as the result of the iteration. Regardless of this setting, if a flow level error handler is defined, it will process the error. (Workspace error handlers will NOT be used to process errors if enabled.)',
-								rightDocumentationLink: 'https://www.windmill.dev/docs/flows/while_loops'
+								rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 							}}
 						/>
 						<Toggle
@@ -133,7 +133,7 @@
 								right: 'Squash',
 								rightTooltip:
 									'Squashing a while loop runs all iterations on the same worker, using a single runner per step for the entire loop. This eliminates cold starts between iterations for supported languages (Bun, Deno, and Python).',
-								rightDocumentationLink: 'https://www.windmill.dev/docs/flows/while_loops'
+								rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 							}}
 						/>
 					</section>

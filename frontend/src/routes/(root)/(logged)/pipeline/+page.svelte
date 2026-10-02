@@ -33,7 +33,7 @@
 </script>
 
 <svelte:head>
-	<title>Pipelines — Windmill</title>
+	<title>Pipelines — Pinwheel</title>
 </svelte:head>
 
 <div class="flex flex-col h-full">
@@ -65,7 +65,7 @@
 					{/if}
 				</p>
 				<a
-					href="https://www.windmill.dev/docs/pipelines"
+					href="https://github.com/spiri-robotics/windmill-OSS"
 					target="_blank"
 					rel="noreferrer"
 					class="text-xs text-blue-500 hover:underline inline-flex items-center gap-1"

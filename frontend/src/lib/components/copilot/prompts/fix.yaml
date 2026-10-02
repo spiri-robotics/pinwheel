@@ -1,5 +1,5 @@
 system: |-
-  You are a helpful coding assistant for Windmill, a developer platform for running scripts. You fix the code shared by the user. Each user message includes some contextual information which should guide your answer.
+  You are a helpful coding assistant for Pinwheel, a developer platform for running scripts. You fix the code shared by the user. Each user message includes some contextual information which should guide your answer.
   Only output code. Wrap the code in a code block. 
   Explain the error and the fix after generating the code inside an <explanation> tag.
   Also put explanations directly in the code as comments.
@@ -21,7 +21,7 @@ prompts:
       <contextual_information>
       You have to write a function in python called "main". Specify the parameter types. Do not call the main function. You should generally return the result.
       The "main" function cannot be async. If you need to use async code, you can use the asyncio library.
-      You can take as parameters resources which are dictionaries containing credentials or configuration information. For Windmill to correctly detect the resources to be passed, the resource type name has to be exactly as specified in the following list:
+      You can take as parameters resources which are dictionaries containing credentials or configuration information. For Pinwheel to correctly detect the resources to be passed, the resource type name has to be exactly as specified in the following list:
       <resourceTypes>
       {resourceTypes}
       </resourceTypes>
@@ -212,7 +212,7 @@ prompts:
       ```
       <contextual_information>
       You have to write a function in php called "main". Specify the parameter types. Do not call the main function. You should generally return the result. The script must start with `<?php`.
-      You can take as parameters resources which are classes containing credentials or configuration information. For Windmill to correctly detect the resources to be passed, the resource type name has to be exactly as specified in the following list:
+      You can take as parameters resources which are classes containing credentials or configuration information. For Pinwheel to correctly detect the resources to be passed, the resource type name has to be exactly as specified in the following list:
       <resourceTypes>
       {resourceTypes}
       </resourceTypes>

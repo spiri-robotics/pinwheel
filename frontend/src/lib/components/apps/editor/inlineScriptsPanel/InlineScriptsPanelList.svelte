@@ -85,7 +85,7 @@
 				}}
 			/>
 			<DocLink
-				docLink="https://www.windmill.dev/docs/apps/app-runnable-panel#creating-a-runnable"
+				docLink="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 		</div>
 	{/snippet}
@@ -182,7 +182,7 @@
 					Background Runnables
 
 					<Tooltip
-						documentationLink="https://www.windmill.dev/docs/apps/app-runnable-panel#background-runnables"
+						documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 					>
 						Background runnables can be triggered on app refresh or when their input changes. The
 						result can be shared among many components.

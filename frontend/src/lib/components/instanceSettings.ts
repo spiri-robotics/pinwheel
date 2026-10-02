@@ -196,7 +196,7 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'Base url',
 			description:
-				'Public base url of the instance. <a href="https://www.windmill.dev/docs/advanced/instance_settings#global-users">Learn more</a>',
+				'Public base url of the instance. <a href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			key: 'base_url',
 			fieldType: 'text',
 			placeholder: 'https://windmill.com',
@@ -238,7 +238,7 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'License key',
 			description:
-				'License key required to use the EE (switch image for windmill-ee). <a href="https://www.windmill.dev/docs/advanced/instance_settings#license-key">Learn more</a>',
+				'License key required to use the EE (switch image for windmill-ee). <a href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			key: 'license_key',
 			fieldType: 'license_key',
 			placeholder: 'only for EE',
@@ -247,7 +247,7 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'Non-prod instance',
 			description:
-				'Whether we should consider the reported usage of this instance as non-prod. <a href="https://www.windmill.dev/docs/advanced/instance_settings#non-prod-instance">Learn more</a>',
+				'Whether we should consider the reported usage of this instance as non-prod. <a href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			key: 'dev_instance',
 			fieldType: 'boolean',
 			storage: 'setting',
@@ -361,7 +361,7 @@ export const settings: Record<string, Setting[]> = {
 			label: 'Retention period in secs',
 			key: 'retention_period_secs',
 			description:
-				'How long to keep the jobs data in the database (max 30 days on CE). <a href="https://www.windmill.dev/docs/advanced/instance_settings#retention-period-in-secs">Learn more</a>',
+				'How long to keep the jobs data in the database (max 30 days on CE). <a href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			fieldType: 'seconds',
 			placeholder: '30',
 			storage: 'setting',
@@ -385,7 +385,7 @@ export const settings: Record<string, Setting[]> = {
 			key: 'job_isolation',
 			fieldType: 'select',
 			description:
-				'Isolation mode for job execution. None: no isolation. Unshare: PID namespace isolation via unshare. Nsjail: full nsjail sandboxing. <a href="https://www.windmill.dev/docs/advanced/security_isolation">Learn more</a>',
+				'Isolation mode for job execution. None: no isolation. Unshare: PID namespace isolation via unshare. Nsjail: full nsjail sandboxing. <a href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			storage: 'setting',
 			select_items: [
 				{
@@ -493,7 +493,7 @@ export const settings: Record<string, Setting[]> = {
 			label: 'Default timeout',
 			key: 'job_default_timeout',
 			description:
-				'Default timeout for individual jobs. <a href="https://www.windmill.dev/docs/core_concepts/jobs#retention-policy">Learn more</a>',
+				'Default timeout for individual jobs. <a href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			fieldType: 'seconds',
 			storage: 'setting',
 			cloudonly: false
@@ -501,7 +501,7 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'Max timeout for sync endpoints',
 			description:
-				'Maximum amount of time (measured in seconds) that a <a href="https://www.windmill.dev/docs/core_concepts/webhooks">sync endpoint</a> is allowed to run before it is forcibly stopped or timed out.',
+				'Maximum amount of time (measured in seconds) that a <a href="https://github.com/spiri-robotics/windmill-OSS">sync endpoint</a> is allowed to run before it is forcibly stopped or timed out.',
 			key: 'timeout_wait_result',
 			fieldType: 'seconds',
 			placeholder: '60',
@@ -605,16 +605,16 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'External instance',
 			description:
-				'A Postgres cluster Windmill administers for data tables and Ducklake catalogs, instead of its own database. It creates the databases there and manages the roles jobs connect as.',
+				'A Postgres cluster Pinwheel administers for data tables and Ducklake catalogs, instead of its own database. It creates the databases there and manages the roles jobs connect as.',
 			key: 'external_instance_pg',
 			fieldType: 'external_instance_pg',
 			storage: 'setting',
 			ee_only: ''
 		},
 		{
-			label: 'Windmill instance',
+			label: 'Pinwheel instance',
 			description:
-				"Windmill's own database as a data table and Ducklake substrate. On unless turned off here, and never available on cloud.",
+				"Pinwheel's own database as a data table and Ducklake substrate. On unless turned off here, and never available on cloud.",
 			key: 'instance_pg_disabled',
 			fieldType: 'instance_pg',
 			storage: 'setting'
@@ -624,7 +624,7 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'Instance object storage',
 			description:
-				' S3/Azure bucket to store large logs and global cache for Python and Go. <a href="https://www.windmill.dev/docs/core_concepts/object_storage_in_windmill#instance-object-storage">Learn more</a>',
+				' S3/Azure bucket to store large logs and global cache for Python and Go. <a href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			key: 'object_store_cache_config',
 			fieldType: 'object_store_config',
 			storage: 'setting',
@@ -690,7 +690,7 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'Private Hub base url',
 			description:
-				'Base URL of your Private Hub instance, without trailing slash. <a href="https://www.windmill.dev/docs/core_concepts/private_hub">Learn more</a>',
+				'Base URL of your Private Hub instance, without trailing slash. <a href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			placeholder: 'https://hub.company.com',
 			key: 'hub_base_url',
 			fieldType: 'text',
@@ -713,7 +713,7 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'Private Hub accessible url',
 			description:
-				'Base URL accessible from end-user browsers, without trailing slash. <a href="https://www.windmill.dev/docs/core_concepts/private_hub">Learn more</a>',
+				'Base URL accessible from end-user browsers, without trailing slash. <a href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			key: 'hub_accessible_url',
 			fieldType: 'text',
 			hiddenIfNull: true,
@@ -724,7 +724,7 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'Private Hub API secret',
 			description:
-				'If access to your Private Hub is restricted, you can set the hub API secret here. <a href="https://www.windmill.dev/docs/core_concepts/private_hub">Learn more</a>',
+				'If access to your Private Hub is restricted, you can set the hub API secret here. <a href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			key: 'hub_api_secret',
 			fieldType: 'password',
 			storage: 'setting',
@@ -733,7 +733,7 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'Azure OpenAI base path',
 			description:
-				'All workspaces using an OpenAI resource for Windmill AI will run against the specified Azure resource. Format: https://{your-resource-name}.openai.azure.com/openai/deployments/{deployment-id} — keep the URL as stored; the model comes from each workspace\'s configured model list, whose entries must be your Azure deployment names. <a href="https://www.windmill.dev/docs/core_concepts/ai_generation#azure-openai-advanced-models">Learn more</a>',
+				'All workspaces using an OpenAI resource for Pinwheel AI will run against the specified Azure resource. Format: https://{your-resource-name}.openai.azure.com/openai/deployments/{deployment-id} — keep the URL as stored; the model comes from each workspace\'s configured model list, whose entries must be your Azure deployment names. <a href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			key: 'openai_azure_base_path',
 			fieldType: 'text',
 			storage: 'setting',
@@ -1013,7 +1013,7 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'Critical alert channels',
 			description:
-				'Channels to send critical alerts to. <a href="https://www.windmill.dev/docs/core_concepts/critical_alerts">Learn more</a>',
+				'Channels to send critical alerts to. <a href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			key: 'critical_error_channels',
 			fieldType: 'critical_error_channels',
 			storage: 'setting',
@@ -1140,7 +1140,7 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'Prometheus',
 			description:
-				'Expose Prometheus metrics for workers and servers on port 8001 at /metrics. <a target="_blank" href="https://www.windmill.dev/docs/advanced/instance_settings#expose-metrics">Learn more</a>',
+				'Expose Prometheus metrics for workers and servers on port 8001 at /metrics. <a target="_blank" href="https://github.com/spiri-robotics/windmill-OSS">Learn more</a>',
 			key: 'expose_metrics',
 			fieldType: 'boolean',
 			storage: 'setting',
@@ -1248,7 +1248,7 @@ export const settings: Record<string, Setting[]> = {
 		{
 			label: 'Ruff config (ruff.toml)',
 			description:
-				'Shared ruff.toml applied to the Python editor linter across the whole instance. The LSP container fetches this every minute and writes it next to edited files. Leave empty to use the Windmill default (<code>select = ["E4", "E7", "E9", "F"]</code>); anything set here replaces that default entirely. See <a href="https://docs.astral.sh/ruff/configuration/">ruff docs</a>',
+				'Shared ruff.toml applied to the Python editor linter across the whole instance. The LSP container fetches this every minute and writes it next to edited files. Leave empty to use the Pinwheel default (<code>select = ["E4", "E7", "E9", "F"]</code>); anything set here replaces that default entirely. See <a href="https://docs.astral.sh/ruff/configuration/">ruff docs</a>',
 			key: 'ruff_config',
 			fieldType: 'codearea',
 			codeAreaLang: 'toml',
@@ -1336,7 +1336,7 @@ export const instanceSettingsNavigationGroups = [
 				label: 'Managed Postgres',
 				aiId: 'instance-settings-managed-postgres',
 				aiDescription:
-					'Postgres substrates Windmill administers for data tables and Ducklake catalogs: its own database and an external cluster',
+					'Postgres substrates Pinwheel administers for data tables and Ducklake catalogs: its own database and an external cluster',
 				isEE: true
 			}
 		]

@@ -103,7 +103,7 @@
 					2. Navigate to <strong>Administration settings → Security → OAuth 2.0 clients</strong><br
 					/>
 					3. Click "Add client" to create a new OAuth2 application<br />
-					4. Set the redirect URI to your Windmill instance's
+					4. Set the redirect URI to your Pinwheel instance's
 					<code>{baseUrl || 'BASE_URL'}/user/login_callback/nextcloud</code><br />
 					5. Copy the Client ID and Client Secret to the fields above<br />
 				</div>

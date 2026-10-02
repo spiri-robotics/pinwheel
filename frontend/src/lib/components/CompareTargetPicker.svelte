@@ -76,7 +76,7 @@
 			<!-- pr-5 keeps the first line clear of the popover's close button. -->
 			<div class="text-xs text-secondary pr-5">
 				Merging into a workspace outside this one's lineage is meant for one-off migrations.
-				Windmill only tracks changes continuously between a workspace and its parent, so comparing
+				Pinwheel only tracks changes continuously between a workspace and its parent, so comparing
 				against any other target computes a full diff over every item in both workspaces.
 			</div>
 			<Select

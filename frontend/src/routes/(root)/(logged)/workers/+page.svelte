@@ -235,7 +235,7 @@
 
 			if (!valid && expiration) {
 				sendUserToast(
-					`Enterprise license key expired on ${expiration.toLocaleDateString()}. Please renew your license key to continue using Windmill.`,
+					`Enterprise license key expired on ${expiration.toLocaleDateString()}. Please renew your license key to continue using Pinwheel.`,
 					true
 				)
 			} else if (expiration) {
@@ -245,7 +245,7 @@
 
 				if (daysUntilExpiration <= 7 && daysUntilExpiration >= 0) {
 					sendUserToast(
-						`Enterprise license key expires in ${daysUntilExpiration} day${daysUntilExpiration !== 1 ? 's' : ''} on ${expiration.toLocaleDateString()}. Please renew your license key to continue using Windmill.`,
+						`Enterprise license key expires in ${daysUntilExpiration} day${daysUntilExpiration !== 1 ? 's' : ''} on ${expiration.toLocaleDateString()}. Please renew your license key to continue using Pinwheel.`,
 						true
 					)
 				}
@@ -648,7 +648,7 @@
 		<p class="text-2xs text-tertiary mb-2">
 			Use this YAML to manage worker group configs as code.
 			<a
-				href="https://www.windmill.dev/docs/advanced/instance_settings#kubernetes-operator"
+				href="https://github.com/spiri-robotics/windmill-OSS"
 				target="_blank"
 				rel="noopener noreferrer">Learn more <ExternalLink size={12} class="inline-block" /></a
 			>
@@ -745,7 +745,7 @@
 			<PageHeader
 				title="Workers"
 				tooltip="The workers are the dutiful servants that execute the jobs."
-				documentationLink="https://www.windmill.dev/docs/core_concepts/worker_groups"
+				documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 			>
 				{#if $superadmin || $devopsRole}
 					<div class="flex flex-row w-full pb-2 items-center gap-4">
@@ -966,7 +966,7 @@
 											<div class="flex flex-row items-center gap-1 min-w-32">
 												Worker tags
 												<Tooltip
-													documentationLink="https://www.windmill.dev/docs/core_concepts/worker_groups#assign-custom-worker-groups"
+													documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 												>
 													If defined, the workers only pull jobs with the same corresponding tag
 												</Tooltip>
@@ -979,7 +979,7 @@
 										<Cell head>Last job</Cell>
 										<Cell head>Occupancy rate<br />(15s/5m/30m/ever)</Cell>
 									{/if}
-									<Cell head>Memory usage<br />(Windmill)</Cell>
+									<Cell head>Memory usage<br />(Pinwheel)</Cell>
 									<Cell head>Limits</Cell>
 									<Cell head>Version</Cell>
 									<Cell head>Status</Cell>
@@ -1313,7 +1313,7 @@
 		<div class="text-secondary text-xs"
 			>Worker group
 			<Tooltip
-				documentationLink="https://www.windmill.dev/docs/core_concepts/worker_groups"
+				documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 				wrapperClass="inline-block"
 				>Worker groups are groups of workers that share a config and are meant to be identical.
 				Worker groups are meant to be used with tags. Tags can be assigned to scripts and flows and

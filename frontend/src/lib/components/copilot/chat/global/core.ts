@@ -1410,13 +1410,13 @@ const buildGlobalSystemPrompt = (
 	// either — offering one is what invites a hardcoded URL into a script.
 	const instanceLine = BROWSER
 		? ` This is ${
-				isCloudHosted() ? 'Windmill Cloud (app.windmill.dev)' : 'a self-hosted Windmill instance'
+				isCloudHosted() ? 'Windmill Cloud (app.windmill.dev)' : 'a self-hosted Pinwheel instance'
 			}, running ${
 				get(enterpriseLicense) ? 'Enterprise Edition' : 'Community Edition'
 			}. Use that to judge whether a feature is available before promising it.`
 		: ''
 
-	return `You are Windmill's global workspace assistant.
+	return `You are Pinwheel's global workspace assistant.
 
 The current user's workspace username is "${username}".${instanceLine}
 
@@ -1466,7 +1466,7 @@ Rules:${when(
 - When script or raw app code needs an external npm package you are not fully familiar with, use search_npm_packages to find it and get its documentation and type definitions. Link the package documentation in your answer when you rely on it.
 - Hub scripts are prebuilt, vetted integrations for third-party services, hosted outside the workspace under \`hub/<version>/<app>/<name>\` paths. Check search_hub_scripts before hand-writing code against a third-party API, even when the user never mentions the hub; read a result with read_workspace_item type "script" and its hub path to get its code, language, and input schema. Use what you find in whichever way fits: reference the hub path directly from a flow module or app runnable when a script already does the job, copy it into a workspace draft and adapt it when it is close (note the source hub path in a comment at the top of the code), or take it as a worked example and write your own. A script that does not do what the user asked is still worth reading when it is the only example of that integration: pass its \`integration\` back to search_hub_scripts to list that integration's other scripts with their descriptions, or use the \`suggested_integrations\` a search hands back when it finds nothing.
 - Before writing your own code against an integration the hub covers, call get_hub_integration with its slug: it returns the resource type to take, its auth fields and the integration's most-used scripts, which beats inferring them from script bodies. Call it for the integration you are about to write against, whichever it is. A search marks an integration \`documented\` when the hub additionally holds provider knowledge checked against the live API — pagination, enums, error codes and gotchas — so read that closely where it appears rather than trusting your own memory of the API.
-- If you have a web search tool and the hub does not cover a third-party API, search for the vendor's own API documentation rather than writing its endpoints and auth from memory, and link the page you relied on. Reserve it for external APIs: search_docs answers questions about Windmill itself.
+- If you have a web search tool and the hub does not cover a third-party API, search for the vendor's own API documentation rather than writing its endpoints and auth from memory, and link the page you relied on. Reserve it for external APIs: search_docs answers questions about Pinwheel itself.
 ${when(canRunPreview, '- Use get_db_schema with a database resource path to fetch its tables and columns before writing SQL (or a script querying that database).\n')}- Use get_instructions before writing scripts, flows, resources, or apps. For scripts, pass the target language.
 ${pipelineBullet}`
 	)}${when(
@@ -1521,9 +1521,9 @@ ${
 	}
 
 Documentation:
-- Use search_docs to look up how a Windmill feature works in the official documentation (a flag, concept, function, or "does Windmill support X") instead of guessing about product behavior. It returns matching doc snippets with their Source URL; call read_docs_page with a Source URL to read the full page (or a section, if it returns headings). Cite the Source URL when you rely on it.
+- Use search_docs to look up how a Pinwheel feature works in the official documentation (a flag, concept, function, or "does Pinwheel support X") instead of guessing about product behavior. It returns matching doc snippets with their Source URL; call read_docs_page with a Source URL to read the full page (or a section, if it returns headings). Cite the Source URL when you rely on it.
 - Complete your response with precisions about how it works based on the documentation. Also drop a link to the relevant documentation if possible.
-- If the user asks about something that you are unsure about, say that you are not sure about the answer and suggest to ask the question to the windmill team.
+- If the user asks about something that you are unsure about, say that you are not sure about the answer and suggest to ask the question to the pinwheel team.
 - If the first search returns nothing useful, retry with different or broader keywords before giving up.
 - If the documentation does not cover the user's question, say so clearly rather than inventing an answer, and suggest asking the Windmill team.
 
@@ -2353,7 +2353,7 @@ function getScriptInstructions(language: ScriptLang | undefined): string {
 - Paths follow the conventions in the system prompt: default to \`u/<current-user>/<name>\` when the user gave a bare name; only use \`f/<folder>/<name>\` when the folder is known to exist. Preserve the current path/language when modifying unless the user asked to change them.
 - Use \`edit_script\` for small localized changes (provide \`old_string\`/\`new_string\`); use \`write_script\` for full rewrites.${note}
 
-# Windmill script authoring reference (${selected})
+# Pinwheel script authoring reference (${selected})
 
 ${getScriptPrompt(selected)}`
 }
@@ -2394,7 +2394,7 @@ async function getFlowInstructions(workspace: string | undefined): Promise<strin
   - When overwriting an **existing** flow, set \`"content": "inline_script.<moduleId>"\` on any rawscript module whose code you are not changing — the placeholder resolves to that module's current body, so you never re-send (or re-read) unchanged code. Placeholders that match no existing rawscript module and are not the module's own id are rejected.
 
 ${aiAgentProviders ? `\n${aiAgentProviders}\n` : ''}
-# Windmill flow authoring reference
+# Pinwheel flow authoring reference
 
 ${getFlowPrompt()}`
 }
@@ -2425,7 +2425,7 @@ ${sdkLine}
 - Use \`read_workspace_item\` with \`type: 'app'\` for a metadata summary (file paths and runnable list, no contents). Use \`read_app_file\` to read an individual file; large files are truncated to a head slice, so pass \`offset\`/\`limit\` to page through the rest rather than re-reading the whole file.
 - To find where a symbol or string lives across the app, call \`search_app\` (greps every frontend file and inline runnable, returns matching \`file:line\` rows) instead of reading files one by one — then \`read_app_file\` only the ranges you need. The loop is list (\`read_workspace_item\`) → locate (\`search_app\`) → inspect (\`read_app_file\` with \`offset\`/\`limit\`).
 
-# Windmill raw app authoring reference
+# Pinwheel raw app authoring reference
 
 ${getRawAppPrompt(language)}`
 }
@@ -2440,9 +2440,9 @@ function getResourceInstructions(): string {
 - For secret fields in a resource value, create the variable with \`write_variable\` and \`is_secret: true\`, and deploy it before the resource (see "Secrets" in the reference below).
 - Reference formats inside resource values: \`$var:g/all/name\` (global), \`$var:u/user/name\` (user), \`$var:f/folder/name\` (folder). Reference another resource with \`$res:path/to/resource\`. The same strings are also how a resource or variable is passed as a run argument (see the run-argument rule in the resource reference below); what they are never valid as is a variable's own value.
 - Use \`search_resource_types\` to discover valid \`resource_type\` names and their JSON Schemas. Match the resource value to that schema.
-- For OAuth resources, the \`is_oauth: true\` flag is managed by Windmill's OAuth flow; global mode generally creates manual resources, not OAuth ones.
+- For OAuth resources, the \`is_oauth: true\` flag is managed by Pinwheel's OAuth flow; global mode generally creates manual resources, not OAuth ones.
 
-# Windmill resource & variable reference
+# Pinwheel resource & variable reference
 
 ${getResourcePrompt()}`
 }
@@ -2531,7 +2531,7 @@ export function getSessionContextPromptSection(
 		'',
 		'',
 		'Session state:',
-		`- This chat is a Windmill AI session with its own operating workspace: every tool call (${targets}) targets that workspace.`
+		`- This chat is a Pinwheel AI session with its own operating workspace: every tool call (${targets}) targets that workspace.`
 	]
 	if (ctx.pendingForkOf) {
 		lines.push(
@@ -3100,7 +3100,7 @@ function buildOpenPageDefSchema(
 }
 
 const OPEN_PAGE_DESCRIPTION =
-	'Open a Windmill page with filters applied — Runs, Schedules, Variables, Resources, Assets, Audit logs, Folders, Groups, Triggers (by kind), Workspace settings (on a specific tab), or the Compare & Deploy page. Inside an AI session it opens as a tab in the side-panel preview next to the chat; elsewhere it offers a clickable link. Use after surfacing something the user likely wants to inspect (e.g. "show me the failed runs of X", "open the schedule for Y", "open the git sync settings", "open the kafka triggers"), and ALWAYS when asking the user to perform a manual step themselves (fill in a resource\'s credentials, set a variable\'s value — pass open with the item path so its editor opens directly). Never offer page "compare" for draft review. Use it only when the user explicitly asks to deploy a forked workspace into its parent; it always opens the fork-vs-parent comparison. This is the only way to show one of these pages in the session preview — open_preview only handles editable items (scripts, flows, raw apps, pipelines). Only pages listed for this user are available; do not offer others.'
+	'Open a Pinwheel page with filters applied — Runs, Schedules, Variables, Resources, Assets, Audit logs, Folders, Groups, Triggers (by kind), Workspace settings (on a specific tab), or the Compare & Deploy page. Inside an AI session it opens as a tab in the side-panel preview next to the chat; elsewhere it offers a clickable link. Use after surfacing something the user likely wants to inspect (e.g. "show me the failed runs of X", "open the schedule for Y", "open the git sync settings", "open the kafka triggers"), and ALWAYS when asking the user to perform a manual step themselves (fill in a resource\'s credentials, set a variable\'s value — pass open with the item path so its editor opens directly). Never offer page "compare" for draft review. Use it only when the user explicitly asks to deploy a forked workspace into its parent; it always opens the fork-vs-parent comparison. This is the only way to show one of these pages in the session preview — open_preview only handles editable items (scripts, flows, raw apps, pipelines). Only pages listed for this user are available; do not offer others.'
 
 // Non-arg input the URL builder needs: the chat's operating workspace (the compare
 // page cannot fall back to its own store default inside a session preview).
@@ -4001,7 +4001,7 @@ export const globalTools: SessionTool<{}>[] = [
 		def: createToolDef(
 			z.object({}),
 			'list_workers',
-			'List the workers connected to this Windmill instance (those that pinged in the last 5 minutes), with their worker group, custom tags, seconds since their last ping, and jobs executed. Pair with list_runs to diagnose a stuck queue: runs queued on a tag no listed worker picks up will never start. Three blind spots to report rather than reason past: an empty result states whether no worker is connected or whether workers may be hidden from you, so relay the one it gives instead of picking; a missing custom_tags can mean tags are hidden from you, not unset; and only the 100 most recently pinging workers are listed, so on a bigger instance a tag none of them carries may still be served.'
+			'List the workers connected to this Pinwheel instance (those that pinged in the last 5 minutes), with their worker group, custom tags, seconds since their last ping, and jobs executed. Pair with list_runs to diagnose a stuck queue: runs queued on a tag no listed worker picks up will never start. Three blind spots to report rather than reason past: an empty result states whether no worker is connected or whether workers may be hidden from you, so relay the one it gives instead of picking; a missing custom_tags can mean tags are hidden from you, not unset; and only the 100 most recently pinging workers are listed, so on a bigger instance a tag none of them carries may still be served.'
 		),
 		planModeSafe: true,
 		showDetails: true,
@@ -6274,7 +6274,7 @@ async function runThroughForm(spec: FormRunSpec, ctx: WriteDraftCtx): Promise<st
 		: ''
 	// Nothing renders these, so the model is the only one who can be told they went nowhere.
 	const undeclared = undeclaredKeys.length
-		? `\nThe ${schemaNoun} does not declare ${undeclaredKeys.join(', ')}, so ${undeclaredKeys.length > 1 ? 'they were' : 'it was'} not sent — no run form in Windmill offers a field the schema does not name. Re-read the input schema and use the arguments it declares.`
+		? `\nThe ${schemaNoun} does not declare ${undeclaredKeys.join(', ')}, so ${undeclaredKeys.length > 1 ? 'they were' : 'it was'} not sent — no run form in Pinwheel offers a field the schema does not name. Re-read the input schema and use the arguments it declares.`
 		: ''
 	// Otherwise an emptied field reads as the user having deleted it, and the next call
 	// proposes the same bytes again.

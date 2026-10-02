@@ -84,7 +84,7 @@
 	class="w-full"
 >
 	{#snippet header()}
-		<Tooltip documentationLink="https://www.windmill.dev/docs/core_concepts/http_routing">
+		<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 			Which origins may call this route from a browser. Other origins can still send the request,
 			they just cannot read the response.
 		</Tooltip>

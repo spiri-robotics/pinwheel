@@ -114,7 +114,7 @@
 		{noEditor}
 		title={value.type == 'branchall' ? 'Run all branches' : 'Run one branch'}
 		subtitle="Every branch runs. The result of this step is the list of each branch's result."
-		subtitleDocLink="https://www.windmill.dev/docs/flows/flow_branches#branch-all"
+		subtitleDocLink="https://github.com/spiri-robotics/windmill-OSS"
 	>
 		<div class="flex h-full min-h-0 flex-col">
 			<Tabs bind:selected={selectedTab} wrapperClass="shrink-0">

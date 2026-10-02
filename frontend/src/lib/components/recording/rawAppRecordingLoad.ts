@@ -539,7 +539,7 @@ export function parseRecording(
 	input: unknown
 ): { ok: true; loaded: LoadedRecording } | { ok: false; error: string } {
 	if (!isObject(input) || typeof input.version !== 'number') {
-		return { ok: false, error: 'This file is not a Windmill recording.' }
+		return { ok: false, error: 'This file is not a Pinwheel recording.' }
 	}
 	// Before anything looks at what the fields mean: no recording, whatever it holds,
 	// may carry more structure than a tab can render. This is what makes the bound
@@ -559,14 +559,14 @@ export function parseRecording(
 			return {
 				ok: false,
 				error:
-					'This recording was made by an older version of Windmill and can no longer be replayed — re-record it.'
+					'This recording was made by an older version of Pinwheel and can no longer be replayed — re-record it.'
 			}
 		}
 		data = upgraded
 	} else if (data.version !== expectedVersion) {
 		return {
 			ok: false,
-			error: 'This recording needs a newer version of Windmill to replay.'
+			error: 'This recording needs a newer version of Pinwheel to replay.'
 		}
 	}
 	const type = data.type === undefined ? 'flow' : data.type
@@ -598,7 +598,7 @@ export function parseRecording(
 			const named = typeof type === 'string' && type.length <= 32 ? ` (${type})` : ''
 			return {
 				ok: false,
-				error: `This recording is of an unknown kind${named} — it may need a newer Windmill.`
+				error: `This recording is of an unknown kind${named} — it may need a newer Pinwheel.`
 			}
 		}
 	}

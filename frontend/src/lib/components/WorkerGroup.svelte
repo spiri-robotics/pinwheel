@@ -1285,7 +1285,7 @@
 										</Badge>
 									{/each}
 								</div>
-								<a href="https://www.windmill.dev/docs/advanced/security_isolation" target="_blank">
+								<a href="https://github.com/spiri-robotics/windmill-OSS" target="_blank">
 									Learn more about job isolation <ExternalLink size={12} class="inline-block" />
 								</a>
 							</div>
@@ -1440,7 +1440,7 @@
 			{#snippet children()}
 				This group is formed with agent workers, there is no associated config. {#if $superadmin || $devopsRole}
 					To modify the tags, generate a new <a
-						href="https://www.windmill.dev/docs/core_concepts/agent_workers#quickstart"
+						href="https://github.com/spiri-robotics/windmill-OSS"
 						target="_blank"
 						class="underline">JWT token <ExternalLink size={12} class="inline-block" /></a
 					>.{/if}

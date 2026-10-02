@@ -243,9 +243,9 @@
 					>
 						<p class="text-sm text-secondary">
 							{#if $aiUserDisabled}
-								Windmill AI is disabled in your account settings
+								Pinwheel AI is disabled in your account settings
 							{:else if freeTierExhausted}
-								You have used all of your free Windmill AI tokens
+								You have used all of your free Pinwheel AI tokens
 							{:else}
 								No AI provider is configured
 							{/if}

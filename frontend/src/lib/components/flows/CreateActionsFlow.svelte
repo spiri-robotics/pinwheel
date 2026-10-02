@@ -151,7 +151,7 @@
 					<div class="text-center">
 						<h3 class="font-semibold text-primary whitespace-nowrap">Workflow-as-Code</h3>
 						<p class="text-xs text-tertiary mt-1">
-							Write workflows as Python or TypeScript code as a regular Windmill script.
+							Write workflows as Python or TypeScript code as a regular Pinwheel script.
 						</p>
 					</div>
 				</div>

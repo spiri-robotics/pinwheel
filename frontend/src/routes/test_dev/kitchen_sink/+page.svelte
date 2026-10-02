@@ -119,13 +119,13 @@
 		{
 			displayName: 'External Link',
 			icon: Earth,
-			href: 'https://windmill.dev',
+			href: 'https://github.com/spiri-robotics/windmill-OSS',
 			hrefTarget: '_blank' as const
 		},
 		{
 			displayName: 'Documentation',
 			icon: Database,
-			href: 'https://docs.windmill.dev',
+			href: 'https://github.com/spiri-robotics/windmill-OSS',
 			hrefTarget: '_blank' as const
 		}
 	]
@@ -210,7 +210,7 @@
 			</Button>
 		</div>
 		<p class="text-xs text-secondary max-w-3xl">
-			Showcase of Button and Dropdown components following Windmill's design system guidelines.
+			Showcase of Button and Dropdown components following Pinwheel's design system guidelines.
 		</p>
 	</header>
 

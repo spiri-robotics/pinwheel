@@ -216,7 +216,7 @@
 	<div class="flex flex-col gap-6">
 		<Subsection
 			label="Service Principal"
-			tooltip="Windmill resource of type `azure` (azureTenantId, azureClientId, azureClientSecret)."
+			tooltip="Pinwheel resource of type `azure` (azureTenantId, azureClientId, azureClientSecret)."
 		>
 			<ResourcePicker bind:value={azure_resource_path} resourceType="azure" disabled={!can_write} />
 		</Subsection>
@@ -241,7 +241,7 @@
 			{#if is_namespace}
 				<Subsection
 					label="Delivery mode"
-					tooltip="Push: Azure POSTs events to this Windmill instance (requires a public URL). Pull: Windmill polls Azure, better for retries and not requiring inbound exposure."
+					tooltip="Push: Azure POSTs events to this Pinwheel instance (requires a public URL). Pull: Pinwheel polls Azure, better for retries and not requiring inbound exposure."
 				>
 					<ToggleButtonGroup
 						selected={delivery}
@@ -314,7 +314,7 @@
 		{#if config_ready}
 			<Subsection
 				label="Subscription name"
-				tooltip="Auto-generated from the trigger path. Windmill creates this subscription on Azure (or overwrites it) on save."
+				tooltip="Auto-generated from the trigger path. Pinwheel creates this subscription on Azure (or overwrites it) on save."
 			>
 				<TextInput
 					bind:value={subscription_name}
@@ -330,7 +330,7 @@
 				<div class="mt-2">
 					<Alert title="Saving overwrites this subscription on Azure" type="warning" size="xs">
 						If a subscription with this name already exists with an incompatible delivery mode
-						(Push↔Pull) or endpoint type, Windmill will delete and recreate it — any in-flight
+						(Push↔Pull) or endpoint type, Pinwheel will delete and recreate it — any in-flight
 						events in its queue will be dropped.
 					</Alert>
 				</div>

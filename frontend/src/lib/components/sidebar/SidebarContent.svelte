@@ -123,7 +123,7 @@
 			subItems: [
 				{
 					label: 'Docs',
-					href: 'https://www.windmill.dev/docs/intro/',
+					href: 'https://github.com/spiri-robotics/windmill-OSS',
 					icon: BookOpen,
 					aiId: 'sidebar-menu-link-docs',
 					aiDescription: 'Button to navigate to docs',
@@ -147,7 +147,7 @@
 				},
 				{
 					label: 'Changelog',
-					href: 'https://www.windmill.dev/changelog/',
+					href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 					icon: Newspaper,
 					aiId: 'sidebar-menu-link-changelog',
 					aiDescription: 'Button to navigate to changelog',

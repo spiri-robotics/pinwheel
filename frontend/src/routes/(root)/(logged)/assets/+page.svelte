@@ -272,8 +272,8 @@
 	<CenteredPage id="scrollable-container">
 		<PageHeader
 			title="Assets"
-			tooltip="Assets show up here whenever you use them in Windmill."
-			documentationLink="https://www.windmill.dev/docs/core_concepts/assets"
+			tooltip="Assets show up here whenever you use them in Pinwheel."
+			documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		/>
 
 		<Section label="All workspace assets" class="mb-20">
@@ -385,7 +385,7 @@
 					data: allDataTables,
 					assetKind: 'datatable',
 					settingsHref: '/workspace_settings?tab=windmill_data_tables',
-					docsHref: 'https://www.windmill.dev/docs/core_concepts/persistent_storage/data_tables',
+					docsHref: 'https://github.com/spiri-robotics/windmill-OSS',
 					favorites: extractFavorites('datatable')
 				})}
 				{@render card({
@@ -393,7 +393,7 @@
 					data: allDucklakes,
 					assetKind: 'ducklake',
 					settingsHref: '/workspace_settings?tab=ducklake',
-					docsHref: 'https://www.windmill.dev/docs/core_concepts/persistent_storage/ducklake',
+					docsHref: 'https://github.com/spiri-robotics/windmill-OSS',
 					favorites: extractFavorites('ducklake')
 				})}
 				{#snippet volumesButton(item: { label: string; value: string })}
@@ -416,7 +416,7 @@
 					assetKind: 's3object',
 					settingsHref: '/workspace_settings?tab=windmill_lfs',
 					docsHref:
-						'https://www.windmill.dev/docs/core_concepts/persistent_storage/large_data_files',
+						'https://github.com/spiri-robotics/windmill-OSS',
 					itemExtra: volumesButton
 				})}
 			</div>

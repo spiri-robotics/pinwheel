@@ -311,12 +311,12 @@
 		dismissing = true
 		const confirmed = await confirmationModal
 			.ask({
-				title: 'Let Windmill manage your external database',
+				title: 'Let Pinwheel manage your external database',
 				type: 'info',
 				confirmationText: useIt ? 'Use the external cluster' : 'Open managed Postgres settings',
 				children: `<div class="flex flex-col gap-2 text-sm text-primary">
-				<p>Point Windmill at a Postgres cluster you run &mdash; RDS, Cloud SQL, Azure, self-hosted &mdash; with an admin login that has <span class="font-mono">CREATEDB</span> and <span class="font-mono">CREATEROLE</span>.</p>
-				<p>Windmill then creates one database per data table there, generates and rotates its credentials, and manages the data table roles jobs connect as. Nobody in the workspace handles a password, and the admin login is never handed to a job.</p>
+				<p>Point Pinwheel at a Postgres cluster you run &mdash; RDS, Cloud SQL, Azure, self-hosted &mdash; with an admin login that has <span class="font-mono">CREATEDB</span> and <span class="font-mono">CREATEROLE</span>.</p>
+				<p>Pinwheel then creates one database per data table there, generates and rotates its credentials, and manages the data table roles jobs connect as. Nobody in the workspace handles a password, and the admin login is never handed to a job.</p>
 				<p>${
 					useIt
 						? 'An external cluster is already set up on this instance.'
@@ -1285,7 +1285,7 @@
 								managedProvider ? wiz.provider! : preferredManagedProvider(),
 								managedIcon,
 								'Windmill managed database (Recommended)',
-								'Windmill manages the databases and roles for you.'
+								'Pinwheel manages the databases and roles for you.'
 							)}
 						{/if}
 						{#if supabaseAvailable}
@@ -1314,9 +1314,9 @@
 						{#if !supaOauth.authed}
 							<Alert type="info" size="xs" bgClass="border-0" title="">
 								{#if supaOauth.pending}
-									Sign in and approve Windmill in the Supabase window, then come back here.
+									Sign in and approve Pinwheel in the Supabase window, then come back here.
 								{:else}
-									Windmill needs your approval on Supabase to see your databases.
+									Pinwheel needs your approval on Supabase to see your databases.
 								{/if}
 							</Alert>
 						{:else}
@@ -1331,10 +1331,10 @@
 						{#if managedKindUnavailable}
 							<p class="text-xs text-secondary">
 								{#if $superadmin}
-									Windmill has no Postgres it can manage databases on yet. Set up an external
-									cluster, or turn Windmill's own database back on, in the instance settings.
+									Pinwheel has no Postgres it can manage databases on yet. Set up an external
+									cluster, or turn Pinwheel's own database back on, in the instance settings.
 								{:else}
-									Only a superadmin can create a database Windmill manages.
+									Only a superadmin can create a database Pinwheel manages.
 								{/if}
 							</p>
 						{:else if wiz.provider === 'instance'}
@@ -1386,7 +1386,7 @@
 								startIcon={{ icon: Lightbulb }}
 								onClick={explainExternalInstance}
 							>
-								Let Windmill manage your external database
+								Let Pinwheel manage your external database
 							</Button>
 						{/if}
 						<Button
@@ -1431,14 +1431,14 @@
 
 {#snippet managedKindToggle()}
 	{@const internalReason = instanceAvailable
-		? "A database on Windmill's own Postgres."
+		? "A database on Pinwheel's own Postgres."
 		: !$superadmin
-			? "Only a superadmin can create a database on Windmill's own Postgres."
+			? "Only a superadmin can create a database on Pinwheel's own Postgres."
 			: isCloudHosted()
-				? "Windmill's own Postgres is not available on cloud."
-				: "Windmill's own Postgres is turned off for data tables in the instance settings."}
+				? "Pinwheel's own Postgres is not available on cloud."
+				: "Pinwheel's own Postgres is turned off for data tables in the instance settings."}
 	{@const externalReason = externalInstanceAvailable
-		? 'A database on the external Postgres cluster Windmill administers.'
+		? 'A database on the external Postgres cluster Pinwheel administers.'
 		: !$enterpriseLicense
 			? 'An external cluster is an Enterprise Edition feature.'
 			: !$superadmin
@@ -1565,7 +1565,7 @@
 			<InputError error={instanceNameError} />
 			{#if !instanceNameError}
 				<p class="text-2xs text-secondary mt-1">
-					Created in the Windmill PostgreSQL instance when you finish. Windmill manages its
+					Created in the Pinwheel PostgreSQL instance when you finish. Pinwheel manages its
 					credentials.
 				</p>
 			{/if}
@@ -1639,7 +1639,7 @@
 			<InputError error={externalNameError} />
 			{#if !externalNameError}
 				<p class="text-2xs text-secondary mt-1">
-					Created on the external PostgreSQL cluster when you finish. Windmill manages its
+					Created on the external PostgreSQL cluster when you finish. Pinwheel manages its
 					credentials.
 				</p>
 			{/if}
@@ -1698,7 +1698,7 @@
 							>New resource</span
 						>
 						<span class="text-xs text-secondary font-normal"
-							>Windmill saves it as a Postgres resource</span
+							>Pinwheel saves it as a Postgres resource</span
 						>
 					</span>
 				</button>
@@ -1872,7 +1872,7 @@
 			<div class="flex flex-col gap-1">
 				<span>{poolerUnavailable}</span>
 				<span>
-					Windmill connects directly instead, which needs IPv6 from the workers, or the IPv4 add-on
+					Pinwheel connects directly instead, which needs IPv6 from the workers, or the IPv4 add-on
 					on the project. Granting the Supabase OAuth app
 					<span class="font-mono">database_pooling_config_read</span> and connecting again restores the
 					pooler.
@@ -1921,10 +1921,10 @@
 		>
 			<p class="text-2xs text-secondary">
 				{#if wiz.supabase.mode === 'create'}
-					It does not exist yet — Windmill creates it on Supabase when you finish. The project is
+					It does not exist yet — Pinwheel creates it on Supabase when you finish. The project is
 					yours, and you can open and manage it from the Supabase dashboard.
 				{:else}
-					A project already in your Supabase account. Windmill saves its connection and changes
+					A project already in your Supabase account. Pinwheel saves its connection and changes
 					nothing about the project itself.
 				{/if}
 			</p>
@@ -1950,13 +1950,13 @@
 		</Label>
 		{@render poolerWarning()}
 	{:else if wiz.provider === 'instance'}
-		<Label label="Windmill database" class="gap-1">
+		<Label label="Pinwheel database" class="gap-1">
 			<p class="text-2xs text-secondary">
 				{#if wiz.instance.mode === 'create'}
-					It does not exist yet — Windmill creates it on this instance's PostgreSQL server when you
+					It does not exist yet — Pinwheel creates it on this instance's PostgreSQL server when you
 					finish, and manages its credentials.
 				{:else}
-					A database already on this instance's PostgreSQL server, managed by Windmill.
+					A database already on this instance's PostgreSQL server, managed by Pinwheel.
 				{/if}
 			</p>
 			<TextInput value={wiz.instance.dbName ?? ''} inputProps={{ disabled: true }} />
@@ -1965,10 +1965,10 @@
 		<Label label="External cluster database" class="gap-1">
 			<p class="text-2xs text-secondary">
 				{#if wiz.external.mode === 'create'}
-					It does not exist yet — Windmill creates it on the external PostgreSQL cluster when you
+					It does not exist yet — Pinwheel creates it on the external PostgreSQL cluster when you
 					finish, and manages its credentials.
 				{:else}
-					A database already on the external PostgreSQL cluster, managed by Windmill.
+					A database already on the external PostgreSQL cluster, managed by Pinwheel.
 				{/if}
 			</p>
 			<TextInput value={wiz.external.dbName ?? ''} inputProps={{ disabled: true }} />

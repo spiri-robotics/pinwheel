@@ -130,7 +130,7 @@
 					migrate to the new format.
 				</Tooltip>
 			{:else if !isEditable}
-				<Tooltip documentationLink="https://www.windmill.dev/docs/advanced/cli/sync#wmillyaml">
+				<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 					These settings are controlled by the wmill.yaml file in your git repository. Click "Pull
 					from repo" to check for settings drift and pull settings from repo.
 				</Tooltip>
@@ -392,7 +392,7 @@
 								file in your git repository. To modify them, edit the file in your repository, commit
 								the changes, and sync using the commands below. Learn more about
 								<a
-									href="https://www.windmill.dev/docs/advanced/cli/sync#wmillyaml"
+									href="https://github.com/spiri-robotics/windmill-OSS"
 									target="_blank"
 									rel="noopener noreferrer">the wmill.yaml format</a
 								>

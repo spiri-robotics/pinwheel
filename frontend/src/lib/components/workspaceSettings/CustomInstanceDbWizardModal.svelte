@@ -63,8 +63,8 @@
 				<div class="flex-1 flex flex-col">
 					<span class="text-sm font-bold mb-2 overflow break-all">{dbname}</span>
 					<span class="text-xs font-normal text-secondary">
-						Custom instance databases are databases created in the Windmill PostgreSQL instance.
-						Their credentials are automatically managed by Windmill and are never exposed to users.
+						Custom instance databases are databases created in the Pinwheel PostgreSQL instance.
+						Their credentials are automatically managed by Pinwheel and are never exposed to users.
 						Only super admins can create them.
 					</span>
 				</div>
@@ -164,7 +164,7 @@
 							preventClose = true
 							let confirm = await confirmationModal.ask({
 								title: 'Confirm setup',
-								children: `This will create a new database ${dbname} in the Windmill PostgreSQL instance`,
+								children: `This will create a new database ${dbname} in the Pinwheel PostgreSQL instance`,
 								confirmationText: 'Setup database'
 							})
 							preventClose = false

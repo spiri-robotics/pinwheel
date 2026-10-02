@@ -289,7 +289,7 @@
 				class="mb-4 flex flex-row flex-shrink-0"
 				use:triggerableByAI={{
 					id: 'account-settings-create-mcp-token',
-					description: 'Create a new MCP token to authenticate to the Windmill API'
+					description: 'Create a new MCP token to authenticate to the Pinwheel API'
 				}}
 			>
 				<Toggle
@@ -305,7 +305,7 @@
 						right: 'Generate MCP URL',
 						rightTooltip:
 							'Generate a new MCP URL to make your scripts, flows, and API endpoints available as tools through your LLM clients.',
-						rightDocumentationLink: 'https://www.windmill.dev/docs/core_concepts/mcp'
+						rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 					}}
 					size="xs"
 				/>
@@ -332,7 +332,7 @@
 
 				<div class="mt-2">
 					<Alert type="info" title="This instance requires MCP clients to sign in" size="xs">
-						Paste this URL into your client. It opens a Windmill page where you approve the access
+						Paste this URL into your client. It opens a Pinwheel page where you approve the access
 						it asks for, and no token needs to be copied around.
 					</Alert>
 				</div>

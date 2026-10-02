@@ -185,7 +185,7 @@
 		<div class="flex flex-col gap-2">
 			<div class="flex flex-col gap-3">
 				<Alert title="Full Access Warning" type="warning">
-					Any token generated using the form below will grant unrestricted access to the Windmill
+					Any token generated using the form below will grant unrestricted access to the Pinwheel
 					API. Only share it with trusted parties.
 				</Alert>
 				<CreateToken
@@ -200,7 +200,7 @@
 			<Label label="Token">
 				<input
 					bind:value={token}
-					placeholder="paste a windmill token to alter the example below"
+					placeholder="paste a pinwheel token to alter the example below"
 					class="!text-xs !font-normal"
 				/>
 			</Label>
@@ -215,7 +215,7 @@
 						You can either:
 						<ul class="list-disc pl-5 mt-1 text-sm leading-snug">
 							<li
-								>Paste an existing Windmill token into the <code>token variable</code> placeholder</li
+								>Paste an existing Pinwheel token into the <code>token variable</code> placeholder</li
 							>
 							<li>Or generate a new token</li>
 						</ul>
@@ -508,7 +508,7 @@ curl -X POST "${window.location.origin}${base}/api/w/${$operatingWorkspace!}/ope
 										</li>
 										<li>
 											<span>
-												Defining a <strong>path regex</strong>: matches the internal Windmill path
+												Defining a <strong>path regex</strong>: matches the internal Pinwheel path
 												of a script or flow.
 												<br />
 												Example: <code>f/notify/*</code> will match any webhook whose script or flow

@@ -210,8 +210,8 @@
 							>in slack API console
 							<ExternalLink size={12} class="inline-block" />
 						</a>. Pick "From a manifest", then YAML and paste manifest template found on
-						<a href="https://www.windmill.dev/docs/misc/setup_oauth#slack" target="_blank"
-							>Windmill docs <ExternalLink size={12} class="inline-block" /></a
+						<a href="https://github.com/spiri-robotics/windmill-OSS" target="_blank"
+							>Pinwheel docs <ExternalLink size={12} class="inline-block" /></a
 						> and then paste Client ID and Client Secret here.
 					</div>
 				</CollapseLink>
@@ -256,7 +256,7 @@
 						<div>
 							<strong>3. Copy Credentials</strong>
 							<div class="ml-4 mt-1">
-								Copy the following values to Windmill:
+								Copy the following values to Pinwheel:
 								<ul class="list-disc ml-4 mt-1 space-y-1">
 									<li>Copy <strong>"Directory (tenant ID)"</strong> to the tenant ID field</li>
 									<li>Copy <strong>"Application (client) ID"</strong> to the Client ID field</li>
@@ -284,8 +284,8 @@
 				<CollapseLink text="Instructions">
 					<div class="text-xs text-primary rounded-md">
 						Follow this guide on <a
-							href="https://www.windmill.dev/docs/misc/setup_oauth#microsoft-teams"
-							target="_blank">Windmill Docs</a
+							href="https://github.com/spiri-robotics/windmill-OSS"
+							target="_blank">Pinwheel Docs</a
 						> to create a new Microsoft Teams App. Then paste Client ID, Tenant ID, and Client Secret
 						here.
 					</div>

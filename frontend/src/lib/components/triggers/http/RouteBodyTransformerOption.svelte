@@ -22,7 +22,7 @@
 <Label label="Raw body" for="raw-body-toggle" class="w-full">
 	{#snippet header()}
 		<Tooltip
-			documentationLink="https://www.windmill.dev/docs/core_concepts/http_routing#body-processing-options"
+			documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		>
 			Provides the raw JSON payload as a string under the 'raw_string' key. Required for custom
 			script authentication method and useful for signature verification or other advanced use
@@ -46,7 +46,7 @@
 <Label label="Wrap body" for="wrap-body-toggle" class="w-full">
 	{#snippet header()}
 		<Tooltip
-			documentationLink="https://www.windmill.dev/docs/core_concepts/http_routing#body-processing-options"
+			documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		>
 			Wraps the body in a JSON object with the key 'body'. Useful for compatibility with existing
 			code that expects a JSON object.

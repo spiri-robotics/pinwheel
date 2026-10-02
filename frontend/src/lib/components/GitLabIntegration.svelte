@@ -136,7 +136,7 @@
 
 {#if show}
 	<Popover
-		documentationLink="https://www.windmill.dev/docs/integrations/git_repository"
+		documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		disabled={!enabled}
 		contentClasses="overflow-auto"
 	>
@@ -166,7 +166,7 @@
 						</div>
 						<TextInput bind:value={token} size="sm" inputProps={{ type: 'password' }} />
 						<div class="text-2xs font-normal text-hint">
-							Windmill stores it and renews it before it expires. Use one token per project: a group
+							Pinwheel stores it and renews it before it expires. Use one token per project: a group
 							token covers the group, but renewal replaces it for one project at a time.
 						</div>
 					</div>

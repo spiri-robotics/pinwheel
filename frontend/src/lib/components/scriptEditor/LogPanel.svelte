@@ -239,9 +239,9 @@
 												{/if}
 											</span>
 											<Tooltip
-												documentationLink="https://www.windmill.dev/docs/core_concepts/rich_display_rendering"
+												documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											>
-												The result renderer in Windmill supports rich display rendering, allowing
+												The result renderer in Pinwheel supports rich display rendering, allowing
 												you to customize the display format of your results.
 											</Tooltip>
 										</div>

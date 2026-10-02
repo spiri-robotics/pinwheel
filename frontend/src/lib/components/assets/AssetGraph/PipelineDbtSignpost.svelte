@@ -5,13 +5,13 @@
 	import DbtIcon from '$lib/components/icons/DbtIcon.svelte'
 	import { BookOpen } from 'lucide-svelte'
 
-	const DBT_DOCS = 'https://www.windmill.dev/docs/getting_started/scripts_quickstart/dbt'
+	const DBT_DOCS = 'https://github.com/spiri-robotics/windmill-OSS'
 </script>
 
-<Alert type="info" title="Prefer using dbt? Windmill also runs dbt" size="xs">
+<Alert type="info" title="Prefer using dbt? Pinwheel also runs dbt" size="xs">
 	<div class="flex flex-col gap-2">
 		<p>
-			A pipeline is Windmill's own abstraction; an existing dbt project stays a dbt project, and
+			A pipeline is Pinwheel's own abstraction; an existing dbt project stays a dbt project, and
 			runs here unchanged as its own kind of script, with dbt still owning its models, refs and
 			tests. All it needs is a warehouse configured under
 			<a class="underline" href="{base}/workspace_settings?tab=dbt">Settings → dbt</a>. Its models

@@ -121,7 +121,7 @@
 <Section label="Default tags">
 	<div class="text-2xs text-secondary mb-2">
 		Jobs that have not been specifically assigned custom tags will use a <a
-			href="https://www.windmill.dev/docs/core_concepts/worker_groups#default-worker-group"
+			href="https://github.com/spiri-robotics/windmill-OSS"
 			target="_blank"
 			class="gap-1 items-baseline">default tags <ExternalLink size={12} class="inline-block" /></a
 		> based on the language they are in or their kind.

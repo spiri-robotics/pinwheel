@@ -360,10 +360,10 @@
 	}
 
 	function addEditorActions() {
-		editor?.addAction('insert-variable', 'Windmill: Insert variable', () => {
+		editor?.addAction('insert-variable', 'Pinwheel: Insert variable', () => {
 			variablePicker?.openDrawer()
 		})
-		editor?.addAction('insert-resource', 'Windmill: Insert resource', () => {
+		editor?.addAction('insert-resource', 'Pinwheel: Insert resource', () => {
 			resourcePicker?.openDrawer()
 		})
 	}
@@ -657,8 +657,8 @@
 		sendUserToast(`${name} inserted at cursor`)
 	}}
 	tooltip="Contextual Variables are variables whose values are contextual to the Script
-	execution. They are are automatically set by Windmill."
-	documentationLink="https://www.windmill.dev/docs/core_concepts/variables_and_secrets#contextual-variables"
+	execution. They are are automatically set by Pinwheel."
+	documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 	itemName="Contextual Variable"
 	extraField="name"
 	loadItems={loadContextualVariables}
@@ -731,7 +731,7 @@ string ${windmillPathToCamelCaseName(path)} = await client.GetStringAsync(uri);
 		sendUserToast(`${name} inserted at cursor`)
 	}}
 	tooltip="Variables are dynamic values that have a key associated to them and can be retrieved during the execution of a Script or Flow."
-	documentationLink="https://www.windmill.dev/docs/core_concepts/variables_and_secrets"
+	documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 	itemName="Variable"
 	extraField="path"
 	loadItems={loadVariables}
@@ -831,7 +831,7 @@ JsonNode ${windmillPathToCamelCaseName(path)} = JsonNode.Parse(await client.GetS
 		sendUserToast(`${path} inserted at cursor`)
 	}}
 	tooltip="Resources represent connections to third party systems. Resources are a good way to define a connection to a frequently used third party system such as a database."
-	documentationLink="https://www.windmill.dev/docs/core_concepts/resources_and_types"
+	documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 	itemName="Resource"
 	buttons={{ 'Edit/View': (x) => resourceEditor?.initEdit(x) }}
 	extraField="description"
@@ -859,7 +859,7 @@ JsonNode ${windmillPathToCamelCaseName(path)} = JsonNode.Parse(await client.GetS
 			resourceTypePickCallback(name)
 		}}
 		tooltip="Resources Types are the schemas associated with a Resource. They define the structure of the data that is returned from a Resource."
-		documentationLink="https://www.windmill.dev/docs/core_concepts/resources_and_types"
+		documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		itemName="Resource Type"
 		extraField="name"
 		loadItems={async () => await ResourceService.listResourceType({ workspace: ws ?? 'NO_W' })}
@@ -892,7 +892,7 @@ JsonNode ${windmillPathToCamelCaseName(path)} = JsonNode.Parse(await client.GetS
 			}
 		}}
 		tooltip="Attach a Ducklake to your scripts. Ducklake allows you to manipulate large data on S3 blob files through a traditional SQL interface."
-		documentationLink="https://www.windmill.dev/docs/core_concepts/persistent_storage/ducklake"
+		documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		itemName="ducklake"
 		loadItems={async () =>
 			(await WorkspaceService.listDucklakes({ workspace: ws ?? 'NO_W' })).map((path) => ({ path }))}
@@ -933,7 +933,7 @@ JsonNode ${windmillPathToCamelCaseName(path)} = JsonNode.Parse(await client.GetS
 			}
 		}}
 		tooltip="Attach a datatable to your script."
-		documentationLink="https://www.windmill.dev/docs/core_concepts/persistent_storage/data_tables"
+		documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		itemName="data table"
 		loadItems={async () =>
 			(await WorkspaceService.listDataTables({ workspace: ws ?? 'NO_W' })).map((d) => ({
@@ -967,7 +967,7 @@ JsonNode ${windmillPathToCamelCaseName(path)} = JsonNode.Parse(await client.GetS
 			sendUserToast(`${path} inserted at cursor`)
 		}}
 		tooltip="Attach a database resource in your script. This allows you to query data from the database using SQL."
-		documentationLink="https://www.windmill.dev/docs/core_concepts/resources_and_types"
+		documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		itemName="Database"
 		buttons={{ 'Edit/View': (x) => resourceEditor?.initEdit(x) }}
 		extraField="description"

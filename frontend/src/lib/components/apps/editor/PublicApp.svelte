@@ -120,8 +120,8 @@
 			? 'transition-opacity delay-1000 duration-1000 opacity-20 hover:delay-0 hover:opacity-100'
 			: ''}"
 	>
-		<a href="https://windmill.dev" class="whitespace-nowrap text-primary inline-flex items-center"
-			>Powered by &nbsp;<WindmillIcon />&nbsp;Windmill</a
+		<a href="https://github.com/spiri-robotics/windmill-OSS" class="whitespace-nowrap text-primary inline-flex items-center"
+			>Powered by &nbsp;<WindmillIcon />&nbsp;Pinwheel</a
 		>
 	</div>
 {/if}
@@ -129,14 +129,14 @@
 {#if notExists}
 	<div class="px-4 mt-20"
 		><Alert type="error" title="Not found"
-			>There was an error loading the app, is the url correct? <a href={base}>Go to Windmill</a>
+			>There was an error loading the app, is the url correct? <a href={base}>Go to Pinwheel</a>
 		</Alert></div
 	>
 {:else if noPermission}
 	{#if guestAppPath && !$userStore}
 		<div class="px-4 mt-20 w-full text-center font-bold text-xl"> Sign in to open this app </div>
 		<div class="text-center mt-8 text-sm text-primary">
-			You do not need a Windmill account. Signing in lets you open this app and nothing else.
+			You do not need a Pinwheel account. Signing in lets you open this app and nothing else.
 		</div>
 	{:else}
 		<div class="px-4 mt-20 w-full text-center font-bold text-xl">

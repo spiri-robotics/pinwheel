@@ -167,7 +167,7 @@
 		queue_url = '$var:' + path
 	}}
 	tooltip="Variables are dynamic values that have a key associated to them and can be retrieved during the execution of a Script or Flow."
-	documentationLink="https://www.windmill.dev/docs/core_concepts/variables_and_secrets"
+	documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 	itemName="Variable"
 	extraField="path"
 	loadItems={loadVariables}

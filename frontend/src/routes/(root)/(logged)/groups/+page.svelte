@@ -78,7 +78,7 @@
 		<PageHeader
 			title="Groups"
 			tooltip="Group users together to grant roles and homegenous permissions. Same users can be in many groups at the same time."
-			documentationLink="https://www.windmill.dev/docs/core_concepts/groups_and_folders"
+			documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		>
 			<div class="flex flex-row">
 				<div>
@@ -178,7 +178,7 @@
 		{#if instanceGroups && instanceGroups.length > 0}
 			<div class="flex flex-row gap-1 items-center mb-2">
 				<span class="text-emphasis text-sm font-semibold">Instance groups</span>
-				<Tooltip documentationLink="https://www.windmill.dev/docs/misc/saml_and_scim#scim">
+				<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 					{#snippet text()}
 						Instance Groups are managed by SCIM and are groups shared by every workspaces
 					{/snippet}

@@ -64,7 +64,7 @@ wmill sync pull`)
 											<Button
 												variant="subtle"
 												unifiedSize="sm"
-												href="https://www.windmill.dev/docs/advanced/cli"
+												href="https://github.com/spiri-robotics/windmill-OSS"
 												target="_blank"
 												startIcon={{ icon: ExternalLink }}
 											>
@@ -104,7 +104,7 @@ wmill sync pull`)
 												<p class="text-xs text-secondary max-w-xl">
 													{#if tokenUrlDisabled}
 														The MCP server URL for the current workspace. Your client signs in to
-														Windmill to use it.
+														Pinwheel to use it.
 													{:else}
 														Generate an MCP server URL for the current workspace and choose which
 														scripts, flows, and endpoints the client can access.
@@ -115,7 +115,7 @@ wmill sync pull`)
 											<Button
 												variant="subtle"
 												unifiedSize="sm"
-												href="https://www.windmill.dev/docs/core_concepts/mcp"
+												href="https://github.com/spiri-robotics/windmill-OSS"
 												target="_blank"
 												startIcon={{ icon: ExternalLink }}
 											>

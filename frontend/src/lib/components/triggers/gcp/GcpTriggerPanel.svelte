@@ -56,7 +56,7 @@
 						GCP Pub/Sub triggers are disabled in the multi-tenant cloud.
 					</Alert>
 				{:else}
-					<Description link="https://www.windmill.dev/docs/core_concepts/gcp_triggers">
+					<Description link="https://github.com/spiri-robotics/windmill-OSS">
 						GCP Pub/Sub triggers execute scripts and flows in response to messages published to
 						Google Cloud Pub/Sub topics.
 					</Description>

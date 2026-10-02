@@ -139,7 +139,7 @@
 				</h1>
 				<p class="text-secondary mb-8">
 					The GitHub app has been successfully installed. You can now close this window and return
-					to Windmill to start using the GitHub integration.
+					to Pinwheel to start using the GitHub integration.
 				</p>
 				<button
 					onclick={closeWindow}

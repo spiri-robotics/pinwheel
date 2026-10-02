@@ -16,7 +16,7 @@
 	<DrawerContent
 		title="Queues"
 		on:close={drawer.closeDrawer}
-		documentationLink="https://www.windmill.dev/docs/core_concepts/worker_groups#queue-metrics"
+		documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 	>
 		<QueueStatusTable />
 

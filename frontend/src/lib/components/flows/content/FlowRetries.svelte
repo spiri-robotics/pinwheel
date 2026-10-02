@@ -206,7 +206,7 @@
 			right: 'Retry on failure',
 			rightTooltip:
 				'Upon error this step is retried with a delay and a maximum number of attempts as defined below.',
-			rightDocumentationLink: 'https://www.windmill.dev/docs/flows/retries'
+			rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 		}}
 	/>
 

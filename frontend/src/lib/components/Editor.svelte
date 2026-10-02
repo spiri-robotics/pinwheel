@@ -1909,7 +1909,7 @@
 			const root = await genRoot(hostname)
 			console.log('SETUP TYPE ACQUISITION', { root, path })
 			ata = setupTypeAcquisition({
-				projectName: 'Windmill',
+				projectName: 'Pinwheel',
 				depsParser: (c) => {
 					return parseTypescriptDeps(c)
 				},

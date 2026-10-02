@@ -46,7 +46,7 @@
 			displayName: 'Nextcloud',
 			description: 'Connect to Nextcloud for file operations and webhook triggers',
 			icon: NextcloudIcon,
-			docsUrl: 'https://www.windmill.dev/docs/integrations/nextcloud',
+			docsUrl: 'https://github.com/spiri-robotics/windmill-OSS',
 			setupInstructions: [
 				'Create an OAuth2 application in your Nextcloud instance (Administration settings → Security → OAuth 2.0 clients)',
 				'Configure the redirect URI shown below',
@@ -58,7 +58,7 @@
 			displayName: 'Google',
 			description: 'Connect to Google for Drive and Calendar triggers',
 			icon: GoogleIcon,
-			docsUrl: 'https://www.windmill.dev/docs/core_concepts/native_triggers#google-triggers',
+			docsUrl: 'https://github.com/spiri-robotics/windmill-OSS',
 			requiresBaseUrl: false,
 			clientIdPlaceholder: 'xxxx.apps.googleusercontent.com',
 			clientSecretPlaceholder: 'Google Cloud Console client secret',
@@ -75,7 +75,7 @@
 			displayName: 'GitHub',
 			description: 'Connect to GitHub for repository webhook triggers',
 			icon: GithubIcon,
-			docsUrl: 'https://www.windmill.dev/docs/core_concepts/native_triggers#github-triggers',
+			docsUrl: 'https://github.com/spiri-robotics/windmill-OSS',
 			requiresBaseUrl: false,
 			clientIdPlaceholder: 'GitHub OAuth App Client ID',
 			clientSecretPlaceholder: 'GitHub OAuth App Client Secret',
@@ -331,7 +331,7 @@
 	<SettingsPageHeader
 		title="Native Triggers"
 		description="Connect your workspace to external services for native triggers and enhanced functionality. These connections are shared across all workspace members and are required for native triggers to work."
-		link="https://www.windmill.dev/docs/core_concepts/native_triggers"
+		link="https://github.com/spiri-robotics/windmill-OSS"
 	/>
 
 	{#if pendingCallback}
@@ -497,7 +497,7 @@
 												rel="noopener noreferrer"
 												class="underline hover:text-blue-600"
 											>
-												Windmill integration app
+												Pinwheel integration app
 											</a> to be installed on your Nextcloud instance.
 										</li>
 										<li>

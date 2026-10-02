@@ -480,7 +480,7 @@
 									<div>
 										Add a preprocessor to use the raw payload data in the flow.
 										<a
-											href="https://www.windmill.dev/docs/core_concepts/preprocessors"
+											href="https://github.com/spiri-robotics/windmill-OSS"
 											target="_blank"
 											rel="noopener noreferrer"
 											class="underline"

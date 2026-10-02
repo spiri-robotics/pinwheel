@@ -472,7 +472,7 @@
 		? `(${filteredUsers?.length ?? users?.length})`
 		: ''}"
 	description="Add members to your workspace and manage their roles. You can also auto-add users to join your workspace."
-	link="https://www.windmill.dev/docs/core_concepts/roles_and_permissions"
+	link="https://github.com/spiri-robotics/windmill-OSS"
 />
 
 {#if isAdminsWorkspaceWithoutEE}
@@ -685,7 +685,7 @@
 																value="admin"
 																small
 																label="Admin"
-																tooltip="An admin has full control over a specific Windmill workspace, including the ability to manage users, edit entities, and control permissions within the workspace."
+																tooltip="An admin has full control over a specific Pinwheel workspace, including the ability to manage users, edit entities, and control permissions within the workspace."
 																{item}
 															/>
 														{/snippet}
@@ -757,7 +757,7 @@
 																					value="admin"
 																					small
 																					label="Admin"
-																					tooltip="An admin has full control over a specific Windmill workspace, including the ability to manage users, edit entities, and control permissions within the workspace."
+																					tooltip="An admin has full control over a specific Pinwheel workspace, including the ability to manage users, edit entities, and control permissions within the workspace."
 																					{item}
 																				/>
 																			{/snippet}
@@ -953,7 +953,7 @@
 												value="admin"
 												small
 												label="Admin"
-												tooltip="An admin has full control over a specific Windmill workspace, including the ability to manage users, edit entities, and control permissions within the workspace."
+												tooltip="An admin has full control over a specific Pinwheel workspace, including the ability to manage users, edit entities, and control permissions within the workspace."
 												{item}
 											/>
 										{/snippet}
@@ -1113,7 +1113,7 @@
 	<Section
 		label="Invites ({invites.length ?? ''})"
 		tooltip="Manage invites on your workspace."
-		documentationLink="https://www.windmill.dev/docs/core_concepts/authentification#adding-users-to-a-workspace"
+		documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 	>
 		{#snippet action()}
 			{#if showAutoInviteToggle && !isAdminsWorkspaceWithoutEE}
@@ -1177,7 +1177,7 @@
 												value="admin"
 												small
 												label="Admin"
-												tooltip="An admin has full control over a specific Windmill workspace, including the ability to manage users, edit entities, and control permissions within the workspace."
+												tooltip="An admin has full control over a specific Pinwheel workspace, including the ability to manage users, edit entities, and control permissions within the workspace."
 												{item}
 											/>
 										{/snippet}

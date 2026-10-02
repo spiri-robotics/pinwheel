@@ -1090,8 +1090,8 @@
 					</p>
 					<p>
 						More info in <a
-							href="https://www.windmill.dev/docs/core_concepts/persistent_storage/large_data_files"
-							target="_blank">Windmill's documentation</a
+							href="https://github.com/spiri-robotics/windmill-OSS"
+							target="_blank">Pinwheel's documentation</a
 						></p
 					></Alert
 				>

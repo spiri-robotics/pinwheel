@@ -51,7 +51,7 @@
 					AMQP triggers are disabled in the multi-tenant cloud.
 				</Alert>
 			{:else}
-				<Description link="https://www.windmill.dev/docs/core_concepts/amqp_triggers">
+				<Description link="https://github.com/spiri-robotics/windmill-OSS">
 					AMQP triggers allow you to execute scripts and flows in response to messages consumed from
 					an AMQP (RabbitMQ) queue.
 				</Description>

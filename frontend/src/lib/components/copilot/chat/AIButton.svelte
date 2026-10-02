@@ -46,10 +46,10 @@
 		{#snippet content()}
 			<div class="block text-primary p-4">
 				{#if $aiUserDisabled}
-					<p class="text-sm">Windmill AI is disabled in your account settings.</p>
+					<p class="text-sm">Pinwheel AI is disabled in your account settings.</p>
 				{:else}
 					<p class="text-sm"
-						>Enable Windmill AI in the <a
+						>Enable Pinwheel AI in the <a
 							href="{base}/workspace_settings?tab=ai"
 							target="_blank"
 							class="inline-flex flex-row items-center gap-1"

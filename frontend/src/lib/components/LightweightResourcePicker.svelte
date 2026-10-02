@@ -111,7 +111,7 @@
 			title={addResourceTitle(resourceType)}
 			on:close={drawer.closeDrawer}
 			tooltip="Resources represent connections to third party systems. Learn more on how to integrate external APIs."
-			documentationLink="https://www.windmill.dev/docs/integrations/integrations_on_windmill"
+			documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		>
 			{#snippet titleExtra()}
 				{#if resourceType}

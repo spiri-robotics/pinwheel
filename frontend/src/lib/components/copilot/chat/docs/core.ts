@@ -13,14 +13,14 @@ const READ_DOCS_PAGE_TOOL: ChatCompletionTool = {
 	function: {
 		name: 'read_docs_page',
 		description:
-			'Fetch the raw markdown of a single Windmill documentation page. Provide the `url` of a page found via search_docs (its Source URL). If the page is large, this returns its list of section headings instead of the full content; call again with the `section` argument set to one of those headings to read that section.',
+			'Fetch the raw markdown of a single Pinwheel documentation page. Provide the `url` of a page found via search_docs (its Source URL). If the page is large, this returns its list of section headings instead of the full content; call again with the `section` argument set to one of those headings to read that section.',
 		parameters: {
 			type: 'object',
 			properties: {
 				url: {
 					type: 'string',
 					description:
-						'The docs page to read, as a Source URL returned by search_docs (e.g. https://www.windmill.dev/docs/core_concepts/jobs). A bare path (e.g. /docs/core_concepts/jobs) is also accepted.'
+						'The docs page to read, as a Source URL returned by search_docs (e.g. https://github.com/spiri-robotics/windmill-OSS). A bare path (e.g. /docs/core_concepts/jobs) is also accepted.'
 				},
 				section: {
 					type: 'string',
@@ -71,7 +71,7 @@ const SEARCH_DOCS_TOOL: ChatCompletionTool = {
 	function: {
 		name: 'search_docs',
 		description:
-			'Full-text search across the entire Windmill documentation. Provide one or more keywords; returns the most relevant docs pages, each with its Source URL and short matching snippets. Use this FIRST to find relevant pages by their content (a flag, function, error message, config key or concept). If the snippets answer the question, answer directly; otherwise call read_docs_page with a returned Source URL to read the full page or a section.',
+			'Full-text search across the entire Pinwheel documentation. Provide one or more keywords; returns the most relevant docs pages, each with its Source URL and short matching snippets. Use this FIRST to find relevant pages by their content (a flag, function, error message, config key or concept). If the snippets answer the question, answer directly; otherwise call read_docs_page with a returned Source URL to read the full page or a section.',
 		parameters: {
 			type: 'object',
 			properties: {

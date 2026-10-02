@@ -112,7 +112,7 @@
 		<div class="flex items-center space-x-2 flex-row justify-between">
 			<div class="flex flex-row flex-wrap justify-between py-2 my-4 px-4 gap-1 items-center">
 				<h1 class="text-2xl font-semibold text-emphasis">Audit logs</h1>
-				<Tooltip documentationLink="https://www.windmill.dev/docs/core_concepts/audit_logs">
+				<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 					You can only see your own audit logs unless you are an admin.
 				</Tooltip>
 			</div>

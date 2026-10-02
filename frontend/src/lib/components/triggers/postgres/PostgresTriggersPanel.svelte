@@ -54,8 +54,8 @@
 					Postgres triggers are disabled in the multi-tenant cloud.
 				</Alert>
 			{:else}
-				<Description link="https://www.windmill.dev/docs/core_concepts/postgres_triggers">
-					Windmill can connect to a Postgres database and trigger runnables (scripts, flows) in
+				<Description link="https://github.com/spiri-robotics/windmill-OSS">
+					Pinwheel can connect to a Postgres database and trigger runnables (scripts, flows) in
 					response to database transactions (INSERT, UPDATE, DELETE) on specified tables, schemas,
 					or the entire database. Listening is done using Postgres's logical replication streaming
 					protocol, ensuring efficient and low-latency triggering.

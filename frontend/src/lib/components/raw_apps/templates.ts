@@ -13,13 +13,13 @@ root.render(<App/>);
 `
 
 const STATS_SAMPLE_TEXT =
-	'Windmill turns scripts into apps. Write the frontend in React, Svelte or Vue, and the backend in TypeScript, Python or any other supported language. Scripts run on workers, and the app calls them like functions.'
+	'Pinwheel turns scripts into apps. Write the frontend in React, Svelte or Vue, and the backend in TypeScript, Python or any other supported language. Scripts run on workers, and the app calls them like functions.'
 
 const appTsx = `import React, { useState } from 'react'
 import { backend, backendAsync, getJob, streamJob } from './wmill'
 import './index.css'
 
-// Windmill injects the viewer (absent for anonymous visitors) and the workspace.
+// Pinwheel injects the viewer (absent for anonymous visitors) and the workspace.
 const ctx = (window as any).ctx ?? {}
 const viewer: { name?: string; username?: string } | undefined = ctx.ctx
 const firstName = (viewer?.name || viewer?.username || '').split(' ')[0]
@@ -75,7 +75,7 @@ function GreetDemo() {
     <Card
       step="1"
       title="Call a backend runnable"
-      description="Runnables are scripts that run on Windmill workers. Call them like async functions; context fields add who is calling."
+      description="Runnables are scripts that run on Pinwheel workers. Call them like async functions; context fields add who is calling."
       code="const res = await backend.greet({ name })"
     >
       <form
@@ -262,7 +262,7 @@ const App = () => {
   return (
     <main className="app">
       <header className="hero">
-        <span className="eyebrow">Windmill app{ctx.workspace ? ' · ' + ctx.workspace : ''}</span>
+        <span className="eyebrow">Pinwheel app{ctx.workspace ? ' · ' + ctx.workspace : ''}</span>
         <h1>{firstName ? 'Welcome, ' + firstName : 'Welcome'}</h1>
         <p className="muted">
           A React frontend wired to backend runnables. Each card shows one thing an app can do.
@@ -285,7 +285,7 @@ export default App
 const appSvelte = `<script lang="ts">
   import { backend, backendAsync, getJob, streamJob } from './wmill'
 
-  // Windmill injects the viewer (absent for anonymous visitors) and the workspace.
+  // Pinwheel injects the viewer (absent for anonymous visitors) and the workspace.
   const ctx = (window as any).ctx ?? {}
   const viewer: { name?: string; username?: string } | undefined = ctx.ctx
   const firstName = (viewer?.name || viewer?.username || '').split(' ')[0]
@@ -394,7 +394,7 @@ const appSvelte = `<script lang="ts">
 
 <main class="app">
   <header class="hero">
-    <span class="eyebrow">Windmill app{ctx.workspace ? ' · ' + ctx.workspace : ''}</span>
+    <span class="eyebrow">Pinwheel app{ctx.workspace ? ' · ' + ctx.workspace : ''}</span>
     <h1>{firstName ? 'Welcome, ' + firstName : 'Welcome'}</h1>
     <p class="muted">
       A Svelte frontend wired to backend runnables. Each card shows one thing an app can do.
@@ -404,7 +404,7 @@ const appSvelte = `<script lang="ts">
 
   <div class="grid">
     <section class="card">
-      {@render header('1', 'Call a backend runnable', 'Runnables are scripts that run on Windmill workers. Call them like async functions; context fields add who is calling.')}
+      {@render header('1', 'Call a backend runnable', 'Runnables are scripts that run on Pinwheel workers. Call them like async functions; context fields add who is calling.')}
       <div class="card-body">
         <form class="row" onsubmit={greet}>
           <input bind:value={name} placeholder="Your name" />
@@ -519,7 +519,7 @@ export default app;
 const appVue = `<template>
   <main class="app">
     <header class="hero">
-      <span class="eyebrow">Windmill app{{ ctx.workspace ? ' · ' + ctx.workspace : '' }}</span>
+      <span class="eyebrow">Pinwheel app{{ ctx.workspace ? ' · ' + ctx.workspace : '' }}</span>
       <h1>{{ firstName ? 'Welcome, ' + firstName : 'Welcome' }}</h1>
       <p class="muted">
         A Vue frontend wired to backend runnables. Each card shows one thing an app can do.
@@ -533,7 +533,7 @@ const appVue = `<template>
           <span class="card-step">1</span>
           <div>
             <h2>Call a backend runnable</h2>
-            <p class="muted">Runnables are scripts that run on Windmill workers. Call them like async functions; context fields add who is calling.</p>
+            <p class="muted">Runnables are scripts that run on Pinwheel workers. Call them like async functions; context fields add who is calling.</p>
           </div>
         </div>
         <div class="card-body">
@@ -640,7 +640,7 @@ const job = await getJob(id)</code></pre>
 import { ref } from 'vue'
 import { backend, backendAsync, getJob, streamJob } from './wmill'
 
-// Windmill injects the viewer (absent for anonymous visitors) and the workspace.
+// Pinwheel injects the viewer (absent for anonymous visitors) and the workspace.
 const ctx = window.ctx ?? {}
 const firstName = (ctx.ctx?.name || ctx.ctx?.username || '').split(' ')[0]
 

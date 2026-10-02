@@ -394,7 +394,7 @@ function header(ctx: TemplateContext): string {
 	// are the canonical reference once they want any of it. A blank line
 	// separates it from the parsed annotations above (`// pipeline`, `// on …`)
 	// so the editor reads as "real annotations, then a hint".
-	const more = `${p} Optional: partitioning, freshness, retries & cascade control — https://www.windmill.dev/docs/core_concepts/pipelines`
+	const more = `${p} Optional: partitioning, freshness, retries & cascade control — https://github.com/spiri-robotics/windmill-OSS`
 	return [`${p} pipeline`, ...lines, ...matLine, ...macrosLine, '', more, ''].join('\n')
 }
 

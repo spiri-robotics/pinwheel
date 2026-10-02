@@ -59,7 +59,7 @@ export const DEFAULT_AGENT_MEMORY: MemoryConfig = { kind: 'compaction' }
 
 /** The docs section on how an agent's memory is named and kept. */
 export const AGENT_MEMORY_DOCS_URL =
-	'https://www.windmill.dev/docs/core_concepts/ai_agents#memory-auto--manual'
+	'https://github.com/spiri-robotics/windmill-OSS'
 
 /** Whether Windmill stores and replays the agent's conversation, mirroring the worker: `compaction`,
  *  which keeps all of it, or `window` and its older spelling `auto` with a message count above 0. A
@@ -175,7 +175,7 @@ export const AGENT_FIELDS: AgentFieldSpec[] = [
 		group: 'messages',
 		label: 'Managed memory',
 		tooltip:
-			'Windmill stores the conversation and sends it with each request. On keeps all of it, summarizing the older part once it nears the context window. Legacy keeps only a fixed number of the last messages. Without instance object storage, saved memory is limited to 100KB: On tries a summary, then keeps the newest complete conversation that fits, starting with a user message. If none fits, memory is not updated.',
+			'Pinwheel stores the conversation and sends it with each request. On keeps all of it, summarizing the older part once it nears the context window. Legacy keeps only a fixed number of the last messages. Without instance object storage, saved memory is limited to 100KB: On tries a summary, then keeps the newest complete conversation that fits, starting with a user message. If none fits, memory is not updated.',
 		implicit: { kind: 'off' },
 		defaultHint: 'Default: off',
 		textOnly: true

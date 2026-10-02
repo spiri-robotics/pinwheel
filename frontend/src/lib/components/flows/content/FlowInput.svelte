@@ -781,7 +781,7 @@
 						rightTooltip:
 							'Turns this flow\'s page into a chat. Each message runs the flow with the message as its "user_message" input, and is kept as a chat — one conversation per chat, each with its own AI agent memory.',
 						rightDocumentationLink:
-							'https://www.windmill.dev/docs/core_concepts/ai_agents#chat-mode'
+							'https://github.com/spiri-robotics/windmill-OSS'
 					}}
 				/>
 				{#if flowStore.val.value?.chat_input_enabled}

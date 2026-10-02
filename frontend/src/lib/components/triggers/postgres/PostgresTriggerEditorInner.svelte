@@ -809,7 +809,7 @@
 						<Label label="Table Tracking" headerClass="grow min-w-0">
 							{#snippet header()}
 								<Tooltip
-									documentationLink="https://www.windmill.dev/docs/core_concepts/postgres_triggers#define-what-to-track"
+									documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 								>
 									<p>
 										Select the tables to track. You can choose to track
@@ -834,7 +834,7 @@
 								<Tab value="basic" label="Basic">
 									{#snippet extra()}
 										<Tooltip
-											documentationLink="https://www.windmill.dev/docs/core_concepts/postgres_triggers#define-what-to-track"
+											documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											><p
 												>Choose the <strong>relations</strong> to track without worrying about the
 												underlying mechanics of creating a
@@ -848,7 +848,7 @@
 								<Tab value="advanced" label="Advanced">
 									{#snippet extra()}
 										<Tooltip
-											documentationLink="https://www.windmill.dev/docs/core_concepts/postgres_triggers#advanced"
+											documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											><p
 												>Select a specific <strong>publication</strong> from your database to track,
 												and manage it by <strong>creating</strong>,
@@ -873,7 +873,7 @@
 													small
 													label="Replication slot"
 													tooltip="Choose and manage the slots for your trigger. You can create or delete slots. Both non-active slots and the currently used slot by the trigger (if any) will be retrieved from your database for management."
-													documentationLink="https://www.windmill.dev/docs/core_concepts/postgres_triggers#managing-postgres-replication-slots"
+													documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 												>
 													<div class="flex flex-col gap-3">
 														<ToggleButtonGroup
@@ -919,7 +919,7 @@
 													small
 													label="Publication"
 													tooltip="Select and manage the publications for tracking data. You can create, update, or delete publications. Only existing publications in your database will be available for selection, giving you full control over what data is tracked."
-													documentationLink="https://www.windmill.dev/docs/core_concepts/postgres_triggers#managing-postgres-publications"
+													documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 												>
 													<div class="flex flex-col gap-3">
 														<ToggleButtonGroup

@@ -22,7 +22,7 @@
 				requestBody: { code, state }
 			})
 			sendUserToast(
-				'Slack workspace connected to your Windmill workspace and slack token saved in the folder `slack_bot` at `f/slack_bot/bot_token`.'
+				'Slack workspace connected to your Pinwheel workspace and slack token saved in the folder `slack_bot` at `f/slack_bot/bot_token`.'
 			)
 		} else {
 			sendUserToast('Missing code or state as query params', true)

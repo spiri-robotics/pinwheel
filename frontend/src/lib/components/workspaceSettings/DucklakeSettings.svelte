@@ -235,7 +235,7 @@
 						? 'Superadmin only'
 						: isCloudHosted()
 							? 'Not available on cloud'
-							: "Windmill's database is disabled"
+							: "Pinwheel's database is disabled"
 			})
 		}
 		if (showExternal) {
@@ -351,8 +351,8 @@
 <div class="flex flex-col gap-4 mb-8">
 	<div class="flex flex-col gap-1">
 		<div class="text-primary text-lg font-semibold">Ducklake</div>
-		<Description link="https://www.windmill.dev/docs/core_concepts/persistent_storage/ducklake">
-			Windmill has first class support for Ducklake. You can use and explore ducklakes like a normal
+		<Description link="https://github.com/spiri-robotics/windmill-OSS">
+			Pinwheel has first class support for Ducklake. You can use and explore ducklakes like a normal
 			SQL database, even though the data is actually stored in parquet files in S3 !
 		</Description>
 	</div>
@@ -373,7 +373,7 @@
 
 {#if ducklakeSettings.ducklakes.some((d) => d.catalog.resource_type === 'instance')}
 	<div transition:slide={{ duration: 200 }} class="mb-4">
-		<Alert title="Instance databases use the Windmill database" type="info">
+		<Alert title="Instance databases use the Pinwheel database" type="info">
 			Using an instance database is the fastest way to get started with Ducklake. They are public to
 			the instance and can be re-used in other workspaces' Ducklake settings.
 		</Alert>
@@ -451,11 +451,11 @@
 						<div class="relative">
 							{#if ducklake.catalog.resource_type === 'instance'}
 								<Tooltip wrapperClass="absolute mt-[0.6rem] right-2 z-20" placement="bottom-start">
-									Use Windmill's PostgreSQL instance as a catalog
+									Use Pinwheel's PostgreSQL instance as a catalog
 								</Tooltip>
 							{:else if ducklake.catalog.resource_type === 'external_instance'}
 								<Tooltip wrapperClass="absolute mt-[0.6rem] right-2 z-20" placement="bottom-start">
-									Use a database Windmill manages on the external PostgreSQL cluster as a catalog
+									Use a database Pinwheel manages on the external PostgreSQL cluster as a catalog
 								</Tooltip>
 							{/if}
 							<Select

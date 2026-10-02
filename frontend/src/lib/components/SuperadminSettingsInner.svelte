@@ -278,7 +278,7 @@
 		<div>
 			<div class="flex justify-between">
 				<div class="text-xs pt-1 text-secondary flex flex-col">
-					<div>Windmill <Version /></div>
+					<div>Pinwheel <Version /></div>
 				</div>
 				<div><Uptodate /></div></div
 			>
@@ -340,7 +340,7 @@
 											>Automatically create a username for new users based on their email, shared
 											across workspaces. <a
 												target="_blank"
-												href="https://www.windmill.dev/docs/advanced/instance_settings#automatic-username-creation"
+												href="https://github.com/spiri-robotics/windmill-OSS"
 												>Learn more</a
 											></span
 										>
@@ -383,8 +383,8 @@
 							{#if usersListShown}
 								<SettingsPageHeader
 									title="Instance users ({users.length})"
-									description="Manage all users across your Windmill instance."
-									link="https://www.windmill.dev/docs/advanced/instance_settings#global-users"
+									description="Manage all users across your Pinwheel instance."
+									link="https://github.com/spiri-robotics/windmill-OSS"
 								/>
 								<div class="flex flex-row gap-2 items-center">
 									<TextInput

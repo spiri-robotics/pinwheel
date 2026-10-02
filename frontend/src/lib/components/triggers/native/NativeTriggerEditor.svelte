@@ -504,7 +504,7 @@
 					title="Could not read this trigger from {serviceInfo?.serviceDisplayName}"
 					descriptionClass="break-words"
 				>
-					{externalError} The configuration below is the one Windmill last saved.
+					{externalError} The configuration below is the one Pinwheel last saved.
 				</Alert>
 			</div>
 		{/if}

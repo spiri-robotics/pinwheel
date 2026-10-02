@@ -126,7 +126,7 @@
 	{/if}
 	{#if framed || invalid}
 		<div class="flex justify-center pt-4">
-			<Button variant="default" unifiedSize="md" href={base}>Go to Windmill</Button>
+			<Button variant="default" unifiedSize="md" href={base}>Go to Pinwheel</Button>
 		</div>
 	{/if}
 </CenteredModal>

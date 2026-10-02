@@ -57,7 +57,7 @@
 						SQS triggers are disabled in the multi-tenant cloud.
 					</Alert>
 				{:else}
-					<Description link="https://www.windmill.dev/docs/core_concepts/sqs_triggers">
+					<Description link="https://github.com/spiri-robotics/windmill-OSS">
 						SQS triggers allow you to execute scripts and flows in response to messages in an AWS
 						SQS queue. They can be configured to filter messages based on message attributes.
 					</Description>

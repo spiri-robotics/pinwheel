@@ -166,7 +166,7 @@
 			$values[INSTANCE_PG_DISABLED_KEY] = true
 			markSettingSaved?.(INSTANCE_PG_DISABLED_KEY)
 			sendUserToast(
-				"Windmill's database is off: its data tables no longer resolve, and it is not offered for new ones"
+				"Pinwheel's database is off: its data tables no longer resolve, and it is not offered for new ones"
 			)
 		} catch (e) {
 			sendUserToast(e?.body ?? e?.message ?? String(e), true)
@@ -241,8 +241,8 @@
 			</Alert>
 		{/if}
 
-		<Alert type="info" title="A Postgres cluster Windmill administers" size="xs">
-			Windmill creates the databases for data tables and Ducklake catalogs on this cluster, and
+		<Alert type="info" title="A Postgres cluster Pinwheel administers" size="xs">
+			Pinwheel creates the databases for data tables and Ducklake catalogs on this cluster, and
 			manages the roles they connect as. The admin login below needs <span class="font-mono"
 				>CREATEDB</span
 			>
@@ -297,7 +297,7 @@
 						<Tooltip>
 							{#snippet text()}
 								Anything below verify-ca sends the managed roles' passwords to whichever server
-								answers. Windmill trusts the system roots plus the certificate below.
+								answers. Pinwheel trusts the system roots plus the certificate below.
 							{/snippet}
 						</Tooltip>
 					</span>
@@ -502,7 +502,7 @@
 	}}
 >
 	<span class="text-sm">
-		New passwords are generated for the roles Windmill manages on the cluster. Jobs running against
+		New passwords are generated for the roles Pinwheel manages on the cluster. Jobs running against
 		those databases while the rotation happens can fail and have to be retried.
 	</span>
 </ConfirmationModal>
@@ -519,13 +519,13 @@
 	}}
 >
 	<span class="text-sm">
-		Do you want to disable the internal one, which uses the Windmill database instance? We recommend
-		having either the external or the internal one, not both. Data tables on Windmill's database stop
+		Do you want to disable the internal one, which uses the Pinwheel database instance? We recommend
+		having either the external or the internal one, not both. Data tables on Pinwheel's database stop
 		working until they are moved, and no new data table or Ducklake catalog can be created there. You
-		can turn it back on under Windmill instance below.
+		can turn it back on under Pinwheel instance below.
 	</span>
 	{#if internalInUse.length > 0}
-		<Alert type="warning" title="Data is still on Windmill's database" size="xs" class="mt-3">
+		<Alert type="warning" title="Data is still on Pinwheel's database" size="xs" class="mt-3">
 			{internalInUse.length === 1 ? 'This database is' : 'These databases are'} still used by a data
 			table or Ducklake catalog. Data tables on {internalInUse.length === 1 ? 'it' : 'them'} stop working
 			as soon as you disable the internal instance; move them to the external cluster first.
@@ -551,7 +551,7 @@
 	}}
 >
 	<span class="text-sm">
-		Windmill forgets the cluster and the passwords it manages there. Nothing is dropped on the
+		Pinwheel forgets the cluster and the passwords it manages there. Nothing is dropped on the
 		cluster itself, and a data table or Ducklake catalog still pointing at one of its databases would
 		stop resolving — so this is refused while any database remains.
 	</span>

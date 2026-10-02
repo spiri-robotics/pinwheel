@@ -282,7 +282,7 @@
 						: 'in this workspace'}. The selected user's permissions will be used when executing.
 				{/if}
 				<a
-					href="https://www.windmill.dev/docs/core_concepts/roles_and_permissions"
+					href="https://github.com/spiri-robotics/windmill-OSS"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="text-blue-500 hover:underline inline-flex items-center gap-0.5"

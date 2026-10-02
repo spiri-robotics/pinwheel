@@ -705,7 +705,7 @@
 		<PageHeader
 			title="Schedules"
 			tooltip="Trigger Scripts and Flows according to a cron schedule"
-			documentationLink="https://www.windmill.dev/docs/core_concepts/scheduling"
+			documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		>
 			<Button
 				unifiedSize="md"

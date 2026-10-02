@@ -112,7 +112,7 @@
 		title="Value"
 		size="xs"
 		tooltip="Learn how to use the SDK to get the resource by using the path."
-		documentationLink="https://www.windmill.dev/docs/code_editor/add_variables_resources#fetching-them-from-within-a-script-by-using-the-wmill-client-in-the-respective-language"
+		documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 	>
 		The value passed is the path of the resource, not the resource itself. You can use the SDK to
 		get the resource by using the path.

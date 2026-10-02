@@ -630,7 +630,7 @@
 									{#if delivery_type === 'pull'}
 										<Subsection
 											label="Auto-acknowledge messages"
-											tooltip="When enabled (recommended), Windmill automatically acknowledges Pub/Sub messages after successful processing. When disabled, your script/flow must explicitly acknowledge each message."
+											tooltip="When enabled (recommended), Pinwheel automatically acknowledges Pub/Sub messages after successful processing. When disabled, your script/flow must explicitly acknowledge each message."
 										>
 											<div class="mt-2">
 												<Toggle bind:checked={auto_acknowledge_msg} />
@@ -641,7 +641,7 @@
 														You must acknowledge each message in your script/flow code using the
 														`ack_id` provided in the payload data. If messages are not acknowledged
 														within the acknowledgment deadline (by default 600 seconds), GCP will
-														automatically redeliver them in 600 seconds, causing Windmill to
+														automatically redeliver them in 600 seconds, causing Pinwheel to
 														reprocess the same messages repeatedly.
 													</Alert>
 												</div>

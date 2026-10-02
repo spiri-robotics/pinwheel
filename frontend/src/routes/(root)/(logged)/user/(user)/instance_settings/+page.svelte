@@ -484,7 +484,7 @@
 				{#if isSettingsStep(wizardStep)}
 					{#if settingsSteps[wizardStep].id === 'Auth/OAuth/SAML'}
 						<p class="text-secondary text-xs mb-4">
-							Windmill uses its own authentication by default. SSO configuration is optional and can
+							Pinwheel uses its own authentication by default. SSO configuration is optional and can
 							be set up later.
 						</p>
 					{/if}

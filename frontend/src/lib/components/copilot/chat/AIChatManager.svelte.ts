@@ -2699,7 +2699,7 @@ export class AIChatManager implements ChatViewHost {
 					(isGlobalAiEnabled()
 						? ' Global mode is used to inspect workspace scripts and flows and create draft changes.'
 						: '') +
-					' Navigator mode is used to navigate the application and help the user find what they are looking for. API mode is used to make API calls to the Windmill backend.',
+					' Navigator mode is used to navigate the application and help the user find what they are looking for. API mode is used to make API calls to the Pinwheel backend.',
 				parameters: {
 					type: 'object',
 					properties: {
@@ -3322,7 +3322,7 @@ export class AIChatManager implements ChatViewHost {
 		// The workspace hid the assistant: every entry point is gone from the UI, so a turn
 		// reaching here comes from a path that missed the gate and would stream unseen.
 		if (!this.isSessionChat && get(copilotInfo).workspaceDisabled) {
-			sendUserToast('Windmill AI is hidden in this workspace.', true)
+			sendUserToast('Pinwheel AI is hidden in this workspace.', true)
 			return
 		}
 		// Refused before anything mutates, so there is nothing to unwind: the

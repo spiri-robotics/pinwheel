@@ -243,7 +243,7 @@
 		</div>
 
 		<DocLink
-			docLink="https://www.windmill.dev/docs/apps/app_configuration_settings/aggrid_table#table-actions"
+			docLink="https://github.com/spiri-robotics/windmill-OSS"
 		/>
 	</div>
 {/if}
@@ -273,7 +273,7 @@
 					{#snippet action()}
 						<div class="flex flex-row gap-1 justify-center items-center">
 							<DocLink
-								docLink={'https://www.windmill.dev/docs/apps/app-runnable-panel#creating-a-runnable'}
+								docLink={'https://github.com/spiri-robotics/windmill-OSS'}
 							/>
 							<div
 								class={classNames(

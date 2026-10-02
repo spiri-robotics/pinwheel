@@ -121,7 +121,7 @@
 		{noEditor}
 		title="Run one branch"
 		subtitle="The first branch whose predicate is true runs. The result of this step is that branch's result."
-		subtitleDocLink="https://www.windmill.dev/docs/flows/flow_branches#branch-one"
+		subtitleDocLink="https://github.com/spiri-robotics/windmill-OSS"
 	>
 		<div class="flex h-full min-h-0 flex-col">
 			<Tabs bind:selected={selectedTab} wrapperClass="shrink-0">

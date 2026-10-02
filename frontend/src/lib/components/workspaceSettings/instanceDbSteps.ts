@@ -33,26 +33,26 @@ export function instanceDbSteps(dbname: string, status: CustomInstanceDb | undef
 			title: 'Super admin required',
 			status: status?.logs.super_admin,
 			description:
-				'You need to be a super admin to create a new database in the Windmill PostgreSQL instance'
+				'You need to be a super admin to create a new database in the Pinwheel PostgreSQL instance'
 		},
 		{
 			title: 'Retrieve and parse database credentials',
 			status: status?.logs.database_credentials,
 			description:
-				'Windmill uses the DATABASE_URL or DATABASE_URL_FILE environment variable to connect to the PostgreSQL instance. Make sure it is correctly set'
+				'Pinwheel uses the DATABASE_URL or DATABASE_URL_FILE environment variable to connect to the PostgreSQL instance. Make sure it is correctly set'
 		},
 		{
 			title: 'Database name is valid',
 			status: status?.logs.valid_dbname,
 			description:
-				'The database name must be alphanumeric (underscores and hyphens allowed) and cannot be named the same as the Windmill database (usually "windmill")'
+				'The database name must be alphanumeric (underscores and hyphens allowed) and cannot be named the same as the Pinwheel database (usually "windmill")'
 		},
 		{
 			title:
 				'Create database' +
 				(status?.logs.created_database === 'SKIP' ? ' (already exists, skipped)' : ''),
 			status: status?.logs.created_database,
-			description: `In the Windmill PostgreSQL instance, run: CREATE DATABASE "${dbname}".`
+			description: `In the Pinwheel PostgreSQL instance, run: CREATE DATABASE "${dbname}".`
 		},
 		{
 			title: `Connect to the ${dbname} database`,
@@ -77,10 +77,10 @@ export function instanceDbSteps(dbname: string, status: CustomInstanceDb | undef
 			title: 'Grant replication to custom_instance_replication_user',
 			status: status?.logs.replication_user,
 			description:
-				'Postgres triggers on custom-instance datatables connect as custom_instance_replication_user, whose password is stored in global_settings.custom_instance_replication_pwd. The role is cluster-wide, so it is created on the Windmill PostgreSQL instance rather than on this database : \n\n' +
+				'Postgres triggers on custom-instance datatables connect as custom_instance_replication_user, whose password is stored in global_settings.custom_instance_replication_pwd. The role is cluster-wide, so it is created on the Pinwheel PostgreSQL instance rather than on this database : \n\n' +
 				'ALTER ROLE custom_instance_replication_user REPLICATION;\n' +
 				'GRANT custom_instance_user TO custom_instance_replication_user;\n\n' +
-				'Setting REPLICATION requires a superuser on PostgreSQL 15 and older. Managed instances never grant one, so on AWS RDS Windmill falls back to GRANT rds_replication TO custom_instance_replication_user. The database stays usable for datatables if this step fails, but postgres triggers on them do not.' +
+				'Setting REPLICATION requires a superuser on PostgreSQL 15 and older. Managed instances never grant one, so on AWS RDS Pinwheel falls back to GRANT rds_replication TO custom_instance_replication_user. The database stays usable for datatables if this step fails, but postgres triggers on them do not.' +
 				(status?.logs.replication_user_error
 					? `\n\nError: ${status.logs.replication_user_error}`
 					: '')

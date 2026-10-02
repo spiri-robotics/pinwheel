@@ -868,7 +868,7 @@ const paginationOneOf = {
 	}
 } as const
 
-const documentationBaseUrl = 'https://www.windmill.dev/docs/apps/app_configuration_settings'
+const documentationBaseUrl = 'https://github.com/spiri-robotics/windmill-OSS'
 
 const aggridcomponentconst = {
 	name: 'AgGrid Table',
@@ -1980,7 +1980,7 @@ Hello \${ctx.username}
 	customcomponent: {
 		name: 'Custom',
 		icon: Code2,
-		documentationLink: `https://www.windmill.dev/docs/apps/react_components`,
+		documentationLink: `https://github.com/spiri-robotics/windmill-OSS`,
 		dims: '1:2-1:2' as AppComponentDimensions,
 		customCss: {
 			container: { class: '', style: '' }
@@ -2509,7 +2509,7 @@ This is a paragraph.
 					fieldType: 'boolean',
 					value: false,
 
-					tooltip: 'Use a native html select instead of the Windmill select component'
+					tooltip: 'Use a native html select instead of the Pinwheel select component'
 				},
 				fullWidth: {
 					type: 'static',

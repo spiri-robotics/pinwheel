@@ -120,7 +120,7 @@ export type TriggerListConfig = {
 }
 
 const brokerTooltip = (name: string) =>
-	`Windmill can connect to an ${name} broker, subscribe to specific topics, and trigger scripts or flows based on those topics.`
+	`Pinwheel can connect to an ${name} broker, subscribe to specific topics, and trigger scripts or flows based on those topics.`
 
 const consumerStatus = {
 	starting: 'Consumer is starting...',
@@ -136,7 +136,7 @@ export const TRIGGER_LIST_CONFIG: Record<TriggerKind, TriggerListConfig> = {
 		title: 'Custom HTTP routes',
 		tooltip:
 			'Every script and flow already has a canonical HTTP API endpoint/webhook attached to it, this is to create additional parametrizable ones.',
-		documentationLink: 'https://www.windmill.dev/docs/core_concepts/http_routing',
+		documentationLink: 'https://github.com/spiri-robotics/windmill-OSS',
 		newLabel: 'route',
 		searchPlaceholder: 'Search routes',
 		filterLabel: 'Route',
@@ -164,14 +164,14 @@ export const TRIGGER_LIST_CONFIG: Record<TriggerKind, TriggerListConfig> = {
 	},
 	websocket: {
 		title: 'WebSocket triggers',
-		tooltip: 'Windmill can listen to WebSocket events and trigger scripts or flows based on them.',
+		tooltip: 'Pinwheel can listen to WebSocket events and trigger scripts or flows based on them.',
 		newLabel: 'WebSocket trigger',
 		searchPlaceholder: 'Search WS triggers',
 		filterLabel: 'WS trigger',
 		empty: {
 			title: 'No WebSocket triggers yet',
 			description:
-				'Windmill can listen to WebSocket events and trigger scripts or flows based on them.',
+				'Pinwheel can listen to WebSocket events and trigger scripts or flows based on them.',
 			actionLabel: 'Add a WebSocket trigger',
 			aiId: 'websocket-triggers-empty-add',
 			aiDescription: 'Add WebSocket trigger'
@@ -202,14 +202,14 @@ export const TRIGGER_LIST_CONFIG: Record<TriggerKind, TriggerListConfig> = {
 	postgres: {
 		title: 'Postgres triggers',
 		tooltip:
-			'Windmill enables real-time responsiveness by listening to specific database transactions—such as inserts, updates, and deletes—and automatically triggering scripts or workflows in response.',
+			'Pinwheel enables real-time responsiveness by listening to specific database transactions—such as inserts, updates, and deletes—and automatically triggering scripts or workflows in response.',
 		newLabel: 'Postgres trigger',
 		searchPlaceholder: 'Search Postgres triggers',
 		filterLabel: 'Postgres trigger',
 		empty: {
 			title: 'No Postgres triggers yet',
 			description:
-				'Windmill can listen to database transactions — inserts, updates and deletes — and trigger scripts or flows in response.',
+				'Pinwheel can listen to database transactions — inserts, updates and deletes — and trigger scripts or flows in response.',
 			actionLabel: 'Add a Postgres trigger',
 			aiId: 'postgres-triggers-empty-add',
 			aiDescription: 'Add Postgres trigger'
@@ -239,13 +239,13 @@ export const TRIGGER_LIST_CONFIG: Record<TriggerKind, TriggerListConfig> = {
 	},
 	kafka: {
 		title: 'Kafka triggers',
-		tooltip: 'Windmill can consume kafka events and trigger scripts or flows based on them.',
+		tooltip: 'Pinwheel can consume kafka events and trigger scripts or flows based on them.',
 		newLabel: 'Kafka trigger',
 		searchPlaceholder: 'Search Kafka triggers',
 		filterLabel: 'Kafka trigger',
 		empty: {
 			title: 'No Kafka triggers yet',
-			description: 'Windmill can consume kafka events and trigger scripts or flows based on them.',
+			description: 'Pinwheel can consume kafka events and trigger scripts or flows based on them.',
 			actionLabel: 'Add a Kafka trigger',
 			aiId: 'kafka-triggers-empty-add',
 			aiDescription: 'Add Kafka trigger'
@@ -267,13 +267,13 @@ export const TRIGGER_LIST_CONFIG: Record<TriggerKind, TriggerListConfig> = {
 	},
 	nats: {
 		title: 'NATS triggers',
-		tooltip: 'Windmill can consume NATS events and trigger scripts or flows based on them.',
+		tooltip: 'Pinwheel can consume NATS events and trigger scripts or flows based on them.',
 		newLabel: 'NATS trigger',
 		searchPlaceholder: 'Search NATS triggers',
 		filterLabel: 'NATS trigger',
 		empty: {
 			title: 'No NATS triggers yet',
-			description: 'Windmill can consume NATS events and trigger scripts or flows based on them.',
+			description: 'Pinwheel can consume NATS events and trigger scripts or flows based on them.',
 			actionLabel: 'Add a NATS trigger',
 			aiId: 'nats-triggers-empty-add',
 			aiDescription: 'Add NATS trigger'
@@ -302,7 +302,7 @@ export const TRIGGER_LIST_CONFIG: Record<TriggerKind, TriggerListConfig> = {
 		empty: {
 			title: 'No SQS triggers yet',
 			description:
-				'Windmill can consume messages from an SQS queue and trigger scripts or flows on each one.',
+				'Pinwheel can consume messages from an SQS queue and trigger scripts or flows on each one.',
 			actionLabel: 'Add an SQS trigger',
 			aiId: 'sqs-triggers-empty-add',
 			aiDescription: 'Add SQS trigger'
@@ -338,7 +338,7 @@ export const TRIGGER_LIST_CONFIG: Record<TriggerKind, TriggerListConfig> = {
 		empty: {
 			title: 'No GCP Pub/Sub triggers yet',
 			description:
-				'Windmill can subscribe to a GCP Pub/Sub topic and trigger scripts or flows on each message.',
+				'Pinwheel can subscribe to a GCP Pub/Sub topic and trigger scripts or flows on each message.',
 			actionLabel: 'Add a GCP Pub/Sub trigger',
 			aiId: 'gcp-triggers-empty-add',
 			aiDescription: 'Add GCP Pub/Sub trigger'
@@ -374,7 +374,7 @@ export const TRIGGER_LIST_CONFIG: Record<TriggerKind, TriggerListConfig> = {
 		empty: {
 			title: 'No Azure Event Grid triggers yet',
 			description:
-				'Windmill can subscribe to an Azure Event Grid topic and trigger scripts or flows on each event.',
+				'Pinwheel can subscribe to an Azure Event Grid topic and trigger scripts or flows on each event.',
 			actionLabel: 'Add an Azure Event Grid trigger',
 			aiId: 'azure-triggers-empty-add',
 			aiDescription: 'Add Azure Event Grid trigger'
@@ -477,7 +477,7 @@ export const TRIGGER_LIST_CONFIG: Record<TriggerKind, TriggerListConfig> = {
 		title: 'Custom email triggers',
 		tooltip:
 			'Every script and flow already has a canonical email trigger attached to it, this is to create additional parametrizable ones.',
-		documentationLink: 'https://www.windmill.dev/docs/advanced/email_triggers',
+		documentationLink: 'https://github.com/spiri-robotics/windmill-OSS',
 		newLabel: 'email trigger',
 		searchPlaceholder: 'Search email triggers',
 		filterLabel: 'Email',

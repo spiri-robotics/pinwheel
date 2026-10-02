@@ -47,7 +47,7 @@
 				<h3 class="text-sm font-semibold mb-2">
 					Latest Job Executions
 					<Tooltip2>
-						Assets can be detected during job execution either via Windmill's SDK (Data tables, S3
+						Assets can be detected during job execution either via Pinwheel's SDK (Data tables, S3
 						objects ...) or by being passed as inputs to a script or flow (arbitrary resources).
 					</Tooltip2>
 				</h3>

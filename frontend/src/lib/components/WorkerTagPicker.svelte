@@ -66,7 +66,7 @@
 				<div class="text-sm text-secondary flex flex-row gap-2">
 					No custom worker group tag defined on this instance in "Workers {'->'} Custom tags"
 					<a
-						href="https://www.windmill.dev/docs/core_concepts/worker_groups"
+						href="https://github.com/spiri-robotics/windmill-OSS"
 						target="_blank"
 						class="hover:underline"
 					>

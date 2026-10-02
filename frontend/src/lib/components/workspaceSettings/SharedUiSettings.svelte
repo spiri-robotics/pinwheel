@@ -110,7 +110,7 @@
 		<code>{`import { Button } from '/ui/Button'`}</code>.
 	</p>
 	<p class="text-sm text-secondary mt-2">
-		Editing happens through the Windmill CLI (<code>wmill sync</code> writes/reads the
+		Editing happens through the Pinwheel CLI (<code>wmill sync</code> writes/reads the
 		<code>ui/</code> folder at the root of your sync directory). This page lets you inspect or
 		replace the entire folder. Changes do <strong>not</strong> retroactively rebuild deployed raw apps
 		— re-push affected raw apps to pick up updates.

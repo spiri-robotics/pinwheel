@@ -167,13 +167,13 @@
 			case AIMode.APP:
 				return 'Modify this app...'
 			case AIMode.NAVIGATOR:
-				return 'Navigate Windmill UI...'
+				return 'Navigate Pinwheel UI...'
 			case AIMode.API:
 				return 'Make API calls...'
 			case AIMode.GLOBAL:
 				return globalSuggestion
 			case AIMode.ASK:
-				return 'Ask questions about Windmill...'
+				return 'Ask questions about Pinwheel...'
 			default:
 				return 'Ask anything'
 		}

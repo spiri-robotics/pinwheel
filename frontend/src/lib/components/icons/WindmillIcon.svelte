@@ -1,5 +1,16 @@
 <script lang="ts">
 	import { customIcon } from './store'
+	import {
+		PINWHEEL_BLADE,
+		PINWHEEL_BLADE_ROTATIONS,
+		PINWHEEL_FLAP,
+		PINWHEEL_HUB,
+		PINWHEEL_PRIMARY,
+		PINWHEEL_SECONDARY,
+		PINWHEEL_VIEWBOX,
+		PINWHEEL_WHITE_PRIMARY,
+		PINWHEEL_WHITE_SECONDARY
+	} from './pinwheelMark'
 
 	interface Props {
 		height?: string
@@ -21,13 +32,15 @@
 
 	let width = $derived(size ? `${size}px` : widthProp)
 	let height = $derived(size ? `${size}px` : heightProp)
+	let primary = $derived(white ? PINWHEEL_WHITE_PRIMARY : PINWHEEL_PRIMARY)
+	let secondary = $derived(white ? PINWHEEL_WHITE_SECONDARY : PINWHEEL_SECONDARY)
 </script>
 
 {#if customIcon.white || customIcon.normal}
 	{#if white}
-		<img src={customIcon.white} alt="Windmill Custom icon" {width} {height} class={classNames} />
+		<img src={customIcon.white} alt="Pinwheel Custom icon" {width} {height} class={classNames} />
 	{:else}
-		<img src={customIcon.normal} alt="Windmill Custom icon" {width} {height} class={classNames} />
+		<img src={customIcon.normal} alt="Pinwheel Custom icon" {width} {height} class={classNames} />
 	{/if}
 {:else}
 	<svg
@@ -36,104 +49,17 @@
 		class:animate-[spin_5s_linear_infinite]={spin === 'fast'}
 		class:animate-[spin_15s_linear_infinite]={spin === 'medium'}
 		class:animate-[spin_50s_linear_infinite]={spin === 'slow'}
-		version="1.1"
-		id="Calque_1"
 		xmlns="http://www.w3.org/2000/svg"
-		xmlns:xlink="http://www.w3.org/1999/xlink"
-		x="0px"
-		y="0px"
 		{width}
 		{height}
-		viewBox="-11.636 -11.636 279.273 279.273"
-		style="enable-background:new 0 0 256 256;"
-		xml:space="preserve"
+		viewBox={PINWHEEL_VIEWBOX}
 	>
-		<style type="text/css">
-			.windmill-st0 {
-				fill: #ffffff;
-			}
-			.windmill-st1 {
-				opacity: 0.4;
-				fill: #ffffff;
-			}
-			.windmill-st2 {
-				fill: #bcd4fc;
-			}
-			.windmill-st2-gray {
-				fill: #cccccc;
-			}
-			.windmill-st3 {
-				fill: #3b82f6;
-			}
-			.windmill-st4 {
-				fill: #b3b3b3;
-			}
-			.windmill-st5 {
-				fill: url(#SVGID_1_);
-			}
-			.windmill-st6 {
-				fill: url(#SVGID_00000021089067129159788970000008246765442136188072_);
-			}
-			.windmill-st7 {
-				fill: url(#SVGID_00000117639240116366130650000015074833605515028638_);
-			}
-			.windmill-st8 {
-				opacity: 0.4;
-				fill: url(#SVGID_00000101781798616409025840000016567063639337360777_);
-			}
-			.windmill-st9 {
-				opacity: 0.4;
-				fill: url(#SVGID_00000052086836598721292040000002033117744178971046_);
-			}
-			.windmill-st10 {
-				opacity: 0.4;
-				fill: url(#SVGID_00000159460939004760751800000002448009281983951536_);
-			}
-			.windmill-st11 {
-				opacity: 0.4;
-				fill: url(#SVGID_00000013177830667419993080000017721442101626521532_);
-			}
-			.windmill-st12 {
-				opacity: 0.4;
-				fill: url(#SVGID_00000152235521444854938490000006526001119318383285_);
-			}
-			.windmill-st13 {
-				opacity: 0.4;
-				fill: url(#SVGID_00000119823135212293698520000012774889010992664993_);
-			}
-		</style>
-		<g>
-			<polygon
-				class:windmill-st2={!white}
-				class:windmill-st2-gray={white}
-				points="134.78,14.22 114.31,48.21 101.33,69.75 158.22,69.75 177.97,36.95 191.67,14.22 	"
-			/>
-			<polygon
-				class:windmill-st3={!white}
-				class:windmill-st0={white}
-				points="227.55,69.75 186.61,69.75 101.33,69.75 129.78,119.02 158.16,119.02 228.61,119.02 256,119.02 	"
-			/>
-			<polygon
-				class:windmill-st3={!white}
-				class:windmill-st0={white}
-				points="136.93,132.47 116.46,167.93 73.82,241.78 130.71,241.78 144.9,217.2 180.13,156.18 193.82,132.46 	
-		"
-			/>
-			<polygon
-				class:windmill-st3={!white}
-				class:windmill-st0={white}
-				points="121.7,131.95 101.23,96.49 58.59,22.63 30.15,71.91 44.34,96.49 79.57,157.5 93.26,181.22 	"
-			/>
-			<polygon
-				class:windmill-st2={!white}
-				class:windmill-st2-gray={white}
-				points="64.81,131.95 25.15,131.21 0,130.74 28.44,180.01 66.73,180.72 93.26,181.21 	"
-			/>
-			<polygon
-				class:windmill-st2={!white}
-				class:windmill-st2-gray={white}
-				points="165.38,181.74 184.58,216.46 196.75,238.47 225.19,189.2 206.66,155.69 193.83,132.46 	"
-			/>
-		</g>
+		{#each PINWHEEL_BLADE_ROTATIONS as rotation}
+			<g transform="rotate({rotation} 128 128)">
+				<path fill={primary} d={PINWHEEL_BLADE} />
+				<path fill={secondary} d={PINWHEEL_FLAP} />
+			</g>
+		{/each}
+		<circle cx={PINWHEEL_HUB.cx} cy={PINWHEEL_HUB.cy} r={PINWHEEL_HUB.r} fill={primary} />
 	</svg>
 {/if}

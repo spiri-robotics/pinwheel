@@ -72,7 +72,7 @@
 >
 	{#snippet description()}
 		<div class="flex flex-col gap-2 pb-4">
-			<Description link="https://www.windmill.dev/docs/advanced/email_triggers">
+			<Description link="https://github.com/spiri-robotics/windmill-OSS">
 				Email triggers execute scripts and flows when emails are sent to specific addresses. Each
 				trigger can be configured with a specific local part.
 			</Description>
@@ -83,7 +83,7 @@
 
 			{#if !$enterpriseLicense}
 				<Alert title="Community Edition limitations" type="warning" size="xs">
-					Email triggers on Windmill Community Edition are limited to 100 emails per day.
+					Email triggers on Pinwheel Community Edition are limited to 100 emails per day.
 				</Alert>
 			{/if}
 		</div>

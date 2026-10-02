@@ -2383,7 +2383,7 @@
 </script>
 
 <svelte:head>
-	<title>Pipeline · {folder} — Windmill</title>
+	<title>Pipeline · {folder} — Pinwheel</title>
 </svelte:head>
 
 <div class="flex flex-col h-full">

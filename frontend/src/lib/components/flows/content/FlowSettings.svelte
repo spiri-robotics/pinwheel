@@ -217,7 +217,7 @@
 								right: 'Worker group tag (queue)',
 								rightTooltip:
 									"When a worker group tag is defined at the flow level, any steps inside the flow will run on any worker group that listen to that tag, regardless of the steps tag. If no worker group tags is defined, the flow controls will be executed with the default tag 'flow' and the steps will be executed with their respective tag",
-								rightDocumentationLink: 'https://www.windmill.dev/docs/core_concepts/worker_groups'
+								rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 							}}
 						/>
 
@@ -243,7 +243,7 @@
 											rightTooltip:
 												'By default the flow worker tag above is propagated to and overrides every step, script and nested sub-flow. Enable this to instead let steps that declare their own worker tag run on it. Steps without their own tag still inherit the flow tag.',
 											rightDocumentationLink:
-												'https://www.windmill.dev/docs/core_concepts/worker_groups'
+												'https://github.com/spiri-robotics/windmill-OSS'
 										}}
 									/>
 								</div>
@@ -287,7 +287,7 @@
 								right: 'Cache the results for each possible inputs',
 								rightTooltip:
 									'When enabled, the flow will cache the results of the flow for each possible set of inputs.',
-								rightDocumentationLink: 'https://www.windmill.dev/docs/flows/cache#cache-flows'
+								rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 							}}
 						/>
 						{#if flowStore.val.value.cache_ttl}
@@ -332,7 +332,7 @@
 									'If the inputs meet the predefined condition, the flow will not run.' +
 									'to decide if the flow should stop early.',
 								rightDocumentationLink:
-									'https://www.windmill.dev/docs/flows/early_stop#early-stop-for-flow'
+									'https://github.com/spiri-robotics/windmill-OSS'
 							}}
 						/>
 						{#if flowStore.val.value.skip_expr}
@@ -382,7 +382,7 @@
 								right: 'Early return for sync webhooks',
 								rightTooltip:
 									'If defined, sync endpoints will return early at the node defined here while the rest of the flow continue asynchronously.',
-								rightDocumentationLink: 'https://www.windmill.dev/docs/flows/early_return'
+								rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 							}}
 						/>
 						{#if flowStore.val.value.early_return}
@@ -423,7 +423,7 @@
 									'pass them to the next step. Beware that the `./shared` folder is not ' +
 									'preserved across suspends and sleeps.',
 								rightDocumentationLink:
-									'https://www.windmill.dev/docs/core_concepts/persistent_storage/within_windmill#shared-directory'
+									'https://github.com/spiri-robotics/windmill-OSS'
 							}}
 						/>
 						{#if conflictingModuleIds.length > 0}
@@ -454,7 +454,7 @@
 						rightTooltip:
 							'When this option is enabled, manual executions of this script are invisible to users other than the user running it, including the owner(s). This setting can be overridden when this script is run manually from the advanced menu.',
 						rightDocumentationLink:
-							'https://www.windmill.dev/docs/core_concepts/monitor_past_and_future_runs#invisible-runs'
+							'https://github.com/spiri-robotics/windmill-OSS'
 					}}
 				/>
 
@@ -552,7 +552,7 @@
 							options={{
 								right: 'Concurrency limits',
 								rightTooltip: 'Allowed concurrency within a given timeframe',
-								rightDocumentationLink: 'https://www.windmill.dev/docs/flows/concurrency_limit'
+								rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 							}}
 							eeOnly={true}
 						/>
@@ -638,7 +638,7 @@
 					options={{
 						right: `Label as high priority`,
 						rightTooltip: `All jobs scheduled by flows labeled as high priority take precedence over the other jobs in the jobs queue. Higher priority numbers are executed first.`,
-						rightDocumentationLink: 'https://www.windmill.dev/docs/flows/priority'
+						rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 					}}
 				>
 					{#snippet right()}
@@ -708,7 +708,7 @@
 							right: 'Flow is run on dedicated workers',
 							rightTooltip: 'When enabled, the flow will be executed on a dedicated worker.',
 							rightDocumentationLink:
-								'https://www.windmill.dev/docs/core_concepts/jobs#high-priority-jobs'
+								'https://github.com/spiri-robotics/windmill-OSS'
 						}}
 						eeOnly={true}
 					/>

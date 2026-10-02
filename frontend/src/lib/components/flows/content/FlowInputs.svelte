@@ -157,19 +157,19 @@
 
 				A trigger script is intended to be used with
 				<a
-					href="https://www.windmill.dev/docs/core_concepts/scheduling"
+					href="https://github.com/spiri-robotics/windmill-OSS"
 					target="_blank"
 					class="text-blue-400">schedules</a
 				>
 				and
 				<a
-					href="https://www.windmill.dev/docs/core_concepts/resources_and_types#states"
+					href="https://github.com/spiri-robotics/windmill-OSS"
 					target="_blank"
 					class="text-blue-400">states</a
 				>
 				in order to compare the execution to the previous one and process each new item in a
 				<a
-					href="https://www.windmill.dev/docs/flows/flow_loops"
+					href="https://github.com/spiri-robotics/windmill-OSS"
 					target="_blank"
 					class="text-blue-400">for loop</a
 				>. If there are no new items, the flow will be skipped.<br /><br />
@@ -177,7 +177,7 @@
 				By default, adding a trigger will set the schedule to 15 minutes. To see all ways to trigger
 				a flow, check
 				<a
-					href="https://www.windmill.dev/docs/getting_started/triggers"
+					href="https://github.com/spiri-robotics/windmill-OSS"
 					target="_blank"
 					class="text-blue-400">Triggering Flows</a
 				>.

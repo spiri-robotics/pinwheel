@@ -75,7 +75,7 @@
 					<div class="mt-1 {alertStyles.bgClass} rounded-md p-2">
 						<p class="text-xs {alertStyles.descriptionClass}">
 							<strong>Next steps:</strong> Use this URL in your MCP-compatible client (like Claude Desktop)
-							to access your Windmill scripts and flows as tools.
+							to access your Pinwheel scripts and flows as tools.
 						</p>
 					</div>
 				{/if}

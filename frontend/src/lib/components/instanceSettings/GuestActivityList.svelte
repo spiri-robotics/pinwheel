@@ -62,7 +62,7 @@
 
 <SettingsPageHeader
 	title="Guests"
-	description="People your identity provider authenticated who opened an app set to Guests without a Windmill account. One email is one guest, however many workspaces it opened."
+	description="People your identity provider authenticated who opened an app set to Guests without a Pinwheel account. One email is one guest, however many workspaces it opened."
 />
 
 {#if !usage.available}

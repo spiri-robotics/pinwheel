@@ -466,7 +466,7 @@ numpy>=1.24.0
 						Default Enforced Dependencies are used when no specific Dependencies are referenced from
 						runnables. Named dependencies can be referenced by scripts using
 						<a
-							href="https://www.windmill.dev/docs/core_concepts/workspace_dependencies"
+							href="https://github.com/spiri-robotics/windmill-OSS"
 							target="_blank"
 							rel="noopener noreferrer"
 							class="text-accent"

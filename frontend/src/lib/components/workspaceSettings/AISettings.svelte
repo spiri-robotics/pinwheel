@@ -58,9 +58,9 @@
 		instanceAiSummary = undefined,
 		customSave = undefined,
 		onSave = undefined,
-		title = 'Windmill AI',
-		description = 'Windmill AI integrates with your favorite AI providers and models.',
-		link = 'https://www.windmill.dev/docs/core_concepts/ai_generation',
+		title = 'Pinwheel AI',
+		description = 'Pinwheel AI integrates with your favorite AI providers and models.',
+		link = 'https://github.com/spiri-robotics/windmill-OSS',
 		promptScope = 'workspace'
 	}: {
 		initialConfig?: AIConfig | undefined
@@ -736,7 +736,7 @@
 		</SettingCard>
 		<SettingCard
 			label="AI session retention"
-			description="Deletes an AI session left untouched for this many days: its backup in the workspace's object storage, counted from the last push that reached it, and the copies a member's browser keeps, counted from the last time it was used there, the next time that browser loads Windmill in a single tab over https. Archived sessions count too. Leave empty to keep sessions until their owner deletes them."
+			description="Deletes an AI session left untouched for this many days: its backup in the workspace's object storage, counted from the last push that reached it, and the copies a member's browser keeps, counted from the last time it was used there, the next time that browser loads Pinwheel in a single tab over https. Archived sessions count too. Leave empty to keep sessions until their owner deletes them."
 		>
 			<div class="flex items-center gap-2">
 				<div class="w-28">

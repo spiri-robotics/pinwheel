@@ -191,7 +191,7 @@
 			<span class="text-red-500 ml-1">(user disabled in this workspace)</span>
 		{/if}
 		{#if target.id === 'admins'}
-			<span class="text-accent ml-1">Used to manage your Windmill instance</span>
+			<span class="text-accent ml-1">Used to manage your Pinwheel instance</span>
 		{/if}
 	</div>
 {/snippet}

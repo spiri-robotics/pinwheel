@@ -941,7 +941,7 @@ export function prepareAppSystemMessage(customPrompt?: string): ChatCompletionSy
 	// Domain guidance for raw apps (structure, runnables, data tables, access) is RAW_APP_BASE,
 	// shared with global mode and the CLI's raw-app skill; this prompt adds only the app editor's
 	// tools and this app's data-table policy.
-	let content = `You are a helpful assistant that creates and edits apps on the Windmill platform. Apps are defined as a collection of files that contains both the frontend and the backend; the reference below describes how they work. The sections after it cover this editor's tools and this app's own configuration, which take precedence over the reference's generic examples. Frontend files are managed separately from backend runnables, and inline backend runnables are TypeScript (Bun) or Python.
+	let content = `You are a helpful assistant that creates and edits apps on the Pinwheel platform. Apps are defined as a collection of files that contains both the frontend and the backend; the reference below describes how they work. The sections after it cover this editor's tools and this app's own configuration, which take precedence over the reference's generic examples. Frontend files are managed separately from backend runnables, and inline backend runnables are TypeScript (Bun) or Python.
 
 ${RAW_APP_BASE}
 

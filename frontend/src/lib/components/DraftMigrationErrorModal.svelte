@@ -16,7 +16,7 @@
 		type DraftMigrationError
 	} from '$lib/userDraftMigrationErrors.svelte'
 
-	const DRAFT_DOCS_URL = 'https://www.windmill.dev/docs/core_concepts/draft_and_deploy'
+	const DRAFT_DOCS_URL = 'https://github.com/spiri-robotics/windmill-OSS'
 
 	let jsonView = $state<DraftMigrationError | undefined>(undefined)
 	let jsonOpen = $state(false)

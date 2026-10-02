@@ -5,7 +5,7 @@
 </script>
 
 <div class="flex flex-col w-full gap-4 text-sm">
-	<Description link="https://www.windmill.dev/docs/flows/flow_trigger">
+	<Description link="https://github.com/spiri-robotics/windmill-OSS">
 		Scheduled Poll is a trigger that polls an external API at a given interval. It is useful for
 		triggering jobs based on the change of external states. Under the hood, it is a script triggered
 		by a schedule, and returning a list of the changed states so we can iterate over them.

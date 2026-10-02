@@ -70,7 +70,7 @@
 		>
 			{`Check database configuration ${checkConnection ? 'and connection' : ''}`}
 			<Tooltip
-				documentationLink="https://www.windmill.dev/docs/core_concepts/postgres_triggers#requirements"
+				documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 			>
 				<p class="text-sm">
 					Verifies whether the database is configured with the required <strong>settings</strong>.

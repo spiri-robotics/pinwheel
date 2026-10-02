@@ -124,14 +124,14 @@ export async function main(bucket: any, api_token: string) {
 			lang: 'bun',
 			argName: 'bucket',
 			tooltip:
-				'The storage operations of this test run on the Windmill server (the API process) with your permissions, not on the worker. Non-super-admins can only test public endpoints with an explicit access key and secret key; super admins can also test private endpoints and rely on the ambient AWS credentials of the server (environment variables, instance role). Scripts using this resource directly through an S3 SDK resolve credentials on the worker instead, so results may differ.'
+				'The storage operations of this test run on the Pinwheel server (the API process) with your permissions, not on the worker. Non-super-admins can only test public endpoints with an explicit access key and secret key; super admins can also test private endpoints and rely on the ambient AWS credentials of the server (environment variables, instance role). Scripts using this resource directly through an S3 SDK resolve credentials on the worker instead, so results may differ.'
 		},
 		azure_blob: {
 			code: OBJECT_STORAGE_TEST_SCRIPT,
 			lang: 'bun',
 			argName: 'bucket',
 			tooltip:
-				'The storage operations of this test run on the Windmill server (the API process) with your permissions, not on the worker. Non-super-admins can only test public endpoints with an explicit access key.'
+				'The storage operations of this test run on the Pinwheel server (the API process) with your permissions, not on the worker. Non-super-admins can only test public endpoints with an explicit access key.'
 		},
 		graphql: {
 			code: '{ __typename }',
@@ -161,7 +161,7 @@ export async function main(bucket: any, api_token: string) {
 			lang: 'bun',
 			argName: 'bucket',
 			tooltip:
-				"The storage operations of this test run on the Windmill server (the API process) with your permissions. Non-super-admins can only test public endpoints with explicit credentials; super admins can also test private endpoints and rely on the server's ambient credentials for the configured provider (environment variables, instance role)."
+				"The storage operations of this test run on the Pinwheel server (the API process) with your permissions. Non-super-admins can only test public endpoints with explicit credentials; super admins can also test private endpoints and rely on the server's ambient credentials for the configured provider (environment variables, instance role)."
 		}
 	}
 

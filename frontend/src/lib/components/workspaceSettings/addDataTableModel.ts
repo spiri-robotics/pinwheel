@@ -334,7 +334,7 @@ export function plan(state: WizardState): { key: RunStepKey; title: string }[] {
 	} else if (state.provider === 'instance') {
 		steps.push({
 			key: 'setup_instance',
-			title: `Setting up ${state.instance.dbName} in the Windmill database`
+			title: `Setting up ${state.instance.dbName} in the Pinwheel database`
 		})
 	} else if (state.provider === 'external_instance') {
 		if (state.external.mode === 'create') {
@@ -346,7 +346,7 @@ export function plan(state: WizardState): { key: RunStepKey; title: string }[] {
 	} else if (state.own.creating) {
 		steps.push({ key: 'save_credentials', title: `Saving the connection to ${path}` })
 	}
-	steps.push({ key: 'check', title: 'Checking Windmill can store data' })
+	steps.push({ key: 'check', title: 'Checking Pinwheel can store data' })
 	return steps
 }
 
@@ -675,7 +675,7 @@ export async function runSetup(state: WizardState, deps: RunDeps): Promise<RunRe
 								`The password for ${wanted}, which this setup created, is stored at ${elsewhere.path}, not at ${path}. Set the path back to ${elsewhere.path} to carry on with that project.`
 							)
 						return fail(
-							`A Supabase project called ${wanted} already exists, but Windmill does not hold its password and Supabase cannot return it. Reset the password in Supabase and connect it as an existing project, or delete the project and retry.`
+							`A Supabase project called ${wanted} already exists, but Pinwheel does not hold its password and Supabase cannot return it. Reset the password in Supabase and connect it as an existing project, or delete the project and retry.`
 						)
 					}
 					project = existing

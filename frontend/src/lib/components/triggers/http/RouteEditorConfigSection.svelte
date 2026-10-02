@@ -232,7 +232,7 @@
 							rightTooltip:
 								'Prefixes the route with the workspace ID (e.g., {base_url}/api/r/{workspace_id}/{route}). Note: deploying the HTTP trigger to another workspace updates the route workspace prefix accordingly.',
 							rightDocumentationLink:
-								'https://www.windmill.dev/docs/core_concepts/http_routing#workspace-prefix'
+								'https://github.com/spiri-robotics/windmill-OSS'
 						}}
 					/>
 				{/if}

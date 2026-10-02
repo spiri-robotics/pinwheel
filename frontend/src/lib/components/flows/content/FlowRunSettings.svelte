@@ -224,7 +224,7 @@
 											right: 'Concurrency limit',
 											rightTooltip: 'Allowed concurrency within a given timeframe.',
 											rightDocumentationLink:
-												'https://www.windmill.dev/docs/flows/concurrency_limit'
+												'https://github.com/spiri-robotics/windmill-OSS'
 										}}
 									/>
 									{#if concurrencyOn}

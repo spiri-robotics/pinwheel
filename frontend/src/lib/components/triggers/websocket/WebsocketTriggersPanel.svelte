@@ -50,7 +50,7 @@
 					WebSocket triggers are disabled in the multi-tenant cloud.
 				</Alert>
 			{:else}
-				<Description link="https://www.windmill.dev/docs/core_concepts/websocket_triggers">
+				<Description link="https://github.com/spiri-robotics/windmill-OSS">
 					WebSocket triggers allow real-time bidirectional communication between your scripts/flows
 					and external systems. Each trigger creates a unique WebSocket endpoint.
 				</Description>

@@ -89,7 +89,7 @@
 							<Badge color={operationColor[entry.operation] ?? 'gray'}>{entry.operation}</Badge>
 							<Badge color={sourceColor[entry.source] ?? 'gray'}>{entry.source}</Badge>
 							<span class="text-sm text-primary">
-								{entry.username ?? 'Windmill'}
+								{entry.username ?? 'Pinwheel'}
 							</span>
 							<span class="text-xs text-secondary ml-auto">{displayDate(entry.created_at)}</span>
 						</div>

@@ -46,9 +46,9 @@
 			}}
 			checked={!$aiUserDisabled}
 			options={{
-				right: 'Windmill AI',
+				right: 'Pinwheel AI',
 				rightTooltip:
-					'Enable Windmill AI for your account on this device. Turning this off hides the AI chat, code completion, metadata completion and flow step input completion.'
+					'Enable Pinwheel AI for your account on this device. Turning this off hides the AI chat, code completion, metadata completion and flow step input completion.'
 			}}
 		/>
 

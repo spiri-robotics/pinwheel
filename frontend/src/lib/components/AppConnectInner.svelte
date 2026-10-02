@@ -1318,7 +1318,7 @@
 									<div class="text-secondary text-xs w-full"
 										>No OAuth APIs have been set up on this instance. To add OAuth APIs, first sync
 										the resource types with the hub, then add OAuth configuration. See <a
-											href="https://www.windmill.dev/docs/misc/setup_oauth">documentation</a
+											href="https://github.com/spiri-robotics/windmill-OSS">documentation</a
 										>
 									</div>
 								{/if}

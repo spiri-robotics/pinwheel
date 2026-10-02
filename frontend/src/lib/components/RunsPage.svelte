@@ -662,7 +662,7 @@
 				</h1>
 
 				<Tooltip
-					documentationLink="https://www.windmill.dev/docs/core_concepts/monitor_past_and_future_runs"
+					documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 				>
 					All past and schedule executions of scripts and flows, including previews. You only see
 					your own runs or runs of groups you belong to unless you are an admin.

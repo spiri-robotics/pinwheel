@@ -1283,9 +1283,9 @@
 				},
 				{
 					id: 'ai',
-					label: 'Windmill AI',
+					label: 'Pinwheel AI',
 					aiId: 'workspace-settings-ai',
-					aiDescription: 'Windmill AI workspace settings'
+					aiDescription: 'Pinwheel AI workspace settings'
 				},
 				{
 					id: 'premium',
@@ -1504,7 +1504,7 @@
 							<SettingsPageHeader
 								title="Dev workspace"
 								description="Pair this workspace with a dev workspace: the same code with a different environment. Edits are made in the dev workspace and promoted to prod."
-								link="https://www.windmill.dev/docs/core_concepts/staging_prod"
+								link="https://github.com/spiri-robotics/windmill-OSS"
 							/>
 							<!-- Positioned by DevWorkspaceSetting, not here — see its `deployTarget` prop. -->
 							{#snippet deployTarget()}
@@ -1603,7 +1603,7 @@
 							<SettingsPageHeader
 								title="Workspace connections to Slack and Teams"
 								description="With workspace connections, you can trigger scripts or flows with a '/windmill' command with your Slack or Teams bot or set the workspace error handler to send notifications to your Slack or Teams channel."
-								link="https://www.windmill.dev/docs/core_concepts/error_handling#workspace-error-handler"
+								link="https://github.com/spiri-robotics/windmill-OSS"
 							/>
 							<div class="space-y-6">
 								<Tabs
@@ -1642,7 +1642,7 @@
 										connectHref="{base}/api/oauth/connect_slack"
 										createScriptHref="{base}/scripts/add?hub=hub%2F28071%2Fslack%2Fexample_of_responding_to_a_slack_command_slack"
 										createFlowHref="{base}/flows/add?hub=28"
-										documentationLink="https://www.windmill.dev/docs/integrations/slack"
+										documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 										onLoadSettings={loadSettings}
 										display_name={slack_team_name}
 										hideConnectButton={useCustomSlackApp && !slackOAuthConfigLoaded}
@@ -1778,7 +1778,7 @@
 											connectHref={undefined}
 											createScriptHref="{base}/scripts/add?hub=hub%2F11591%2Fteams%2FExample%20of%20responding%20to%20a%20Microsoft%20Teams%20command"
 											createFlowHref="{base}/flows/add?hub=58"
-											documentationLink="https://www.windmill.dev/docs/integrations/teams"
+											documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 											onLoadSettings={loadSettings}
 											display_name={teams_team_name}
 											isOAuthEnabled={isTeamsOAuthEnabled}
@@ -1800,7 +1800,7 @@
 							<SettingsPageHeader
 								title="General"
 								description="Configure general workspace settings."
-								link="https://www.windmill.dev/docs/core_concepts/workspace_settings"
+								link="https://github.com/spiri-robotics/windmill-OSS"
 							/>
 
 							{#if isCloudHosted()}
@@ -1916,8 +1916,8 @@
 						{:else if tab == 'webhook'}
 							<SettingsPageHeader
 								title="Workspace webhook"
-								description="Connect your Windmill workspace to an external service to sync or get notified about any change."
-								link="https://www.windmill.dev/docs/core_concepts/webhooks#workspace-webhook"
+								description="Connect your Pinwheel workspace to an external service to sync or get notified about any change."
+								link="https://github.com/spiri-robotics/windmill-OSS"
 							/>
 
 							<SettingCard
@@ -1948,7 +1948,7 @@
 							<SettingsPageHeader
 								title="Workspace error / success handler"
 								description="Configure handlers that automatically execute when scripts or flows in the workspace fail or succeed."
-								link="https://www.windmill.dev/docs/core_concepts/error_handling#workspace-error-handler"
+								link="https://github.com/spiri-robotics/windmill-OSS"
 							/>
 							{#if !$enterpriseLicense}
 								<Alert type="warning" title="Workspace error/success handler is an EE feature">
@@ -2113,7 +2113,7 @@ export async function main(
 							<SettingsPageHeader
 								title="Workspace critical alerts"
 								description="Critical alerts within the scope of a workspace are sent to the workspace admins through a UI notification."
-								link="https://www.windmill.dev/docs/core_concepts/critical_alerts"
+								link="https://github.com/spiri-robotics/windmill-OSS"
 							/>
 							<div class="flex flex-col gap-6 py-4">
 								{#if !$enterpriseLicense}
@@ -2223,7 +2223,7 @@ export async function main(
 							<SettingsPageHeader
 								title="Workspace default app"
 								description="If configured, users who are operators in this workspace will be redirected to this app automatically when logging into this workspace. Make sure the default app is shared with all the operators of this workspace before turning this feature on."
-								link="https://www.windmill.dev/docs/apps/default_app"
+								link="https://github.com/spiri-robotics/windmill-OSS"
 							/>
 							{#if !$enterpriseLicense}
 								<Alert type="warning" title="Windmill EE only feature">
@@ -2254,7 +2254,7 @@ export async function main(
 
 							<SettingCard
 								label="Guests"
-								description="Let anyone your identity provider authenticates, or a JWT your own backend signs (configured below), open the apps set to Guests without a Windmill account. They join no workspace, see nothing else, and take no seat. Off by default. Turning it off stops guests immediately, even for apps already set to Guests."
+								description="Let anyone your identity provider authenticates, or a JWT your own backend signs (configured below), open the apps set to Guests without a Pinwheel account. They join no workspace, see nothing else, and take no seat. Off by default. Turning it off stops guests immediately, even for apps already set to Guests."
 								class="mt-6"
 							>
 								{#if !guestsAvailable}
@@ -2369,8 +2369,8 @@ export async function main(
 						{:else if tab == 'encryption'}
 							<SettingsPageHeader
 								title="Workspace secret encryption"
-								description="When updating the encryption key of a workspace, all secrets will be re-encrypted with the new key and the previous key will be replaced by the new one. If you're manually updating the key to match another workspace key from another Windmill instance, make sure not to use the 'SECRET_SALT' environment variable or, if you're using it, make sure it the salt matches across both instances."
-								link="https://www.windmill.dev/docs/core_concepts/workspace_secret_encryption"
+								description="When updating the encryption key of a workspace, all secrets will be re-encrypted with the new key and the previous key will be replaced by the new one. If you're manually updating the key to match another workspace key from another Pinwheel instance, make sure not to use the 'SECRET_SALT' environment variable or, if you're using it, make sure it the salt matches across both instances."
+								link="https://github.com/spiri-robotics/windmill-OSS"
 							/>
 							<SettingCard label="Workspace encryption key" class="mt-6">
 								<div class="flex gap-2">

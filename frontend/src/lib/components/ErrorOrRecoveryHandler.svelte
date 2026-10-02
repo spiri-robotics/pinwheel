@@ -191,7 +191,7 @@
 			requestBody: {
 				hub_script_path: handlerPath,
 				channel: channel,
-				test_msg: `This is a notification to test the connection between ${platform} and Windmill workspace '${effectiveWorkspace!}'`
+				test_msg: `This is a notification to test the connection between ${platform} and Pinwheel workspace '${effectiveWorkspace!}'`
 			}
 		})
 
@@ -535,7 +535,7 @@
 										Sending message...
 									{:else if connectionTestJob.is_success}
 										<CircleCheck size={14} class="text-green-600" />
-										Message sent via Windmill job
+										Message sent via Pinwheel job
 									{:else}
 										<CircleX size={14} class="text-red-700" />
 										Message not sent
@@ -633,7 +633,7 @@
 								{:else}
 									<XCircle size={14} class="text-red-700" />
 								{/if}
-								Message sent via Windmill job
+								Message sent via Pinwheel job
 								<a
 									target="_blank"
 									href={`${base}/run/${connectionTestJob.uuid}?workspace=${effectiveWorkspace}`}
@@ -650,7 +650,7 @@
 		{:else if handlerSelected === 'email'}
 			{#if isCloudHosted()}
 				<Alert type="info" title="Email notifications are not available in Cloud">
-					Email notifications for trigger failures are only available in self-hosted Windmill
+					Email notifications for trigger failures are only available in self-hosted Pinwheel
 					instances.
 				</Alert>
 			{:else}

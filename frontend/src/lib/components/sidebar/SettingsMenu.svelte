@@ -124,7 +124,7 @@
 		{
 			displayName: 'Docs',
 			icon: BookOpen,
-			href: 'https://www.windmill.dev/docs/intro/',
+			href: 'https://github.com/spiri-robotics/windmill-OSS',
 			hrefTarget: '_blank'
 		},
 		{
@@ -142,7 +142,7 @@
 		{
 			displayName: 'Changelog',
 			icon: Newspaper,
-			href: 'https://www.windmill.dev/changelog/',
+			href: 'https://github.com/spiri-robotics/windmill-OSS/releases',
 			hrefTarget: '_blank'
 		},
 		...recentChangelogs.map((changelog, i) => ({

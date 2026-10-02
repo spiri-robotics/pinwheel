@@ -65,7 +65,7 @@
 					<ToggleButton
 						value="admin"
 						label="Admin"
-						tooltip="An admin has full control over a specific Windmill workspace, including the ability to manage users, edit entities, and control permissions within the workspace."
+						tooltip="An admin has full control over a specific Pinwheel workspace, including the ability to manage users, edit entities, and control permissions within the workspace."
 						{item}
 					/>
 				{/snippet}

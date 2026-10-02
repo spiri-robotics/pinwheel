@@ -1036,7 +1036,7 @@
 		<PageHeader
 			title="Resources"
 			tooltip="Save and permission rich objects (JSON) including credentials obtained through OAuth."
-			documentationLink="https://www.windmill.dev/docs/core_concepts/resources_and_types"
+			documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		>
 			{#if showCreateButtons}
 				<div class="flex flex-row justify-end gap-4">
@@ -1085,7 +1085,7 @@
 				<Tab value="types" label="Resource Types">
 					{#snippet extra()}
 						<Tooltip
-							documentationLink="https://www.windmill.dev/docs/core_concepts/resources_and_types"
+							documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 						>
 							Every resource has a Resource Type attached to it which contains its schema and make
 							it easy in scripts and flows to accept only resources of a specific resource type.
@@ -1301,7 +1301,7 @@
 																{#snippet text()}
 																	<div>
 																		The OAuth token will be kept up-to-date in the background by
-																		Windmill using its refresh token
+																		Pinwheel using its refresh token
 																	</div>
 																{/snippet}
 															</Popover>

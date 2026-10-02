@@ -40,7 +40,7 @@
 			<div class="text-xs font-normal text-secondary">
 				Tags determine which worker group will execute a given job. Workers process only those jobs
 				whose tags match those defined in their <a
-					href="https://www.windmill.dev/docs/core_concepts/worker_groups"
+					href="https://github.com/spiri-robotics/windmill-OSS"
 					target="_blank">worker group <ExternalLink size={12} class="inline-block" /></a
 				>
 				configuration.

@@ -401,7 +401,7 @@
 								{/if}
 							{:else if comparison.skipped_comparison}
 								<span class="text-blue-600 dark:text-blue-200">
-									This {currentNoun} was created before the addition of certain windmill features, and
+									This {currentNoun} was created before the addition of certain pinwheel features, and
 									therefore the changes with its parent workspace cannot be displayed.</span
 								>
 							{:else if showDraftsOnly}

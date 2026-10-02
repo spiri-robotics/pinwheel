@@ -11,21 +11,21 @@ const setTab = {
 	title: 'setTab',
 	description: 'Use the setTab function to manually set the tab of a Tab component.',
 	example: 'setTab(id: string, index: string)',
-	documentation: 'https://www.windmill.dev/docs/apps/app-runnable-panel#settab'
+	documentation: 'https://github.com/spiri-robotics/windmill-OSS'
 }
 
 const recompute = {
 	title: 'recompute',
 	description: 'Use the recompute function to recompute the value of a component.',
 	example: 'recompute(id: string)',
-	documentation: 'https://www.windmill.dev/docs/apps/app-runnable-panel#recompute'
+	documentation: 'https://github.com/spiri-robotics/windmill-OSS'
 }
 
 const getAgGrid = {
 	title: 'getAgGrid',
 	description: 'Use the getAgGrid function to get the ag-grid instance of a table.',
 	example: 'getAgGrid(id: string)',
-	documentation: 'https://www.windmill.dev/docs/apps/app-runnable-panel#getaggrid'
+	documentation: 'https://github.com/spiri-robotics/windmill-OSS'
 }
 
 const setValue = {
@@ -33,7 +33,7 @@ const setValue = {
 	description:
 		"The setValue function is meant to set or force the value of a component. This can be convenient in cases where connection is not the easiest pattern. Note that it's a bad idea to mix dynamic default value and setValue together.",
 	example: 'setValue(id: string, value: any)',
-	documentation: 'https://www.windmill.dev/docs/apps/app-runnable-panel#setvalue'
+	documentation: 'https://github.com/spiri-robotics/windmill-OSS'
 }
 
 const setSelectedIndex = {
@@ -41,28 +41,28 @@ const setSelectedIndex = {
 	description:
 		'Use the setSelectedIndex function to select a row in a table, an AG Grid table, or navigate to a slide in a Carousel component.',
 	example: 'setSelectedIndex(id: string, index: number)',
-	documentation: 'https://www.windmill.dev/docs/apps/app-runnable-panel#setselectedindex'
+	documentation: 'https://github.com/spiri-robotics/windmill-OSS'
 }
 
 const open = {
 	title: 'open',
 	description: 'Use the open function to open a modal or a drawer.',
 	example: 'open(id: string)',
-	documentation: 'https://www.windmill.dev/docs/apps/app-runnable-panel#open'
+	documentation: 'https://github.com/spiri-robotics/windmill-OSS'
 }
 
 const clearFiles = {
 	title: 'clearFiles',
 	description: 'Clear the files of a file input component.',
 	example: 'clearFiles(id: string)',
-	documentation: 'https://www.windmill.dev/docs/apps/app-runnable-panel#clearfiles'
+	documentation: 'https://github.com/spiri-robotics/windmill-OSS'
 }
 
 const close = {
 	title: 'close',
 	description: 'Use the close function to close a modal or a drawer.',
 	example: 'close(id: string)',
-	documentation: 'https://www.windmill.dev/docs/apps/app-runnable-panel#close'
+	documentation: 'https://github.com/spiri-robotics/windmill-OSS'
 }
 
 const validate = {

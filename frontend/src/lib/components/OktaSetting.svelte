@@ -112,7 +112,7 @@
 					<div>
 						<strong>1. Create App Integration</strong>
 						<div class="ml-4 mt-1">
-							From your Admin page, setup windmill using the service flow and create a new app
+							From your Admin page, setup pinwheel using the service flow and create a new app
 							integration:
 							<ul class="list-disc ml-4 mt-1 space-y-1">
 								<li>For "sign-in method" select <strong>OIDC - Open ID Connect</strong></li>

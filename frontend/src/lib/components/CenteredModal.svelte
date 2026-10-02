@@ -22,7 +22,7 @@
 	let {
 		subtitle = undefined,
 		subtitleSnippet = undefined,
-		title = 'Windmill',
+		title = 'Pinwheel',
 		large = false,
 		centerVertically = true,
 		loading = false,

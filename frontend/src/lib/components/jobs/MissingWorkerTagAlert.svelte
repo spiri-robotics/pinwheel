@@ -40,7 +40,7 @@
 			tagged group sitting at zero replicas is indistinguishable from one in
 			`worker_ping`, and queueing a job is what scales it back up. -->
 		<Alert type="warning" title="No worker is running for the &quot;{tag}&quot; tag" size="xs">
-			{subject} run as Windmill jobs tagged <b>{tag}</b>, and no worker is currently listening to
+			{subject} run as Pinwheel jobs tagged <b>{tag}</b>, and no worker is currently listening to
 			that tag, so they stay queued until one is. If no worker group is meant to serve it, add
 			<b>{tag}</b>
 			to a group's worker tags on the <a href="{base}/workers">workers page</a>.

@@ -71,7 +71,7 @@
 			right: 'Sleep after step',
 			rightTooltip:
 				'At the end of the step, the flow sleeps for a number of seconds before scheduling the next job (no effect if the step is the last one).',
-			rightDocumentationLink: 'https://www.windmill.dev/docs/flows/sleep'
+			rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 		}}
 	/>
 	{#if flowModule.sleep && schema.properties['sleep'] && !sameWorker}

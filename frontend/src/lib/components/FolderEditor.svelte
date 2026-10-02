@@ -773,7 +773,7 @@
 			{#if folderNotFound}
 				<Alert type="warning" title="Folder not found" size="xs">
 					The folder "{name}" does not exist in the workspace. Saving will create it. An item can
-					seemingly be in a folder given its path without the folder existing. A windmill folder has
+					seemingly be in a folder given its path without the folder existing. A pinwheel folder has
 					settable permissions that its children inherit. If an item is within a non-existing
 					folders, only admins will see it.
 				</Alert>

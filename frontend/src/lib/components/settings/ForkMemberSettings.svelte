@@ -103,7 +103,7 @@
 <SettingsPageHeader
 	title="Members {members != undefined ? `(${members.length})` : ''}"
 	description="Add members to the fork you created."
-	link="https://www.windmill.dev/docs/core_concepts/roles_and_permissions"
+	link="https://github.com/spiri-robotics/windmill-OSS"
 />
 
 <Alert type="info" title="You created this fork">

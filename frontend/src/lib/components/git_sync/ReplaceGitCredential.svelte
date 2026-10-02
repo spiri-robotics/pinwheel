@@ -109,7 +109,7 @@
 				<div class="flex flex-col gap-y-1">
 					<div class="text-xs font-semibold text-emphasis">New access token</div>
 					<div class="text-xs font-normal text-secondary">
-						For the same repository. Windmill stores it in place of the current one and renews it
+						For the same repository. Pinwheel stores it in place of the current one and renews it
 						from then on.
 					</div>
 					<TextInput bind:value={token} size="sm" inputProps={{ type: 'password' }} />

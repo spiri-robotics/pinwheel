@@ -96,7 +96,7 @@
 			accent: 'blue',
 			tagline: 'A single standalone script',
 			description:
-				'Author a script in Python, TypeScript, Go, Bash, SQL, Rust, PHP and more. Windmill auto-generates an input UI, deploys it instantly and exposes it as an API.',
+				'Author a script in Python, TypeScript, Go, Bash, SQL, Rust, PHP and more. Pinwheel auto-generates an input UI, deploys it instantly and exposes it as an API.',
 			bullets: [
 				'20+ languages',
 				'Auto-generated UI from parameters',
@@ -164,7 +164,7 @@
 						accent: 'purple',
 						tagline: 'Express a workflow purely in code',
 						description:
-							'Write the whole workflow as a single Python or TypeScript script using the Windmill SDK — parallelism, branching and step orchestration expressed as plain code.',
+							'Write the whole workflow as a single Python or TypeScript script using the Pinwheel SDK — parallelism, branching and step orchestration expressed as plain code.',
 						bullets: [
 							'Python or TypeScript',
 							'Full control via the SDK',

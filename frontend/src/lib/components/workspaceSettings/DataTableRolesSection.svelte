@@ -34,7 +34,7 @@
 	let cluster = $state<DatatableRoleCluster>(pinnedCluster ?? 'instance')
 	/** The databases a role here reaches, for the copy: a drop is explained by what it undoes. */
 	let clusterName = $derived(
-		cluster === 'external_instance' ? 'the external cluster' : "Windmill's database"
+		cluster === 'external_instance' ? 'the external cluster' : "Pinwheel's database"
 	)
 	/** Whether the external cluster is configured, so its catalog is worth offering. Only a
 	 *  superadmin can read that, and only a superadmin manages roles. */
@@ -147,7 +147,7 @@
 	async function remove(role: InstanceDatatableRole) {
 		const confirmed = await confirmationModal.ask({
 			title: `Delete the role ${role.name}?`,
-			children: `Everything it owns in every database Windmill manages on ${clusterName} is handed back to the admin connection, its grants are dropped, and it is removed from every data table that named it. This cannot be undone.`,
+			children: `Everything it owns in every database Pinwheel manages on ${clusterName} is handed back to the admin connection, its grants are dropped, and it is removed from every data table that named it. This cannot be undone.`,
 			confirmationText: 'Delete role'
 		})
 		if (!confirmed) return
@@ -172,13 +172,13 @@
 			{#snippet children({ item })}
 				<ToggleButton
 					value="instance"
-					label="Windmill's database"
+					label="Pinwheel's database"
 					disabled={!internalAvailable}
 					tooltip={internalAvailable
 						? undefined
 						: isCloudHosted()
-							? "Windmill's database is not available on cloud."
-							: "Windmill's database is turned off for data tables, and has no roles left."}
+							? "Pinwheel's database is not available on cloud."
+							: "Pinwheel's database is turned off for data tables, and has no roles left."}
 					{item}
 					small
 				/>
@@ -197,7 +197,7 @@
 	{/if}
 	{#if !clusterAvailable}
 		<Alert type="info" title="No Postgres to define roles on" size="xs">
-			Windmill's database is turned off for data tables and no external cluster is set up. Configure
+			Pinwheel's database is turned off for data tables and no external cluster is set up. Configure
 			one under Instance settings → Managed Postgres to manage its roles here.
 		</Alert>
 	{:else if loadError}

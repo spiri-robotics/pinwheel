@@ -168,7 +168,7 @@
 								rightTooltip:
 									'Prefixes the email address with the workspace ID (e.g., ${workspace_id}-${local_part}@). Note: deploying the email trigger to another workspace updates the email address workspace prefix accordingly.',
 								rightDocumentationLink:
-									'https://www.windmill.dev/docs/advanced/email_triggers#workspace-prefix'
+									'https://github.com/spiri-robotics/windmill-OSS'
 							}}
 						/>
 					</div>

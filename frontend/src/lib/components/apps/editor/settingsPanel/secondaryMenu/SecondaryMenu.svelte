@@ -35,7 +35,7 @@
 					<div class="flex flex-row items-center gap-1">
 						<div class="text-xs font-bold"> Style Panel</div>
 						<DocLink
-							docLink="https://www.windmill.dev/docs/apps/app_configuration_settings/app_styling"
+							docLink="https://github.com/spiri-robotics/windmill-OSS"
 						/>
 					</div>
 				{/if}

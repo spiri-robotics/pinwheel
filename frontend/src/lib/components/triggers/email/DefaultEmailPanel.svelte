@@ -64,7 +64,7 @@
 />
 
 <Section label="Default email trigger" class="flex flex-col gap-6">
-	<Description link="https://www.windmill.dev/docs/advanced/email_triggers">
+	<Description link="https://github.com/spiri-robotics/windmill-OSS">
 		Default email trigger is a partially fixed email address that can be used to trigger a script or
 		flow. The email address is composed of the encoded workspace and script or flow path as well as
 		the token.
@@ -86,7 +86,7 @@
 				<Alert title="Email triggers are disabled" size="xs" type="warning">
 					Ask an instance superadmin to setup the instance for email triggering (<a
 						target="_blank"
-						href="https://windmill.dev/docs/advanced/email_triggers">docs</a
+						href="https://github.com/spiri-robotics/windmill-OSS">docs</a
 					>) and to set the email domain in the instance settings.
 				</Alert>
 			</div>
@@ -94,7 +94,7 @@
 
 		{#if !$enterpriseLicense}
 			<Alert title="Community Edition limitations" type="warning" size="xs">
-				Email triggers on Windmill Community Edition are limited to 100 emails per day.
+				Email triggers on Pinwheel Community Edition are limited to 100 emails per day.
 			</Alert>
 		{/if}
 

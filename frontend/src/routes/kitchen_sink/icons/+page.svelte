@@ -131,7 +131,7 @@
 			<h1 class="text-lg font-semibold text-emphasis">Icon library</h1>
 			<p class="text-sm text-secondary">
 				Every component in <code class="text-xs">lib/components/icons</code>. Each tile renders the
-				icon on Windmill's light surface and, when enabled, its dark surface — so a monochrome
+				icon on Pinwheel's light surface and, when enabled, its dark surface — so a monochrome
 				icon's light/dark pair can be checked side by side without switching the app theme. An icon
 				only differs between the two halves if it inherits <code class="text-xs">currentColor</code>
 				or carries a <code class="text-xs">dark:</code> class; hardcoded fills look the same on both.

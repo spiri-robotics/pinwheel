@@ -279,7 +279,7 @@
 						icon={serviceIcons[serviceName] ?? Webhook}
 						title="No {serviceConfig?.serviceDisplayName || serviceName} triggers yet"
 						description="{serviceConfig?.serviceDisplayName ||
-							serviceName} manages these triggers on its side, so events reach Windmill without a worker polling for them."
+							serviceName} manages these triggers on its side, so events reach Pinwheel without a worker polling for them."
 						action={{
 							label: `Add a ${serviceConfig?.serviceDisplayName || serviceName} trigger`,
 							icon: Plus,

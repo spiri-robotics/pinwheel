@@ -848,7 +848,7 @@
 							Error loading json schema resource {format.substring('jsonschema-'.length)}, please
 							check if the resource exists and is a valid json schema.
 							<a
-								href="https://windmill.dev/docs/core_concepts/resources_and_types#json-schema-resources"
+								href="https://github.com/spiri-robotics/windmill-OSS"
 								target="_blank"
 								class="text-blue-500 hover:text-blue-700 underline">See documentation</a
 							>

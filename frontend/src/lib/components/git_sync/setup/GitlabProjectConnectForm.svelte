@@ -76,7 +76,7 @@
 		</span>
 		<TextInput bind:value={token} inputProps={{ type: 'password', autocomplete: 'off' }} />
 		<span class="text-2xs text-hint">
-			Windmill stores it and renews it before it expires. Use one token per project.
+			Pinwheel stores it and renews it before it expires. Use one token per project.
 		</span>
 	</label>
 	<div class="flex">

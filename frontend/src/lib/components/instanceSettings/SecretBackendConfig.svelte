@@ -518,7 +518,7 @@
 							<ToggleButton
 								value="jwt"
 								label="JWT Auth"
-								tooltip="Authenticate using Windmill-signed JWTs"
+								tooltip="Authenticate using Pinwheel-signed JWTs"
 								item={toggleButton}
 								{disabled}
 							/>
@@ -582,7 +582,7 @@
 								>Vault JWT Setup Instructions</summary
 							>
 							<div class="mt-2 p-2 bg-surface rounded text-2xs text-secondary space-y-2">
-								<p>Configure Vault to accept JWTs from Windmill:</p>
+								<p>Configure Vault to accept JWTs from Pinwheel:</p>
 								<div
 									class="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-2xs overflow-x-auto"
 								>
@@ -592,12 +592,12 @@
 											: ` at custom mount '${jwtMount}'`}
 vault auth enable {jwtMount === 'jwt' ? 'jwt' : `-path=${jwtMount} jwt`}
 
-# Configure JWT auth with Windmill's JWKS endpoint
+# Configure JWT auth with Pinwheel's JWKS endpoint
 vault write auth/{jwtMount}/config \
   jwks_url="{baseUrl}/api/oidc/jwks" \
   bound_issuer="{baseUrl}/api/oidc/"
 
-# Create a policy for Windmill secrets
+# Create a policy for Pinwheel secrets
 vault policy write windmill-secrets - &lt;&lt;EOF
 path "{$values['secret_backend']?.mount_path ?? 'windmill'}/data/{kvPolicyPath}" &#123;
   capabilities = ["create", "read", "update", "delete"]
@@ -608,7 +608,7 @@ path "{$values['secret_backend']?.mount_path ?? 'windmill'}/metadata/{kvPolicyPa
 EOF
 
 # Create the JWT role. bound_audiences must match the Vault server
-# address — Windmill signs the JWT with `aud` = your Vault address.
+# address — Pinwheel signs the JWT with `aud` = your Vault address.
 vault write auth/{jwtMount}/role/{$values['secret_backend']?.jwt_role || 'windmill-secrets'} \
   role_type="jwt" \
   bound_audiences="{vaultAudience}" \
@@ -754,7 +754,7 @@ vault write auth/{jwtMount}/role/{$values['secret_backend']?.jwt_role || 'windmi
 					>
 					<span class="text-2xs text-secondary"
 						>Leave blank to use Azure Workload Identity. Requires
-						<code>AZURE_FEDERATED_TOKEN_FILE</code> on the Windmill process (auto-injected on AKS by
+						<code>AZURE_FEDERATED_TOKEN_FILE</code> on the Pinwheel process (auto-injected on AKS by
 						the workload-identity webhook; set manually on other Kubernetes clusters).</span
 					>
 					<Password bind:password={$values['secret_backend'].client_secret} small {disabled} />

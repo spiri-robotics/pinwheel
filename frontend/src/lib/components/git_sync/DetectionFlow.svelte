@@ -90,7 +90,7 @@
 						options={{
 							right: 'Group all changes from same folder in the same branch',
 							rightTooltip:
-								'Instead of creating a branch per object, Windmill will create a branch per folder containing objects being deployed.'
+								'Instead of creating a branch per object, Pinwheel will create a branch per folder containing objects being deployed.'
 						}}
 					/>
 				</div>
@@ -116,7 +116,7 @@
 			</div>
 		{:else if repo.detectionState === 'no-wmill'}
 			<!-- No wmill.yaml found - new repository -->
-			<Alert type="info" title="Uninitialized Windmill repository found" class="mb-2">
+			<Alert type="info" title="Uninitialized Pinwheel repository found" class="mb-2">
 				No git sync configuration found. Configure your sync settings below.
 			</Alert>
 
@@ -143,7 +143,7 @@
 			</div>
 		{:else if repo.detectionState === 'has-wmill'}
 			<!-- wmill.yaml found - existing repository -->
-			<Alert type="success" title="Existing Windmill repository found" class="mb-2">
+			<Alert type="success" title="Existing Pinwheel repository found" class="mb-2">
 				Found existing git sync configuration. Settings loaded from repository.
 			</Alert>
 

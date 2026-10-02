@@ -120,7 +120,7 @@
 			icon: ArrowDownFromLine,
 			tooltip: {
 				text: 'When set to full height, a component will extend its height to fill the entire parent container (or canvas).',
-				link: 'https://www.windmill.dev/docs/apps/app_configuration_settings/app_styling#full-height'
+				link: 'https://github.com/spiri-robotics/windmill-OSS'
 			}
 		},
 		{
@@ -131,7 +131,7 @@
 			icon: Expand,
 			tooltip: {
 				text: "Clicking the expand button maximizes the component's width and height, respecting other components' position.",
-				link: 'https://www.windmill.dev/docs/apps/canvas#expand-a-component'
+				link: 'https://github.com/spiri-robotics/windmill-OSS'
 			}
 		},
 		{
@@ -142,7 +142,7 @@
 			icon: Anchor,
 			tooltip: {
 				text: 'Lock the component to prevent it from being repositioned by other components.',
-				link: 'https://www.windmill.dev/docs/apps/canvas#lock-the-position-of-a-component'
+				link: 'https://github.com/spiri-robotics/windmill-OSS'
 			}
 		},
 		{
@@ -154,7 +154,7 @@
 			disabled: $secondaryMenuLeft.isOpen,
 			tooltip: {
 				text: 'Use style panel to define custom CSS and Tailwind classes for the components.',
-				link: 'https://www.windmill.dev/docs/apps/app_configuration_settings/app_styling'
+				link: 'https://github.com/spiri-robotics/windmill-OSS'
 			}
 		},
 

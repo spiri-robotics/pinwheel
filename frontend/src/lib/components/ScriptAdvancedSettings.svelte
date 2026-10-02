@@ -27,7 +27,7 @@
 <div class="flex flex-col gap-8">
 	<Section label="Worker group tag (queue)">
 		{#snippet header()}
-			<Tooltip documentationLink="https://www.windmill.dev/docs/core_concepts/worker_groups">
+			<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 				The script will be executed on a worker configured to listen to this worker group tag
 				(queue). For instance, you could setup an "highmem", or "gpu" tag.
 			</Tooltip>
@@ -37,7 +37,7 @@
 
 	<Section label="Concurrency limits" eeOnly>
 		{#snippet header()}
-			<Tooltip documentationLink="https://www.windmill.dev/docs/core_concepts/concurrency_limits">
+			<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 				Allowed concurrency within a given timeframe
 			</Tooltip>
 		{/snippet}
@@ -75,7 +75,7 @@
 				<Label label="Custom concurrency key (optional)">
 					{#snippet header()}
 						<Tooltip
-							documentationLink="https://www.windmill.dev/docs/core_concepts/concurrency_limits#custom-concurrency-key"
+							documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 						>
 							Concurrency keys are global, you can have them be workspace specific using the
 							variable `$workspace`. You can also use an argument's value using `$args[name_of_arg]`</Tooltip
@@ -94,7 +94,7 @@
 
 	<Section label="Cache">
 		{#snippet header()}
-			<Tooltip documentationLink="https://www.windmill.dev/docs/core_concepts/caching">
+			<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 				Cache the results for each possible inputs
 			</Tooltip>
 		{/snippet}
@@ -124,7 +124,7 @@
 
 	<Section label="Timeout">
 		{#snippet header()}
-			<Tooltip documentationLink="https://www.windmill.dev/docs/script_editor/settings#timeout">
+			<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 				Add a custom timeout for this script
 			</Tooltip>
 		{/snippet}
@@ -150,7 +150,7 @@
 
 	<Section label="Debouncing">
 		{#snippet header()}
-			<Tooltip documentationLink="https://www.windmill.dev/docs/core_concepts/job_debouncing">
+			<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 				Debounce Jobs
 			</Tooltip>
 		{/snippet}
@@ -168,7 +168,7 @@
 
 	<Section label="Perpetual script">
 		{#snippet header()}
-			<Tooltip documentationLink="https://www.windmill.dev/docs/script_editor/perpetual_scripts">
+			<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 				Restart the script upon ending unless cancelled
 			</Tooltip>
 		{/snippet}
@@ -184,7 +184,7 @@
 
 	<Section label="Dedicated workers" eeOnly>
 		{#snippet header()}
-			<Tooltip documentationLink="https://www.windmill.dev/docs/core_concepts/dedicated_workers">
+			<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 				In this mode, the script is meant to be run on dedicated workers that run the script at
 				native speed. Can reach &gt;1500rps per dedicated worker. Only available on enterprise
 				edition and for Python3, Deno, Bun and Bunnative.
@@ -217,9 +217,9 @@
 	<Section label="Delete after completion" eeOnly>
 		{#snippet header()}
 			<Tooltip
-				documentationLink="https://www.windmill.dev/docs/script_editor/settings#delete-after-use"
+				documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 			>
-				The logs, arguments and results of the job will be completely deleted from Windmill after
+				The logs, arguments and results of the job will be completely deleted from Pinwheel after
 				the specified delay once it is complete. Set to 0 for immediate deletion. The deletion is
 				irreversible. This settings ONLY applies when the script is used within a flow or triggered
 				synchronously.
@@ -245,7 +245,7 @@
 		<Section label="High priority script" eeOnly>
 			{#snippet header()}
 				<Tooltip
-					documentationLink="https://www.windmill.dev/docs/core_concepts/jobs#high-priority-jobs"
+					documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 				>
 					Jobs from script labeled as high priority take precedence over the other jobs when in the
 					jobs queue.

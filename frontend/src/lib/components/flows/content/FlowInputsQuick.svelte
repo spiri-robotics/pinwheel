@@ -119,7 +119,7 @@
 	async function onGenerate() {
 		if (!$copilotInfo.enabled) {
 			sendUserToast(
-				'Windmill AI is not enabled, you can activate it in the workspace settings',
+				'Pinwheel AI is not enabled, you can activate it in the workspace settings',
 				true
 			)
 			return

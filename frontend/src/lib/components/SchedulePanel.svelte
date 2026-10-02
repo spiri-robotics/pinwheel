@@ -40,7 +40,7 @@
 >
 	{#snippet docDescription()}
 		<div class="flex flex-col gap-2 pb-4">
-			<Description link="https://www.windmill.dev/docs/core_concepts/scheduling">
+			<Description link="https://github.com/spiri-robotics/windmill-OSS">
 				Run scripts and flows automatically on a recurring basis using cron expressions.
 			</Description>
 		</div>

@@ -128,7 +128,7 @@ export function connectionParamRefusal(connectionString: string): string | undef
 		REPRESENTABLE_PARAMS.includes(lower) || COSMETIC_PARAMS.includes(lower)
 	return storableWhenSpelledRight
 		? `Postgres does not accept ${name}: connection parameter names are case-sensitive. Write it as ${lower}.`
-		: `Windmill cannot store ${name} on a Postgres resource, and ignoring it would connect differently from what this string asks for. Remove it, or set the connection with the fields.`
+		: `Pinwheel cannot store ${name} on a Postgres resource, and ignoring it would connect differently from what this string asks for. Remove it, or set the connection with the fields.`
 }
 
 /**

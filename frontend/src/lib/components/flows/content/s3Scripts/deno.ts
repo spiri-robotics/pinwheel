@@ -18,7 +18,7 @@ export async function main(inputFile: S3Object) {
   console.log(inputObjContent);
 
   // write object to S3
-  await s3Client.putObject(outputFile, "Hello Windmill!");
+  await s3Client.putObject(outputFile, "Hello Pinwheel!");
 
   // list objects from bucket
   for await (const obj of s3Client.listObjects({ prefix: "output/" })) {

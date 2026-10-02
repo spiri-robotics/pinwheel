@@ -114,7 +114,7 @@
 			options={{
 				right: 'Debouncing',
 				rightTooltip: 'Consolidate multiple executions into a single run within a time window',
-				rightDocumentationLink: 'https://www.windmill.dev/docs/core_concepts/job_debouncing'
+				rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 			}}
 			class="py-1"
 			eeOnly={true}

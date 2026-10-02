@@ -35,7 +35,7 @@ export const SCRIPT_VIEW_WEBHOOK_INFO_TIP = `Pass the input as a json payload, t
 Bearer XXXX') or as query arg \`?token=XXX\`, and pass as header: 'Content-Type:
 application/json'`
 
-export const SCRIPT_VIEW_WEBHOOK_INFO_LINK = 'https://www.windmill.dev/docs/core_concepts/webhooks'
+export const SCRIPT_VIEW_WEBHOOK_INFO_LINK = 'https://github.com/spiri-robotics/windmill-OSS'
 
 export const SCRIPT_EDITOR_SHOW_EXPLORE_OTHER_SCRIPTS = true
 

@@ -566,8 +566,8 @@
 		{@render viewer()}
 	{:else if viewerOrphaned}
 		<div class="px-4 mt-20 max-w-xl mx-auto">
-			<Alert type="info" title="Open this app from Windmill">
-				This is a Windmill app viewer and must be loaded by Windmill. If you embedded it in your own
+			<Alert type="info" title="Open this app from Pinwheel">
+				This is a Pinwheel app viewer and must be loaded by Pinwheel. If you embedded it in your own
 				page, use the app's public URL without the <code>wm_embed</code> parameter.
 			</Alert>
 		</div>
@@ -580,7 +580,7 @@
 	<div class="px-4 mt-20">
 		<Alert type="error" title="Not found">
 			There was an error loading the app, is the url correct?
-			<a href={base}>Go to Windmill</a>
+			<a href={base}>Go to Pinwheel</a>
 		</Alert>
 	</div>
 {:else if status === 'sdkPrompt'}
@@ -610,14 +610,14 @@
 		</div>
 		<div class="text-center mt-8 text-sm text-primary">
 			It is open to the people it was shared with{guestAppPath
-				? ', and to guests who have no Windmill account'
+				? ', and to guests who have no Pinwheel account'
 				: ''}. Ask the person who shared it to give your account access.
 		</div>
 	{:else}
 		{#if guestAppPath}
 			<div class="px-4 mt-20 w-full text-center font-bold text-xl">Sign in to open this app</div>
 			<div class="text-center mt-8 text-sm text-primary">
-				You do not need a Windmill account. Signing in lets you open this app and nothing else.
+				You do not need a Pinwheel account. Signing in lets you open this app and nothing else.
 			</div>
 		{:else}
 			<div class="px-4 mt-20 w-full text-center font-bold text-xl">

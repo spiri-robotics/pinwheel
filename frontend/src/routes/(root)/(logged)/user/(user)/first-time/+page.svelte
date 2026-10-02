@@ -15,7 +15,7 @@
 	}
 </script>
 
-<CenteredModal title="Welcome to Windmill">
+<CenteredModal title="Welcome to Pinwheel">
 	<p class="text-center text-secondary mt-4 mb-4">
 		Configure your instance settings to get started. You can use the quick setup for essential
 		settings or the advanced setup for full control.

@@ -165,7 +165,7 @@
 		options={{
 			right: PARALLELISM_LABEL,
 			rightTooltip: PARALLELISM_TOOLTIP,
-			rightDocumentationLink: 'https://www.windmill.dev/docs/flows/flow_loops'
+			rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 		}}
 	/>
 {/snippet}
@@ -188,7 +188,7 @@
 		<div class="grow">
 			<div class="flex flex-row gap-2 items-center">
 				<div>
-					<Tooltip documentationLink="https://www.windmill.dev/docs/flows/flow_loops">
+					<Tooltip documentationLink="https://github.com/spiri-robotics/windmill-OSS">
 						Add steps inside the loop and specify an iterator expression that defines the sequence
 						over which your subsequent steps will iterate.
 					</Tooltip>
@@ -280,7 +280,7 @@
 								right: 'Skip failures',
 								rightTooltip:
 									'If disabled, the flow will fail as soon as one of the iteration fail. Otherwise, the error will be collected as the result of the iteration. Regardless of this setting, if a flow level error handler is defined, it will process the error. (Workspace error handlers will NOT be used to process errors if enabled.)',
-								rightDocumentationLink: 'https://www.windmill.dev/docs/flows/flow_loops'
+								rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 							}}
 						/>
 						<Toggle
@@ -296,7 +296,7 @@
 								right: 'Squash',
 								rightTooltip:
 									'Squashing a for loop runs all iterations on the same worker, using a single runner per step for the entire loop. This eliminates cold starts between iterations for supported languages (Bun, Deno, and Python).',
-								rightDocumentationLink: 'https://www.windmill.dev/docs/flows/flow_loops'
+								rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 							}}
 						/>
 						<!-- Its own group: the setting's input belongs to the toggle above it, not
@@ -316,7 +316,7 @@
 									title: mod.value.squash ? SQUASH_PARALLEL_CONFLICT : undefined,
 									right: 'Run in parallel',
 									rightTooltip: 'Run the iterations concurrently instead of one after the other.',
-									rightDocumentationLink: 'https://www.windmill.dev/docs/flows/flow_loops'
+									rightDocumentationLink: 'https://github.com/spiri-robotics/windmill-OSS'
 								}}
 							/>
 							{#if mod.value.parallel}

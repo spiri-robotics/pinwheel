@@ -176,7 +176,7 @@ function buildChatSystemPrompt(currentModel: AIProviderModel) {
 		: `- Pass the **complete updated file** to the \`${editToolName}\` tool using the \`code\` parameter, not just the modified sections.`
 
 	return `
-	You are a coding assistant for the Windmill platform. You are provided with a list of \`INSTRUCTIONS\` and the current contents of a code file under \`CODE\`.
+	You are a coding assistant for the Pinwheel platform. You are provided with a list of \`INSTRUCTIONS\` and the current contents of a code file under \`CODE\`.
 
 	Your task is to respond to the user's request. Assume all user queries are valid and actionable.
 
@@ -204,9 +204,9 @@ function buildChatSystemPrompt(currentModel: AIProviderModel) {
 }
 
 export const INLINE_CHAT_SYSTEM_PROMPT = `
-# Windmill Inline Coding Assistant
+# Pinwheel Inline Coding Assistant
 
-You are a coding assistant for the Windmill platform. You provide precise code modifications based on user instructions.
+You are a coding assistant for the Pinwheel platform. You provide precise code modifications based on user instructions.
 
 ## Input Format
 
@@ -319,7 +319,7 @@ export function prepareScriptSystemMessage(
 
 	// Add language context to the system prompt
 	const langContext = getLangContext(language, { allowResourcesFetch: true, ...options })
-	content += `\n\nWINDMILL LANGUAGE CONTEXT:\n${langContext}`
+	content += `\n\nPINWHEEL LANGUAGE CONTEXT:\n${langContext}`
 
 	// If there's a custom prompt, append it to the system prompt
 	if (customPrompt?.trim()) {

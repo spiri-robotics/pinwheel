@@ -40,7 +40,7 @@
 	onMount(async () => {
 		if (error) {
 			if (closeIfPopup()) return
-			sendUserToast(`Error trying to fetch projects from windmill: ${error}`, true)
+			sendUserToast(`Error trying to fetch projects from pinwheel: ${error}`, true)
 			goto(failureDestination())
 		} else if (code && state) {
 			try {

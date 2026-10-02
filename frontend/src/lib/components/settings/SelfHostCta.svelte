@@ -4,13 +4,13 @@
 	import DockerIcon from '../icons/DockerIcon.svelte'
 	import KubernetesIcon from '../icons/KubernetesIcon.svelte'
 
-	const SELF_HOST_DOCS = 'https://www.windmill.dev/docs/advanced/self_host'
+	const SELF_HOST_DOCS = 'https://github.com/spiri-robotics/windmill-OSS'
 </script>
 
 <div class="box p-4 text-xs prose-sm rounded-md">
 	<h2 class="mb-2">Prefer to self-host?</h2>
 	<p class="text-sm mt-0 mb-4">
-		Windmill is open source and runs on your own infrastructure, with no execution limits on the
+		Pinwheel is open source and runs on your own infrastructure, with no execution limits on the
 		community edition.
 		<a
 			class="inline-flex items-center gap-1"

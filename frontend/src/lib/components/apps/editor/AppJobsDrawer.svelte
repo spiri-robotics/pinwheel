@@ -75,7 +75,7 @@
 			open = false
 		}}
 		tooltip="Look at latests runs to spot potential bugs."
-		documentationLink="https://www.windmill.dev/docs/apps/app_debugging"
+		documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 	>
 		<Splitpanes class="!overflow-visible">
 			<Pane size={25}>

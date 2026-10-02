@@ -1,0 +1,23 @@
+[project]
+name = "rebrand"
+version = "0.1.0"
+description = "Rename the product in the frontend's user-visible text, leaving code untouched"
+requires-python = ">=3.11"
+dependencies = [
+    "tree-sitter>=0.23",
+    "tree-sitter-typescript>=0.23",
+    "tree-sitter-svelte>=1.0",
+]
+
+[project.scripts]
+rebrand = "rebrand:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["rebrand.py"]

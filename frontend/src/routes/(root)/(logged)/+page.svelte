@@ -280,7 +280,7 @@
 		{#if $workspaceStore == 'admins'}
 			<Alert title="Admins workspace">
 				The Admins workspace is for admins only and contains scripts whose purpose is to manage your
-				Windmill instance, such as keeping resource types up to date.
+				Pinwheel instance, such as keeping resource types up to date.
 			</Alert>
 			<div class="my-4"></div>
 		{/if}

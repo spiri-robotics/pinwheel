@@ -9,7 +9,7 @@
 
 	let { hasThirdParty }: Props = $props()
 
-	let instanceName = $derived($whitelabelNameStore ? capitalize($whitelabelNameStore) : 'Windmill')
+	let instanceName = $derived($whitelabelNameStore ? capitalize($whitelabelNameStore) : 'Pinwheel')
 </script>
 
 <!-- Held blank rather than defaulted while the options load: a third-party login also creates

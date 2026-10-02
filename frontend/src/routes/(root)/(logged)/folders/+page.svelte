@@ -108,7 +108,7 @@
 		<PageHeader
 			title="Folders"
 			tooltip="Folders allow to group items such as scripts/flows/resources/schedule together and to grant homogenous RBAC permissions to groups and individual users towards them."
-			documentationLink="https://www.windmill.dev/docs/core_concepts/groups_and_folders"
+			documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 		>
 			<div class="flex flex-row">
 				{#if restricted}

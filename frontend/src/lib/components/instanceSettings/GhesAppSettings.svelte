@@ -181,7 +181,7 @@
 						<strong>GitHub App name</strong>: e.g. <code>windmill-sync</code> (this becomes the app slug)
 					</li>
 					<li>
-						<strong>Homepage URL</strong>: your Windmill instance URL
+						<strong>Homepage URL</strong>: your Pinwheel instance URL
 					</li>
 					<li>
 						<strong>Setup URL</strong> (under "Post installation"):
@@ -195,7 +195,7 @@
 						<strong>Callback URL</strong>: <code>&lt;your-windmill-url&gt;/gh_success</code>
 					</li>
 					<li>
-						Uncheck <strong>Active</strong> under Webhook. Windmill registers the webhooks it
+						Uncheck <strong>Active</strong> under Webhook. Pinwheel registers the webhooks it
 						needs per repository, so the app-level webhook stays unused.
 					</li>
 				</ul>
@@ -205,8 +205,8 @@
 					<li><strong>Metadata</strong>: Read-only</li>
 				</ul>
 				<p>
-					Those two are the minimum, for the push direction (Windmill &rarr; git). Add these for
-					the pull direction (git &rarr; Windmill), all read &amp; write:
+					Those two are the minimum, for the push direction (Pinwheel &rarr; git). Add these for
+					the pull direction (git &rarr; Pinwheel), all read &amp; write:
 				</p>
 				<ul class="list-disc ml-4 space-y-1">
 					<li>
@@ -214,11 +214,11 @@
 						polling the repository
 					</li>
 					<li>
-						<strong>Pull requests</strong>: open pull requests for the branches Windmill pushes,
+						<strong>Pull requests</strong>: open pull requests for the branches Pinwheel pushes,
 						and maintain the deploy-preview comment
 					</li>
 					<li>
-						<strong>Checks</strong>: post the "Windmill diff" and deploy status checks on commits
+						<strong>Checks</strong>: post the "Pinwheel diff" and deploy status checks on commits
 						and pull requests
 					</li>
 				</ul>
@@ -247,7 +247,7 @@
 				</p>
 				<p>
 					Full setup guide: <a
-						href="https://www.windmill.dev/docs/integrations/git_repository#self-managed-github-app"
+						href="https://github.com/spiri-robotics/windmill-OSS"
 						target="_blank"
 						rel="noreferrer"
 						class="underline">Self-managed GitHub App</a

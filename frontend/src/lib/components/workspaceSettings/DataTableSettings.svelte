@@ -200,7 +200,7 @@
 						? 'Superadmin only'
 						: isCloudHosted()
 							? 'Not available on cloud'
-							: "Windmill's database is disabled"
+							: "Pinwheel's database is disabled"
 			})
 		}
 		if (showExternal) {
@@ -376,7 +376,7 @@
 <SettingsPageHeader
 	title="Data tables"
 	description="Relational storage the whole workspace shares under one name. Scripts, flows and apps address it as <span class='font-mono'>datatable://main</span> instead of picking a PostgreSQL resource, so nobody needs access to the credentials to query it, and you can point that name at another database without touching a line of code. Browse and edit tables, and version schema changes as migrations, from here."
-	link="https://www.windmill.dev/docs/core_concepts/persistent_storage/data_tables"
+	link="https://github.com/spiri-robotics/windmill-OSS"
 >
 	{#snippet actions()}
 		<InstanceRolesButton
@@ -393,7 +393,7 @@
 
 {#if isCloudHosted()}
 	<Alert type="info" title="Instance database not available on cloud" class="mb-4" size="xs">
-		On Windmill Cloud, data tables cannot use the Windmill instance database. Select
+		On Windmill Cloud, data tables cannot use the Pinwheel instance database. Select
 		<span class="font-semibold">PostgreSQL</span> and provide an external PostgreSQL resource (e.g. Supabase
 		or Neon) instead.
 	</Alert>
@@ -408,7 +408,7 @@
 		description={`Give your scripts a database to store and query data. ${
 			isCloudHosted()
 				? 'Set one up free in about a minute.'
-				: 'Use the Windmill database, or bring your own.'
+				: 'Use the Pinwheel database, or bring your own.'
 		}`}
 		action={{
 			label: 'Add a data table',
@@ -464,14 +464,14 @@
 												wrapperClass="absolute inset-y-0 right-2 z-20 flex items-center"
 												placement="bottom-start"
 											>
-												Use Windmill's PostgreSQL instance
+												Use Pinwheel's PostgreSQL instance
 											</Tooltip>
 										{:else if dataTable.database.resource_type === 'external_instance'}
 											<Tooltip
 												wrapperClass="absolute inset-y-0 right-2 z-20 flex items-center"
 												placement="bottom-start"
 											>
-												Use a database Windmill manages on the external PostgreSQL cluster
+												Use a database Pinwheel manages on the external PostgreSQL cluster
 											</Tooltip>
 										{/if}
 										<Select

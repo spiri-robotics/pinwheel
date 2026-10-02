@@ -173,7 +173,7 @@
 				<div class="mb-1 text-sm font-semibold">
 					Frontend
 					<Tooltip
-						documentationLink="https://www.windmill.dev/docs/apps/app-runnable-panel#frontend-scripts"
+						documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 					>
 						Frontend scripts are executed in the browser and can manipulate the app context
 						directly.
@@ -201,7 +201,7 @@ state.foo += 1
 // Inputs and display components support settings their value directly
 // setValue('a', "Bar") 
 // Tables support setting their selected index (setSelectedIndex)
-// all helpers can be found at https://www.windmill.dev/docs/apps/app-runnable-panel#frontend-scripts-helpers
+// all helpers can be found at https://github.com/spiri-robotics/windmill-OSS
 
 return state.foo`,
 								language: 'frontend',

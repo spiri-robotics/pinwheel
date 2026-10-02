@@ -358,7 +358,7 @@
 			<SettingsPageHeader
 				title="Single Sign-On"
 				description="Configure SSO providers to let users authenticate using their existing identity provider credentials. To test SSO, save the settings and try to login in an incognito window."
-				link="https://www.windmill.dev/docs/misc/setup_oauth#sso"
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 			{#if !$enterpriseLicense || $enterpriseLicense.endsWith('_pro')}
 				<Alert type="info" title="Limited to 10 SSO users">
@@ -369,7 +369,7 @@
 			<div class="flex gap-2 py-4">
 				<Toggle
 					options={{
-						right: 'Require users to have been added manually to Windmill to sign in through SSO'
+						right: 'Require users to have been added manually to Pinwheel to sign in through SSO'
 					}}
 					bind:checked={requirePreexistingUserForOauth}
 				/>
@@ -482,8 +482,8 @@
 		{:else if tab === 'oauth'}
 			<SettingsPageHeader
 				title="OAuth"
-				description="Connect third-party services like Slack, Teams or Google to let users authenticate directly from Windmill and automatically obtain access tokens."
-				link="https://www.windmill.dev/docs/misc/setup_oauth#oauth"
+				description="Connect third-party services like Slack, Teams or Google to let users authenticate directly from Pinwheel and automatically obtain access tokens."
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 			<div class="h-1"></div>
 			<OAuthSetting login={false} name="slack" bind:value={oauths['slack']} />
@@ -734,7 +734,7 @@
 			<SettingsPageHeader
 				title="SCIM/SAML"
 				description="Set up SAML and SCIM to authenticate users using your identity provider."
-				link="https://www.windmill.dev/docs/misc/saml_and_scim"
+				link="https://github.com/spiri-robotics/windmill-OSS"
 			/>
 			{@render scim?.()}
 		{/if}

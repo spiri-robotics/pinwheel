@@ -222,7 +222,7 @@
 	     step comes first, or whether there is one at all. -->
 	<CenteredModal title="Setting things up" loading={true}></CenteredModal>
 {:else if currentStep === STEP_SOURCE}
-	<CenteredModal title="How did you hear about Windmill?">
+	<CenteredModal title="How did you hear about Pinwheel?">
 		<div class="w-full max-w-lg mx-auto">
 			<div class="grid grid-cols-1 gap-2 mt-6 mb-6">
 				{#each sources as source (source.id)}
@@ -284,7 +284,7 @@
 		</div>
 	</CenteredModal>
 {:else if currentStep === STEP_USE_CASE}
-	<CenteredModal title="What is your primary use case for Windmill?">
+	<CenteredModal title="What is your primary use case for Pinwheel?">
 		<div class="w-full max-w-lg mx-auto">
 			<div class="mb-6">
 				<textarea

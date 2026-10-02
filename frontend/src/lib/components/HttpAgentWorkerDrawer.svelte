@@ -137,7 +137,7 @@
 		<div class="flex flex-col gap-y-6 pt-2">
 			{#if selectedTab === 'create'}
 				<Description
-					><a href="https://www.windmill.dev/docs/core_concepts/agent_workers" target="_blank"
+					><a href="https://github.com/spiri-robotics/windmill-OSS" target="_blank"
 						>Agent workers <ExternalLink size={12} class="inline-block" /></a
 					> can be used to run jobs with remote workers with unreliable connectivity, workers behind
 					firewalls (HTTP-only), untrusted environments (no database access), or large deployments (thousands

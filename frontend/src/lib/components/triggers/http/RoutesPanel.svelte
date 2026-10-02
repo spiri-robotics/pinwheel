@@ -46,7 +46,7 @@
 >
 	{#snippet description()}
 		<div class="flex flex-col gap-2 pb-4">
-			<Description link="https://www.windmill.dev/docs/core_concepts/http_routing"
+			<Description link="https://github.com/spiri-robotics/windmill-OSS"
 				>Routes expose your scripts and flows as HTTP endpoints. Each route can be configured with a
 				specific HTTP method and path.</Description
 			>

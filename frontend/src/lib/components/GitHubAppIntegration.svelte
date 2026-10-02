@@ -198,7 +198,7 @@
 	{/if}
 	{#if showGitHubApp}
 		<Popover
-			documentationLink="https://www.windmill.dev/docs/integrations/git_repository#github-app"
+			documentationLink="https://github.com/spiri-robotics/windmill-OSS"
 			bind:this={githubAppPopover}
 			disabled={!$enterpriseLicense || githubState.loadingGithubInstallations}
 			contentClasses="overflow-auto"

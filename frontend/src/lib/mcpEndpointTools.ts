@@ -17,7 +17,7 @@ export interface EndpointTool {
 export const mcpEndpointTools: EndpointTool[] = [
     {
         name: "searchDocs",
-        description: "Full-text search across the entire Windmill documentation. Provide one or more keywords; returns the most relevant docs pages, each with its Source URL and short matching snippets. Use this FIRST to find relevant pages by their content (a flag, function, error message, config key or concept). If the snippets answer the question, answer directly; otherwise call readDocsPage with a returned Source URL to read more.",
+        description: "Full-text search across the entire Pinwheel documentation. Provide one or more keywords; returns the most relevant docs pages, each with its Source URL and short matching snippets. Use this FIRST to find relevant pages by their content (a flag, function, error message, config key or concept). If the snippets answer the question, answer directly; otherwise call readDocsPage with a returned Source URL to read more.",
         instructions: "",
         path: "/docs/search",
         method: "GET",
@@ -40,7 +40,7 @@ export const mcpEndpointTools: EndpointTool[] = [
     },
     {
         name: "readDocsPage",
-        description: "Fetch the markdown of a single Windmill documentation page. Provide the `url` of a page found via searchDocs (its Source URL). If the page is large, this returns its list of section headings instead of the full content; call again with the `section` argument set to one of those headings to read that section.",
+        description: "Fetch the markdown of a single Pinwheel documentation page. Provide the `url` of a page found via searchDocs (its Source URL). If the page is large, this returns its list of section headings instead of the full content; call again with the `section` argument set to one of those headings to read that section.",
         instructions: "",
         path: "/docs/page",
         method: "GET",
@@ -50,7 +50,7 @@ export const mcpEndpointTools: EndpointTool[] = [
         "properties": {
                 "url": {
                         "type": "string",
-                        "description": "The docs page to read, as a Source URL returned by searchDocs (e.g. https://www.windmill.dev/docs/core_concepts/jobs). A bare path (e.g. /docs/core_concepts/jobs) is also accepted."
+                        "description": "The docs page to read, as a Source URL returned by searchDocs (e.g. https://github.com/spiri-robotics/windmill-OSS). A bare path (e.g. /docs/core_concepts/jobs) is also accepted."
                 },
                 "section": {
                         "type": "string",
@@ -1296,7 +1296,7 @@ export const mcpEndpointTools: EndpointTool[] = [
                                 },
                                 "sandbox": {
                                         "type": "boolean",
-                                        "description": "Publisher opt-in to app sandbox isolation (alpha). When true the app is isolated from each viewer's Windmill session. When false/absent the app runs same-origin with the viewer's full session (the default, pre-isolation behavior).\n"
+                                        "description": "Publisher opt-in to app sandbox isolation (alpha). When true the app is isolated from each viewer's Pinwheel session. When false/absent the app runs same-origin with the viewer's full session (the default, pre-isolation behavior).\n"
                                 },
                                 "frontend_sdk_scopes": {
                                         "type": "array",
@@ -1413,7 +1413,7 @@ export const mcpEndpointTools: EndpointTool[] = [
                                 },
                                 "sandbox": {
                                         "type": "boolean",
-                                        "description": "Publisher opt-in to app sandbox isolation (alpha). When true the app is isolated from each viewer's Windmill session. When false/absent the app runs same-origin with the viewer's full session (the default, pre-isolation behavior).\n"
+                                        "description": "Publisher opt-in to app sandbox isolation (alpha). When true the app is isolated from each viewer's Pinwheel session. When false/absent the app runs same-origin with the viewer's full session (the default, pre-isolation behavior).\n"
                                 },
                                 "frontend_sdk_scopes": {
                                         "type": "array",
@@ -1932,7 +1932,7 @@ export const mcpEndpointTools: EndpointTool[] = [
         "properties": {
                 "path": {
                         "type": "string",
-                        "description": "The unique Windmill path for this schedule. Must be of the form `u/<user>/<path>` or `f/<folder>/<path>`."
+                        "description": "The unique Pinwheel path for this schedule. Must be of the form `u/<user>/<path>` or `f/<folder>/<path>`."
                 },
                 "schedule": {
                         "type": "string",

@@ -989,10 +989,10 @@
 					<div class="flex flex-col gap-1">
 						<label for="ai-key" class="flex flex-row gap-2">
 							<span class="text-xs font-semibold text-emphasis">
-								AI key for Windmill AI
+								AI key for Pinwheel AI
 								<Tooltip>
 									Find out how it can help you <a
-										href="https://www.windmill.dev/docs/core_concepts/ai_generation"
+										href="https://github.com/spiri-robotics/windmill-OSS"
 										target="_blank"
 										rel="noopener noreferrer">in the docs</a
 									>

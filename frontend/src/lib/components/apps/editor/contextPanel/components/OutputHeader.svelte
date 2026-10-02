@@ -241,9 +241,9 @@
 				{#if ['ctx', 'state'].includes(id)}
 					<DocLink
 						docLink={id === 'state'
-							? 'https://www.windmill.dev/docs/apps/outputs#state'
+							? 'https://github.com/spiri-robotics/windmill-OSS'
 							: id === 'ctx'
-								? 'https://www.windmill.dev/docs/apps/outputs#app-context'
+								? 'https://github.com/spiri-robotics/windmill-OSS'
 								: ''}
 						size="xs2"
 					/>
