@@ -1,13 +1,12 @@
 # Hand-off: the Windmill AGPL fork
 
-## Our position
+## Background
 
 Windmill ships some code inside AGPLv3-licensed files behind `enterprise` and
-`private` compile flags. Its LICENSE file asserts that code is proprietary. We
-don't accept that: the code ships in files whose own headers license them under
-AGPLv3, and we consider it AGPLv3. We've stripped it from the fork anyway,
-purely as a precaution, so the fork gives no pretext for a nuisance dispute.
-Nothing in this work should be read as conceding any claim.
+`private` compile flags, and its LICENSE file describes that code as
+proprietary. We've stripped it from every commit in the fork, purely out of an
+abundance of caution. Removing it isn't an acknowledgement that the code is
+proprietary, and it shouldn't be read as one.
 
 ## What you're given
 

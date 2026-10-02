@@ -20,12 +20,11 @@ It also:
 ## Why it exists
 
 We use it on Windmill, which ships some code inside AGPLv3-licensed files behind
-`enterprise`/`private` compile flags. We consider all of that code AGPLv3, as
-the license headers on those files say. We strip it anyway, purely as a
-precaution, so that a fork gives no pretext for a nuisance dispute. Upstream's
-own `oss` feature bundle already compiles without those flags, so stripping
-changes no behaviour of the open source build. It only removes code that build
-never compiled.
+`enterprise`/`private` compile flags. We strip that code purely out of an
+abundance of caution; doing so isn't an acknowledgement that it's proprietary.
+Upstream's own `oss` feature bundle already compiles without those flags, so
+stripping changes no behaviour of the open source build. It only removes code
+that build never compiled.
 
 ## It works blind
 

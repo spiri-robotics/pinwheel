@@ -13,8 +13,8 @@ anything this fork removed. That means:
 - no cloning, fetching or adding upstream as a git remote,
 - no pulling or unpacking `ghcr.io/windmill-labs/*` images.
 
-Code was removed from this fork as a precaution. We consider it AGPLv3, but we
-don't want anything in the fork to be derived from it. If you need behaviour
+Code was removed from this fork out of an abundance of caution, and we don't
+want anything in the fork to be derived from it. If you need behaviour
 that was removed, design it from the surrounding code, the public
 documentation and the OpenAPI spec (`backend/windmill-api/openapi.yaml`).
 `tools/cfgstrip/logs/` lists where code was removed, without its contents.
