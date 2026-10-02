@@ -1188,7 +1188,7 @@ async fn get_instance_config(
     authed: ApiAuthed,
 ) -> JsonResult<InstanceConfig> {
     require_super_admin(&db, &authed).await?;
-    let config = InstanceConfig::from_db(&db)
+    let config = InstanceConfig::from_db_for_api(&db)
         .await
         .map_err(|e| error::Error::internal_err(e.to_string()))?;
     Ok(Json(config))
@@ -1199,7 +1199,7 @@ async fn get_instance_config_yaml(
     authed: ApiAuthed,
 ) -> error::Result<Response> {
     require_super_admin(&db, &authed).await?;
-    let config = InstanceConfig::from_db(&db)
+    let config = InstanceConfig::from_db_for_api(&db)
         .await
         .map_err(|e| error::Error::internal_err(e.to_string()))?;
     let yaml = config
@@ -1338,6 +1338,11 @@ pub async fn get_global_setting(
         && key != MCP_DISABLE_TOKEN_QUERY_PARAM_SETTING
     {
         require_super_admin(&db, &authed).await?;
+    }
+    if instance_config::is_withheld_server_secret(&key) {
+        return Err(error::Error::BadRequest(format!(
+            "{key} is a server secret and this server does not export it (EXPORT_SERVER_SECRETS=false)"
+        )));
     }
     let value = sqlx::query!("SELECT value FROM global_settings WHERE name = $1", key)
         .fetch_optional(&db)
