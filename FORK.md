@@ -14,8 +14,9 @@ proprietary, and it shouldn't be read as one.
   filtered by `cfgstrip` so that no commit contains `enterprise`, `private` or
   `enterprise_saml` gated code. Authors, dates, messages and merges are kept;
   each filtered commit carries a `Filtered-by: cfgstrip <version>` trailer. The
-  history shares no commits with upstream, so `log`, `blame` and `bisect` are
-  safe to use. The fork's own work starts on top of upstream commit
+  history shares no commits with upstream and none of the removed code appears
+  anywhere in it, so working from `log`, `blame` and `bisect` keeps the fork's
+  versions of removed features clean-room reimplementations. The fork's own work starts on top of upstream commit
   `fee401f01eebe411675a19eeff07b6f5435660b1` (release 1.821.0).
 - `tools/cfgstrip/`: the tool that did the removal, with its README and tests.
 - `tools/cfgstrip/logs/strip-fee401f.jsonl`: the removal log. It lists *where* code was cut (file, line,
