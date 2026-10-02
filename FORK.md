@@ -78,9 +78,9 @@ proprietary, and it shouldn't be read as one.
 4. **CI workflows, Dockerfiles and agent/skill docs** still reference the
    private repo and the EE build. None of it is needed. Replace them with a
    build of `--features oss` (plus whatever you add).
-5. **The frontend is untouched.** It still contains license checks such as
-   `$enterpriseLicense` gating and "(requires ee)" labels. A separate pass will
-   come later.
+5. **The frontend wasn't stripped.** It still contains license checks such as
+   `$enterpriseLicense` gating and "(requires ee)" labels. There's no planned
+   pass for these: they're removed by hand as we come across them.
 
 ## Work items, in order
 
