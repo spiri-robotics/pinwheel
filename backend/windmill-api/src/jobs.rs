@@ -3074,6 +3074,7 @@ fn flow_tree_entry_label(
         "forloopflow" => " forloop",
         "whileloopflow" => " whileloop",
         "aiagent" => " ai-agent",
+        "aidecision" => " ai-decision",
         _ => "",
     };
 
