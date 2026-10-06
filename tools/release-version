@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Print the fork's release version for a commit on main (default HEAD):
+#
+#   tools/release-version          # -> 1.830.0-3
+#
+# The upstream release it's built on (the nearest vX.Y.Z tag, put there by
+# tools/import-upstream), plus N: how many commits along main's first-parent
+# line contain that release, counting the one that merged it as 1. N restarts
+# at 1 with each imported release. Needs the full history and tags.
+set -euo pipefail
+
+rev=${1:-HEAD}
+tag=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude 'v*-*' "$rev")
+
+n=0
+for c in $(git rev-list --first-parent "$rev"); do
+  git merge-base --is-ancestor "$tag" "$c" || break
+  n=$((n + 1))
+done
+
+echo "${tag#v}-$n"

@@ -111,12 +111,36 @@ proprietary, and it shouldn't be read as one.
 7. **Rename and rebrand:** new name and logo, remove Windmill's terms-of-service
    line from the login page, and add an AGPL source link in the footer.
 
+## Releases and images
+
+Every push to `main` is a release once the backend tests pass
+(`.github/workflows/release.yml`). The version is the upstream release `main`
+is built on plus a build number: `1.830.0-1` is the commit that merged
+upstream 1.830.0, `1.830.0-2` the next commit on `main`, and so on
+(`tools/release-version` works it out). Each release publishes:
+
+- `ghcr.io/spiri-robotics/pinwheel:<version>`, `:main`, `:latest`, `:sha-<commit>`
+  (amd64 and arm64), built with `--features ce`,
+- `ghcr.io/spiri-robotics/pinwheel-extra` (LSP, multiplayer, debugger) on top of it,
+- a `v<version>` git tag on the commit.
+
+`ghcr.io/spiri-robotics/pinwheel-caddy-l4` is built separately when its
+files change. `docker-compose.yml` and `.env` use these images.
+
+- **Never build an image with `--features oss`.** That bundle includes
+  `no_auth`, which makes every request the superadmin. It's for `cargo check` only.
+- The binary reports `v1.830.0+pinwheel.N` (`WM_VERSION` at build time).
+  It's a `+` rather than a `-` because Windmill compares worker versions as
+  semver, and a `-` suffix is a prerelease that sorts *below* 1.830.0. For the
+  same reason, a build without `WM_VERSION` describes itself only from the plain
+  `vX.Y.Z` upstream tags and ignores the `vX.Y.Z-N` build tags.
+
 ## Pulling in upstream releases
 
 The `import-upstream` workflow runs daily (or on demand from the Actions tab).
 It only follows tagged releases: it finds upstream's newest `vX.Y.Z` tag,
 rewrites the commits up to it with the current `tools/cfgstrip`, pushes them to
-`upstream-stripped`, tags the rewritten release `upstream/vX.Y.Z`, and opens a
+`upstream-stripped`, tags the rewritten release `vX.Y.Z`, and opens a
 PR into `main` (or moves the one already open up to the new release). Merge
 that PR with a merge commit, not a squash or rebase, so later imports keep a
 common base. `tools/import-upstream` does the same by hand

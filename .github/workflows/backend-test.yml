@@ -1,13 +1,10 @@
 name: Backend only integration tests
 
+# Pushes to main run these from release.yml, which only publishes images once
+# they pass.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - "main"
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend-test.yml"
+  workflow_call:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
@@ -20,7 +17,10 @@ defaults:
 
 jobs:
   cargo_test:
-    runs-on: ubicloud-standard-16
+    # A standard hosted runner is small for this suite (upstream used 16 cores and
+    # 64GB). Set the BACKEND_TEST_RUNNER repository variable to a larger runner's
+    # label if builds run out of memory or time.
+    runs-on: ${{ vars.BACKEND_TEST_RUNNER || 'ubuntu-latest' }}
     services:
       postgres:
         image: postgres
@@ -44,6 +44,12 @@ jobs:
           --health-cmd "mysqladmin ping -h localhost" --health-interval 10s
           --health-timeout 5s --health-retries 5
     steps:
+      - name: Free disk space
+        working-directory: /
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /usr/share/swift \
+            /opt/hostedtoolcache/CodeQL /usr/share/dotnet
+          df -h /
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
@@ -91,6 +97,7 @@ jobs:
         with:
           cache-workspaces: backend
           toolchain: 1.97.0
+          rustflags: ""
       - name: Fix stale v8 build cache
         working-directory: ./backend
         run: |
@@ -103,21 +110,6 @@ jobs:
               rm -rf "target/$profile/build/v8-"* "target/$profile/.fingerprint/v8-"*
             fi
           done
-      - name: Read EE repo commit hash
-        run: |
-          echo "ee_repo_ref=$(cat ./ee-repo-ref.txt)" >> "$GITHUB_ENV"
-
-      - uses: actions/checkout@v4
-        with:
-          repository: windmill-labs/windmill-ee-private
-          path: ./windmill-ee-private
-          ref: ${{ env.ee_repo_ref }}
-          token: ${{ secrets.WINDMILL_EE_PRIVATE_ACCESS }}
-          fetch-depth: 0
-
-      - name: Substitute EE code (EE logic is behind feature flag)
-        run: |
-          ./substitute_ee_code.sh --copy --dir ./windmill-ee-private
       - name: Setup private npm registry with test package
         working-directory: /tmp
         run: |
@@ -237,7 +229,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-duckdb-ffi-
       - name: cargo test
-        timeout-minutes: 30
+        timeout-minutes: 240
         env:
           # setup-rust-toolchain exports RUSTFLAGS=-D warnings, and the RUSTFLAGS env
           # var fully REPLACES (never merges with) target.*.rustflags in
@@ -246,9 +238,11 @@ jobs:
           # binaries (v8 + duckdb + every language runtime, statically linked) with the
           # default bfd linker. Its peak memory across ~12 parallel links OOM-kills the
           # runner mid-link (SIGTERM => exit 143, before any test runs). Re-add the mold
-          # link arg here so CI links with mold like local dev, keeping -D warnings.
+          # link arg here so CI links with mold like local dev. Warnings are allowed:
+          # stripped code leaves dead helpers behind, and each upstream import can
+          # add more, so -D warnings would fail releases for no real defect.
           # (config.toml's `linker = "clang"` still applies; env only overrides rustflags.)
-          RUSTFLAGS: "-D warnings -C link-arg=-fuse-ld=mold"
+          RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
           SQLX_OFFLINE: true
           DATABASE_URL: postgres://postgres:changeme@localhost:5432/windmill
           DISABLE_EMBEDDING: true
@@ -260,7 +254,7 @@ jobs:
           # across the workspace); at high parallelism enough heavy codegen+link
           # units (rustc ~2.6GB, mold ~1GB each) overlap to exhaust the 64GB
           # runner. Matches backend-test-windows.yml, which already uses 8.
-          CARGO_BUILD_JOBS: 8
+          CARGO_BUILD_JOBS: 3
           # Incremental compilation is per-run dead weight in CI: rust-cache
           # (cache-workspaces above) restores compiled dependency artifacts but
           # never persists target/**/incremental, so there is no prior state to
@@ -295,4 +289,4 @@ jobs:
           # never reaches it. Pin the target dir (matching the cache step above) so
           # its own tests run off this compile rather than a second bundled build.
           (cd windmill-duckdb-ffi-internal && export CARGO_TARGET_DIR="$PWD/target" && ./build_dev.sh && cargo test --release -p windmill_duckdb_ffi_internal)
-          DENO_PATH=$(which deno) BUN_PATH=$(which bun) NODE_BIN_PATH=$(which node) GO_PATH=$(which go) UV_PATH=$(which uv) PHP_PATH=$(which php) COMPOSER_PATH=$(which composer) RUBY_PATH=$(which ruby) RUBY_BUNDLE_PATH=$(which bundle) RUBY_GEM_PATH=$(which gem) POWERSHELL_PATH=$(which pwsh) DOTNET_PATH=$(which dotnet) cargo test --features enterprise,deno_core,duckdb,license,python,rust,scoped_cache,parquet,private,private_registry_test,csharp,php,ruby,mysql,quickjs,mcp,run_inline,smtp,http_trigger --all -- --nocapture --test-threads=10
+          DENO_PATH=$(which deno) BUN_PATH=$(which bun) NODE_BIN_PATH=$(which node) GO_PATH=$(which go) UV_PATH=$(which uv) PHP_PATH=$(which php) COMPOSER_PATH=$(which composer) RUBY_PATH=$(which ruby) RUBY_BUNDLE_PATH=$(which bundle) RUBY_GEM_PATH=$(which gem) POWERSHELL_PATH=$(which pwsh) DOTNET_PATH=$(which dotnet) cargo test --features deno_core,duckdb,license,python,rust,scoped_cache,parquet,private_registry_test,csharp,php,ruby,mysql,quickjs,mcp,run_inline,smtp,http_trigger --all -- --nocapture --test-threads=10

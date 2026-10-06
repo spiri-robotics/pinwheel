@@ -34,8 +34,16 @@ use url::Url;
 pub const MAX_PER_PAGE: usize = 10000;
 pub const DEFAULT_PER_PAGE: usize = 1000;
 
-pub const GIT_VERSION: &str =
-    git_version!(args = ["--tag", "--always"], fallback = "unknown-version");
+/// `WM_VERSION` at build time (release builds set it, e.g. `v1.830.0+pinwheel.3`),
+/// otherwise the nearest upstream release tag. Fork build tags (`v1.830.0-3`) are
+/// excluded: a `-` suffix is a semver prerelease and would sort below the release.
+pub const GIT_VERSION: &str = match option_env!("WM_VERSION") {
+    Some(v) if !v.is_empty() => v,
+    _ => git_version!(
+        args = ["--tags", "--always", "--match", "v[0-9]*", "--exclude", "v*-*"],
+        fallback = "unknown-version"
+    ),
+};
 
 pub const AGENT_JWT_PREFIX: &str = "jwt_agent_";
 pub const WORKER_NAME_PREFIX: &str = "wk";

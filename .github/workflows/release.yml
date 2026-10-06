@@ -1,0 +1,146 @@
+name: release
+
+# Every push to main that passes the backend tests is a release: images are
+# published as <upstream version>-<N> (see tools/release-version), plus :main,
+# :latest and :sha-<commit>, and the commit is tagged v<version>.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # to push the release tag
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+  EXTRA_IMAGE: ghcr.io/${{ github.repository }}-extra
+  # Cargo features for the published binary: upstream's community image set.
+  # Never `oss`: that bundle compiles in no_auth (every request is superadmin).
+  FEATURES: ce
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: v
+        run: |
+          version=$(tools/release-version)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Release $version" >> "$GITHUB_STEP_SUMMARY"
+
+  test:
+    uses: ./.github/workflows/backend-test.yml
+
+  build:
+    needs: [version, test]
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /usr/share/swift \
+            /opt/hostedtoolcache/CodeQL /usr/share/dotnet
+          df -h /
+      # The Dockerfile copies .git so the build can describe its version.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            features=${{ env.FEATURES }}
+            WM_VERSION=v${{ needs.version.outputs.version }}
+            WM_BUILD_VERSION=${{ needs.version.outputs.version }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=min,scope=${{ matrix.platform }},ignore-error=true
+      - name: Save digest
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "$RUNNER_TEMP/digests/${digest#sha256:}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/digests/*
+          retention-days: 1
+
+  publish:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag the multi-arch image
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          v=${{ needs.version.outputs.version }}
+          docker buildx imagetools create \
+            -t "$IMAGE:$v" -t "$IMAGE:main" -t "$IMAGE:latest" -t "$IMAGE:sha-${GITHUB_SHA::12}" \
+            $(printf "$IMAGE@sha256:%s " *)
+          docker buildx imagetools inspect "$IMAGE:$v"
+      - name: Tag the commit
+        run: |
+          git tag "v${{ needs.version.outputs.version }}" "$GITHUB_SHA"
+          git push origin "refs/tags/v${{ needs.version.outputs.version }}"
+
+  # LSP, multiplayer and debugger services, layered on the image just published.
+  extra:
+    needs: [version, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/DockerfileExtra
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            BASE_IMAGE=${{ env.IMAGE }}:${{ needs.version.outputs.version }}
+          push: true
+          tags: |
+            ${{ env.EXTRA_IMAGE }}:${{ needs.version.outputs.version }}
+            ${{ env.EXTRA_IMAGE }}:main
+            ${{ env.EXTRA_IMAGE }}:latest

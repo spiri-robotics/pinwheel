@@ -55,9 +55,9 @@ if [ "$before" = "$after" ]; then
 fi
 
 # Fetching a single branch only copies objects reachable from it, so none of
-# the unstripped history comes along. The upstream/<tag> tag marks which
-# rewritten commit is that release.
+# the unstripped history comes along. The release's own tag (vX.Y.Z) marks
+# which rewritten commit it is; builds take their version from it.
 git -C "$repo_root" fetch --quiet "$up" "+refs/heads/$branch:refs/heads/$branch"
-git -C "$repo_root" tag --force "upstream/$tag" "$after"
-git -C "$repo_root" push --quiet "$remote" "refs/heads/$branch:refs/heads/$branch" "refs/tags/upstream/$tag"
+git -C "$repo_root" tag --force "$tag" "$after"
+git -C "$repo_root" push --quiet "$remote" "refs/heads/$branch:refs/heads/$branch" "refs/tags/$tag"
 echo "$branch: $tag, $(git -C "$repo_root" rev-list --count "$before..$after") new commit(s). Merge with: git merge $branch"

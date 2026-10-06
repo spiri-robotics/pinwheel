@@ -1,6 +1,6 @@
 # DockerfileExtra - Combined Windmill Extra Services
 #
-# This image extends windmill-slim with three optional Windmill services:
+# This image extends the main image with three optional Windmill services:
 # - LSP (Language Server Protocol) - Port 3001
 # - Multiplayer (y-websocket) - Port 3002
 # - Debugger (DAP WebSocket) - Port 3003
@@ -17,9 +17,10 @@
 #   docker run -p 3001:3001 -p 3002:3002 -p 3003:3003 windmill-extra
 
 # ============================================================================
-# Build final extra services image from windmill-ee-slim (includes nsjail)
+# Build the extra services image on top of the main image (includes nsjail)
 # ============================================================================
-FROM ghcr.io/windmill-labs/windmill-ee-slim:latest AS final
+ARG BASE_IMAGE=ghcr.io/spiri-robotics/pinwheel:latest
+FROM ${BASE_IMAGE} AS final
 
 ARG APP=/usr/src/app
 

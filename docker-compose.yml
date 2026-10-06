@@ -102,7 +102,6 @@ services:
 
   ## This worker is specialized for "native" jobs. Native jobs run in-process and thus are much more lightweight than other jobs
   windmill_worker_native:
-    # Use ghcr.io/windmill-labs/windmill-ee:main for the ee
     image: ${WM_IMAGE}
     pull_policy: always
     deploy:
@@ -182,7 +181,7 @@ services:
   #   - ENABLE_MULTIPLAYER=false - Real-time collaboration (Enterprise Edition)
   #   - ENABLE_DEBUGGER=false - Interactive debugging via DAP WebSocket
   windmill_extra:
-    image: ghcr.io/windmill-labs/windmill-extra:latest
+    image: ghcr.io/spiri-robotics/pinwheel-extra:latest
     pull_policy: always
     restart: unless-stopped
     expose:
@@ -210,7 +209,7 @@ services:
     # Pinned: this image and the ./Caddyfile next to it are version-coupled, so
     # they have to move together. Bump docker/caddy-l4.version in the same
     # commit as any Caddyfile change.
-    image: ghcr.io/windmill-labs/caddy-l4:2.11.4-1
+    image: ghcr.io/spiri-robotics/pinwheel-caddy-l4:2.11.4-1
     restart: unless-stopped
     # Configure the mounted Caddyfile and the exposed ports or use another reverse proxy if needed
     volumes:

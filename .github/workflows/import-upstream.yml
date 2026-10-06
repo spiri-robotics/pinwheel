@@ -48,16 +48,16 @@ jobs:
             echo "main already has everything from upstream-stripped"
             exit 0
           fi
-          tag=$(git tag --points-at origin/upstream-stripped --list 'upstream/v*' | sort -V | tail -n1)
+          tag=$(git tag --points-at origin/upstream-stripped --list 'v*' | grep -v -- - | sort -V | tail -n1 || true)
           if [ -z "$tag" ]; then
             echo "upstream-stripped isn't at a release yet; waiting for the next one"
             exit 0
           fi
-          title="Import upstream Windmill ${tag#upstream/} ($ahead commits)"
+          title="Import upstream Windmill $tag ($ahead commits)"
           pr=$(gh pr list --head upstream-stripped --base main --state open --json number --jq '.[].number')
           if [ -n "$pr" ]; then
             gh pr edit "$pr" --title "$title"
-            echo "import PR #$pr already open; it now runs up to ${tag#upstream/}"
+            echo "import PR #$pr already open; it now runs up to $tag"
             exit 0
           fi
           gh pr create --head upstream-stripped --base main \

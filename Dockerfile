@@ -102,6 +102,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 FROM rust_base AS builder
 ARG features=""
+# Release version baked into the binary (e.g. v1.830.0+pinwheel.3); empty falls
+# back to git describe. See GIT_VERSION in windmill-common/src/utils.rs.
+ARG WM_VERSION=""
 
 COPY --from=planner /windmill/recipe.json recipe.json
 
@@ -124,7 +127,7 @@ COPY .git/ .git/
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
-    CARGO_NET_GIT_FETCH_WITH_CLI=true cargo build --release --features "$features"
+    CARGO_NET_GIT_FETCH_WITH_CLI=true WM_VERSION="$WM_VERSION" cargo build --release --features "$features"
 
 # Split debug info into a separate file, then strip the binary.
 # The .debug file can be extracted as a CI artifact for production debugging.
