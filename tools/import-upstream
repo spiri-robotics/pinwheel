@@ -1,42 +1,63 @@
 #!/usr/bin/env bash
-# Bring new upstream Windmill work into the fork as stripped, rewritten commits.
+# Bring the latest upstream Windmill release into the fork as stripped,
+# rewritten commits.
 #
-#   tools/import-upstream            # rewrite new upstream commits, push upstream-stripped
+#   tools/import-upstream            # rewrite up to the newest release tag, push upstream-stripped
 #   git merge upstream-stripped      # then merge as usual
 #
+# Only tagged releases (vX.Y.Z) are imported, never upstream's main in between.
+# Set CFGSTRIP_UPSTREAM_TAG to import a particular release instead of the newest.
+#
 # Normally this runs in CI (.github/workflows/import-upstream.yml); running it
-# by hand does the same thing. The unstripped upstream clone it needs lives in
-# a temporary directory and is deleted afterwards. Nothing else is kept: which
-# upstream commits are already imported is worked out from upstream-stripped.
+# by hand does the same thing. The unstripped upstream history it needs lives
+# in a temporary directory and is deleted afterwards. Nothing else is kept:
+# which upstream commits are already imported is worked out from
+# upstream-stripped.
+#
+# Upstream's .github is frozen: new commits keep the tree their parent had, so
+# the fork's own CI is never overwritten, and the push never touches workflow
+# files (GitHub refuses those from a workflow token).
 set -euo pipefail
 
 repo_root=$(git rev-parse --show-toplevel)
 upstream_url=${CFGSTRIP_UPSTREAM_URL:-https://github.com/windmill-labs/windmill.git}
-upstream_ref=${CFGSTRIP_UPSTREAM_REF:-main}
 remote=${CFGSTRIP_FORK_REMOTE:-origin}
 branch=upstream-stripped
+
+tag=${CFGSTRIP_UPSTREAM_TAG:-$(git ls-remote --tags --refs "$upstream_url" 'v*' \
+  | sed -n 's|.*refs/tags/\(v[0-9]*\.[0-9]*\.[0-9]*\)$|\1|p' | sort -V | tail -n1)}
+if [ -z "$tag" ]; then
+  echo "No upstream release tags found." >&2
+  exit 1
+fi
+echo "Newest upstream release: $tag"
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 up="$work/upstream.git"
 
-git clone --bare --quiet --single-branch --branch "$upstream_ref" "$upstream_url" "$up"
+# Fetching just the tag brings its history and nothing past it.
+git init --quiet --bare "$up"
+git -C "$up" fetch --quiet --no-tags "$upstream_url" "+refs/tags/$tag:refs/tags/$tag"
 git -C "$repo_root" fetch --quiet "$remote" "+refs/heads/$branch:refs/heads/$branch"
 git -C "$up" fetch --quiet "$repo_root" "+refs/heads/$branch:refs/heads/$branch"
 before=$(git -C "$up" rev-parse "refs/heads/$branch")
 
 uv run --quiet --project "$repo_root/tools/cfgstrip" cfgstrip-history \
-  --repo "$up" --ref "$upstream_ref" --branch "$branch" \
-  --drop AGENTS.md --drop CLAUDE.md --drop .claude --drop .agents
+  --repo "$up" --ref "refs/tags/$tag" --branch "$branch" \
+  --drop AGENTS.md --drop CLAUDE.md --drop .claude --drop .agents \
+  --freeze .github
 
 after=$(git -C "$up" rev-parse "refs/heads/$branch")
 if [ "$before" = "$after" ]; then
-  echo "No new upstream commits."
+  echo "$tag is already imported."
   exit 0
 fi
 
 # Fetching a single branch only copies objects reachable from it, so none of
-# the unstripped history comes along.
+# the unstripped history comes along. The upstream/<tag> tag marks which
+# rewritten commit is that release.
 git -C "$repo_root" fetch --quiet "$up" "+refs/heads/$branch:refs/heads/$branch"
-git -C "$repo_root" push --quiet "$remote" "refs/heads/$branch:refs/heads/$branch"
-echo "$branch: $(git -C "$repo_root" rev-list --count "$before..$after") new commit(s). Merge with: git merge $branch"
+git -C "$repo_root" tag --force "upstream/$tag" "$after"
+git -C "$repo_root" push --quiet "$remote" "refs/heads/$branch:refs/heads/$branch" "refs/tags/upstream/$tag"
+echo "$branch: $tag, $(git -C "$repo_root" rev-list --count "$before..$after") new commit(s). Merge with: git merge $branch"

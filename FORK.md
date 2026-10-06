@@ -114,12 +114,20 @@ proprietary, and it shouldn't be read as one.
 ## Pulling in upstream releases
 
 The `import-upstream` workflow runs daily (or on demand from the Actions tab).
-It rewrites any new upstream commits with the current `tools/cfgstrip`, pushes
-them to `upstream-stripped`, and opens a PR into `main` (or adds them to the
-one already open). Merge that PR with a merge commit, not a squash or rebase,
-so later imports keep a common base. `tools/import-upstream` does the same by
-hand. The workflow re-enables itself on every run, so GitHub's 60-day pause on
-idle scheduled workflows doesn't stop it.
+It only follows tagged releases: it finds upstream's newest `vX.Y.Z` tag,
+rewrites the commits up to it with the current `tools/cfgstrip`, pushes them to
+`upstream-stripped`, tags the rewritten release `upstream/vX.Y.Z`, and opens a
+PR into `main` (or moves the one already open up to the new release). Merge
+that PR with a merge commit, not a squash or rebase, so later imports keep a
+common base. `tools/import-upstream` does the same by hand
+(`CFGSTRIP_UPSTREAM_TAG=v1.830.0` picks a particular release). The workflow
+re-enables itself on every run, so GitHub's 60-day pause on idle scheduled
+workflows doesn't stop it.
+
+Upstream's `.github` is frozen: imported commits keep the `.github` tree of
+the commit before them, so upstream's CI changes never arrive. The fork's CI
+lives on `main` and is ours to change. This also keeps imports pushable, because
+GitHub won't let a workflow's token push commits that touch workflow files.
 
 No state is kept anywhere. Rewriting preserves each commit's author, dates and
 message, so the importer works out which upstream commits `upstream-stripped`

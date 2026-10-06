@@ -16,9 +16,14 @@ Every commit gets the trailer, including ones the filter doesn't otherwise
 change, so the rewritten history shares no commits with upstream. Git then
 refuses an accidental raw merge of upstream ("unrelated histories").
 
+`--freeze PATH` keeps a top-level path as the first parent's rewritten commit
+has it, so upstream's changes there never arrive (the fork uses this for
+`.github`: it owns its own CI, and GitHub won't let a workflow token push
+commits that touch workflow files).
+
 Usage:
-    cfgstrip-history --repo UPSTREAM.git --ref main --branch upstream-stripped \\
-        [--drop AGENTS.md --drop .claude ...]
+    cfgstrip-history --repo UPSTREAM.git --ref v1.2.3 --branch upstream-stripped \\
+        [--drop AGENTS.md --drop .claude ...] [--freeze .github]
 
 UPSTREAM.git must also contain the existing rewritten branch, if any (fetch it
 from the fork first). New objects are written into UPSTREAM.git and
@@ -55,10 +60,12 @@ def add_trailer(message: bytes, trailer: bytes) -> bytes:
 
 
 class Rewriter:
-    def __init__(self, repo: pygit2.Repository, off: set[str], drop: set[str], version: str):
+    def __init__(self, repo: pygit2.Repository, off: set[str], drop: set[str], version: str,
+                 freeze: set[str] = frozenset()):
         self.repo = repo
         self.off = off
         self.drop = drop
+        self.freeze = freeze
         self.version = version
         self.tree_memo: dict[pygit2.Oid, pygit2.Oid] = {}
         self.strip_memo: dict[tuple, dict[str, pygit2.Oid | None]] = {}
@@ -183,12 +190,26 @@ class Rewriter:
         self.tree_memo[tree_id] = new
         return new
 
+    def freeze_tree(self, tree_id: pygit2.Oid, parent: pygit2.Oid | None) -> pygit2.Oid:
+        """Give frozen top-level entries the first parent's version (none for a root commit)."""
+        tree = self.repo[tree_id]
+        before = self.repo[parent].tree if parent is not None else None
+        tb = self.repo.TreeBuilder(tree)
+        for name in self.freeze:
+            if name in tree:
+                tb.remove(name)
+            if before is not None and name in before:
+                tb.insert(name, before[name].id, before[name].filemode)
+        return tb.write()
+
     # -- commits --------------------------------------------------------------
     def rewrite_commit(self, sha: str, parents: list[str], mapping: dict[str, str]) -> str:
         c = self.repo[sha]
         tree = self.rewrite_tree(c.tree_id)
         msg = add_trailer(c.raw_message, f"Filtered-by: cfgstrip {self.version}".encode())
         parent_ids = [pygit2.Oid(hex=mapping[p]) for p in parents]
+        if self.freeze:
+            tree = self.freeze_tree(tree, parent_ids[0] if parent_ids else None)
         if c.message_encoding:
             new = self.repo.create_commit(None, c.author, c.committer, msg, tree, parent_ids,
                                           c.message_encoding)
@@ -245,10 +266,13 @@ def main(argv=None) -> int:
     ap.add_argument("--branch", default="upstream-stripped", help="rewritten branch to extend")
     ap.add_argument("--off", action="append", default=None)
     ap.add_argument("--drop", action="append", default=[], help="top-level path to remove from every commit")
+    ap.add_argument("--freeze", action="append", default=[],
+                    help="top-level path that new commits keep from their first parent, ignoring upstream's changes")
     args = ap.parse_args(argv)
 
     off = set(args.off or cfgstrip.DEFAULT_OFF)
     drop = set(args.drop)
+    freeze = set(args.freeze)
     repo = pygit2.Repository(str(args.repo))
     version = cfgstrip.tool_version()
 
@@ -264,7 +288,7 @@ def main(argv=None) -> int:
     if not todo:
         return 0
 
-    rw = Rewriter(repo, off, drop, version)
+    rw = Rewriter(repo, off, drop, version, freeze)
     t0 = time.time()
     for i, (sha, *parents) in enumerate(todo, 1):
         mapping[sha] = rw.rewrite_commit(sha, parents, mapping)

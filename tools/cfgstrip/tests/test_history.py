@@ -95,6 +95,22 @@ def test_incremental_equals_full(tmp_path: Path):
     assert inc == full
 
 
+def test_freeze_keeps_parent_version(tmp_path: Path):
+    up = make_upstream(tmp_path)
+    commit(up, {".github/workflows/ci.yml": "v1\n"}, "add ci")
+    run(up, "main")
+    commit(up, {".github/workflows/ci.yml": "v2\n", ".github/new.yml": "x\n", "src/extra.rs": "pub fn more() {}\n"},
+           "change ci and code")
+    rc = history.main(["--repo", str(up), "--ref", "main", "--branch", "upstream-stripped",
+                       "--drop", "AGENTS.md", "--freeze", ".github"])
+    assert rc == 0
+    tip = git(up, "rev-parse", "upstream-stripped")
+    assert git(up, "show", f"{tip}:.github/workflows/ci.yml") == "v1"
+    assert ".github/new.yml" not in git(up, "ls-tree", "-r", "--name-only", tip).split()
+    assert git(up, "show", f"{tip}:src/extra.rs") == "pub fn more() {}"
+    assert git(up, "diff", "--name-only", f"{tip}~1", tip) == "src/extra.rs"
+
+
 def test_redo_from_a_point(tmp_path: Path):
     up = make_upstream(tmp_path)
     tip = run(up, "main")
