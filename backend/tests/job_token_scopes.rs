@@ -18,6 +18,15 @@ async fn insert_job(
     parent: Option<&str>,
     scopes: &[&str],
 ) -> anyhow::Result<()> {
+    insert_job_with(db, id, parent, Some(scopes)).await
+}
+
+async fn insert_job_with(
+    db: &Pool<Postgres>,
+    id: &str,
+    parent: Option<&str>,
+    scopes: Option<&[&str]>,
+) -> anyhow::Result<()> {
     let id = Uuid::parse_str(id)?;
     sqlx::query(
         "INSERT INTO v2_job (id, workspace_id, created_by, permissioned_as, permissioned_as_email,
@@ -353,3 +362,4 @@ async fn test_deploy_without_the_field_keeps_the_restriction(
     assert_eq!(stored("u/test-user/renamed").await?, None);
     Ok(())
 }
+
