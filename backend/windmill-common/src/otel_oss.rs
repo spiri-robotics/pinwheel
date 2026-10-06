@@ -51,6 +51,8 @@ pub fn add_root_flow_job_to_otlp(_queued_job: &QueuedJob, _success: bool) {}
 
 pub fn otel_incr_queue_push_count() {}
 
+pub fn otel_incr_oidc_signature_count(_caller: &'static str) {}
+
 pub fn otel_incr_queue_delete_count() {}
 
 pub fn otel_incr_queue_pull_count() {}

@@ -1232,8 +1232,8 @@ async fn proxy(
         .get("X-Resource-Value")
         .map(|v| {
             let invalid = |e: String| Error::BadRequest(format!("Invalid X-Resource-Value: {e}"));
-            let decoded =
-                urlencoding::decode(v.to_str().unwrap_or("")).map_err(|e| invalid(e.to_string()))?;
+            let decoded = urlencoding::decode(v.to_str().unwrap_or(""))
+                .map_err(|e| invalid(e.to_string()))?;
             let value = serde_json::from_str::<serde_json::Value>(&decoded)
                 .map_err(|e| invalid(e.to_string()))?;
             check_scopes(&authed, || "resources:write".to_string())?;
