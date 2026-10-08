@@ -113,7 +113,8 @@ mod ce {
         _cluster: DatatableRoleCluster,
         _name: &str,
         _password: &str,
-    ) -> Result<()> {
+        _take_over: bool,
+    ) -> Result<bool> {
         Err(unavailable())
     }
 
