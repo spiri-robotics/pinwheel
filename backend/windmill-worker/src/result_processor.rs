@@ -891,7 +891,7 @@ pub async fn process_completed_job(
 
         add_time!(bench, "pre add_completed_job");
 
-        let (_, duration) = add_completed_job(
+        let (_, span) = add_completed_job(
             db,
             &job,
             true,
@@ -927,7 +927,10 @@ pub async fn process_completed_job(
                     true,
                     canceled_by,
                     result,
-                    started_at.map(|x| FlowJobDuration { started_at: x, duration_ms: duration }),
+                    span.started_at.or(started_at).map(|x| FlowJobDuration {
+                        started_at: x,
+                        duration_ms: span.duration_ms,
+                    }),
                     StepFailureKind::Normal,
                     &same_worker_tx.expect(SAME_WORKER_REQUIREMENTS).to_owned(),
                     &worker_dir,
@@ -959,9 +962,10 @@ pub async fn process_completed_job(
         // `wm_failure` field) so a real runtime failure whose raw
         // result happens to contain a `wm_failure` field still goes
         // through the standard `WrappedError { error: ... }` wrap path.
-        let downstream_result: Arc<Box<RawValue>> = if is_pre_shaped_wm_failure_result(result.get())
-        {
-            windmill_queue::add_completed_job_pre_shaped_failure(
+        let (downstream_result, span): (Arc<Box<RawValue>>, _) = if is_pre_shaped_wm_failure_result(
+            result.get(),
+        ) {
+            let span = windmill_queue::add_completed_job_pre_shaped_failure(
                 db,
                 &job,
                 mem_peak.to_owned(),
@@ -972,9 +976,9 @@ pub async fn process_completed_job(
                 None,
             )
             .await?;
-            result.clone()
+            (result.clone(), span)
         } else {
-            let wrapped = add_completed_job_error(
+            let (wrapped, span) = windmill_queue::add_completed_job_error_with_span(
                 db,
                 &job,
                 mem_peak.to_owned(),
@@ -987,7 +991,10 @@ pub async fn process_completed_job(
                 None,
             )
             .await?;
-            Arc::new(serde_json::value::to_raw_value(&wrapped).unwrap())
+            (
+                Arc::new(serde_json::value::to_raw_value(&wrapped).unwrap()),
+                span,
+            )
         };
         if job.is_flow_step() {
             if let Some(parent_job) = job.parent_job {
@@ -1001,12 +1008,19 @@ pub async fn process_completed_job(
                     false,
                     canceled_by,
                     downstream_result,
-                    duration.and_then(|d| {
-                        job.started_at.map(|started_at| FlowJobDuration {
-                            started_at: started_at,
-                            duration_ms: d,
+                    if span.outlasts_run(job.started_at) {
+                        span.started_at.map(|started_at| FlowJobDuration {
+                            started_at,
+                            duration_ms: span.duration_ms,
                         })
-                    }),
+                    } else {
+                        duration.and_then(|d| {
+                            job.started_at.map(|started_at| FlowJobDuration {
+                                started_at: started_at,
+                                duration_ms: d,
+                            })
+                        })
+                    },
                     StepFailureKind::Normal,
                     &same_worker_tx.expect(SAME_WORKER_REQUIREMENTS).to_owned(),
                     &worker_dir,
