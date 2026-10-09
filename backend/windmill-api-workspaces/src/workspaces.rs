@@ -10998,9 +10998,12 @@ struct ChangeOperatorSettings {
     /// withdraw or grant the right on every push.
     ///
     /// `builder_flows` lets every operator of this workspace compose flows out of already-deployed
-    /// runnables, and makes each of them consume a full author seat instead of half of one.
+    /// runnables, `builder_apps` full-code apps. Either makes each operator consume a full author
+    /// seat instead of half of one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     builder_flows: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    builder_apps: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     manage_schedules: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
