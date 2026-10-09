@@ -245,6 +245,27 @@ pub async fn unclaimable_run_lineage(
     Ok(referenced)
 }
 
+/// `WM_END_USER_EMAIL` of a run started through a `/jobs/run*` route. `WM_EMAIL` names the
+/// runnable's `on_behalf_of` identity when it has one, so this is the only place the caller's
+/// address reaches the job. A job's own `WM_TOKEN` passes on the end user of that job, and a run
+/// a trigger fired has no end user.
+pub async fn run_end_user_email(
+    db: &DB,
+    w_id: &str,
+    authed: &ApiAuthed,
+    trigger: Option<&TriggerMetadata>,
+) -> error::Result<Option<String>> {
+    if trigger.is_some() {
+        return Ok(None);
+    }
+    match authed.job_id {
+        Some(job_id) => Ok(windmill_common::auth::get_job_perms(db, &job_id, w_id)
+            .await?
+            .and_then(|p| p.end_user_email)),
+        None => Ok(Some(authed.email.clone())),
+    }
+}
+
 
 // ---------------------------------------------------------------------------
 // Cancel jobs
@@ -1000,6 +1021,7 @@ pub async fn run_flow<'c>(
         )
     };
 
+    let end_user_email = run_end_user_email(db, w_id, authed, trigger.as_ref()).await?;
     let scope_ceiling = windmill_api_auth::caller_scope_ceiling(db, authed).await?;
     let (uuid, mut tx) = push(
         &db,
@@ -1035,7 +1057,7 @@ pub async fn run_flow<'c>(
         None,
         push_authed.as_ref(),
         false,
-        None,
+        end_user_email,
         authed.trigger_or_fallback(trigger),
         run_query.suspended_mode,
         scope_ceiling.as_deref(),
@@ -1227,6 +1249,7 @@ pub async fn push_script_job_by_path_into_queue<'c>(
         )
     };
 
+    let end_user_email = run_end_user_email(&db, &w_id, &authed, trigger.as_ref()).await?;
     let scope_ceiling = windmill_api_auth::caller_scope_ceiling(&db, &authed).await?;
     let (uuid, tx) = push(
         &db,
@@ -1260,7 +1283,7 @@ pub async fn push_script_job_by_path_into_queue<'c>(
         },
         push_authed.as_ref(),
         false,
-        None,
+        end_user_email,
         authed.trigger_or_fallback(trigger),
         run_query.suspended_mode,
         scope_ceiling.as_deref(),
