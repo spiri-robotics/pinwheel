@@ -2045,6 +2045,7 @@ pub async fn handle_all_job_kind_error(
                         ))),
                         result_columns: None,
                         mem_peak: 0,
+                        resource_usage: None,
                         canceled_by: None,
                         success: false,
                         cached_res_path: None,
@@ -3525,6 +3526,7 @@ pub async fn run_worker(
                                 result: Arc::new(empty_result()),
                                 result_columns: None,
                                 mem_peak: 0,
+                                resource_usage: None,
                                 cached_res_path: None,
                                 token: "".to_string(),
                                 canceled_by: None,
@@ -4506,6 +4508,7 @@ pub async fn handle_queued_job(
                             result,
                             result_columns: None,
                             mem_peak: 0,
+                            resource_usage: None,
                             canceled_by: None,
                             success: true,
                             cached_res_path: None,
@@ -4845,6 +4848,8 @@ pub async fn handle_queued_job(
 
         let cjob = MiniCompletedJob::from(job.to_owned());
         drop(job);
+        // Taken ahead of the returns below so that none of them leaves the entry behind.
+        let cpu_time_ms = crate::handle_child::take_job_cpu_time_ms(&cjob.id);
         //it's a test job, no need to update the db
         if cjob.workspace_id == "" {
             return Ok(JobOutcome::Completed);
@@ -4861,6 +4866,17 @@ pub async fn handle_queued_job(
             .is_err_and(|err| matches!(err, &Error::WacSuspended(_)))
         {
             // WAC v2 job suspended while waiting for child jobs — don't complete it
+            // Only a worker with a database connection flushes the rollup.
+            if let Connection::Sql(_) = conn {
+                windmill_common::runnable_job_stats::accumulate_runnable_round(
+                    &cjob.workspace_id,
+                    cjob.kind,
+                    cjob.runnable_path.as_deref(),
+                    &WORKER_GROUP,
+                    started.elapsed().as_millis() as i64,
+                    cpu_time_ms,
+                );
+            }
             return Ok(JobOutcome::Completed);
         }
         crate::resource_metrics::record_job_memory_peak(&cjob.tag, mem_peak);
@@ -4870,6 +4886,7 @@ pub async fn handle_queued_job(
             job_dir,
             job_completed_tx,
             mem_peak,
+            cpu_time_ms,
             canceled_by,
             cached_res_path,
             &client.token,
