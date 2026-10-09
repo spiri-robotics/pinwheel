@@ -4183,12 +4183,6 @@ async fn delete_script_by_path(
 
     check_scopes(&authed, || format!("scripts:write:{}", path))?;
 
-    if path == "u/admin/hub_sync" && w_id == "admins" {
-        return Err(Error::BadRequest(
-            "Cannot delete the global setup app".to_string(),
-        ));
-    }
-
     if let RuleCheckResult::Blocked(msg) = check_deploy_rules(
         &w_id,
         AuditAuthorable::username(&authed),
@@ -4361,12 +4355,6 @@ async fn delete_scripts_bulk(
     }
 
     require_admin(authed.is_admin, &authed.username)?;
-
-    if request.paths.contains(&"u/admin/hub_sync".to_string()) && w_id == "admins" {
-        return Err(Error::BadRequest(
-            "Cannot delete the global setup app".to_string(),
-        ));
-    }
 
     if let RuleCheckResult::Blocked(msg) = check_deploy_rules(
         &w_id,
