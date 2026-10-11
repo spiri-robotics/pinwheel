@@ -223,6 +223,10 @@ mod app_s3_display_stubs {
         pub search_col: Option<String>,
         pub search_term: Option<String>,
         pub storage: Option<String>,
+        pub s3_resource_path: Option<String>,
+        pub csv_separator: Option<String>,
+        pub csv_has_header: Option<bool>,
+        pub filters: Option<String>,
     }
 
     #[derive(Serialize)]
@@ -238,7 +242,10 @@ mod app_s3_display_stubs {
         pub search_col: Option<String>,
         pub search_term: Option<String>,
         pub storage: Option<String>,
+        pub s3_resource_path: Option<String>,
         pub csv_separator: Option<String>,
+        pub csv_has_header: Option<bool>,
+        pub filters: Option<String>,
     }
 
     pub async fn load_file_metadata_internal(
@@ -268,6 +275,7 @@ mod app_s3_display_stubs {
     pub async fn load_table_count_internal(
         _authed: OptJobAuthed,
         _db: &DB,
+        _user_db: Option<UserDB>,
         _w_id: &str,
         _file_key: String,
         _query: LoadCountQuery,
@@ -280,6 +288,7 @@ mod app_s3_display_stubs {
     pub async fn load_preview_internal(
         _authed: OptJobAuthed,
         _db: &DB,
+        _user_db: Option<UserDB>,
         _w_id: &str,
         _file_key: String,
         _query: LoadPreviewQuery,
