@@ -930,6 +930,7 @@ Windmill Community Edition {GIT_VERSION}
         // empty script cache, refilled from the database.
         windmill_common::cache::script::clear();
 
+
         initial_load(
             &conn,
             killpill_tx.clone(),
@@ -1981,6 +1982,9 @@ async fn process_notify_event(
                 }
                 SYNC_HUB_RESOURCE_TYPES_DAILY_SETTING => {
                     // Read by the daily resource type sync each time it runs
+                }
+                "oidc_external_signer" => {
+                    // Written by servers that sign with an external signer, read when signing
                 }
                 "plain_emails_telemetry" => {
                     let enabled = sqlx::query_scalar!(
