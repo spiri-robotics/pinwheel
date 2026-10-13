@@ -6942,7 +6942,7 @@ pub fn init_worker_internal_server_inline_utils(
         base_internal_url,
         killpill_rx: Arc::new(killpill_rx),
         run_inline_preview_script: Arc::new(|params| {
-            let job = MiniPulledJob::new_inline(
+            let mut job = MiniPulledJob::new_inline(
                 params.workspace_id,
                 params.args,
                 params.created_by,
@@ -6954,6 +6954,7 @@ pub fn init_worker_internal_server_inline_utils(
                 "inline_preview".to_string(),
                 Some(params.lang),
             );
+            job.permissioned_as_end_user_email = params.end_user_email;
             Box::pin(async move {
                 let mut mem_peak: i32 = -1;
                 let mut canceled_by: Option<CanceledBy> = None;
@@ -7003,7 +7004,7 @@ pub fn init_worker_internal_server_inline_utils(
                 let content_info =
                     get_script_content_by_hash(&script_hash, &params.workspace_id, &params.conn)
                         .await?;
-                let job = MiniPulledJob::new_inline(
+                let mut job = MiniPulledJob::new_inline(
                     params.workspace_id,
                     params.args,
                     params.created_by,
@@ -7015,6 +7016,7 @@ pub fn init_worker_internal_server_inline_utils(
                     "inline_run".to_string(),
                     content_info.language,
                 );
+                job.permissioned_as_end_user_email = params.end_user_email;
                 let mut mem_peak: i32 = -1;
                 let mut canceled_by: Option<CanceledBy> = None;
                 let mut column_order: Option<Vec<String>> = None;

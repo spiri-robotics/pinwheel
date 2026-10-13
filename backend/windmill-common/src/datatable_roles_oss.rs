@@ -223,6 +223,11 @@ mod ce {
         }
     }
 
+    /// No roles, so no set login to sweep.
+    pub(crate) async fn sweep_unused_role_set_logins(_db: &DB) -> Result<()> {
+        Ok(())
+    }
+
     pub(crate) async fn forget_datatable_role_everywhere(
         _tx: &mut Tx<'_>,
         _role_id: &str,
