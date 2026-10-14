@@ -157,6 +157,7 @@ mod volumes_oss;
 pub mod webhook_util;
 mod workspaces;
 mod workspaces_export;
+mod workspace_settings_document;
 
 #[cfg(feature = "mcp")]
 mod mcp_tools;
