@@ -323,7 +323,7 @@ async fn a_data_table_under_roles_is_cloned_only_with_its_grants(
 
     // The copy an admin asks for goes ahead in an edition that replays grants, and is refused
     // before any database exists in one that does not. The fixture's database does not exist, so
-    // the dump fails either way — and leaves neither a database nor a fork behind.
+    // reading it fails either way — and leaves neither a database nor a fork behind.
     let resp = fork(
         "SECRET_TOKEN",
         json!({"name": "main", "new_dbname": target, "fork_behavior": "schema_only"}),
