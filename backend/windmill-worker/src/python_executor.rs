@@ -724,7 +724,8 @@ pub async fn handle_python_job(
         None
     };
 
-    let (py_version, mut additional_python_paths) = handle_python_deps(
+    let module_sources = windmill_parser_py_imports::module_sources(&script_path, modules.as_ref());
+    let (py_version, mut additional_python_paths) = handle_python_deps_with_modules(
         job_dir,
         requirements_o,
         inner_content,
@@ -740,6 +741,7 @@ pub async fn handle_python_job(
         precomputed_agent_info,
         annotations.clone(),
         &temp_script_refs,
+        module_sources.as_ref(),
     )
     .await?;
 
@@ -1825,7 +1827,8 @@ async fn prepare_wrapper(
 }
 
 
-pub(crate) async fn handle_python_deps(
+
+async fn handle_python_deps_with_modules(
     job_dir: &str,
     requirements_o: Option<&String>,
     inner_content: &str,
@@ -1841,6 +1844,7 @@ pub(crate) async fn handle_python_deps(
     precomputed_agent_info: Option<PrecomputedAgentInfo>,
     annotations: PythonAnnotations,
     temp_script_refs: &Option<HashMap<String, String>>,
+    module_sources: Option<&HashMap<String, String>>,
 ) -> error::Result<(PyV, Vec<String>)> {
     create_dependencies_dir(job_dir).await;
 
@@ -1870,6 +1874,7 @@ pub(crate) async fn handle_python_deps(
                         &mut locked_v,
                         &None,
                         temp_script_refs,
+                        module_sources,
                     ))
                     .await?;
 
