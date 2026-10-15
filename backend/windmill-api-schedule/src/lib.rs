@@ -927,7 +927,7 @@ async fn list_schedule(
             || windmill_common::workspaces::operator_can_draft(
                 &db,
                 &w_id,
-                Some(UserDraftItemKind::TriggerSchedule),
+                UserDraftItemKind::TriggerSchedule,
             )
             .await?)
     {
