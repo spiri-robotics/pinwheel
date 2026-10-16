@@ -57,6 +57,8 @@ use windmill_common::jobs::is_safe_log_file_path;
 use windmill_common::utils::rd_string;
 #[cfg(feature = "parquet")]
 pub mod job_s3_helpers_oss;
+#[cfg(feature = "parquet")]
+pub mod fork_store;
 
 // Re-export object_store types so consumers don't need a direct object_store dep
 #[cfg(feature = "parquet")]
