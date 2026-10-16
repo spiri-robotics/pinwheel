@@ -8650,7 +8650,6 @@ async fn run_inline_preview_script(
         end_user_email,
         viewer_data_access,
         lang: preview.language,
-        job_dir: "".to_string(),
         worker_name: "".to_string(),
         worker_dir: "".to_string(),
         client: AuthedClient {
@@ -8801,7 +8800,6 @@ async fn run_inline_script_inner(
         permissioned_as: username_to_permissioned_as(&authed.username),
         permissioned_as_email: authed.email.clone(),
         end_user_email,
-        job_dir: "".to_string(),
         worker_name: "".to_string(),
         worker_dir: "".to_string(),
         client: AuthedClient {
