@@ -14,13 +14,15 @@
 //! (lowkey-vault), which the `AzureKeyVaultBackend` talks to via its
 //! static-token / self-signed-cert emulator mode.
 //!
-//! Run it:
+//! The test is `#[ignore]`d, so a plain `cargo test` skips it without creating
+//! a database. Run it with `--ignored` (`AZURE_KV_URL` overrides the default
+//! https://localhost:8443):
 //! ```bash
 //! podman run -d --name lowkey -p 8443:8443 \
 //!     -e LOWKEY_ARGS="--LOWKEY_VAULT_NAMES=default" \
 //!     docker.io/nagyesta/lowkey-vault:7.3.0
 //!
-//! RUN_AZURE_KV_TESTS=1 cargo test -p windmill-api-integration-tests \
-//!     --features private,enterprise --test fork_secret_replication_azure -- --nocapture
+//! cargo test -p windmill-api-integration-tests \
+//!     --features private,enterprise --test fork_secret_replication_azure -- --ignored --nocapture
 //! ```
 

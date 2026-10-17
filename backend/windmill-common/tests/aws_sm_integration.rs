@@ -12,16 +12,15 @@
 //!      localstack/localstack:3.8
 //!    ```
 //!
-//! 2. Run the tests:
+//! 2. Run the tests (they are `#[ignore]`d, so a plain `cargo test` skips them):
 //!
 //!    ```bash
-//!    RUN_AWS_SM_TESTS=1 cargo test -p windmill-common --features private,enterprise \
-//!      aws_sm_integration -- --nocapture
+//!    cargo test -p windmill-common --features private,enterprise \
+//!      --test aws_sm_integration -- --ignored --nocapture
 //!    ```
 //!
 //! ## Environment variables
 //!
-//! - `RUN_AWS_SM_TESTS=1`     - Required to run the tests
 //! - `AWS_SM_ENDPOINT`        - LocalStack endpoint (default: http://localhost:4566)
 //! - `AWS_SM_REGION`          - AWS region (default: us-east-1)
 

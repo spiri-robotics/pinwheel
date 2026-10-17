@@ -23,11 +23,12 @@
 //!    - Trust the emulator's certificate, or
 //!    - Set `AZURE_KV_ALLOW_INSECURE=true` to skip TLS verification (test only)
 //!
-//! 3. Run the tests:
+//! 3. Run the tests (they are `#[ignore]`d, so a plain `cargo test` skips them;
+//!    `AZURE_KV_URL` overrides the default https://localhost:4997):
 //!
 //!    ```bash
-//!    RUN_AZURE_KV_TESTS=1 cargo test -p windmill-common --features private,enterprise \
-//!      azure_kv_integration -- --nocapture
+//!    cargo test -p windmill-common --features private,enterprise \
+//!      --test azure_kv_integration -- --ignored --nocapture
 //!    ```
 //!
 //! ## Emulator authentication
