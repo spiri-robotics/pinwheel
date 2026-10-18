@@ -54,6 +54,7 @@ pub mod memory_common;
 pub mod memory_oss;
 #[cfg(feature = "mysql")]
 mod mysql_executor;
+mod nsjail_compat;
 #[cfg(feature = "nu")]
 mod nu_executor;
 #[cfg(feature = "oracledb")]
