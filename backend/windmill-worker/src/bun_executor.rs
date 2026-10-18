@@ -845,6 +845,7 @@ fn install_ca_mounts(job_dir: &str, home: &str, envs: &HashMap<String, String>) 
 }
 
 /// The files `bun install` reads from, and writes to, the directory it installs in.
+#[cfg(unix)]
 const BUN_INSTALL_INPUTS: [&str; 3] = ["package.json", "bun.lock", "bun.lockb"];
 const BUN_INSTALL_OUTPUTS: [&str; 3] = ["node_modules", "bun.lock", "bun.lockb"];
 /// What the worker reads or mounts from the job dir after an install that ran in it.
@@ -921,6 +922,7 @@ struct BunStagingDir {
     root: Arc<fs::File>,
     #[cfg(unix)]
     dir: fs::File,
+    #[cfg(unix)]
     name: String,
     path: String,
 }
@@ -947,11 +949,13 @@ impl Drop for BunStagingDir {
 
 /// How long a staging dir may outlive its install before the next one deletes it: a
 /// worker killed mid-install leaves it behind. Well past the longest install.
+#[cfg(unix)]
 const BUN_STAGING_MAX_AGE: std::time::Duration = std::time::Duration::from_secs(6 * 60 * 60);
 
 /// Whether a bun install needs nothing of the job dir beyond [`BUN_INSTALL_INPUTS`]: no
 /// dependency by path, no workspaces or patches, and no root lifecycle script, which bun
 /// runs next to the manifest and which may read the job's other files.
+#[cfg(any(unix, test))]
 fn bun_install_can_stage(package_json: &str, lock: Option<&str>) -> bool {
     const DEP_SECTIONS: [&str; 6] = [
         "dependencies",
