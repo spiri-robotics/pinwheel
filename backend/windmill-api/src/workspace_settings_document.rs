@@ -1613,8 +1613,7 @@ async fn execute(authed: &ApiAuthed, db: &DB, w_id: &str, write: Write) -> Resul
         }
         Target::AiConfig => {
             let body = serde_json::from_value(write.body).map_err(body_err)?;
-            let _ =
-                crate::workspaces::edit_copilot_config(a, d, p, authed.clone(), Json(body)).await?;
+            let _ = crate::workspaces::edit_copilot_config(a, d, p, Json(body)).await?;
             Ok(Value::Null)
         }
         Target::MuteCriticalAlerts => Err(crate::workspaces::mute_critical_alerts().await),
