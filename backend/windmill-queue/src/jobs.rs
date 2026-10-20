@@ -1631,6 +1631,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
     }
 
     let mut _skip_downstream_error_handlers = false;
+    let mut schedule_for_handlers = None;
     if completed_job.is_flow_step() {
         if let Some(parent_job) = monitor_parent {
             let r = sqlx::query_scalar!(
@@ -1700,7 +1701,15 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
                     }
                 }
 
-                let _ = retry_pending;
+                // Defer schedule completion handlers (on_failure/on_success/
+                // on_recovery) while a native retry is pending: only the terminal
+                // attempt should drive them. apply_schedule_handlers resolves
+                // per-occurrence failure/recovery status across the whole retry
+                // chain, so multi-count/exact handler policies work even though
+                // each attempt is its own completed job.
+                if !retry_pending {
+                    schedule_for_handlers = Some((schedule, script_path));
+                }
             } else {
                 tracing::error!(
                         "Schedule {schedule_path} in {} not found. Impossible to schedule again and apply schedule handlers",
@@ -1761,6 +1770,8 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
     }
 
     tx.commit().warn_after_seconds(10).await?;
+
+    let _ = schedule_for_handlers;
 
     log_completed_job(completed_job, completed.duration_ms, success);
     // tracing::info!("completed job: {:?}", start.elapsed().as_micros());
