@@ -15,7 +15,6 @@ use hmac::Mac;
 #[cfg(feature = "oauth2")]
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use sqlx::{Postgres, Transaction};
 #[cfg(feature = "oauth2")]
 use windmill_common::more_serde::maybe_number_opt;
 #[cfg(feature = "oauth2")]
@@ -113,12 +112,12 @@ async fn list_connects() -> windmill_common::error::JsonResult<Vec<String>> {
     return Ok(axum::Json(vec![]));
 }
 
-pub async fn _refresh_token<'c>(
-    _tx: Transaction<'c, Postgres>,
+pub async fn _refresh_token(
     _path: &str,
     _w_id: &str,
     _id: i32,
     _db: &DB,
+    _force: bool,
 ) -> error::Result<String> {
     // Implementation is not open source
     Err(error::Error::BadRequest(
