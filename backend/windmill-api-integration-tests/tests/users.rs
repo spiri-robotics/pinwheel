@@ -1046,3 +1046,4 @@ async fn test_impersonation_session_is_never_refreshed(db: Pool<Postgres>) -> an
 
     Ok(())
 }
+
