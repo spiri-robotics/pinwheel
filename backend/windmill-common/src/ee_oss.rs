@@ -46,6 +46,8 @@ pub struct OfflineCapStatus {
 
 
 
+
+
 #[derive(PartialEq, Eq)]
 pub enum LicensePlan {
     Community,
