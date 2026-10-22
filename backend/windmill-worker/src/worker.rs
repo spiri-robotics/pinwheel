@@ -1191,6 +1191,21 @@ pub fn nsjail_clone_newnet(no_network: bool) -> &'static str {
     }
 }
 
+/// Whether job runs get the worker's proxy settings. Dependency installs always do: they read
+/// [`PROXY_ENVS`] directly, so a group that turns the proxy off for jobs still installs through it.
+pub fn passes_proxy_to_jobs() -> bool {
+    !WORKER_CONFIG.load().disable_job_proxy
+}
+
+/// [`PROXY_ENVS`] as a job run sees them; see [`passes_proxy_to_jobs`].
+pub fn job_proxy_envs() -> Vec<(&'static str, String)> {
+    if passes_proxy_to_jobs() {
+        PROXY_ENVS.clone()
+    } else {
+        vec![]
+    }
+}
+
 /// [`get_proxy_envs_for_lang`] for a run step. A `no_network` one reaches no proxy, the
 /// OTel tracing proxy included, so it gets only the trace context.
 pub async fn get_run_proxy_envs(
@@ -1319,7 +1334,7 @@ pub async fn get_proxy_envs_for_lang(
     let mut envs;
     {
         let _ = (lang, job_kind, w_id, conn);
-        envs = PROXY_ENVS.clone();
+        envs = job_proxy_envs();
     }
     envs.extend(get_otel_context_envs(job_id));
     Ok(envs)
@@ -5173,8 +5188,8 @@ pub fn build_envs(
         hm
     };
 
-    for (k, v) in PROXY_ENVS.iter() {
-        envs.insert(k.to_string(), v.clone());
+    for (k, v) in job_proxy_envs() {
+        envs.insert(k.to_string(), v);
     }
 
     Ok(envs)

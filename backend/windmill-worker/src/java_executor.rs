@@ -234,7 +234,7 @@ pub async fn resolve<'a>(
 
         // Configure proxies
         {
-            let jps = parse_proxy()?;
+            let jps = parse_proxy(PROXY_ENVS.clone())?;
             if let Some(val) = jps.https_host {
                 cmd.arg(&format!("-Dhttps.proxyHost={}", val));
             }
@@ -399,7 +399,7 @@ async fn install<'a>(
                 .envs(PROXY_ENVS.clone());
             // Configure proxies
             {
-                let jps = parse_proxy()?;
+                let jps = parse_proxy(PROXY_ENVS.clone())?;
                 if let Some(val) = jps.https_host {
                     cmd.arg(&format!("-Dhttps.proxyHost={}", val));
                 }
@@ -785,7 +785,7 @@ async fn run<'a>(
         }
         // Configure proxies
         {
-            let jps = parse_proxy()?;
+            let jps = parse_proxy(crate::job_proxy_envs())?;
             if let Some(val) = jps.https_host {
                 cmd.arg(&format!("-Dhttps.proxyHost={}", val));
             }
@@ -864,7 +864,7 @@ async fn run<'a>(
         }
         // Configure proxies
         {
-            let jps = parse_proxy()?;
+            let jps = parse_proxy(crate::job_proxy_envs())?;
             if let Some(val) = jps.https_host {
                 cmd.arg(&format!("-Dhttps.proxyHost={}", val));
             }
@@ -925,9 +925,9 @@ struct JavaProxySettings {
     https_port: Option<String>,
     no_proxy: Option<String>,
 }
-fn parse_proxy() -> anyhow::Result<JavaProxySettings> {
+fn parse_proxy(proxy_envs: Vec<(&'static str, String)>) -> anyhow::Result<JavaProxySettings> {
     let mut jps = JavaProxySettings::default();
-    for (ident, mut val) in PROXY_ENVS.clone() {
+    for (ident, mut val) in proxy_envs {
         match ident {
             "HTTPS_PROXY" => {
                 if !val.contains("://") {
