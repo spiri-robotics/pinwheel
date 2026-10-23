@@ -17,6 +17,7 @@ pub use freshness_watchdog_oss as freshness_watchdog;
 pub mod jobs;
 pub mod jobs_oss;
 pub mod schedule;
+pub mod variable_expiration;
 pub use jobs::*;
 pub mod flow_status;
 pub mod tags;
