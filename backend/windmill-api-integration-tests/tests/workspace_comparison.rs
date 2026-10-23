@@ -2025,6 +2025,8 @@ async fn test_compare_secret_variables_by_value(db: Pool<Postgres>) -> anyhow::R
         "the same secret must be stored as two different ciphertexts"
     );
 
+    // The creates above tally these rows from a spawned task that can land after the
+    // DELETE, so the plant must upsert.
     sqlx::query!("DELETE FROM workspace_diff WHERE fork_workspace_id = 'wm-fork-secrets'")
         .execute(&db)
         .await?;
@@ -2033,7 +2035,9 @@ async fn test_compare_secret_variables_by_value(db: Pool<Postgres>) -> anyhow::R
          (source_workspace_id, fork_workspace_id, path, kind, ahead, behind, has_changes)
          VALUES
          ('test-workspace', 'wm-fork-secrets', 'u/test-user/same', 'variable', 1, 1, NULL),
-         ('test-workspace', 'wm-fork-secrets', 'u/test-user/different', 'variable', 1, 1, NULL)"
+         ('test-workspace', 'wm-fork-secrets', 'u/test-user/different', 'variable', 1, 1, NULL)
+         ON CONFLICT (source_workspace_id, fork_workspace_id, path, kind)
+         DO UPDATE SET ahead = 1, behind = 1, has_changes = NULL"
     )
     .execute(&db)
     .await?;
