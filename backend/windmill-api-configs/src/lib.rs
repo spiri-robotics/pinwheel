@@ -35,6 +35,7 @@ pub fn global_service() -> Router {
             "/list_autoscaling_events/{worker_group}",
             get(list_autoscaling_events),
         )
+        .route("/test_autoscaling/{worker_group}", post(test_autoscaling))
         .route(
             "/native_kubernetes_autoscaling_healthcheck",
             get(native_kubernetes_autoscaling_healthcheck),
@@ -403,6 +404,18 @@ async fn list_autoscaling_events(
 async fn native_kubernetes_autoscaling_healthcheck() -> Result<(), error::Error> {
     Err(error::Error::BadRequest(
         "Native Kubernetes autoscaling available only in the enterprise version".to_string(),
+    ))
+}
+
+#[derive(Serialize)]
+struct TestAutoscalingResponse {
+    job_id: Option<String>,
+}
+
+
+async fn test_autoscaling() -> error::JsonResult<TestAutoscalingResponse> {
+    Err(error::Error::BadRequest(
+        "Autoscaling available only in the enterprise version".to_string(),
     ))
 }
 
