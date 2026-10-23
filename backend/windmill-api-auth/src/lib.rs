@@ -7,6 +7,7 @@
  */
 
 pub mod auth;
+pub mod composed;
 pub mod ee_oss;
 pub mod scopes;
 
