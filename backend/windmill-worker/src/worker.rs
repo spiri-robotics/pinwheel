@@ -2688,13 +2688,6 @@ pub async fn run_worker(
     killpill_tx: KillpillSender,
     base_internal_url: &str,
 ) {
-    if is_sandboxing_enabled() {
-        tracing::warn!(
-            worker = %worker_name, hostname = %hostname,
-            "NSJAIL to sandbox process in untrusted environments is an enterprise feature but allowed to be used for testing purposes"
-        );
-    }
-
     // Force UNSHARE_PATH and NSJAIL_AVAILABLE initialization now for clear startup logging
     let _ = &*UNSHARE_PATH;
     let _ = &*NSJAIL_AVAILABLE;
