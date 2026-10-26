@@ -6385,7 +6385,8 @@ pub async fn run_language_executor(
             occupancy_metrics,
             has_stream,
         ))
-        .await?;
+        .await
+        .map_err(|e| crate::js_eval::with_step_context(e, &reserved_variables))?;
         return Ok(result);
     }
 
