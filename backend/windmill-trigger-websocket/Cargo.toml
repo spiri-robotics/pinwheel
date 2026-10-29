@@ -33,3 +33,4 @@ itertools.workspace = true
 anyhow.workspace = true
 futures.workspace = true
 http.workspace = true
+chrono.workspace = true
