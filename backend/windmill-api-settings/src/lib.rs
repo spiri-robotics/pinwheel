@@ -965,6 +965,15 @@ async fn run_setting_pre_write_hook(
         WORKSPACE_ROLES_SETTING => {
             windmill_common::roles::validate_instance_roles_write(db, Some(value)).await?;
         }
+        // Settings that fail validation would only surface on the next secret read, as an error
+        // on every secret of every workspace.
+        windmill_common::global_settings::SECRET_BACKEND_SETTING => {
+            if let Ok(windmill_common::secret_backend::SecretBackendConfig::HttpStore(settings)) =
+                serde_json::from_value(value.clone())
+            {
+                windmill_common::secret_backend::validate_http_store_settings(&settings)?;
+            }
+        }
         // The instance AI config is written as an untyped blob through this generic
         // endpoint, so it never passes the typed check the workspace handler applies.
         // Rates that reach a cost total unbounded would make it negative or infinite.
@@ -2128,6 +2137,9 @@ async fn drop_custom_instance_pg_database(
 // ============================================================================
 // Secret Backend Settings (HashiCorp Vault Integration) - Enterprise Edition
 // ============================================================================
+
+
+
 
 
 
