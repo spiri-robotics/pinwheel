@@ -1041,7 +1041,7 @@ pub async fn run_flow<'c>(
         (
             &obo.email,
             obo.permissioned_as.clone(),
-            None,
+            authed.mcp_client.is_some().then(|| authed.clone().into()),
             PushIsolationLevel::IsolatedRoot(db.clone()),
         )
     } else {
@@ -1269,7 +1269,7 @@ pub async fn push_script_job_by_path_into_queue<'c>(
         (
             on_behalf_of.email.as_str(),
             on_behalf_of.permissioned_as.clone(),
-            None,
+            authed.mcp_client.is_some().then(|| authed.clone().into()),
             PushIsolationLevel::IsolatedRoot(db.clone()),
         )
     } else {

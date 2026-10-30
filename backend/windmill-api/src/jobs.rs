@@ -7286,7 +7286,7 @@ pub async fn run_workflow_as_code(
             (
                 on_behalf_of.email.as_str(),
                 on_behalf_of.permissioned_as.clone(),
-                None,
+                authed.mcp_client.is_some().then(|| authed.clone().into()),
                 PushIsolationLevel::IsolatedRoot(db.clone()),
             )
         } else {
@@ -7600,7 +7600,7 @@ pub async fn run_wait_result_job_by_path_get(
             (
                 on_behalf_of.email.as_str(),
                 on_behalf_of.permissioned_as.clone(),
-                None,
+                authed.mcp_client.is_some().then(|| authed.clone().into()),
                 PushIsolationLevel::IsolatedRoot(db.clone()),
             )
         } else {
@@ -7747,7 +7747,7 @@ pub async fn run_wait_result_script_by_path_internal(
             (
                 on_behalf_of.email.as_str(),
                 on_behalf_of.permissioned_as.clone(),
-                None,
+                authed.mcp_client.is_some().then(|| authed.clone().into()),
                 PushIsolationLevel::IsolatedRoot(db.clone()),
             )
         } else {
@@ -7864,7 +7864,7 @@ pub async fn run_wait_result_script_by_hash(
         (
             &obo.email,
             obo.permissioned_as.clone(),
-            None,
+            authed.mcp_client.is_some().then(|| authed.clone().into()),
             PushIsolationLevel::IsolatedRoot(db.clone()),
         )
     } else {
@@ -8496,7 +8496,7 @@ fn preview_push_identity(
         Some(obo) => (
             obo.email.clone(),
             obo.permissioned_as.clone(),
-            None,
+            authed.mcp_client.is_some().then(|| authed.clone().into()),
             PushIsolationLevel::IsolatedRoot(db.clone()),
         ),
         None => (
@@ -10188,7 +10188,7 @@ pub async fn run_job_by_hash_inner(
         (
             &obo.email,
             obo.permissioned_as.clone(),
-            None,
+            authed.mcp_client.is_some().then(|| authed.clone().into()),
             PushIsolationLevel::IsolatedRoot(db.clone()),
         )
     } else {
@@ -12161,6 +12161,7 @@ mod approval_view_gate_tests {
             read_only: false,
             job_id: None,
             credential_expiry: None,
+            mcp_client: None,
         }
     }
 
