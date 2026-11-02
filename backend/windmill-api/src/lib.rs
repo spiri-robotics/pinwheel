@@ -158,10 +158,11 @@ mod utils;
 mod variables;
 mod volumes_oss;
 pub mod webhook_util;
+mod workspace_settings_document;
 mod workspaces;
 mod workspaces_export;
-mod workspace_settings_document;
 
+mod ai_session_tools;
 #[cfg(feature = "mcp")]
 mod mcp_tools;
 
@@ -722,6 +723,10 @@ pub async fn run_server(
                             Router::new()
                         })
                         .nest("/ai", ai::workspaced_service())
+                        .nest(
+                            "/ai_session_tools",
+                            ai_session_tools::chat::workspaced_service(_base_internal_url.clone()),
+                        )
                         .nest("/npm_proxy", windmill_api_npm_proxy::workspaced_service())
                         .nest(
                             "/path_autocomplete",
@@ -1165,8 +1170,7 @@ pub async fn run_server(
     if let Some(name) = name.as_ref() {
         tracing::info!("server starting for name={name}");
     }
-    #[cfg(feature = "mcp")]
-    mcp::register_router(&_base_internal_url, Some(app.clone()));
+    ai_session_tools::register_router(&_base_internal_url, Some(app.clone()));
 
     let listener = listener.tap_io(move |tcp_stream| {
         let _ = tcp_stream.set_nodelay(!server_mode);
@@ -1206,8 +1210,7 @@ pub async fn run_server(
     });
 
     let served = server.await;
-    #[cfg(feature = "mcp")]
-    mcp::register_router(&_base_internal_url, None);
+    ai_session_tools::register_router(&_base_internal_url, None);
     served?;
     let forks = &windmill_api_workspaces::workspaces::BACKGROUND_FORKS;
     forks.close();
