@@ -101,7 +101,6 @@ tracing.workspace = true
 sql-builder.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
-chrono-tz.workspace = true
 hex.workspace = true
 base64.workspace = true
 base32.workspace = true
