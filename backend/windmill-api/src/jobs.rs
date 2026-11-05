@@ -9505,6 +9505,7 @@ async fn add_batch_jobs(
                     concurrent_limit,
                     concurrency_time_window_s,
                     concurrency_key: custom_concurrency_key,
+                    ..
                 },
             ..
         },
