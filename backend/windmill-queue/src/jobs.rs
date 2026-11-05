@@ -1791,6 +1791,7 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
         }
     }
 
+    let mut released_concurrency_key = None;
     if has_concurrent_limit {
         let concurrency_key = sqlx::query_scalar!(
             "SELECT key FROM concurrency_key WHERE job_id = $1",
@@ -1809,8 +1810,9 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
             tracing::warn!("Concurrency limit is disabled, skipping");
         } else {
             let concurrency_key = concurrency_key.unwrap();
-            sqlx::query_scalar!(
-                "UPDATE concurrency_counter SET job_uuids = job_uuids - $2 WHERE concurrency_id = $1",
+            let released = sqlx::query_scalar!(
+                "UPDATE concurrency_counter SET job_uuids = job_uuids - $2
+                WHERE concurrency_id = $1 AND job_uuids ? $2",
                 concurrency_key,
                 completed_job.id.hyphenated().to_string(),
             )
@@ -1822,7 +1824,13 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
                     "Could not decrement concurrency counter for job_id={}: {e:#}",
                     completed_job.id
                 ))
-            })?;
+            })?
+            .rows_affected()
+                > 0;
+            // A job canceled while waiting held no slot, so its completion frees none.
+            if released {
+                released_concurrency_key = Some(concurrency_key);
+            }
         }
 
         if let Err(e) = sqlx::query_scalar!(
@@ -1842,6 +1850,8 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
     }
 
     tx.commit().warn_after_seconds(10).await?;
+
+    let _ = released_concurrency_key;
 
     let _ = schedule_for_handlers;
 
@@ -5113,6 +5123,7 @@ pub async fn try_admit_owned_job(db: &DB, job: &MiniPulledJob) -> error::Result<
     let _ = (db, job);
     Ok(true)
 }
+
 
 pub async fn custom_concurrency_key(
     db: &Pool<Postgres>,
