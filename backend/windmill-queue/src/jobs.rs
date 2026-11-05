@@ -6282,6 +6282,7 @@ async fn fetch_pushed_flow_version(
     }
 }
 
+
 // #[instrument(level = "trace", skip_all)]
 async fn push_inner<'c, 'd>(
     db: &Pool<Postgres>,
@@ -7405,16 +7406,13 @@ async fn push_inner<'c, 'd>(
         // priority is only available on EE. Do not compute it on CE
         final_priority = None;
     }
-    // prioritize flow steps to drain the queue faster
-    let final_priority = if flow_step_id.is_some() && final_priority.is_none() {
-        Some(0)
-    } else if job_kind == JobKind::Dependencies && !build_binary_only {
+    let final_priority = Some(windmill_common::queue::pushed_job_priority(
+        final_priority,
+        flow_step_id.is_some(),
         // A binary build is a background optimization, not a deploy the user waits on, so
         // it does not get the dependency-job jump ahead of ordinary jobs on its tag.
-        Some(0)
-    } else {
-        final_priority
-    };
+        job_kind == JobKind::Dependencies && !build_binary_only,
+    ));
 
     let is_running = same_worker || running;
     if let Some(flow) = raw_flow.as_ref() {
