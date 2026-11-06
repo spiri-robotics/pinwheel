@@ -80,6 +80,7 @@ use windmill_queue::DedicatedWorkerJob;
 use windmill_queue::FlowRunners;
 use windmill_queue::MiniCompletedJob;
 use windmill_queue::PulledJobResultToJobErr;
+use windmill_queue::ValidableJson;
 
 use uuid::Uuid;
 
@@ -1802,7 +1803,8 @@ pub struct SameWorkerSender(pub Sender<SameWorkerPayload>, pub Arc<AtomicU16>);
 #[derive(Clone)]
 pub enum JobCompletedSender {
     Sql(SqlJobCompletedSender),
-    Http(HttpClient),
+    /// The worker name keys the job outcome counters an agent worker reports in its pings.
+    Http(HttpClient, Option<Arc<str>>),
     NeverUsed,
 }
 
@@ -1814,6 +1816,12 @@ impl JobCompletedSender {
     pub fn set_worker_killpill(&mut self, killpill_tx: KillpillSender) {
         if let Self::Sql(sql) = self {
             sql.worker_killpill_tx = Some(killpill_tx);
+        }
+    }
+
+    pub fn set_worker_name(&mut self, worker_name: &str) {
+        if let Self::Http(_, name) = self {
+            *name = Some(worker_name.into());
         }
     }
 
@@ -1871,7 +1879,7 @@ impl JobCompletedSender {
                 let result = Self::new_job_completed_sender_sql(buffer_size);
                 (result.0, Some(result.1))
             }
-            Connection::Http(client) => (Self::Http(client.clone()), None),
+            Connection::Http(client) => (Self::Http(client.clone(), None), None),
         }
     }
 
@@ -1880,6 +1888,15 @@ impl JobCompletedSender {
     }
 
     pub async fn send_job(&self, jc: JobCompleted, wait_for_capacity: bool) -> anyhow::Result<()> {
+        self.send_job_inner(jc, wait_for_capacity, true).await
+    }
+
+    async fn send_job_inner(
+        &self,
+        jc: JobCompleted,
+        wait_for_capacity: bool,
+        record_outcome: bool,
+    ) -> anyhow::Result<()> {
         match self {
             Self::Sql(SqlJobCompletedSender { sender, unbounded_sender, .. }) => {
                 if wait_for_capacity {
@@ -1896,8 +1913,15 @@ impl JobCompletedSender {
                     anyhow::anyhow!("Failed to send job completed to background processor")
                 })
             }
-            Self::Http(client) => {
+            Self::Http(client, worker_name) => {
+                // An agent worker's completion is processed on the server, so its outcome is
+                // counted here, with the same `wm_failure` override the result processor applies.
+                let failed = jc.canceled_by.is_none()
+                    && (!jc.success || jc.result.result_metadata().wm_failure.is_some());
                 crate::agent_workers::send_result(client, jc).await?;
+                if let (true, Some(worker_name)) = (record_outcome, worker_name) {
+                    windmill_common::worker_job_stats::record_job_outcome(worker_name, failed);
+                }
                 Ok(())
             }
             Self::NeverUsed => {
@@ -1926,7 +1950,7 @@ impl JobCompletedSender {
                         .await
                 }
             }
-            Self::Http(_) => {
+            Self::Http(..) => {
                 tracing::error!("Sending job completed to http client, this should not happen");
                 Ok(())
             }
@@ -1946,7 +1970,7 @@ impl JobCompletedSender {
                 killpill_tx.send(())?;
                 Ok(())
             }
-            Self::Http(_) => {
+            Self::Http(..) => {
                 tracing::error!("Sending kill to http client, this should not happen");
                 Ok(())
             }
@@ -2275,6 +2299,7 @@ pub async fn handle_all_job_kind_error(
     authed_client: &AuthedClient,
     job: MiniCompletedJob,
     err: Error,
+    canceled: bool,
     same_worker_tx: Option<&SameWorkerSender>,
     worker_dir: &str,
     worker_name: &str,
@@ -2282,6 +2307,9 @@ pub async fn handle_all_job_kind_error(
     killpill_rx: &tokio::sync::broadcast::Receiver<()>,
     #[cfg(feature = "benchmark")] bench: &mut BenchmarkIter,
 ) {
+    // These jobs fail before reaching the result processor, so their outcome is counted here
+    // for both connection kinds; a job canceled before it ran is not held against the worker.
+    windmill_common::worker_job_stats::record_job_outcome(worker_name, !canceled);
     match conn {
         Connection::Sql(db) => {
             handle_job_error(
@@ -2304,7 +2332,7 @@ pub async fn handle_all_job_kind_error(
         }
         Connection::Http(_) => {
             job_completed_tx
-                .send_job(
+                .send_job_inner(
                     JobCompleted {
                         preprocessed_args: None,
                         job: job,
@@ -2324,6 +2352,7 @@ pub async fn handle_all_job_kind_error(
                         flow_runners: None,
                         done_tx: None,
                     },
+                    false,
                     false,
                 )
                 .await
@@ -2772,9 +2801,13 @@ pub async fn run_worker(
     let mut last_ping = Instant::now() - Duration::from_secs(NUM_SECS_PING + 1);
 
     let mut reported_ip = cached_ip();
-    let previous_jobs_executed = insert_ping(hostname, &worker_name, reported_ip, true, conn)
+    let reclaimed = insert_ping(hostname, &worker_name, reported_ip, true, conn)
         .await
         .expect("initial ping could be sent");
+    let previous_jobs_executed = reclaimed.jobs_executed;
+    if let Some(job_stats) = reclaimed.job_stats {
+        windmill_common::worker_job_stats::restore_job_stats(&worker_name, job_stats);
+    }
 
     #[cfg(feature = "prometheus")]
     let uptime_metric = if METRICS_ENABLED.load(Ordering::Relaxed) {
@@ -3057,6 +3090,7 @@ pub async fn run_worker(
 
     let (mut job_completed_tx, job_completed_rx) = JobCompletedSender::new(&conn, 10);
     job_completed_tx.set_worker_killpill(killpill_tx.clone());
+    job_completed_tx.set_worker_name(&worker_name);
 
     let same_worker_queue_size = Arc::new(AtomicU16::new(0));
     let same_worker_tx = SameWorkerSender(same_worker_tx, same_worker_queue_size.clone());
@@ -3518,7 +3552,8 @@ pub async fn run_worker(
                             .map_err(error::Error::from)
                             .and_then(|r| r)
                             {
-                                pulled_job_res.error_while_preprocessing = Some(e.to_string().into());
+                                pulled_job_res.error_while_preprocessing =
+                                    Some(e.to_string().into());
                             }
                         }
 
@@ -3746,6 +3781,7 @@ pub async fn run_worker(
                                         error::Error::InternalErr(format!(
                                             "failed to send jobs to flow runners: {e:?}"
                                         )),
+                                        false,
                                         Some(&same_worker_tx),
                                         &worker_dir,
                                         &worker_name,
@@ -4026,11 +4062,13 @@ pub async fn run_worker(
                                     .await;
                                 }
                             }
+                            let canceled = arc_job.canceled_by.is_some();
                             handle_all_job_kind_error(
                                 &conn,
                                 &authed_client,
                                 MiniCompletedJob::from(arc_job),
                                 err,
+                                canceled,
                                 Some(&same_worker_tx),
                                 &worker_dir,
                                 &worker_name,
@@ -4193,6 +4231,19 @@ pub async fn run_worker(
     if let Some(send_result) = send_result {
         if let Err(e) = send_result.await {
             tracing::error!("error in awaiting send_result process: {e:?}")
+        }
+    }
+
+    // The last ping can run before the processor recorded the final jobs; a worker restarting
+    // under this name restores whatever the row holds, so write the drained counters.
+    if let (Some(db), Some(job_stats)) = (
+        conn.as_sql(),
+        windmill_common::worker_job_stats::job_stats_snapshot(&worker_name),
+    ) {
+        if let Err(e) =
+            windmill_common::worker::set_worker_job_stats_query(&worker_name, &job_stats, db).await
+        {
+            tracing::error!(worker = %worker_name, "failed to persist final job stats: {e:#}");
         }
     }
 
