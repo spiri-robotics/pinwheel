@@ -1195,6 +1195,9 @@ pub struct NewToken {
     pub workspace_id: Option<String>,
     #[serde(default)]
     pub read_only: Option<bool>,
+    /// An MCP token carries its owner's superadmin rights (every workspace) only when asked.
+    #[serde(default)]
+    pub super_admin: Option<bool>,
 }
 
 impl NewToken {
@@ -1206,7 +1209,15 @@ impl NewToken {
         workspace_id: Option<String>,
         read_only: Option<bool>,
     ) -> Self {
-        Self { label, expiration, impersonate_email, scopes, workspace_id, read_only }
+        Self {
+            label,
+            expiration,
+            impersonate_email,
+            scopes,
+            workspace_id,
+            read_only,
+            super_admin: None,
+        }
     }
 }
 
@@ -1250,6 +1261,11 @@ pub async fn create_token_internal(
     .fetch_optional(&mut *tx)
     .await?
     .unwrap_or(false);
+    let is_mcp = token_config
+        .scopes
+        .as_deref()
+        .is_some_and(|s| s.iter().any(|scope| scope.starts_with("mcp:")));
+    let is_super_admin = is_super_admin && (!is_mcp || token_config.super_admin == Some(true));
     if *CLOUD_HOSTED {
         let nb_tokens =
             sqlx::query_scalar!("SELECT COUNT(*) FROM token WHERE email = $1", &authed.email)
