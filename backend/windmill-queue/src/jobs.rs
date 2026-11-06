@@ -1591,16 +1591,16 @@ async fn commit_completed_job<T: Serialize + Send + Sync + ValidableJson>(
     // Resolve the concurrency-limit settings on the pool *before* opening the
     // completion transaction: doing it inside the tx would hold a second
     // simultaneous connection from the small per-worker pool.
+    let settings_concurrent_limit =
+        windmill_common::runnable_settings::prefetch_cached_from_handle(
+            completed_job.runnable_settings_handle,
+            db,
+        )
+        .await?
+        .1
+        .concurrent_limit;
     let has_concurrent_limit = has_active_concurrency_limit(completed_job.concurrent_limit)
-        || has_active_concurrency_limit(
-            windmill_common::runnable_settings::prefetch_cached_from_handle(
-                completed_job.runnable_settings_handle,
-                db,
-            )
-            .await?
-            .1
-            .concurrent_limit,
-        );
+        || has_active_concurrency_limit(settings_concurrent_limit);
 
     // A genuine NUL (U+0000) in the result serializes to a `\u0000` escape that
     // the jsonb `result` column rejects with 22P05 ("unsupported Unicode escape
