@@ -39,9 +39,9 @@ use windmill_common::{
         check_tag_available_for_workspace_internal, format_result, script_path_to_payload,
         JobPayload,
     },
+    runnable_ref::RunnableRef,
     triggers::TriggerMetadata,
     users::username_to_permissioned_as,
-    utils::StripPath,
     FlowVersionInfo, DB,
 };
 use windmill_queue::{
@@ -1190,7 +1190,7 @@ pub async fn push_flow_job_by_path_into_queue<'c>(
     tx_o: Option<sqlx::Transaction<'c, sqlx::Postgres>>,
     user_db: UserDB,
     w_id: String,
-    flow_path: StripPath,
+    flow: &RunnableRef,
     run_query: RunJobQuery,
     args: PushArgsOwned,
     trigger: Option<TriggerMetadata>,
@@ -1201,7 +1201,7 @@ pub async fn push_flow_job_by_path_into_queue<'c>(
     Option<sqlx::Transaction<'c, sqlx::Postgres>>,
 )> {
 
-    let flow_path = flow_path.to_path();
+    let flow_path = flow.path();
     check_scopes(&authed, || format!("jobs:run:flows:{flow_path}"))?;
 
     let userdb_authed = UserDbWithAuthed { db: user_db.clone(), authed: &authed.to_authed_ref() };
@@ -1231,7 +1231,7 @@ pub async fn push_script_job_by_path_into_queue<'c>(
     tx_o: Option<sqlx::Transaction<'c, sqlx::Postgres>>,
     user_db: UserDB,
     w_id: String,
-    script_path: StripPath,
+    script: &RunnableRef,
     run_query: RunJobQuery,
     args: PushArgsOwned,
     trigger: Option<TriggerMetadata>,
@@ -1241,7 +1241,7 @@ pub async fn push_script_job_by_path_into_queue<'c>(
     Option<sqlx::Transaction<'c, sqlx::Postgres>>,
 )> {
 
-    let script_path = script_path.to_path();
+    let script_path = script.path();
     check_scopes(&authed, || format!("jobs:run:scripts:{script_path}"))?;
     let mut run_query = run_query;
     drop_unclaimable_run_lineage(&db, &w_id, &mut run_query, &authed).await?;
@@ -1249,7 +1249,7 @@ pub async fn push_script_job_by_path_into_queue<'c>(
     let userdb_authed = UserDbWithAuthed { db: user_db.clone(), authed: &authed.to_authed_ref() };
     let (job_payload, tag, delete_after_use, delete_after_secs, timeout, on_behalf_of) =
         script_path_to_payload(
-            script_path,
+            script,
             Some(userdb_authed),
             db.clone(),
             &w_id,
