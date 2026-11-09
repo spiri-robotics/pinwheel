@@ -1477,6 +1477,7 @@ impl PgDatabase {
     }
 
 
+
     /// The role an Entra-authenticated connection logs in as. Azure maps each Entra
     /// principal to a role of its own (`pgaadauth_create_principal`), so unlike the
     /// other paths this one has no sensible default: `postgres` would send the server a
