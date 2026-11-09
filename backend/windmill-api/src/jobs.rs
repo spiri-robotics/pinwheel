@@ -2698,11 +2698,7 @@ impl<'a> GetQuery<'a> {
             job.raw_flow.take(),
         );
         if self.with_flow {
-            // Try to fetch the flow from the cache, fallback to the preview flow.
-            // NOTE: This could check for the job kinds instead of the `or_else` but it's not
-            // necessary as `fetch_flow` return early if the job kind is not a preview one.
-            cache::job::fetch_flow(db, job.job_kind(), hash)
-                .or_else(|_| cache::job::fetch_preview_flow(db, &id, raw_flow))
+            cache::job::fetch_flow_or_preview(db, job.job_kind(), hash, &id, raw_flow)
                 .await
                 .ok()
                 .inspect(|data| job.raw_flow = Some(sqlx::types::Json(data.raw_flow.clone())));
