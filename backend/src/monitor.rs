@@ -5177,7 +5177,11 @@ pub async fn reload_worker_config(db: &DB, tx: KillpillSender, kill_if_change: b
                 let restart_in_turn =
                     has_dedicated && **wc != config && wc.cache_clear == config.cache_clear;
                 let (deferred, _deferred_rx) = KillpillSender::new(1);
-                let kill = if restart_in_turn { deferred } else { tx.clone() };
+                let kill = if restart_in_turn {
+                    deferred
+                } else {
+                    tx.clone()
+                };
                 if wc.dedicated_worker != config.dedicated_worker
                     || wc.dedicated_workers != config.dedicated_workers
                     || (has_dedicated && **wc != config)
@@ -5220,7 +5224,10 @@ pub async fn reload_worker_config(db: &DB, tx: KillpillSender, kill_if_change: b
                 }
 
                 if restart_in_turn {
-                    windmill_common::worker::restart_dedicated_worker_in_turn(db.clone(), tx.clone());
+                    windmill_common::worker::restart_dedicated_worker_in_turn(
+                        db.clone(),
+                        tx.clone(),
+                    );
                 }
             }
             drop(wc);
