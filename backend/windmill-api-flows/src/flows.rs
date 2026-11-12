@@ -574,6 +574,7 @@ async fn create_flow(
     Extension(user_db): Extension<UserDB>,
     Extension(webhook): Extension<WebhookShared>,
     Path(w_id): Path<String>,
+    Query(ci): Query<windmill_dep_map::ci_tests::SkipCiTestsQuery>,
     Json(mut nf): Json<NewFlow>,
 ) -> Result<(StatusCode, String)> {
     let flows_level =
@@ -876,7 +877,7 @@ async fn create_flow(
     );
 
     // Trigger CI tests for items that reference this flow
-    {
+    if !ci.skip_ci_tests {
         let db2 = db.clone();
         let w_id2 = w_id.clone();
         let flow_path2 = nf.path.clone();
@@ -1190,6 +1191,7 @@ async fn update_flow(
     Extension(db): Extension<DB>,
     Extension(webhook): Extension<WebhookShared>,
     Path((w_id, flow_path)): Path<(String, StripPath)>,
+    Query(ci): Query<windmill_dep_map::ci_tests::SkipCiTestsQuery>,
     Json(ef): Json<EditFlow>,
 ) -> Result<String> {
     let flows_level =
@@ -1694,7 +1696,7 @@ async fn update_flow(
     reregister_moved_native_triggers(&db, &authed, &w_id, moved_native_triggers);
 
     // Trigger CI tests for items that reference this flow
-    {
+    if !ci.skip_ci_tests {
         let db2 = db.clone();
         let w_id2 = w_id.clone();
         let flow_path2 = nf.path.clone();
