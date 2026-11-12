@@ -7758,7 +7758,10 @@ pub async fn run_wait_result_flow_by_path_get(
         )
         .await?;
 
-    run_wait_result_flow_by_path_internal(db, run_query, &flow, authed, user_db, args, w_id).await
+    let (result, success) =
+        run_wait_result_flow_by_path_internal(db, run_query, &flow, authed, user_db, args, w_id)
+            .await?;
+    result_to_response(result, success)
 }
 
 pub async fn run_wait_result_script_by_path(
@@ -7784,8 +7787,11 @@ pub async fn run_wait_result_script_by_path(
         )
         .await?;
 
-    run_wait_result_script_by_path_internal(db, run_query, &script, authed, user_db, w_id, args)
-        .await
+    let (result, success) = run_wait_result_script_by_path_internal(
+        db, run_query, &script, authed, user_db, w_id, args,
+    )
+    .await?;
+    result_to_response(result, success)
 }
 
 pub async fn run_wait_result_script_by_path_internal(
@@ -7796,7 +7802,7 @@ pub async fn run_wait_result_script_by_path_internal(
     user_db: UserDB,
     w_id: String,
     args: PushArgsOwned,
-) -> error::Result<Response> {
+) -> error::Result<(Box<RawValue>, bool)> {
     check_queue_too_long(&db, QUEUE_LIMIT_WAIT_RESULT.or(run_query.queue_limit)).await?;
 
     let db_authed = UserDbWithAuthed { db: user_db.clone(), authed: &authed.to_authed_ref() };
@@ -7871,7 +7877,8 @@ pub async fn run_wait_result_script_by_path_internal(
     .await?;
     tx.commit().await?;
 
-    let wait_result = run_wait_result(&db, uuid, &w_id, None, false, &authed.username).await;
+    let wait_result =
+        run_wait_result_internal(&db, uuid, &w_id, None, false, &authed.username).await;
     handle_delete_after_completion(&db, uuid, &w_id, delete_after_use, delete_after_secs).await?;
     return wait_result;
 }
@@ -8030,7 +8037,10 @@ pub async fn run_wait_result_flow_by_path(
         )
         .await?;
 
-    run_wait_result_flow_by_path_internal(db, run_query, &flow, authed, user_db, args, w_id).await
+    let (result, success) =
+        run_wait_result_flow_by_path_internal(db, run_query, &flow, authed, user_db, args, w_id)
+            .await?;
+    result_to_response(result, success)
 }
 
 pub async fn stream_flow_by_path(
@@ -8274,7 +8284,7 @@ pub async fn run_wait_result_flow_by_path_internal(
     user_db: UserDB,
     args: PushArgsOwned,
     w_id: String,
-) -> error::Result<Response> {
+) -> error::Result<(Box<RawValue>, bool)> {
     check_queue_too_long(&db, run_query.queue_limit).await?;
 
     let flow_path = flow.path();
@@ -8335,7 +8345,7 @@ pub async fn run_wait_result_flow_by_version_get(
     let flow_version_info =
         get_flow_version_info_from_version(&db, version, &w_id, &flow_path).await?;
 
-    run_flow_and_wait_result(
+    let (result, success) = run_flow_and_wait_result(
         &authed,
         &db,
         user_db,
@@ -8346,7 +8356,8 @@ pub async fn run_wait_result_flow_by_version_get(
         args,
         None,
     )
-    .await
+    .await?;
+    result_to_response(result, success)
 }
 
 pub async fn run_wait_result_flow_by_version(
@@ -8376,7 +8387,7 @@ pub async fn run_wait_result_flow_by_version(
     let flow_version_info =
         get_flow_version_info_from_version(&db, version, &w_id, &flow_path).await?;
 
-    run_flow_and_wait_result(
+    let (result, success) = run_flow_and_wait_result(
         &authed,
         &db,
         user_db,
@@ -8387,7 +8398,8 @@ pub async fn run_wait_result_flow_by_version(
         args,
         None,
     )
-    .await
+    .await?;
+    result_to_response(result, success)
 }
 
 /// Whether request-supplied SQL from an operator may run. Operators can only run deployed

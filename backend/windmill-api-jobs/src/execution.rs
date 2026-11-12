@@ -1154,7 +1154,7 @@ pub async fn run_flow_and_wait_result(
     run_query: RunJobQuery,
     args: PushArgsOwned,
     trigger: Option<TriggerMetadata>,
-) -> error::Result<Response> {
+) -> error::Result<(Box<RawValue>, bool)> {
     let (uuid, early_return, has_failure_module, _) = run_flow(
         authed,
         db,
@@ -1169,7 +1169,7 @@ pub async fn run_flow_and_wait_result(
     )
     .await?;
 
-    run_wait_result(
+    run_wait_result_internal(
         &db,
         uuid,
         w_id,
