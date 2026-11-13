@@ -468,7 +468,11 @@ fn test_volume_comment_prefix_selection() {
 fn test_volume_mount_struct() {
     use windmill_worker_volumes::VolumeMount;
 
-    let mount = VolumeMount { name: "test-vol".to_string(), target: "/mnt/data".to_string() };
+    let mount = VolumeMount {
+        name: "test-vol".to_string(),
+        target: "/mnt/data".to_string(),
+        read_only: false,
+    };
     assert_eq!(mount.name, "test-vol");
     assert_eq!(mount.target, "/mnt/data");
 }
@@ -569,53 +573,10 @@ async fn run_volume_sql_worker_e2e(
     let server = ApiServer::start(db.clone()).await?;
     let port = server.addr.port();
 
-    // 1. Set up filesystem-based object storage in a temp dir
-    let storage_dir = tempfile::tempdir()?;
-    let storage_root = storage_dir.path().to_string_lossy().to_string();
+    let (_storage_dir, vol_dir) = setup_filesystem_volume(&db).await?;
 
-    let lfs_config = json!({
-        "type": "FilesystemStorage",
-        "root_path": storage_root,
-        "public_resource": null,
-        "advanced_permissions": null,
-        "volume_storage": "primary"
-    });
-
-    sqlx::query!(
-        "UPDATE workspace_settings SET large_file_storage = $1 WHERE workspace_id = $2",
-        lfs_config,
-        "test-workspace"
-    )
-    .execute(&db)
-    .await?;
-
-    // 2. Pre-populate the volume with a file (workspace-namespaced path)
-    let vol_dir = storage_dir
-        .path()
-        .join("volumes")
-        .join("test-workspace")
-        .join("test-vol");
-    std::fs::create_dir_all(&vol_dir)?;
-    std::fs::write(vol_dir.join("hello.txt"), b"hello from volume")?;
-
-    // 3. Push the job and run with SQL-connected worker
-    let job = JobPayload::Code(RawCode {
-        hash: None,
-        content: code.to_string(),
-        path: None,
-        language,
-        lock: None,
-        cache_ttl: None,
-        cache_ignore_s3_path: None,
-        dedicated_worker: None,
-        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default()
-            .into(),
-        debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
-        modules: None,
-        tag: None,
-    });
-
-    let result = run_job_in_new_worker_until_complete(&db, false, job, port).await;
+    let result =
+        run_job_in_new_worker_until_complete(&db, false, raw_code_job(language, code), port).await;
 
     assert!(result.success, "job should succeed: {:?}", result.result);
     let json = result.json_result().expect("should have JSON result");
@@ -651,4 +612,62 @@ async fn run_volume_sql_worker_e2e(
     assert_eq!(output_content, "written by sql worker");
 
     Ok(())
+}
+
+
+#[cfg(feature = "parquet")]
+fn raw_code_job(language: ScriptLang, code: &str) -> JobPayload {
+    JobPayload::Code(RawCode {
+        hash: None,
+        content: code.to_string(),
+        path: None,
+        language,
+        lock: None,
+        cache_ttl: None,
+        cache_ignore_s3_path: None,
+        dedicated_worker: None,
+        concurrency_settings: windmill_common::runnable_settings::ConcurrencySettings::default()
+            .into(),
+        debouncing_settings: windmill_common::runnable_settings::DebouncingSettings::default(),
+        modules: None,
+        tag: None,
+    })
+}
+
+/// Filesystem object storage as the workspace's volume storage, holding `test-vol` with
+/// `hello.txt`. Returns the storage dir (deleted on drop) and the volume's object dir.
+#[cfg(feature = "parquet")]
+async fn setup_filesystem_volume(
+    db: &Pool<Postgres>,
+) -> anyhow::Result<(tempfile::TempDir, std::path::PathBuf)> {
+    // 1. Set up filesystem-based object storage in a temp dir
+    let storage_dir = tempfile::tempdir()?;
+    let storage_root = storage_dir.path().to_string_lossy().to_string();
+
+    let lfs_config = json!({
+        "type": "FilesystemStorage",
+        "root_path": storage_root,
+        "public_resource": null,
+        "advanced_permissions": null,
+        "volume_storage": "primary"
+    });
+
+    sqlx::query!(
+        "UPDATE workspace_settings SET large_file_storage = $1 WHERE workspace_id = $2",
+        lfs_config,
+        "test-workspace"
+    )
+    .execute(db)
+    .await?;
+
+    // 2. Pre-populate the volume with a file (workspace-namespaced path)
+    let vol_dir = storage_dir
+        .path()
+        .join("volumes")
+        .join("test-workspace")
+        .join("test-vol");
+    std::fs::create_dir_all(&vol_dir)?;
+    std::fs::write(vol_dir.join("hello.txt"), b"hello from volume")?;
+
+    Ok((storage_dir, vol_dir))
 }
