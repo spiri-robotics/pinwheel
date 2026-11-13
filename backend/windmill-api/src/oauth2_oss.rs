@@ -12,16 +12,12 @@ use std::{collections::HashMap, fmt::Debug};
 use axum::{routing::get, Json, Router};
 use hmac::Mac;
 
-#[cfg(feature = "oauth2")]
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "oauth2")]
 use windmill_common::more_serde::maybe_number_opt;
 #[cfg(feature = "oauth2")]
 use windmill_oauth::{helpers, AccessToken, RefreshToken, Scope};
 
-#[cfg(feature = "oauth2")]
-use crate::OAUTH_CLIENTS;
 use windmill_common::error;
 use windmill_common::oauth2::*;
 
@@ -95,22 +91,17 @@ async fn list_logins() -> error::JsonResult<Logins> {
     return Ok(Json(Logins { oauth: vec![], saml: None, auto_login: None }));
 }
 
-#[allow(unused)]
-#[cfg(feature = "oauth2")]
-async fn list_connects() -> error::JsonResult<Vec<String>> {
-    Ok(Json(
-        (&OAUTH_CLIENTS.load().connects)
-            .keys()
-            .map(|x| x.to_owned())
-            .collect_vec(),
-    ))
+/// Same shape as the enterprise response, which the connect dialog reads.
+#[derive(Serialize)]
+struct OAuthConnectListItem {
+    name: String,
+    supports_client_credentials: bool,
+    has_shared_credentials: bool,
 }
 
-#[allow(unused)]
-#[cfg(not(feature = "oauth2"))]
-async fn list_connects() -> windmill_common::error::JsonResult<Vec<String>> {
+async fn list_connects() -> error::JsonResult<Vec<OAuthConnectListItem>> {
     // Implementation is not open source
-    return Ok(axum::Json(vec![]));
+    Ok(Json(vec![]))
 }
 
 pub async fn _refresh_token(
