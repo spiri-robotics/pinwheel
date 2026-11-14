@@ -3260,6 +3260,12 @@ pub async fn run_worker(
             WORKER_CONFIG.load()
         );
     }
+    if *windmill_common::worker::WORKSPACE_FAIRNESS_RESERVE_WORKER {
+        tracing::info!(
+            worker = %worker_name, hostname = %hostname,
+            "fairness reserve worker: pulls only while a workspace is overloaded, and only other workspaces' jobs"
+        );
+    }
 
     // Dedicated workers wait for the init script before installing their dependencies, so it has to
     // be queued before they are spawned.
