@@ -7698,7 +7698,9 @@ mod loggable_setting_value_tests {
     fn never_prints_string_or_structured_values() {
         let token = "ghp_secret_token";
         for v in [
-            json!(format!("[install.scopes]\n\"@org\" = {{ token = \"{token}\" }}")),
+            json!(format!(
+                "[install.scopes]\n\"@org\" = {{ token = \"{token}\" }}"
+            )),
             json!({ "registry": { "token": token } }),
             json!([token]),
         ] {
