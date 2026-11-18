@@ -12,7 +12,7 @@ use axum::{routing::post, Router};
 
 pub struct ServiceProviderExt();
 
-pub async fn build_sp_extension() -> anyhow::Result<ServiceProviderExt> {
+pub async fn build_sp_extension(_db: &crate::db::DB) -> anyhow::Result<ServiceProviderExt> {
     return Ok(ServiceProviderExt());
 }
 
