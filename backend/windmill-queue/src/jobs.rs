@@ -8384,6 +8384,7 @@ fn create_restarted_module(
                 flow_jobs: Some(new_flow_jobs),
                 flow_jobs_success: new_flow_jobs_success,
                 flow_jobs_duration: new_flow_jobs_timeline,
+                flow_jobs_labels: None,
                 branch_chosen: None,
                 branchall: Some(BranchAllStatus {
                     branch: branch_or_iteration_n - 1,
@@ -8422,6 +8423,10 @@ fn create_restarted_module(
             if let Some(new_flow_jobs_timeline) = new_flow_jobs_timeline.as_mut() {
                 new_flow_jobs_timeline.truncate(branch_or_iteration_n);
             }
+            let mut new_flow_jobs_labels = module.flow_jobs_labels();
+            if let Some(new_flow_jobs_labels) = new_flow_jobs_labels.as_mut() {
+                new_flow_jobs_labels.truncate(branch_or_iteration_n);
+            }
             Ok(FlowStatusModule::InProgress {
                 id: module.id(),
                 job: new_flow_jobs[new_flow_jobs.len() - 1],
@@ -8433,6 +8438,7 @@ fn create_restarted_module(
                 flow_jobs: Some(new_flow_jobs),
                 flow_jobs_success: new_flow_jobs_success,
                 flow_jobs_duration: new_flow_jobs_timeline,
+                flow_jobs_labels: new_flow_jobs_labels,
                 branch_chosen: None,
                 branchall: None,
                 parallel,
@@ -8497,6 +8503,7 @@ fn reuse_completed_zombie_module(module: FlowStatusModule) -> FlowStatusModule {
             flow_jobs,
             flow_jobs_success,
             flow_jobs_duration,
+            flow_jobs_labels,
             branch_chosen,
             agent_actions,
             agent_actions_success,
@@ -8510,6 +8517,7 @@ fn reuse_completed_zombie_module(module: FlowStatusModule) -> FlowStatusModule {
                 .map(|v| v.into_iter().map(|_| Some(true)).collect()),
             flow_jobs,
             flow_jobs_duration,
+            flow_jobs_labels,
             branch_chosen,
             approvers: vec![],
             failed_retries: vec![],
