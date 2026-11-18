@@ -27,6 +27,7 @@ use windmill_common::{
     db::{Authable, Authed, AuthedRef},
     error::{self, Error, Result},
     jobs::JobTriggerKind,
+    roles::RoleCapabilities,
     triggers::TriggerMetadata,
     users::username_to_permissioned_as,
     workspaces::{check_operator_can_manage, ManageKind},
@@ -91,6 +92,9 @@ pub struct ApiAuthed {
     /// The OAuth client of an external issuer acting for this user (`mcp_external_idp`).
     /// Recorded on the runs it starts and handed to their steps as `WM_MCP_CLIENT`.
     pub mcp_client: Option<String>,
+    /// The role's capabilities in the request's workspace (`AuthCache::get_opt_job_authed`); `None`
+    /// outside a request.
+    pub capabilities: Option<RoleCapabilities>,
 }
 
 impl ApiAuthed {
@@ -104,6 +108,7 @@ impl ApiAuthed {
             folders: &self.folders,
             scopes: &self.scopes,
             token_prefix: &self.token_prefix,
+            capabilities: self.capabilities,
         }
     }
 
@@ -159,6 +164,7 @@ impl From<ApiAuthed> for Authed {
             scopes: value.scopes,
             token_prefix: value.token_prefix,
             mcp_client: value.mcp_client,
+            capabilities: value.capabilities,
         }
     }
 }
@@ -181,6 +187,7 @@ impl From<Authed> for ApiAuthed {
             job_id: None,
             credential_expiry: None,
             mcp_client: value.mcp_client,
+            capabilities: value.capabilities,
         }
     }
 }
@@ -207,6 +214,10 @@ impl Authable for ApiAuthed {
 
     fn is_operator(&self) -> bool {
         self.is_operator
+    }
+
+    fn capabilities(&self) -> Option<RoleCapabilities> {
+        self.capabilities
     }
 
     fn groups(&self) -> &[String] {
@@ -1164,6 +1175,7 @@ pub async fn fetch_api_authed_from_permissioned_as(
                 job_id: None,
                 credential_expiry: None,
                 mcp_client: None,
+                capabilities: None,
             };
 
             API_AUTHED_CACHE.insert(
