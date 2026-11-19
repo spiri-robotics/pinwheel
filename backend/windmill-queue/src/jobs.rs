@@ -6978,6 +6978,7 @@ async fn push_inner<'c, 'd>(
                         memory_id: None,
                         no_inherited_flow_env: false,
                         continued_on_error: vec![],
+                        test_subflows: None,
                     }
                 }
                 _ => {
@@ -7379,6 +7380,7 @@ async fn push_inner<'c, 'd>(
                 memory_id: None,
                 no_inherited_flow_env: false,
                 continued_on_error: vec![],
+                test_subflows: None,
             };
             // The completed job's own scopes are gone with its `job_perms` row, so the restart
             // takes the flow's current setting (and the restarting caller's ceiling).
