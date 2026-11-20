@@ -39,8 +39,8 @@ use windmill_common::client::AuthedClient;
 use windmill_common::db::Authed;
 use windmill_common::flow_conversations::{add_message_to_conversation_tx, MessageType};
 use windmill_common::flow_status::{
-    ApprovalConditions, ContinuedOnError, MAX_CONTINUED_ON_ERROR, FlowJobDuration, FlowJobsDuration, FlowStatusModuleWParent,
-    Iterator as FlowIterator, JobResult,
+    ApprovalConditions, ContinuedOnError, FlowJobDuration, FlowJobsDuration,
+    FlowStatusModuleWParent, Iterator as FlowIterator, JobResult, MAX_CONTINUED_ON_ERROR,
 };
 use windmill_common::flows::{add_virtual_items_if_necessary, Branch, FlowNodeId, StopAfterIf};
 use windmill_common::jobs::{
@@ -5990,9 +5990,10 @@ async fn compute_next_flow_transform(
         FlowModuleValue::Identity => {
             trivial_next_job(JobPayload::Identity { mocked: false, skipped: false })
         }
-        FlowModuleValue::Flow { path, .. } => {
+        FlowModuleValue::Flow { path, tag_override, .. } => {
             let mut payload = flow_to_payload(
                 path,
+                tag_override,
                 delete_after_use,
                 delete_after_secs,
                 &flow_job.workspace_id,
@@ -6873,9 +6874,10 @@ async fn payload_from_simple_module(
     let delete_after_use = module.delete_after_use.unwrap_or(false);
     let delete_after_secs = module.delete_after_secs;
     Ok(match value {
-        FlowModuleValue::Flow { path, .. } => {
+        FlowModuleValue::Flow { path, tag_override, .. } => {
             flow_to_payload(
                 path,
+                tag_override,
                 delete_after_use,
                 delete_after_secs,
                 &flow_job.workspace_id,
@@ -6987,6 +6989,7 @@ fn restricts_any_step(module: &FlowModule) -> bool {
 
 async fn flow_to_payload(
     path: String,
+    tag_override: Option<String>,
     delete_after_use: bool,
     delete_after_secs: Option<i32>,
     w_id: &str,
@@ -7007,7 +7010,7 @@ async fn flow_to_payload(
     };
     Ok(JobPayloadWithTag {
         payload,
-        tag,
+        tag: tag_override.filter(|t| !t.trim().is_empty()).or(tag),
         delete_after_use,
         delete_after_secs,
         timeout: None,
