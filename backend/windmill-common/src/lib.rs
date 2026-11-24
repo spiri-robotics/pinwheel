@@ -104,6 +104,7 @@ pub mod server;
 pub mod ssrf;
 pub mod stats_oss;
 pub mod stream;
+pub mod tag_deadlock;
 pub mod teams_oss;
 pub mod tracing_init;
 pub mod trashbin;
