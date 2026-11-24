@@ -84,6 +84,7 @@ mod universal_pkg_installer;
 mod volume_oss;
 pub mod wac_executor;
 mod worker;
+mod failed_only_restart;
 mod worker_flow;
 mod worker_lockfiles;
 mod worker_utils;

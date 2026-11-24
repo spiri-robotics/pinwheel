@@ -14,6 +14,7 @@ pub mod ducklake_maintenance_oss;
 pub use ducklake_maintenance_oss as ducklake_maintenance;
 pub mod freshness_watchdog_oss;
 pub use freshness_watchdog_oss as freshness_watchdog;
+mod failed_only_restart;
 pub mod jobs;
 pub mod jobs_oss;
 pub mod schedule;
