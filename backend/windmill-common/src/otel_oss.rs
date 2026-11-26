@@ -48,6 +48,18 @@ pub(crate) fn init_logs_bridge_for_service(
     None
 }
 
+pub(crate) fn init_audit_logs_bridge(_mode: &Mode, _hostname: &str, _env: &str) -> Option<EnvFilter> {
+    None
+}
+
+pub(crate) fn init_audit_logs_bridge_for_service(
+    _service: &str,
+    _hostname: &str,
+    _env: &str,
+) -> Option<EnvFilter> {
+    None
+}
+
 /// Export the log records still batched, for a process about to exit.
 pub async fn flush_otel_logs() {}
 
