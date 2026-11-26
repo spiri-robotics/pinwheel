@@ -24,6 +24,10 @@ pub struct AuditLog {
     pub resource: Option<String>,
     pub parameters: Option<serde_json::Value>,
     pub span: Option<String>,
+    #[sqlx(default)]
+    pub client_ip: Option<String>,
+    #[sqlx(default)]
+    pub user_agent: Option<String>,
 }
 
 #[derive(Deserialize)]

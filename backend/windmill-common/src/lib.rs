@@ -77,6 +77,7 @@ pub mod job_provenance;
 pub mod jobs;
 pub mod jwt;
 pub mod login_rate_limit;
+pub mod request_origin;
 pub mod more_serde;
 pub mod oauth2;
 pub mod otel_oss;
