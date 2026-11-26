@@ -368,6 +368,7 @@ async fn inject_agent_authed(
                 credential_expiry: None,
                 mcp_client: None,
                 capabilities: None,
+                allowed_ips: None,
             },
             job_id: None,
         });
@@ -1065,6 +1066,7 @@ pub async fn run_server(
                     }
                 })
                 .route("/version", get(git_v))
+                .route("/client_ip", get(client_ip))
                 .nest("/health/status", health::status_service())
                 .route("/min_keep_alive_version", get(min_keep_alive_version))
                 .route("/uptodate", get(is_up_to_date))
@@ -1295,6 +1297,15 @@ async fn is_up_to_date() -> Result<String, AppError> {
 
 async fn git_v() -> String {
     format!("CE {GIT_VERSION}")
+}
+
+/// The caller's address as every IP check sees it, so a device can learn what to put in a token's
+/// allowed IPs, and an admin can tell a proxy missing from `TRUSTED_PROXIES` (its own address
+/// comes back). Unauthenticated: it tells the caller only where it is calling from.
+async fn client_ip(
+    windmill_common::client_ip::ClientIp(ip): windmill_common::client_ip::ClientIp,
+) -> String {
+    ip.map(|ip| ip.to_string()).unwrap_or_default()
 }
 
 async fn min_keep_alive_version() -> Json<serde_json::Value> {

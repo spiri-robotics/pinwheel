@@ -10,6 +10,8 @@ pub mod auth;
 pub mod composed;
 pub mod ee_oss;
 pub mod scopes;
+pub mod token_ip_allowlist_oss;
+pub use token_ip_allowlist_oss::{client_ip_allowed, token_ip_allowlist};
 
 use axum::extract::{FromRequestParts, OptionalFromRequestParts, Path, Request, State};
 use axum::middleware::Next;
@@ -35,6 +37,7 @@ use windmill_common::{
 };
 
 use scopes::ScopeDefinition;
+use windmill_common::client_ip::IpNet;
 use windmill_common::scopes::scope_contains;
 
 // Re-export key auth types and functions
@@ -95,6 +98,10 @@ pub struct ApiAuthed {
     /// The role's capabilities in the request's workspace (`AuthCache::get_opt_job_authed`); `None`
     /// outside a request.
     pub capabilities: Option<RoleCapabilities>,
+    /// The networks the token row this identity came from may be used from (`token.allowed_ips`).
+    /// Enforced by `AuthCache::get_opt_job_authed` against each request's client IP; a token
+    /// minted from this identity through `tokens/create` is held within them.
+    pub allowed_ips: Option<Vec<IpNet>>,
 }
 
 impl ApiAuthed {
@@ -189,6 +196,7 @@ impl From<Authed> for ApiAuthed {
             credential_expiry: None,
             mcp_client: value.mcp_client,
             capabilities: value.capabilities,
+            allowed_ips: None,
         }
     }
 }
@@ -1195,6 +1203,7 @@ pub async fn fetch_api_authed_from_permissioned_as(
                 credential_expiry: None,
                 mcp_client: None,
                 capabilities: None,
+                allowed_ips: None,
             };
 
             API_AUTHED_CACHE.insert(
@@ -1229,6 +1238,10 @@ pub struct NewToken {
     /// An MCP token carries its owner's superadmin rights (every workspace) only when asked.
     #[serde(default)]
     pub super_admin: Option<bool>,
+    /// IPs or CIDRs the token may be used from; `None` is anywhere. [`create_token_internal`]
+    /// validates it and holds it within the caller's own.
+    #[serde(default)]
+    pub allowed_ips: Option<Vec<String>>,
 }
 
 impl NewToken {
@@ -1248,6 +1261,7 @@ impl NewToken {
             workspace_id,
             read_only,
             super_admin: None,
+            allowed_ips: None,
         }
     }
 }
@@ -1297,6 +1311,12 @@ pub async fn create_token_internal(
         .as_deref()
         .is_some_and(|s| s.iter().any(|scope| scope.starts_with("mcp:")));
     let is_super_admin = is_super_admin && (!is_mcp || token_config.super_admin == Some(true));
+    // Here rather than in each handler: every token minted from a caller's identity (app SDK
+    // and embed tokens, native trigger webhooks included) must inherit its IP restriction.
+    let allowed_ips = token_ip_allowlist(
+        authed.allowed_ips.as_deref(),
+        token_config.allowed_ips.as_deref(),
+    )?;
     if *CLOUD_HOSTED {
         let nb_tokens =
             sqlx::query_scalar!("SELECT COUNT(*) FROM token WHERE email = $1", &authed.email)
@@ -1311,8 +1331,8 @@ pub async fn create_token_internal(
     }
     let rows = sqlx::query!(
         "INSERT INTO token
-            (token_hash, token_prefix, token, email, label, expiration, super_admin, scopes, workspace_id, read_only)
-            SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+            (token_hash, token_prefix, token, email, label, expiration, super_admin, scopes, workspace_id, read_only, allowed_ips)
+            SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::text[]::cidr[]
             WHERE $9::varchar IS NULL OR NOT EXISTS(
                 SELECT 1 FROM workspace WHERE id = $9 AND deleted = true
             )",
@@ -1326,6 +1346,7 @@ pub async fn create_token_internal(
         token_config.scopes.as_ref().map(|x| x.as_slice()),
         token_config.workspace_id,
         token_config.read_only.unwrap_or(false),
+        allowed_ips.as_deref(),
     )
     .execute(&mut *tx)
     .await?;
