@@ -125,6 +125,7 @@ pub fn global_service() -> Router {
         .route("/exists/{email}", get(exists_email))
         .route("/email", get(get_email))
         .route("/whoami", get(global_whoami))
+        .nest("/totp", crate::totp::service())
         .route("/list_invites", get(list_invites))
         .route("/decline_invite", post(decline_invite))
         .route("/accept_invite", post(accept_invite))
@@ -345,6 +346,8 @@ pub struct TruncatedToken {
 pub struct Login {
     pub email: String,
     pub password: String,
+    #[serde(default)]
+    pub totp_code: Option<String>,
 }
 
 lazy_static::lazy_static! {
@@ -2888,7 +2891,7 @@ async fn login(
     cookies: Cookies,
     Extension(db): Extension<DB>,
     Extension(argon2): Extension<Arc<Argon2<'_>>>,
-    Json(Login { email, password }): Json<Login>,
+    Json(Login { email, password, totp_code }): Json<Login>,
 ) -> Result<String> {
     // In `--no-auth` mode there is no real login; the frontend never needs a
     // session cookie because every request already resolves as the admin
@@ -2916,15 +2919,15 @@ async fn login(
         username_override: None,
         token_prefix: None,
     };
-    let email_w_h: Option<(String, String, bool)> = sqlx::query_as(
-        "SELECT email, password_hash, super_admin FROM password WHERE email = $1 AND login_type = \
-         'password' AND disabled = false",
+    let email_w_h: Option<(String, String, bool, Option<String>)> = sqlx::query_as(
+        "SELECT email, password_hash, super_admin, totp_secret FROM password WHERE email = $1 \
+         AND login_type = 'password' AND disabled = false",
     )
     .bind(&email)
     .fetch_optional(&mut *tx)
     .await?;
 
-    if let Some((email, hash, super_admin)) = email_w_h {
+    if let Some((email, hash, super_admin, totp_secret)) = email_w_h {
         if argon2
             .verify_password(password.as_bytes(), hash.as_str())
             .is_err()
@@ -2942,6 +2945,30 @@ async fn login(
             windmill_common::login_rate_limit::record_login_failure(&email);
             Err(Error::BadRequest("Invalid login".to_string()))
         } else {
+            // Asked only once the password matched, so whether an account has a second
+            // factor is not disclosed to someone who does not know its password.
+            if totp_secret.is_some() {
+                let Some(code) = totp_code.filter(|c| !c.trim().is_empty()) else {
+                    return Err(Error::BadRequest(crate::totp::TOTP_REQUIRED.to_string()));
+                };
+                if !crate::totp::check_login_code(&mut tx, &db, &email, &code).await? {
+                    // Committed, unlike a wrong password: it holds the wrong-code count, and a
+                    // guessed code must leave a trace.
+                    audit_log(
+                        &mut *tx,
+                        &audit_author,
+                        "users.login_failure",
+                        ActionKind::Create,
+                        "global",
+                        None,
+                        Some([("reason", "invalid_totp_code")].into()),
+                    )
+                    .await?;
+                    tx.commit().await?;
+                    windmill_common::login_rate_limit::record_login_failure(&email);
+                    return Err(Error::BadRequest(crate::totp::TOTP_INVALID.to_string()));
+                }
+            }
             let token =
                 create_session_token(&email, super_admin, None, false, &mut tx, cookies).await?;
 
